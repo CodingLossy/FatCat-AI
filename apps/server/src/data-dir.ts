@@ -129,7 +129,7 @@ function renameWithBusyRetry(from: string, to: string, options: MigrateOptions):
             const err = error as NodeJS.ErrnoException;
             if (!BUSY_CODES.has(err.code ?? '')) throw error;
             const delay = delays[attempt];
-            // 等待期间若有别的进程建好了新目录,不再重试,交给调用方按「新目录已存在」报错
+            // 重试用尽,或等待期间有别的进程建好了新目录,就不再重试,直接抛出「目录被占用」错误(LegacyDataDirBusyError)
             if (delay === undefined || existsSync(to)) throw new LegacyDataDirBusyError(from, to, err);
             sleep(delay);
         }
