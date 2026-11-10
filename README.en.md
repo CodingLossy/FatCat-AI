@@ -69,6 +69,8 @@ printf 'DEEPSEEK_API_KEY: "%s"\n' '<your key>' | \
   docker compose -f docker/docker-compose.yml exec -T fatcat-ai sh -c 'umask 077; cat > /data/secrets.yaml'
 ```
 
+> Upgrading from AI-Personal: the compose service was renamed from `ai-personal` to `fatcat-ai`; the `ai-personal-data` volume is unchanged, so your data stays. Before upgrading, run `docker compose -f docker/docker-compose.yml down` with the old compose file, or start the new version with `docker compose -f docker/docker-compose.yml up -d --build --remove-orphans`. Otherwise the old container keeps running and holds port 8787, and the new one can't start.
+
 It only listens on 127.0.0.1 by default; to reach it from other machines, put it behind a reverse proxy with HTTPS. Setting it up from another machine or through a proxy needs the one-time setup code printed in the startup log (`docker compose -f docker/docker-compose.yml logs`).
 
 ### 3. A full chat with curl (no Web UI)
@@ -128,7 +130,7 @@ $sid = (Invoke-RestMethod -Method Post "$api/sessions" -Headers $h -ContentType 
 
 ### 4. Command-line client
 
-You can also set up and chat without the Web UI (after `pnpm build`, run `pnpm --filter @fatcat-ai/cli exec fatcat-ai …`, or `node dist/bin.js …` in `apps/cli`):
+You can also set up and chat without the Web UI (after `pnpm build`, run `node apps/cli/dist/bin.js …` from the repository root in place of `fatcat-ai` in the examples below):
 
 ```bash
 fatcat-ai setup -u owner          # create the owner and save a personal access token (~/.fatcat-ai/cli.json, mode 0600)

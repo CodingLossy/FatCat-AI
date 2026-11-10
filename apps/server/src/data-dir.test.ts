@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { migrateLegacyDataDir } from './data-dir.js';
+import { LegacyDataDirBusyError, migrateLegacyDataDir } from './data-dir.js';
 
 let base: string;
 let from: string;
@@ -82,6 +82,46 @@ describe('migrateLegacyDataDir', () => {
         };
         expect(() => migrateLegacyDataDir(from, to, { rename: denied })).toThrow('permission denied');
         expect(existsSync(from)).toBe(true);
+        expect(existsSync(to)).toBe(false);
+    });
+
+    it('旧目录暂时被占用(EBUSY)时短暂重试后成功', () => {
+        seedLegacy();
+        let calls = 0;
+        const waits: number[] = [];
+        const flaky = (a: string, b: string) => {
+            if (++calls <= 2) throw Object.assign(new Error('resource busy or locked'), { code: 'EBUSY' });
+            renameSync(a, b);
+        };
+        const result = migrateLegacyDataDir(from, to, {
+            rename: flaky,
+            busyRetryDelaysMs: [1, 2, 3],
+            sleep: (ms) => waits.push(ms),
+        });
+        expect(result).toEqual({ action: 'renamed' });
+        expect(waits).toEqual([1, 2]);
+        expect(readFileSync(join(to, 'db.sqlite'), 'utf8')).toBe('database');
+    });
+
+    it('一直被占用(EPERM)时抛出清楚的错误,旧目录原样保留', () => {
+        seedLegacy();
+        let calls = 0;
+        const locked = () => {
+            calls++;
+            throw Object.assign(new Error('operation not permitted'), { code: 'EPERM' });
+        };
+        let caught: unknown;
+        try {
+            migrateLegacyDataDir(from, to, { rename: locked, busyRetryDelaysMs: [1, 1], sleep: () => {} });
+        } catch (error) {
+            caught = error;
+        }
+        expect(caught).toBeInstanceOf(LegacyDataDirBusyError);
+        expect((caught as LegacyDataDirBusyError).code).toBe('EPERM');
+        expect((caught as Error).message).toContain('Stop the old AI-Personal server');
+        expect(calls).toBe(3);
+        expect(readFileSync(join(from, 'db.sqlite'), 'utf8')).toBe('database');
+        expect(readFileSync(join(from, 'backups', 'db-0001.sqlite'), 'utf8')).toBe('backup');
         expect(existsSync(to)).toBe(false);
     });
 });

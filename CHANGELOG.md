@@ -12,6 +12,8 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 
 - Packages are now `@fatcat-ai/*`, the CLI command is `fatcat-ai`, and the Docker image is `fatcat-ai`. The client SDK exports `FatCatClient`, `FatCatApiError` and `FatCatNetworkError`.
 - The default data directory is `~/.fatcat-ai`. On the first start, the server moves an existing `~/.ai-personal` there (a rename, or a verified copy across drives); it never overwrites an existing `~/.fatcat-ai`. Docker keeps `/data` and the `ai-personal-data` volume.
+- The docker compose service is now `fatcat-ai` instead of `ai-personal`. If you already run it with compose, run `docker compose -f docker/docker-compose.yml down` before upgrading, or start the new version with `docker compose -f docker/docker-compose.yml up -d --build --remove-orphans`; otherwise the old container keeps holding port 8787. Your data stays in the same volume.
+- If the old server is still running on Windows, the data directory can't be moved (`EPERM` / `EBUSY`). The server retries for a few seconds, then exits with a message asking you to stop the old AI-Personal server first; nothing is moved or deleted.
 - Environment variables now start with `FATCAT_AI_` instead of `AIP_` (for example `FATCAT_AI_PORT`, `FATCAT_AI_DATA_DIR`, `FATCAT_AI_TOKEN`). The old names still work for now and print a deprecation warning.
 - Unchanged on purpose: the `aip_pat_` token prefix, the `aip_session` / `aip_csrf` cookies and the `X-AIP-Server-Version` header, so existing tokens and API v1 clients keep working.
 
@@ -172,6 +174,8 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 
 - 包名改为 `@fatcat-ai/*`,命令改为 `fatcat-ai`,Docker 镜像改为 `fatcat-ai`;客户端 SDK 导出 `FatCatClient`、`FatCatApiError`、`FatCatNetworkError`。
 - 默认数据目录改为 `~/.fatcat-ai`。首次启动时服务器把已有的 `~/.ai-personal` 迁过去(重命名,跨盘时复制并校验);已有 `~/.fatcat-ai` 时不覆盖。Docker 仍用 `/data` 与 `ai-personal-data` 卷。
+- docker compose 服务名由 `ai-personal` 改为 `fatcat-ai`。已经用 compose 部署过的,升级前先执行 `docker compose -f docker/docker-compose.yml down`,或者升级后用 `docker compose -f docker/docker-compose.yml up -d --build --remove-orphans` 启动,否则旧容器会一直占着 8787 端口;数据仍在原来的卷里。
+- Windows 上旧服务器仍在运行时,数据目录无法迁移(`EPERM` / `EBUSY`)。服务器会重试几秒,仍失败就提示先停止旧的 AI-Personal 服务器并退出,不移动也不删除任何文件。
 - 环境变量前缀由 `AIP_` 改为 `FATCAT_AI_`(如 `FATCAT_AI_PORT`、`FATCAT_AI_DATA_DIR`、`FATCAT_AI_TOKEN`);旧名暂时仍可用,并打印弃用警告。
 - 有意不改:令牌前缀 `aip_pat_`、Cookie `aip_session` / `aip_csrf` 与响应头 `X-AIP-Server-Version`,现有令牌与 API v1 客户端不受影响。
 

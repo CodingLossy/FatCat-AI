@@ -38,7 +38,35 @@ export interface MigrateOptions {
     /** 测试用:替换重命名与复制。 */
     rename?: (from: string, to: string) => void;
     copy?: (from: string, to: string) => void;
+    /** 重命名遇到 EPERM / EBUSY 时的重试间隔(毫秒),依次等待;默认共重试 5 次,约 3 秒。 */
+    busyRetryDelaysMs?: readonly number[];
+    /** 测试用:替换同步等待。 */
+    sleep?: (ms: number) => void;
 }
+
+/** 旧数据目录被其他进程占用(多见于 Windows 上旧服务器仍在运行),重试后仍无法迁移。 */
+export class LegacyDataDirBusyError extends Error {
+    readonly code: string;
+    constructor(
+        readonly from: string,
+        readonly to: string,
+        cause: NodeJS.ErrnoException,
+    ) {
+        super(
+            `The old data directory ${from} is in use by another process (${cause.code}), so it cannot be moved to ${to}. ` +
+                'Stop the old AI-Personal server (and anything else using that folder), then start FatCat-AI again. ' +
+                'Nothing was moved or deleted.',
+            { cause },
+        );
+        this.name = 'LegacyDataDirBusyError';
+        this.code = cause.code ?? 'EBUSY';
+    }
+}
+
+const BUSY_CODES = new Set(['EPERM', 'EBUSY']);
+const DEFAULT_BUSY_RETRY_DELAYS_MS = [100, 250, 500, 1000, 1500];
+
+const sleepSync = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
 const defaultCopy = (from: string, to: string) =>
     cpSync(from, to, {
@@ -58,7 +86,7 @@ export function migrateLegacyDataDir(from: string, to: string, options: MigrateO
     if (!existsSync(from)) return { action: 'none' };
     if (existsSync(to)) return { action: 'kept-existing' };
     try {
-        (options.rename ?? renameSync)(from, to);
+        renameWithBusyRetry(from, to, options);
         return { action: 'renamed' };
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
@@ -82,6 +110,29 @@ export function migrateLegacyDataDir(from: string, to: string, options: MigrateO
         return { action: 'copied', legacyRemoved: true };
     } catch {
         return { action: 'copied', legacyRemoved: false };
+    }
+}
+
+/**
+ * 原子重命名;Windows 上旧服务器、杀毒软件或索引程序占用目录时会得到 EPERM / EBUSY,短暂等待后重试。
+ * 重命名要么整体成功要么什么都不变,所以重试不会留下部分移动的目录。重试用尽后抛出 LegacyDataDirBusyError。
+ */
+function renameWithBusyRetry(from: string, to: string, options: MigrateOptions): void {
+    const rename = options.rename ?? renameSync;
+    const delays = options.busyRetryDelaysMs ?? DEFAULT_BUSY_RETRY_DELAYS_MS;
+    const sleep = options.sleep ?? sleepSync;
+    for (let attempt = 0; ; attempt++) {
+        try {
+            rename(from, to);
+            return;
+        } catch (error) {
+            const err = error as NodeJS.ErrnoException;
+            if (!BUSY_CODES.has(err.code ?? '')) throw error;
+            const delay = delays[attempt];
+            // 等待期间若有别的进程建好了新目录,不再重试,交给调用方按「新目录已存在」报错
+            if (delay === undefined || existsSync(to)) throw new LegacyDataDirBusyError(from, to, err);
+            sleep(delay);
+        }
     }
 }
 

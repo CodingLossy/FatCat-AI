@@ -22,7 +22,7 @@ import { itemProviders } from './memory-provider.js';
 import { createEmbeddingService } from './embeddings.js';
 import { randomToken } from './auth/crypto.js';
 import { loadConfig, SERVER_ENV_NAMES } from './config.js';
-import { LEGACY_DATA_DIR_NAME, migrateLegacyDataDir } from './data-dir.js';
+import { LEGACY_DATA_DIR_NAME, LegacyDataDirBusyError, migrateLegacyDataDir } from './data-dir.js';
 import { createLogger } from './log.js';
 import { attachWebSocket } from './ws.js';
 
@@ -37,7 +37,15 @@ if (legacyEnv.length > 0) logger.warn({ variables: legacyEnv }, legacyEnvWarning
 // 使用默认数据目录时,把改名前的 ~/.ai-personal 迁到 ~/.fatcat-ai(只做一次,不覆盖已有目录;ADR 0019)
 if (!process.env.FATCAT_AI_DATA_DIR) {
     const legacyDir = join(homedir(), LEGACY_DATA_DIR_NAME);
-    const migration = migrateLegacyDataDir(legacyDir, config.dataDir);
+    let migration;
+    try {
+        migration = migrateLegacyDataDir(legacyDir, config.dataDir);
+    } catch (error) {
+        if (!(error instanceof LegacyDataDirBusyError)) throw error;
+        // 旧服务器仍占用旧目录:不带堆栈,给出可操作的提示后以非零退出码退出(旧目录原样保留)
+        logger.error({ from: error.from, to: error.to, code: error.code }, error.message);
+        process.exit(1);
+    }
     if (migration.action === 'renamed' || migration.action === 'copied') {
         logger.info(
             { from: legacyDir, to: config.dataDir, ...migration },
