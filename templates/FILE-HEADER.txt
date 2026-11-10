@@ -1,0 +1,27 @@
+# 源文件头模板 / Source file header templates
+# 年份为文件首次创建的年份。The year is the year the file was first created.
+
+## 核心与 Web UI(默认)/ Core & Web UI (default) — TS/JS/Rust
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 尹绪柏 (Theodore Yin)
+
+## SDK 包 / SDK packages (packages/plugin-sdk, packages/client, packages/shared)
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2026 尹绪柏 (Theodore Yin)
+
+## YAML / Shell / Python / Dockerfile
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+
+## CSS
+/* SPDX-License-Identifier: AGPL-3.0-only */
+/* Copyright (C) 2026 尹绪柏 (Theodore Yin) */
+
+## package.json
+"license": "AGPL-3.0-only",            // SDK packages: "Apache-2.0"
+"author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
+"repository": "github:CodingLossy/AI-Personal"
+
+## Cargo.toml
+license = "AGPL-3.0-only"
+authors = ["尹绪柏 (Theodore Yin) <x19169738916@163.com>"]

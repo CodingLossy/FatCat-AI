@@ -1,0 +1,177 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: lint / typecheck / test / build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Install Playwright Chromium
+        run: pnpm --filter @ai-personal/web exec playwright install --with-deps chromium
+      - name: Web UI smoke test (Playwright)
+        run: pnpm test:e2e
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: apps/web/test-results
+      - name: OpenAPI document is up to date
+        run: |
+          pnpm --filter @ai-personal/server openapi:export
+          git diff --exit-code -- apps/server/openapi/v1.json
+      - name: Upload OpenAPI document
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-v1
+          path: apps/server/openapi/v1.json
+
+  windows:
+    name: Windows path security (tools)
+    # 文件工具的逃逸测试在 Windows 上跑:junction、8.3 短名、备用数据流、设备名、大小写、UNC(ADR 0011)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Tools tests (with coverage gate)
+        run: pnpm turbo run test --filter=@ai-personal/tools
+
+  openapi-compat:
+    name: OpenAPI breaking changes
+    # 只在 PR 上比较基线分支与本分支的 OpenAPI 文档(ADR 0010 第 10 节);oasdiff 以容器运行,不是项目依赖
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare apps/server/openapi/v1.json with the base branch
+        run: |
+          set -euo pipefail
+          if ! git cat-file -e "origin/${{ github.base_ref }}:apps/server/openapi/v1.json" 2>/dev/null; then
+            echo "The base branch has no OpenAPI document; nothing to compare."
+            exit 0
+          fi
+          git show "origin/${{ github.base_ref }}:apps/server/openapi/v1.json" > "$RUNNER_TEMP/base.json"
+          cp apps/server/openapi/v1.json "$RUNNER_TEMP/head.json"
+          # 事件联合类型(AgentEvent)新增或修改变体不算破坏性变更:ADR 0004 要求客户端忽略未知事件类型
+          cp .github/oasdiff-severity.txt "$RUNNER_TEMP/severity.txt"
+          docker run --rm -v "$RUNNER_TEMP:/specs:ro" tufin/oasdiff:v1.35.0 \
+            breaking /specs/base.json /specs/head.json --fail-on ERR --severity-levels /specs/severity.txt
+
+  compliance:
+    name: license compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: SPDX headers and package.json license/author
+        run: pnpm check:spdx
+      - name: Leftover placeholders
+        run: pnpm check:placeholders
+      - name: No credentials in recorded fixtures
+        run: pnpm check:secrets
+      - name: Dependency license allowlist and telemetry denylist
+        run: pnpm check:licenses
+      - name: REUSE compliance
+        uses: fsfe/reuse-action@v5
+
+  docker:
+    name: docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: >
+          docker build -f docker/Dockerfile -t ai-personal:ci
+          --build-arg SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+          .
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run and check /healthz, auth, data dir, user and idle memory
+        run: |
+          set -x
+          docker run -d --name aip -p 127.0.0.1:8787:8787 ai-personal:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8787/healthz && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8787/healthz
+          curl -fsS http://127.0.0.1:8787/api/v1/meta
+          STATUS="$(curl -fsS http://127.0.0.1:8787/api/v1/auth/status)"
+          grep -q '"initialized":false' <<<"$STATUS"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8787/api/v1/auth/me)" = "401"
+          docker exec aip test -f /data/db.sqlite
+          LOGS="$(docker logs aip 2>&1)"
+          grep -q 'one-time setup code' <<<"$LOGS"
+          test "$(docker inspect -f '{{.Config.User}}' aip)" = "node"
+          # 空闲内存:启动后 10 秒起采样 3 次(间隔 5 秒)取中位数,按 ADR 0018 规则 1、2 检查(250 MiB 上限、相对基线)
+          sleep 10
+          SAMPLES=""
+          for i in 1 2 3; do
+            if [ "$i" -gt 1 ]; then sleep 5; fi
+            SAMPLES="$SAMPLES $(docker exec aip sh -c 'grep VmRSS /proc/1/status' | awk '{print $2}')"
+          done
+          node scripts/perf/idle-budget.mjs $SAMPLES
+      - name: Memory breakdown (informational)
+        continue-on-error: true
+        run: |
+          docker run --rm ai-personal:ci node --input-type=module -e "
+          const mb = () => Math.round(process.memoryUsage().rss / 1048576);
+          const heap = () => Math.round(process.memoryUsage().heapUsed / 1048576);
+          const row = (label) => console.log(label.padEnd(22), 'rss', String(mb()).padStart(4), 'MiB  heap', String(heap()).padStart(4), 'MiB');
+          row('node baseline');
+          for (const m of ['/app/packages/storage/node_modules/better-sqlite3/lib/index.js', '@ai-personal/storage', 'pino', 'hono', '@hono/node-server', '@hono/zod-openapi', './dist/app.js']) {
+            await import(m);
+            row('+ ' + m.replace(/^.*node_modules\//, '').replace('/lib/index.js', ''));
+          }
+          // sqlite-vec 只在配置了 embed 配置档时加载(ADR 0014):这里单独测加载后的增量,并确认扩展在镜像中可用
+          const { default: Database } = await import('/app/packages/storage/node_modules/better-sqlite3/lib/index.js');
+          const { load } = await import('/app/packages/storage/node_modules/sqlite-vec/index.mjs');
+          const db = new Database(':memory:');
+          load(db);
+          row('+ sqlite-vec ' + db.prepare('select vec_version() v').get().v);
+          "
+      - name: Show container status and logs
+        if: failure()
+        run: |
+          docker ps -a --filter name=aip
+          docker logs aip || true
+      - name: Remove container
+        if: always()
+        run: docker rm -f aip || true

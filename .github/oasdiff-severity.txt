@@ -1,0 +1,2 @@
+response-property-one-of-added info
+response-body-one-of-added info

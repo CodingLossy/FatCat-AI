@@ -1,0 +1,54 @@
+{
+  "name": "@ai-personal/server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI-Personal headless core server",
+  "license": "AGPL-3.0-only",
+  "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
+  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/apps/server",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "directory": "apps/server"
+  },
+  "bugs": {
+    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "node --max-semi-space-size=8 --watch --import tsx src/index.ts",
+    "start": "node --max-semi-space-size=8 dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "openapi:export": "node scripts/export-openapi.mjs",
+    "eval": "vitest run src/mail-injection.eval.test.ts --reporter=verbose --coverage.enabled=false"
+  },
+  "dependencies": {
+    "@ai-personal/agent": "workspace:*",
+    "@ai-personal/items": "workspace:*",
+    "@ai-personal/mail": "workspace:*",
+    "@ai-personal/memory": "workspace:*",
+    "@ai-personal/providers": "workspace:*",
+    "@ai-personal/shared": "workspace:*",
+    "@ai-personal/storage": "workspace:*",
+    "@ai-personal/tools": "workspace:*",
+    "@hono/node-server": "^2.1.6",
+    "@hono/zod-openapi": "^1.6.3",
+    "croner": "^11.0.0",
+    "hono": "^4.13.16",
+    "pino": "^10.4.0",
+    "ws": "^8.22.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@ai-personal/eval": "workspace:*",
+    "@types/ws": "^8.18.2",
+    "tsx": "^4.23.15"
+  }
+}

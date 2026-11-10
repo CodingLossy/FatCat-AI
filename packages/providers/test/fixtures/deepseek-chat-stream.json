@@ -1,0 +1,44 @@
+{
+  "name": "deepseek-chat-stream",
+  "synthetic": false,
+  "recordedAt": "2026-11-03T15:01:39.302Z",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "body": {
+          "model": "deepseek-chat",
+          "messages": [
+            {
+              "role": "system",
+              "content": "You produce short test fixtures."
+            },
+            {
+              "role": "user",
+              "content": "请只回复四个字:你好世界"
+            }
+          ],
+          "stream": true,
+          "stream_options": {
+            "include_usage": true
+          },
+          "temperature": 0
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream; charset=utf-8"
+        },
+        "chunks": [
+          "data: {\"id\":\"87b97b77-30bb-47c2-b852-fcb71d34ec7f\",\"object\":\"chat.completion.chunk\",\"created\":1793718098,\"model\":\"deepseek-flash\",\"system_fingerprint\":\"bc19ba97cbe016479903222bb1578db6\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null}\n\n",
+          "data: {\"id\":\"87b97b77-30bb-47c2-b852-fcb71d34ec7f\",\"object\":\"chat.completion.chunk\",\"created\":1793718098,\"model\":\"deepseek-flash\",\"system_fingerprint\":\"bc19ba97cbe016479903222bb1578db6\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"你好\"},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null}\n\n",
+          "data: {\"id\":\"87b97b77-30bb-47c2-b852-fcb71d34ec7f\",\"object\":\"chat.completion.chunk\",\"created\":1793718098,\"model\":\"deepseek-flash\",\"system_fingerprint\":\"bc19ba97cbe016479903222bb1578db6\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"世界\"},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null}\n\n",
+          "data: {\"id\":\"87b97b77-30bb-47c2-b852-fcb71d34ec7f\",\"object\":\"chat.completion.chunk\",\"created\":1793718098,\"model\":\"deepseek-flash\",\"system_fingerprint\":\"bc19ba97cbe016479903222bb1578db6\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"logprobs\":null,\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":19,\"completion_tokens\":2,\"total_tokens\":21,\"prompt_tokens_details\":{\"cached_tokens\":0},\"prompt_cache_hit_tokens\":0,\"prompt_cache_miss_tokens\":19}}\n\n",
+          "data: [DONE]\n\n"
+        ]
+      }
+    }
+  ]
+}

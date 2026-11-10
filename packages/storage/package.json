@@ -1,0 +1,43 @@
+{
+  "name": "@ai-personal/storage",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SQLite connection, migrations, backups, table definitions and repositories",
+  "license": "AGPL-3.0-only",
+  "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
+  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/packages/storage",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "directory": "packages/storage"
+  },
+  "bugs": {
+    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0"
+  },
+  "dependencies": {
+    "@ai-personal/shared": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "sqlite-vec": "0.1.9",
+    "ulidx": "^2.4.1",
+    "zod": "^4.6.7"
+  }
+}

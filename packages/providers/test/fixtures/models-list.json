@@ -1,0 +1,16 @@
+{
+  "name": "models-list",
+  "synthetic": true,
+  "interactions": [
+    {
+      "request": { "method": "GET", "path": "/v1/models" },
+      "response": {
+        "status": 200,
+        "headers": { "content-type": "application/json" },
+        "chunks": [
+          "{\"object\":\"list\",\"data\":[{\"id\":\"qwen3:8b\",\"object\":\"model\"},{\"id\":\"llama3.2:3b\",\"object\":\"model\"}]}"
+        ]
+      }
+    }
+  ]
+}

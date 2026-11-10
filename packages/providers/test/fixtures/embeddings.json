@@ -1,0 +1,16 @@
+{
+  "name": "embeddings",
+  "synthetic": true,
+  "interactions": [
+    {
+      "request": { "method": "POST", "path": "/v1/embeddings" },
+      "response": {
+        "status": 200,
+        "headers": { "content-type": "application/json" },
+        "chunks": [
+          "{\"object\":\"list\",\"data\":[{\"object\":\"embedding\",\"index\":1,\"embedding\":[0,1,0,0]},{\"object\":\"embedding\",\"index\":0,\"embedding\":[1,0,0,0]}],\"model\":\"text-embedding-3-small\",\"usage\":{\"prompt_tokens\":6,\"total_tokens\":6}}"
+        ]
+      }
+    }
+  ]
+}

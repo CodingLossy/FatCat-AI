@@ -1,0 +1,22 @@
+AI-Personal
+Copyright (C) 2026 尹绪柏 (Theodore Yin)
+
+This program is dual-licensed:
+
+1. GNU Affero General Public License v3.0 only (SPDX: AGPL-3.0-only).
+   See the LICENSE file for the full text.
+2. A commercial license available from the copyright holder.
+   See COMMERCIAL.md or contact x19169738916@163.com.
+
+The plugin SDK (packages/plugin-sdk), client SDK (packages/client) and shared
+protocol types (packages/shared) are licensed under the Apache License 2.0
+(SPDX: Apache-2.0); see the LICENSE file in each of those packages.
+
+Contributions are accepted under the Contributor License Agreement (CLA.md),
+which allows the copyright holder to relicense contributions, including under
+commercial terms.
+
+"AI-Personal" and its logo are trademarks of 尹绪柏 (Theodore Yin);
+see TRADEMARKS.md.
+
+本项目采用双许可:AGPL-3.0-only(开源版)+ 商业许可(联系 x19169738916@163.com)。

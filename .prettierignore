@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+.turbo
+pnpm-lock.yaml
+LICENSE
+LICENSES
+templates
+docs/plan
+apps/server/openapi

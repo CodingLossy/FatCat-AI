@@ -1,0 +1,56 @@
+{
+  "name": "ai-personal",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A self-hostable, open-source personal AI assistant framework",
+  "license": "AGPL-3.0-only",
+  "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
+  "homepage": "https://github.com/CodingLossy/AI-Personal",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CodingLossy/AI-Personal.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+  },
+  "type": "module",
+  "packageManager": "pnpm@10.11.1",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "eslint scripts eslint.config.js && turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "pnpm --filter @ai-personal/web test:e2e",
+    "eval": "pnpm --filter @ai-personal/eval run eval && pnpm --filter @ai-personal/server run eval",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:spdx": "node scripts/check-spdx.mjs",
+    "check:licenses": "node scripts/check-licenses.mjs",
+    "check:placeholders": "node scripts/check-placeholders.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "perf:mail-sync": "node scripts/perf/mail-sync-rss.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "^24.19.2",
+    "@vitest/coverage-v8": "5.1.0",
+    "eslint": "10.14.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.14.0",
+    "prettier": "3.9.10",
+    "turbo": "2.11.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.1.0"
+  },
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild"
+    ]
+  }
+}

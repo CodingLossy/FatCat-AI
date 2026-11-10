@@ -1,0 +1,36 @@
+{
+  "name": "deepseek-auth-error",
+  "synthetic": false,
+  "recordedAt": "2026-11-03T15:01:40.221Z",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "body": {
+          "model": "deepseek-chat",
+          "messages": [
+            {
+              "role": "user",
+              "content": "hi"
+            }
+          ],
+          "stream": true,
+          "stream_options": {
+            "include_usage": true
+          },
+          "temperature": 0
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "chunks": [
+          "{\"error\":{\"message\":\"Authentication Fails, Your api key: ****0000 is invalid (request_id: 74477303-2b33-43d6-9919-d025bf0e685a)\",\"type\":\"authentication_error\",\"param\":null,\"code\":\"invalid_request_error\"}}"
+        ]
+      }
+    }
+  ]
+}

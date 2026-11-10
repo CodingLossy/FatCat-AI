@@ -1,0 +1,20 @@
+{
+  "name": "tool-call-stream",
+  "synthetic": true,
+  "interactions": [
+    {
+      "request": { "method": "POST", "path": "/v1/chat/completions" },
+      "response": {
+        "status": 200,
+        "headers": { "content-type": "text/event-stream" },
+        "chunks": [
+          "data: {\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"tool_calls\":[{\"index\":0,\"id\":\"call_abc\",\"type\":\"function\",\"function\":{\"name\":\"memory__save\",\"arguments\":\"\"}}]},\"finish_reason\":null}]}\n\n",
+          "data: {\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"{\\\"text\\\":\\\"用户\"}}]},\"finish_reason\":null}]}\n\n",
+          "data: {\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"常住杭州\\\"}\"}}]},\"finish_reason\":null}]}\n\n",
+          "data: {\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":9,\"total_tokens\":39}}\n\n",
+          "data: [DONE]\n\n"
+        ]
+      }
+    }
+  ]
+}

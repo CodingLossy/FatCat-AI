@@ -1,0 +1,6 @@
+{
+  "idleRssMiB": 111,
+  "commit": "1f57f1e",
+  "measuredAt": "2026-11-10",
+  "note": "Idle RSS of the Docker image's main process, 10 s after start, no channels (ADR 0018 §3). Main measured 110–111 MiB over six CI runs at the end of M3; #48 did not change it. Update on each release, or in a PR that changes memory on purpose, with the reason in the PR description."
+}

@@ -1,0 +1,36 @@
+{
+  "name": "@ai-personal/client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI-Personal API v1 client SDK",
+  "license": "Apache-2.0",
+  "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
+  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/packages/client",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "directory": "packages/client"
+  },
+  "bugs": {
+    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ai-personal/shared": "workspace:*"
+  }
+}

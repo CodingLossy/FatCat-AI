@@ -1,0 +1,38 @@
+{
+  "name": "@ai-personal/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI-Personal command-line client",
+  "license": "AGPL-3.0-only",
+  "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
+  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/apps/cli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "directory": "apps/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+  },
+  "type": "module",
+  "bin": {
+    "ai-personal": "./dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ai-personal/client": "workspace:*",
+    "@ai-personal/server": "workspace:*"
+  },
+  "devDependencies": {
+    "@ai-personal/eval": "workspace:*",
+    "@ai-personal/shared": "workspace:*"
+  }
+}

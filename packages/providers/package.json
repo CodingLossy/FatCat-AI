@@ -1,0 +1,40 @@
+{
+  "name": "@ai-personal/providers",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Model providers (OpenAI-compatible / Anthropic / Gemini)",
+  "license": "AGPL-3.0-only",
+  "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
+  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/packages/providers",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "directory": "packages/providers"
+  },
+  "bugs": {
+    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "record:fixtures": "node scripts/record-fixtures.mjs"
+  },
+  "dependencies": {
+    "@ai-personal/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@ai-personal/eval": "workspace:*"
+  }
+}

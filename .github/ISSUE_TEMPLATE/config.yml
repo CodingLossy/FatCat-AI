@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞 / Security vulnerability
+    url: mailto:x19169738916@163.com
+    about: 请通过邮件私下报告,见 SECURITY.md / Report privately by email, see SECURITY.md

@@ -1,0 +1,23 @@
+{
+  "name": "gemini-tool-call-stream",
+  "synthetic": true,
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1beta/models/gemini-test:streamGenerateContent?alt=sse"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream"
+        },
+        "chunks": [
+          "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"好的,\"}]},\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":98,\"totalTokenCount\":98},\"modelVersion\":\"gemini-test\"}\r\n\r\n",
+          "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"思考中\",\"thought\":true},{\"text\":\"我来记下。\"}]},\"index\":0}],\"modelVersion\":\"gemini-test\"}\r\n\r\n",
+          "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"memory__save\",\"args\":{\"text\":\"用户常住杭州\"}}}]},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":98,\"candidatesTokenCount\":17,\"totalTokenCount\":115},\"modelVersion\":\"gemini-test\"}\r\n\r\n"
+        ]
+      }
+    }
+  ]
+}

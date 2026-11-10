@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+# 业主本地原始计划文件(已复制到 docs/plan/)
+/AI-Personal-开发计划.md
+test-results/
+playwright-report/

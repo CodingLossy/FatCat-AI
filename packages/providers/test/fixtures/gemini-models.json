@@ -1,0 +1,36 @@
+{
+  "name": "gemini-models",
+  "synthetic": true,
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "path": "/v1beta/models?pageSize=100"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "chunks": [
+          "{\"models\": [{\"name\": \"models/gemini-test\", \"displayName\": \"Gemini Test\", \"supportedGenerationMethods\": [\"generateContent\"]}]}"
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/v1beta/models?pageSize=100"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "chunks": [
+          "{\"error\": {\"code\": 400, \"message\": \"API key not valid. Please pass a valid API key.\", \"status\": \"INVALID_ARGUMENT\"}}"
+        ]
+      }
+    }
+  ]
+}
