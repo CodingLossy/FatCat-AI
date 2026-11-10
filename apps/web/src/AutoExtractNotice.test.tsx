@@ -13,6 +13,7 @@ describe('AutoExtractNotice', () => {
             <AutoExtractNotice autoExtract stopped={false} error={null} onTurnOff={noop} />,
         );
         expect(html).toContain('一键关闭自动抽取');
+        expect(html).toContain('role="status"');
     });
 
     it('关闭后只显示已关闭的说明', () => {

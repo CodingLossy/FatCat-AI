@@ -6,6 +6,13 @@ import type { MailAccount, MailPreset, MailSentCopy } from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { sentCopyDuplicate, sentCopyNote } from './sent-copy.js';
+
+function without<T>(record: Record<string, T>, key: string): Record<string, T> {
+    const next = { ...record };
+    delete next[key];
+    return next;
+}
 
 const SENT_COPY: MailSentCopy[] = ['auto', 'append', 'off'];
 
@@ -19,6 +26,10 @@ export function MailAccounts() {
     const [passwordRef, setPasswordRef] = useState('');
     const [result, setResult] = useState<Record<string, string>>({});
     const [error, setError] = useState<string | null>(null);
+    /** 正在保存的账户:控件禁用,直到服务器返回并重新读取列表。 */
+    const [busy, setBusy] = useState<Record<string, boolean>>({});
+    /** 每个账户自己的操作错误,显示在对应卡片里。 */
+    const [cardError, setCardError] = useState<Record<string, string>>({});
 
     const reload = useCallback(
         () =>
@@ -49,6 +60,19 @@ export function MailAccounts() {
         await reload();
     };
 
+    /** 针对某个账户的操作:保存期间禁用该卡片的控件,失败时把错误显示在这张卡片里。 */
+    const runFor = async (id: string, action: () => Promise<unknown>) => {
+        setBusy((b) => ({ ...b, [id]: true }));
+        setCardError((c) => without(c, id));
+        try {
+            await action();
+        } catch (e) {
+            setCardError((c) => ({ ...c, [id]: errorText(e) }));
+        }
+        await reload();
+        setBusy((b) => without(b, id));
+    };
+
     const chosen = presets.find((p) => p.id === preset);
     const add = (e: FormEvent) => {
         e.preventDefault();
@@ -70,7 +94,7 @@ export function MailAccounts() {
     };
 
     const test = (a: MailAccount) =>
-        run(async () => {
+        runFor(a.id, async () => {
             const r = await api.mail.accounts.test(a.id);
             const part = (name: string, c: { ok: boolean; error: string | null }) =>
                 `${name}: ${c.ok ? t('mail.ok') : (c.error ?? '')}`;
@@ -106,8 +130,9 @@ export function MailAccounts() {
                                 <select
                                     name="sentCopy"
                                     value={a.sentCopy}
+                                    disabled={busy[a.id] === true}
                                     onChange={(e) =>
-                                        void run(() =>
+                                        void runFor(a.id, () =>
                                             api.mail.accounts.update(a.id, {
                                                 sentCopy: e.target.value as MailSentCopy,
                                             }),
@@ -122,18 +147,31 @@ export function MailAccounts() {
                                 </select>
                             </label>
                             <div className="small muted" data-testid="sent-copy-effect">
-                                {a.appendToSent ? t('mail.sentCopyWillAppend') : t('mail.sentCopyNoAppend')}
+                                {t(sentCopyNote(a))}
                             </div>
+                            {sentCopyDuplicate(a, presets) ? (
+                                <div className="small warning" role="alert" data-testid="sent-copy-duplicate">
+                                    {t('mail.sentCopyDuplicate')}
+                                </div>
+                            ) : null}
+                            {cardError[a.id] ? (
+                                <div className="small error" role="alert" data-testid="mail-account-error">
+                                    {cardError[a.id]}
+                                </div>
+                            ) : null}
                             {a.lastError ? <div className="small error">{a.lastError}</div> : null}
                             {result[a.id] ? <div className="small">{result[a.id]}</div> : null}
                         </div>
                         <div className="row">
-                            <button type="button" onClick={() => void test(a)}>
+                            <button type="button" disabled={busy[a.id] === true} onClick={() => void test(a)}>
                                 {t('mail.test')}
                             </button>
                             <button
                                 type="button"
-                                onClick={() => void run(() => api.mail.accounts.update(a.id, { enabled: !a.enabled }))}
+                                disabled={busy[a.id] === true}
+                                onClick={() =>
+                                    void runFor(a.id, () => api.mail.accounts.update(a.id, { enabled: !a.enabled }))
+                                }
                             >
                                 {a.enabled ? t('mcp.disable') : t('mcp.enable')}
                             </button>

@@ -18,7 +18,7 @@ export function AutoExtractNotice({
     const { t } = useI18n();
     if (!autoExtract && !stopped) return null;
     return (
-        <section className="card" data-testid="auto-extract-notice">
+        <section className="card" role="status" data-testid="auto-extract-notice">
             {autoExtract ? (
                 <div className="row spread">
                     <span>{t('memory.autoExtractOn')}</span>
