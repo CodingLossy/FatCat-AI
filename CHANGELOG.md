@@ -19,6 +19,11 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 
 ### M3.x · Cleanup
 
+#### Added
+
+- Settings → Mail accounts: each account now has a "Copy in Sent" switch (`sentCopy`: auto, append or off; ADR 0016 §14) and shows whether FatCat-AI will save a copy to Sent after sending. Before, this could only be changed through the API.
+- Settings → General: a switch for automatic memory extraction (`memory.autoExtract`, off by default). While it is on, the Memory page shows a notice with a one-click button to turn it off; memories already saved are kept.
+
 #### Fixed
 
 - Memory now drops back after a large mail sync. Syncing 10,000 messages used to leave the server at about 265 MiB, and it stayed there; it now settles at about 141–145 MiB and stays flat over repeated syncs. The server now limits the V8 young generation with `--max-semi-space-size=8`, which otherwise grew to about 128 MiB and was never returned, and the SQLite page cache is 4 MiB instead of 16 MiB. The flag is set automatically in the Docker image (`NODE_OPTIONS`) and by `pnpm dev` and `pnpm --filter @fatcat-ai/server start`, on Windows too; only if you start `node apps/server/dist/index.js` yourself do you need to add it.
@@ -181,6 +186,8 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 
 ### M3.x · 清理
 
+- **新增**:设置 → 邮件账户中,每个账户有「已发送」副本开关(`sentCopy`:自动 / 总是保存 / 不保存,ADR 0016 第 14 节),并说明发送后 FatCat-AI 会不会往「已发送」存一份;以前只能通过 API 修改。
+- **新增**:设置 → 通用中加入「自动抽取记忆」开关(`memory.autoExtract`,默认关)。开启时记忆页顶部有提示和一键关闭按钮;关闭不影响已保存的记忆。
 - **修复**:大量同步邮件后内存能回落了。以前同步 1 万封后服务器停在约 265 MiB 不下降;现在稳定在约 141–145 MiB,反复同步也不再上涨。原因是 V8 新生代涨到约 128 MiB 后不归还,以及 SQLite 页缓存 16 MiB 填满后一直占着。服务器现在用 `--max-semi-space-size=8` 限制新生代,SQLite 页缓存改为 4 MiB。Docker 镜像(`NODE_OPTIONS`)、`pnpm dev` 与 `pnpm --filter @fatcat-ai/server start` 都会自动带上这个参数,Windows 下也一样;只有自己直接运行 `node apps/server/dist/index.js` 时才需要手动加。
 - 新增 `pnpm perf:mail-sync`:用本地假 IMAP 服务器与合成邮件测这项内存(Linux 与 Windows;先 `pnpm build` 后自己起服务器,或用 `ATTACH=<地址>` 测已在运行的服务器,如 `pnpm dev`)。上面的数字来自 Linux 主机上的这套合成环境,不是 Docker 容器。
 

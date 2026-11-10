@@ -2,10 +2,12 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 设置页中的邮件账户(ADR 0016 第 1 节):只填密码引用(env:NAME 或 file:NAME),不接收明文密码。
-import type { MailAccount, MailPreset } from '@fatcat-ai/shared';
+import type { MailAccount, MailPreset, MailSentCopy } from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+
+const SENT_COPY: MailSentCopy[] = ['auto', 'append', 'off'];
 
 export function MailAccounts() {
     const { t } = useI18n();
@@ -98,6 +100,29 @@ export function MailAccounts() {
                                 {a.lastSyncedAt
                                     ? ` · ${t('mail.lastSync', { time: new Date(a.lastSyncedAt).toLocaleString() })}`
                                     : ''}
+                            </div>
+                            <label className="small">
+                                {t('mail.sentCopy')}{' '}
+                                <select
+                                    name="sentCopy"
+                                    value={a.sentCopy}
+                                    onChange={(e) =>
+                                        void run(() =>
+                                            api.mail.accounts.update(a.id, {
+                                                sentCopy: e.target.value as MailSentCopy,
+                                            }),
+                                        )
+                                    }
+                                >
+                                    {SENT_COPY.map((v) => (
+                                        <option key={v} value={v}>
+                                            {t(`mail.sentCopy.${v}`)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <div className="small muted" data-testid="sent-copy-effect">
+                                {a.appendToSent ? t('mail.sentCopyWillAppend') : t('mail.sentCopyNoAppend')}
                             </div>
                             {a.lastError ? <div className="small error">{a.lastError}</div> : null}
                             {result[a.id] ? <div className="small">{result[a.id]}</div> : null}

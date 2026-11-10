@@ -109,7 +109,7 @@ export function Shell({
                 {route.name === 'settings' ? (
                     <SettingsPage settings={settings} onSettings={onSettings} />
                 ) : route.name === 'memory' ? (
-                    <MemoryPage />
+                    <MemoryPage settings={settings} onSettings={onSettings} />
                 ) : route.name === 'audit' ? (
                     <AuditPage />
                 ) : route.name === 'items' ? (
