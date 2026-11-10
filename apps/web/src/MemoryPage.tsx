@@ -1,11 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ConflictResolution, Memory, MemoryConflict, QuarantinedMemory, Settings } from '@fatcat-ai/shared';
+import type {
+    ConflictResolution,
+    Memory,
+    MemoryConflict,
+    MemorySource,
+    QuarantinedMemory,
+    Settings,
+} from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
 import { AutoExtractNotice } from './AutoExtractNotice.js';
+import { MemorySources } from './MemorySources.js';
 
 function MemoryItem({ memory, onChanged }: { memory: Memory; onChanged: () => Promise<void> }) {
     const { t, locale } = useI18n();
@@ -13,11 +21,22 @@ function MemoryItem({ memory, onChanged }: { memory: Memory; onChanged: () => Pr
     const [text, setText] = useState(memory.text);
     const [error, setError] = useState<string | null>(null);
     const [history, setHistory] = useState<Memory[] | null>(null);
+    const [sources, setSources] = useState<MemorySource[] | null>(null);
 
     const toggleHistory = async () => {
         if (history) return setHistory(null);
         try {
             setHistory((await api.memory.history(memory.id)).items);
+        } catch (err) {
+            setError(errorText(err));
+        }
+    };
+
+    /** 点开才请求,避免列表里每条记忆都发一次请求。 */
+    const toggleSources = async () => {
+        if (sources) return setSources(null);
+        try {
+            setSources((await api.memory.sources(memory.id)).items);
         } catch (err) {
             setError(errorText(err));
         }
@@ -80,6 +99,9 @@ function MemoryItem({ memory, onChanged }: { memory: Memory; onChanged: () => Pr
                     <button type="button" onClick={() => void toggleHistory()}>
                         {t('memory.history')}
                     </button>
+                    <button type="button" onClick={() => void toggleSources()}>
+                        {t('memory.sources')}
+                    </button>
                     <button type="button" className="danger" onClick={() => void remove()}>
                         {t('memory.delete')}
                     </button>
@@ -94,6 +116,7 @@ function MemoryItem({ memory, onChanged }: { memory: Memory; onChanged: () => Pr
                     ))}
                 </ol>
             ) : null}
+            {sources ? <MemorySources sources={sources} /> : null}
             {error ? <p className="error small">{error}</p> : null}
         </li>
     );

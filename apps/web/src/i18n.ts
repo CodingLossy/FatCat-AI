@@ -264,6 +264,13 @@ const zh = {
     'memory.autoExtractOn': '自动抽取已开启:每轮对话结束后会用廉价模型从你的消息与最终回答中抽取记忆。',
     'memory.autoExtractOff': '一键关闭自动抽取',
     'memory.autoExtractStopped': '自动抽取已关闭,已有的记忆不受影响。可以在设置中重新打开。',
+    'memory.sources': '生成来源',
+    'memory.sourcesEmpty': '这条记忆没有记录出处。',
+    'memory.extractRun': '由 {model} 自动抽取于 {time}',
+    'memory.extractRunSucceeded': '成功',
+    'memory.extractRunFailed': '失败({code})',
+    'memory.promptVersion': '提示词版本 {v}',
+    'memory.noExtractRun': '不是自动抽取的(对话中要求记住、手动添加或较早的记忆),没有生成记录({time})',
     'common.loading': '加载中…',
     'common.error': '出错了:{msg}',
 };
@@ -546,6 +553,13 @@ const en: Record<Key, string> = {
     'memory.autoExtractOff': 'Turn off automatic extraction',
     'memory.autoExtractStopped':
         'Automatic extraction is off. Existing memories are kept. You can turn it on again in Settings.',
+    'memory.sources': 'Where it came from',
+    'memory.sourcesEmpty': 'No source was recorded for this memory.',
+    'memory.extractRun': 'Extracted automatically by {model} at {time}',
+    'memory.extractRunSucceeded': 'succeeded',
+    'memory.extractRunFailed': 'failed ({code})',
+    'memory.promptVersion': 'prompt version {v}',
+    'memory.noExtractRun': 'Not extracted automatically (asked to remember in chat, added by hand, or older), no run recorded ({time})',
     'common.loading': 'Loading…',
     'common.error': 'Something went wrong: {msg}',
 };

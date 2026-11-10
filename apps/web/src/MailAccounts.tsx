@@ -150,7 +150,7 @@ export function MailAccounts() {
                                 {t(sentCopyNote(a))}
                             </div>
                             {sentCopyDuplicate(a, presets) ? (
-                                <div className="small warning" role="alert" data-testid="sent-copy-duplicate">
+                                <div className="small warning" role="status" data-testid="sent-copy-duplicate">
                                     {t('mail.sentCopyDuplicate')}
                                 </div>
                             ) : null}
