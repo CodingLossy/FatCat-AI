@@ -559,7 +559,8 @@ const en: Record<Key, string> = {
     'memory.extractRunSucceeded': 'succeeded',
     'memory.extractRunFailed': 'failed ({code})',
     'memory.promptVersion': 'prompt version {v}',
-    'memory.noExtractRun': 'Not extracted automatically (asked to remember in chat, added by hand, or older), no run recorded ({time})',
+    'memory.noExtractRun':
+        'Not extracted automatically (asked to remember in chat, added by hand, or older), no run recorded ({time})',
     'common.loading': 'Loading…',
     'common.error': 'Something went wrong: {msg}',
 };
