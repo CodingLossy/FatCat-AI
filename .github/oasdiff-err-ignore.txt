@@ -1,2 +1,2 @@
-# One-off: the AI-Personal -> FatCat-AI rename changes the /api/v1/meta name literal (ADR 0019). Remove after this PR merges.
-GET /api/v1/meta added the new `FatCat-AI` enum value to the `name` response property for the response status `200`
+# 业主逐条批准的一次性 oasdiff 例外,每行写明方法、路径与变更说明;例外所在的 PR 合并后应清空。
+# 目前没有例外。
