@@ -16,6 +16,7 @@ path = [
     ".prettierignore",
     ".dockerignore",
     ".github/oasdiff-severity.txt",
+    ".github/oasdiff-err-ignore.txt",
     "NOTICE",
     "templates/**",
 ]

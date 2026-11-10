@@ -32,6 +32,8 @@
 
 ## 后果
 
+- `/api/v1/meta` 的 `name` 由 `AI-Personal` 改为 `FatCat-AI`,oasdiff 判为 v1 破坏性变更(`response-property-enum-value-added`)。v1 尚未发布,业主 2026-11-10 批准以一次性例外处理:`.github/oasdiff-err-ignore.txt` 只列这一条,合并后应清空。
+
 - 已有部署升级后自动迁到新目录,旧环境变量继续生效但有警告。
 - Docker 卷名 `ai-personal-data` 不改:改名会让 `docker compose` 新建一个空卷,看起来像数据丢失。
 - 降级到改名前的版本时,旧版本会在 `~/.ai-personal` 新建空目录;需要手动把目录改回旧名。

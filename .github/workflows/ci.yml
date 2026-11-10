@@ -85,8 +85,11 @@ jobs:
           cp apps/server/openapi/v1.json "$RUNNER_TEMP/head.json"
           # 事件联合类型(AgentEvent)新增或修改变体不算破坏性变更:ADR 0004 要求客户端忽略未知事件类型
           cp .github/oasdiff-severity.txt "$RUNNER_TEMP/severity.txt"
+          # 业主逐条批准的一次性例外(每行写明方法、路径与变更说明);合并后应清空
+          cp .github/oasdiff-err-ignore.txt "$RUNNER_TEMP/err-ignore.txt"
           docker run --rm -v "$RUNNER_TEMP:/specs:ro" tufin/oasdiff:v1.35.0 \
-            breaking /specs/base.json /specs/head.json --fail-on ERR --severity-levels /specs/severity.txt
+            breaking /specs/base.json /specs/head.json --fail-on ERR --severity-levels /specs/severity.txt \
+            --err-ignore /specs/err-ignore.txt
 
   compliance:
     name: license compliance
