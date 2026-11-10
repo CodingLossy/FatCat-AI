@@ -255,6 +255,8 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
     const { t } = useI18n();
     const [profiles, setProfiles] = useState<ModelProfile[]>([]);
     const [note, setNote] = useState<string | null>(null);
+    /** 自动抽取开关保存期间禁用,避免连点发出相互覆盖的请求。 */
+    const [savingAutoExtract, setSavingAutoExtract] = useState(false);
 
     const update = async (patch: SettingsPatch) => {
         try {
@@ -339,7 +341,12 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                         type="checkbox"
                         name="autoExtract"
                         checked={settings.memory.autoExtract}
-                        onChange={(e) => void update({ memory: { autoExtract: e.target.checked } })}
+                        disabled={savingAutoExtract}
+                        onChange={(e) => {
+                            const autoExtract = e.target.checked;
+                            setSavingAutoExtract(true);
+                            void update({ memory: { autoExtract } }).finally(() => setSavingAutoExtract(false));
+                        }}
                     />{' '}
                     {t('settings.autoExtract', { n: settings.memory.extractDailyLimit })}
                 </label>
