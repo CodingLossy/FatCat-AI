@@ -4,8 +4,8 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createRepositories, openStorage } from '@ai-personal/storage';
-import type { ToolContext } from '@ai-personal/tools';
+import { createRepositories, openStorage } from '@fatcat-ai/storage';
+import type { ToolContext } from '@fatcat-ai/tools';
 import { describe, expect, it } from 'vitest';
 import { createItemService } from './service.js';
 import {
@@ -75,8 +75,8 @@ describe('知识库分块', () => {
 
 describe('知识库索引与检索', () => {
     it('增量索引、入队嵌入、向量优先与全文兜底、文件删除后清理;索引失败只记错误', async () => {
-        const dir = mkdtempSync(path.join(tmpdir(), 'aip-kb-db-'));
-        const base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'aip-kb-fs-')));
+        const dir = mkdtempSync(path.join(tmpdir(), 'fatcat-kb-db-'));
+        const base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'fatcat-kb-fs-')));
         const { conn } = await openStorage({ dataDir: dir });
         try {
             const repos = createRepositories(conn);
@@ -142,8 +142,8 @@ describe('知识库索引与检索', () => {
     });
 
     it('只有勾选「加入知识库」的目录入库;取消勾选后清理;凭据入库前替换或整块拦截', async () => {
-        const dir = mkdtempSync(path.join(tmpdir(), 'aip-kb-db-'));
-        const base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'aip-kb-fs-')));
+        const dir = mkdtempSync(path.join(tmpdir(), 'fatcat-kb-db-'));
+        const base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'fatcat-kb-fs-')));
         const { conn } = await openStorage({ dataDir: dir });
         try {
             const repos = createRepositories(conn);

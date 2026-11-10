@@ -12,9 +12,9 @@ import {
     MailDraftPatch,
     MailMessage,
     MailMessageQuery,
-} from '@ai-personal/shared';
-import { addAttachmentToKb, AttachmentError, type AttachmentKbDeps } from '@ai-personal/mail';
-import type { MailMessageRecord, Repositories } from '@ai-personal/storage';
+} from '@fatcat-ai/shared';
+import { addAttachmentToKb, AttachmentError, type AttachmentKbDeps } from '@fatcat-ai/mail';
+import type { MailMessageRecord, Repositories } from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';

@@ -5,15 +5,15 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { ChatChunk, ChatRequest, ModelProvider } from '@ai-personal/providers';
-import { AuditEntry, EventEnvelope, FsRoot, pageOf, Preauthorization, Session } from '@ai-personal/shared';
+import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
+import { AuditEntry, EventEnvelope, FsRoot, pageOf, Preauthorization, Session } from '@fatcat-ai/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 let s: TestServer;
 let base: string;
 beforeEach(() => {
-    base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'aip-fs-api-')));
+    base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'fatcat-fs-api-')));
     mkdirSync(path.join(base, 'Docs', 'notes'), { recursive: true });
     mkdirSync(path.join(base, 'Private'));
     writeFileSync(path.join(base, 'Docs', 'report.md'), '# 周报\n本周完成了 M2。');

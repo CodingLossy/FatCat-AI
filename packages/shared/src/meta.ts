@@ -9,8 +9,8 @@ export const PROTOCOL_VERSION = 1;
 /** 社区版许可证(SPDX 标识)。 */
 export const SERVER_LICENSE = 'AGPL-3.0-only';
 
-/** 官方源码仓库地址;修改版部署者应通过 AIP_SOURCE_URL 改为自己的源码地址(AGPL §13)。 */
-export const OFFICIAL_SOURCE_URL = 'https://github.com/CodingLossy/AI-Personal';
+/** 官方源码仓库地址;修改版部署者应通过 FATCAT_AI_SOURCE_URL 改为自己的源码地址(AGPL §13)。 */
+export const OFFICIAL_SOURCE_URL = 'https://github.com/CodingLossy/FatCat-AI';
 
 /** `GET /healthz` 响应。 */
 export const HealthResponseSchema = z.object({
@@ -20,7 +20,7 @@ export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
 /** `GET /api/v1/meta` 响应,客户端据此做能力协商与 AGPL §13 源码链接展示。 */
 export const MetaResponseSchema = z.object({
-    name: z.literal('AI-Personal'),
+    name: z.literal('FatCat-AI'),
     serverVersion: z.string(),
     protocolVersion: z.number().int().positive(),
     license: z.string(),

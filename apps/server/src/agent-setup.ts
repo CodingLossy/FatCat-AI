@@ -2,28 +2,28 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 组装交给 RunManager 的工具与摘要函数(组合根;agent 包本身不依赖 memory)。
-import { createItemTools, createKbTools, type ItemService, type KnowledgeBase } from '@ai-personal/items';
-import type { FinishedTurn } from '@ai-personal/agent';
+import { createItemTools, createKbTools, type ItemService, type KnowledgeBase } from '@fatcat-ai/items';
+import type { FinishedTurn } from '@fatcat-ai/agent';
 import {
     type Complete,
     createExtractor,
     detectCredential,
     type MemoryService,
     redactSensitive,
-} from '@ai-personal/memory';
-import { type ModelProvider, selectProfile } from '@ai-personal/providers';
-import { MemorySearchInput } from '@ai-personal/shared';
+} from '@fatcat-ai/memory';
+import { type ModelProvider, selectProfile } from '@fatcat-ai/providers';
+import { MemorySearchInput } from '@fatcat-ai/shared';
 import type { MemoryStack } from './memory-setup.js';
-import { createMailTools, type MailToolOptions } from '@ai-personal/mail';
+import { createMailTools, type MailToolOptions } from '@fatcat-ai/mail';
 import { z } from 'zod';
-import type { ModelProfileRecord, Repositories } from '@ai-personal/storage';
+import type { ModelProfileRecord, Repositories } from '@fatcat-ai/storage';
 import {
     type BuiltinToolOptions,
     createBuiltinTools,
     createFsTools,
     type ToolDefinition,
     ToolRegistry,
-} from '@ai-personal/tools';
+} from '@fatcat-ai/tools';
 
 const MAX_SUMMARY_CHARS = 2000;
 

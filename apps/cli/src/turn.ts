@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { AipClient, RunStream } from '@ai-personal/client';
+import type { FatCatClient, RunStream } from '@fatcat-ai/client';
 import { ask, type Ctx, lineReader, status } from './io.js';
 import type { Interface } from 'node:readline';
 
@@ -48,7 +48,7 @@ export function approverFor(
  */
 export async function runTurn(
     ctx: Ctx,
-    client: AipClient,
+    client: FatCatClient,
     start: (signal: AbortSignal) => RunStream,
     options: { json: boolean; approve: Approver },
 ): Promise<TurnResult> {

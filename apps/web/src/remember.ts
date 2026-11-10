@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 审批时「记住这个决定」的纯逻辑(ADR 0010 第 3 节),不依赖浏览器,便于单测。
-import type { PreauthConstraint, ToolInfo, ToolRisk } from '@ai-personal/shared';
+import type { PreauthConstraint, ToolInfo, ToolRisk } from '@fatcat-ai/shared';
 
 /** external / dangerous 工具不允许预授权(ADR 0010 第 3 节);风险未知时不提供「记住」。 */
 export function canRemember(risk: ToolRisk | undefined): boolean {

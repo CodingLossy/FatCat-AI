@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { RunStream } from '@ai-personal/client';
-import type { Message } from '@ai-personal/shared';
+import type { RunStream } from '@fatcat-ai/client';
+import type { Message } from '@fatcat-ai/shared';
 import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
@@ -42,7 +42,7 @@ export function ChatView({
     const [input, setInput] = useState(() => {
         if (!sessionId) return '';
         try {
-            const key = 'aip.prefill.' + sessionId;
+            const key = 'fatcat.prefill.' + sessionId;
             const text = sessionStorage.getItem(key) ?? '';
             sessionStorage.removeItem(key);
             return text;

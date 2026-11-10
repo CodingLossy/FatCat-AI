@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 三种适配器共用的 HTTP 细节:SSE 解析、一次退避重试、错误分类与脱敏、中断与首包超时、连接测试框架(ADR 0006)。
-import type { ModelTestResult, ProviderErrorCode } from '@ai-personal/shared';
+import type { ModelTestResult, ProviderErrorCode } from '@fatcat-ai/shared';
 import { type Redactor, sanitizeUpstreamText } from './redact.js';
 import { type ChatChunk, type ChatRequest, ProviderError } from './types.js';
 

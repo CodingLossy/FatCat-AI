@@ -3,7 +3,7 @@
 
 // 按标题与段落分块(ADR 0015 第 2 节):段落尽量完整,超过块大小的段落按句子或字符切开;
 // 每块记下所在的 PDF 页码与最近的标题(Markdown 标题、XLSX 工作表名)。
-import type { KbChunkInput } from '@ai-personal/storage';
+import type { KbChunkInput } from '@fatcat-ai/storage';
 
 /** 一次最多保存的块数(约 2 MB 文本),超出时丢弃后面的部分并记录。 */
 export const MAX_CHUNKS_PER_FILE = 2000;

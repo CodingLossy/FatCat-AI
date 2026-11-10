@@ -3,11 +3,11 @@
 
 // memory 条目提供者(《记忆模块补充设计》第 7 节;ADR 0007 第 5.8 节):导航树「记忆 → 域 → 类型(→ 历史版本)」
 // 在写入时由 storage 在同一事务里维护,所以 sync 不需要做事;open 返回陈述、可信度说明、出处与更替历史。
-import { filesProvider, type ItemProvider, novelsProvider, sessionsProvider, textContent } from '@ai-personal/items';
-import { mailProvider } from '@ai-personal/mail';
-import { qualify } from '@ai-personal/memory';
-import type { Item, ItemContent } from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
+import { filesProvider, type ItemProvider, novelsProvider, sessionsProvider, textContent } from '@fatcat-ai/items';
+import { mailProvider } from '@fatcat-ai/mail';
+import { qualify } from '@fatcat-ai/memory';
+import type { Item, ItemContent } from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
 
 const QUALIFIER = { reliable: '可靠', possibly_stale: '可能过时', conflicted: '有冲突', inferred: '推断' } as const;
 const STATUS = {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ModelPurpose } from '@ai-personal/shared';
+import type { ModelPurpose } from '@fatcat-ai/shared';
 import { createAnthropicProvider } from './anthropic.js';
 import { createGeminiProvider } from './gemini.js';
 import { createOpenAICompatibleProvider } from './openai-compatible.js';

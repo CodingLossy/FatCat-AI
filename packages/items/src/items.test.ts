@@ -4,8 +4,8 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createRepositories, openStorage, type Repositories } from '@ai-personal/storage';
-import { PathError, type ToolContext } from '@ai-personal/tools';
+import { createRepositories, openStorage, type Repositories } from '@fatcat-ai/storage';
+import { PathError, type ToolContext } from '@fatcat-ai/tools';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createItemService, createItemTools, decodeText, splitChapters, walk } from './index.js';
 
@@ -26,12 +26,12 @@ const NOVEL = [
 ].join('\n');
 
 beforeEach(async () => {
-    dir = mkdtempSync(path.join(tmpdir(), 'aip-items-db-'));
+    dir = mkdtempSync(path.join(tmpdir(), 'fatcat-items-db-'));
     const { conn } = await openStorage({ dataDir: dir });
     close = () => conn.close();
     repos = createRepositories(conn);
     ownerId = repos.owners.create({ username: 'owner', passwordHash: 'x' }).id;
-    base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'aip-items-fs-')));
+    base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'fatcat-items-fs-')));
     mkdirSync(path.join(base, 'Library', '科幻'), { recursive: true });
     mkdirSync(path.join(base, 'Library', '.hidden'));
     mkdirSync(path.join(base, 'Outside'));

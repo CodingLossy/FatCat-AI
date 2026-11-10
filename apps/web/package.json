@@ -1,18 +1,18 @@
 {
-  "name": "@ai-personal/web",
+  "name": "@fatcat-ai/web",
   "version": "0.0.0",
   "private": true,
-  "description": "AI-Personal Web UI",
+  "description": "FatCat-AI Web UI",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/apps/web",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/apps/web",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
     "directory": "apps/web"
   },
   "bugs": {
-    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
   },
   "type": "module",
   "scripts": {
@@ -25,15 +25,15 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@ai-personal/client": "workspace:*",
-    "@ai-personal/shared": "workspace:*",
+    "@fatcat-ai/client": "workspace:*",
+    "@fatcat-ai/shared": "workspace:*",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0"
   },
   "devDependencies": {
-    "@ai-personal/eval": "workspace:*",
-    "@ai-personal/server": "workspace:*",
+    "@fatcat-ai/eval": "workspace:*",
+    "@fatcat-ai/server": "workspace:*",
     "@playwright/test": "^1.64.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

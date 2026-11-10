@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import { AipNetworkError, errorFromResponse } from './errors.js';
+import { FatCatNetworkError, errorFromResponse } from './errors.js';
 
 export interface TransportOptions {
     /** 服务器根地址,如 http://127.0.0.1:8787(不含 /api/v1)。 */
@@ -54,7 +54,7 @@ export class Transport {
         return headers;
     }
 
-    /** 发出请求;非 2xx 抛 AipApiError,网络失败抛 AipNetworkError。 */
+    /** 发出请求;非 2xx 抛 FatCatApiError,网络失败抛 FatCatNetworkError。 */
     async raw(path: string, options: RequestOptions = {}): Promise<Response> {
         const method = options.method ?? 'GET';
         const extra: Record<string, string> = { ...options.headers };
@@ -74,7 +74,7 @@ export class Transport {
             });
         } catch (error) {
             if (options.signal?.aborted) throw error;
-            throw new AipNetworkError(`Cannot reach ${this.baseUrl}`, { cause: error });
+            throw new FatCatNetworkError(`Cannot reach ${this.baseUrl}`, { cause: error });
         }
         if (!res.ok) throw await errorFromResponse(res);
         return res;

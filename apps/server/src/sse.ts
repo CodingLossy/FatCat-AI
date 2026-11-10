@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { EventBus, RunManager } from '@ai-personal/agent';
-import { type EventEnvelope, isTerminalEvent, SSE_EVENT_NAME, SSE_HEARTBEAT_MS } from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
+import type { EventBus, RunManager } from '@fatcat-ai/agent';
+import { type EventEnvelope, isTerminalEvent, SSE_EVENT_NAME, SSE_HEARTBEAT_MS } from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
 import type { Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import type { AppEnv } from './env.js';

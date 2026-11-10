@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import { DEFAULT_SETTINGS } from '@ai-personal/shared';
+import { DEFAULT_SETTINGS } from '@fatcat-ai/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestDb, fakeClock, type TestDb } from './test-helpers.js';
 

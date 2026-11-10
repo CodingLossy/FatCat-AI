@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { MetaResponse } from '@ai-personal/shared';
+import type { MetaResponse } from '@fatcat-ai/shared';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { Footer } from './Footer.js';
 
 const meta: MetaResponse = {
-    name: 'AI-Personal',
+    name: 'FatCat-AI',
     serverVersion: '0.0.0',
     protocolVersion: 1,
     license: 'AGPL-3.0-only',

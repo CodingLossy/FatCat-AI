@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 最简邮件页(M3 方案 PR 4):账户、只读邮件列表与正文、草稿。邮件内容是不可信数据,一律按纯文本显示。
-import type { MailAccount, MailDraft, MailMessage } from '@ai-personal/shared';
+import type { MailAccount, MailDraft, MailMessage } from '@fatcat-ai/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
@@ -12,7 +12,7 @@ import { navigate } from './router.js';
 export async function askAboutMail(messageId: string): Promise<void> {
     const { sessionId, prompt } = await api.mail.ask(messageId);
     try {
-        sessionStorage.setItem(`aip.prefill.${sessionId}`, prompt);
+        sessionStorage.setItem(`fatcat.prefill.${sessionId}`, prompt);
     } catch {
         // 不能写 sessionStorage 时只是没有预填
     }

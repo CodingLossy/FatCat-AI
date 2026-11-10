@@ -3,7 +3,7 @@
 
 // 条目索引 REST(ADR 0012 第 2 节):只读;已删除的条目只出现在 /items/changes 中。
 import { createRoute, z } from '@hono/zod-openapi';
-import type { ItemService } from '@ai-personal/items';
+import type { ItemService } from '@fatcat-ai/items';
 import {
     Id,
     Item,
@@ -15,9 +15,9 @@ import {
     ItemSubtree,
     ItemSubtreeQuery,
     pageOf,
-} from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
-import { ToolDeniedError } from '@ai-personal/tools';
+} from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
+import { ToolDeniedError } from '@fatcat-ai/tools';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';

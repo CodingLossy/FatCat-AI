@@ -4,7 +4,7 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { MetaResponseSchema, ProblemDetails } from '@ai-personal/shared';
+import { MetaResponseSchema, ProblemDetails } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PUBLIC_ENDPOINTS } from './auth/middleware.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
@@ -40,7 +40,7 @@ describe('基础端点', () => {
         expect(res.status).toBe(200);
         const meta = MetaResponseSchema.parse(await res.json());
         expect(meta.license).toBe('AGPL-3.0-only');
-        expect(meta.sourceUrl).toBe('https://github.com/CodingLossy/AI-Personal');
+        expect(meta.sourceUrl).toBe('https://github.com/CodingLossy/FatCat-AI');
     });
 
     it('/api 下未知路径:未登录 401,已登录 404,均为 problem+json', async () => {
@@ -55,12 +55,12 @@ describe('基础端点', () => {
     });
 
     it('配置 webDir 时托管 Web UI', async () => {
-        const dir = mkdtempSync(join(tmpdir(), 'aip-web-'));
-        writeFileSync(join(dir, 'index.html'), '<!doctype html><title>AI-Personal</title>');
+        const dir = mkdtempSync(join(tmpdir(), 'fatcat-web-'));
+        writeFileSync(join(dir, 'index.html'), '<!doctype html><title>FatCat-AI</title>');
         s = await createTestServer({ webDir: dir });
         const page = await s.app.request('/some/route');
         expect(page.status).toBe(200);
-        expect(await page.text()).toContain('AI-Personal');
+        expect(await page.text()).toContain('FatCat-AI');
     });
 
     it('请求体超过 2MB 返回 413', async () => {

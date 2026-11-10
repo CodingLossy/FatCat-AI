@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { AgentEvent, EventEnvelope, ToolInfo } from '@ai-personal/shared';
+import type { AgentEvent, EventEnvelope, ToolInfo } from '@fatcat-ai/shared';
 import { describe, expect, it } from 'vitest';
 import { parentFolder, rememberConstraint } from './remember.js';
 import { applyEvent, isValidKeyRef, newTurn, pendingApprovals } from './live-turn.js';

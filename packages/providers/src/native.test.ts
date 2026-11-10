@@ -5,7 +5,7 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createReplayFetch, loadFixture } from '@ai-personal/eval';
+import { createReplayFetch, loadFixture } from '@fatcat-ai/eval';
 import { describe, expect, it } from 'vitest';
 import { Redactor } from './redact.js';
 import { createProvider } from './registry.js';

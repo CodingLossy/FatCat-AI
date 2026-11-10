@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ProblemDetails } from '@ai-personal/shared';
+import type { ProblemDetails } from '@fatcat-ai/shared';
 
 /** 服务器返回非 2xx 时抛出;problem 为解析出的 RFC 9457 正文(解析失败时为合成的最小结构)。 */
-export class AipApiError extends Error {
+export class FatCatApiError extends Error {
     readonly status: number;
     readonly problem: ProblemDetails;
 
     constructor(problem: ProblemDetails) {
         super(problem.detail ? `${problem.title}: ${problem.detail}` : problem.title);
-        this.name = 'AipApiError';
+        this.name = 'FatCatApiError';
         this.status = problem.status;
         this.problem = problem;
     }
@@ -22,14 +22,14 @@ export class AipApiError extends Error {
 }
 
 /** 网络层失败(连不上、连接中断、续看次数用尽)。 */
-export class AipNetworkError extends Error {
+export class FatCatNetworkError extends Error {
     constructor(message: string, options?: { cause?: unknown }) {
         super(message, options);
-        this.name = 'AipNetworkError';
+        this.name = 'FatCatNetworkError';
     }
 }
 
-export async function errorFromResponse(res: Response): Promise<AipApiError> {
+export async function errorFromResponse(res: Response): Promise<FatCatApiError> {
     let body: unknown;
     try {
         body = await res.json();
@@ -47,5 +47,5 @@ export async function errorFromResponse(res: Response): Promise<AipApiError> {
         ...(Array.isArray(b.issues) ? { issues: b.issues } : {}),
         ...(typeof b.providerCode === 'string' ? { providerCode: b.providerCode } : {}),
     };
-    return new AipApiError(problem);
+    return new FatCatApiError(problem);
 }

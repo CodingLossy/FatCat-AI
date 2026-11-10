@@ -3,12 +3,12 @@
 
 // 授权目录的 REST(ADR 0011 第 1 节):只有用户能增删与选择是否进入知识库(ADR 0015 第 6 节),没有对应的工具。
 import { createRoute, z } from '@hono/zod-openapi';
-import { FsRoot, FsRootInput, FsRootPatch, Id, pageOf } from '@ai-personal/shared';
-import type { ItemService } from '@ai-personal/items';
-import type { Repositories } from '@ai-personal/storage';
+import { FsRoot, FsRootInput, FsRootPatch, Id, pageOf } from '@fatcat-ai/shared';
+import type { ItemService } from '@fatcat-ai/items';
+import type { Repositories } from '@fatcat-ai/storage';
 import type { Context } from 'hono';
 import type { AppEnv } from '../env.js';
-import { inputDigest, isWithin, normalizeRoot, PathError } from '@ai-personal/tools';
+import { inputDigest, isWithin, normalizeRoot, PathError } from '@fatcat-ai/tools';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';

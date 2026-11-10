@@ -5,8 +5,8 @@
 // 这些库加起来约占 35 MiB 内存,只在邮件子进程中加载,服务器进程不导入本文件(ADR 0016 第 2 节)。
 import { readFile, stat } from 'node:fs/promises';
 import { isIP } from 'node:net';
-import type { MailAddress, MailConnectionTest, MailServer } from '@ai-personal/shared';
-import { MailAddressString } from '@ai-personal/shared';
+import type { MailAddress, MailConnectionTest, MailServer } from '@fatcat-ai/shared';
+import { MailAddressString } from '@fatcat-ai/shared';
 import { ImapFlow, type FetchMessageObject, type MessageStructureObject } from 'imapflow';
 import { simpleParser, type AddressObject } from 'mailparser';
 import { createTransport } from 'nodemailer';
@@ -24,7 +24,7 @@ import type {
     SyncOutput,
 } from './types.js';
 
-const CLIENT_INFO = { name: 'AI-Personal', vendor: 'AI-Personal' };
+const CLIENT_INFO = { name: 'FatCat-AI', vendor: 'FatCat-AI' };
 /** 每封邮件最多取前 1 MiB 原文来解析正文;附件索引来自 BODYSTRUCTURE,不受影响。 */
 const MAX_SOURCE_BYTES = 1024 * 1024;
 const MAX_TEXT_CHARS = 200_000;

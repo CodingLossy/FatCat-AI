@@ -56,7 +56,7 @@
 - **Gemini**(`src/gemini.ts`):`POST {baseURL}/models/{model}:streamGenerateContent?alt=sse`,默认 `https://generativelanguage.googleapis.com/v1beta`;**密钥放 `x-goog-api-key` 头,不放 URL 查询参数**(URL 可能进入日志)。system → `systemInstruction`,assistant → `model`,工具结果 → user 中的 `functionResponse`(按 callId 找回函数名,结果包成 `{ result }`)。工具参数 schema 转为 Gemini 支持的 OpenAPI 子集:只保留 type / properties / required / items / enum 等键,类型改大写,`["string","null"]` 改为 `nullable`。跳过 `thought` 部分;有函数调用时结束原因为 tool-calls(Gemini 此时仍报 STOP)。无效密钥时 Gemini 返回 400,按正文归为 `auth_failed`。连接测试读 `GET /models`。
 - 三种适配器发给模型的工具名都经 `toWireToolName()`(`memory.save` → `memory__save`),收到调用时还原。
 - **已知限制**:Gemini 思考模型在函数调用部分附带的 `thoughtSignature` 目前不回传(`ChatMessage` 里没有存放它的位置)。Gemini 2.5 只是建议回传;如果以后的模型强制要求,需要给工具调用加一个不透明的 provider 元数据字段,届时另写 ADR。
-- 测试:合成 fixture(`anthropic-*.json`、`gemini-*.json`,`synthetic: true`)按官方流式格式手写,覆盖文本 + 工具调用、请求体格式转换、密钥位置、usage、流中错误、连接测试与无效密钥。业主有对应账号后可用 `AIP_EVAL_LIVE=1` 重录。
+- 测试:合成 fixture(`anthropic-*.json`、`gemini-*.json`,`synthetic: true`)按官方流式格式手写,覆盖文本 + 工具调用、请求体格式转换、密钥位置、usage、流中错误、连接测试与无效密钥。业主有对应账号后可用 `FATCAT_AI_EVAL_LIVE=1` 重录。
 
 ## 后果
 

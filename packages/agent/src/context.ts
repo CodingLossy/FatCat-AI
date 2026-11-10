@@ -4,8 +4,8 @@
 // 上下文窗口管理(计划第 8 节 M1、《记忆模块补充设计》4.6):
 // 最近的消息保留原文(不超过上下文窗口的 40%),更早的消息按段压缩成摘要存入 session_summaries。
 // 原文永远保留在 messages 表中;压缩只影响送给模型的内容。
-import type { Message } from '@ai-personal/shared';
-import type { ChatMessage } from '@ai-personal/providers';
+import type { Message } from '@fatcat-ai/shared';
+import type { ChatMessage } from '@fatcat-ai/providers';
 
 export const DEFAULT_CONTEXT_WINDOW = 8192;
 /** 原文部分最多占上下文窗口的比例。 */

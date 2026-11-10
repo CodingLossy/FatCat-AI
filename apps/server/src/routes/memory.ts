@@ -22,8 +22,8 @@ import {
     MemorySearchInput,
     MemorySearchResult,
     pageOf,
-} from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
+} from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';

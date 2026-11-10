@@ -2,9 +2,9 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // MCP 的按需加载(ADR 0013 第 4 节):没有配置任何 MCP 服务器时,不导入客户端代码。
-import type { McpServerStatus } from '@ai-personal/shared';
-import type { ToolRegistry } from '@ai-personal/tools';
-import type { McpManager, OwnedMcpServer } from '@ai-personal/tools/mcp';
+import type { McpServerStatus } from '@fatcat-ai/shared';
+import type { ToolRegistry } from '@fatcat-ai/tools';
+import type { McpManager, OwnedMcpServer } from '@fatcat-ai/tools/mcp';
 
 export interface McpControl {
     /** 连接(或重新连接)服务器并注册工具;禁用时只移除。 */
@@ -22,7 +22,7 @@ export function createMcpControl(
     let loading: Promise<McpManager> | null = null;
     const load = () => {
         if (!registry) return Promise.reject(new Error('tools are not enabled on this server'));
-        loading ??= import('@ai-personal/tools/mcp').then(({ McpManager: Manager }) => {
+        loading ??= import('@fatcat-ai/tools/mcp').then(({ McpManager: Manager }) => {
             manager = new Manager({ registry, ...options });
             return manager;
         });

@@ -8,8 +8,8 @@ Recorded HTTP interactions replayed by the provider tests.
 To re-record against a real endpoint (keys are read from the environment and redacted before anything is written):
 
 ```bash
-AIP_EVAL_LIVE=1 AIP_EVAL_BASE_URL=https://api.example.com/v1 AIP_EVAL_MODEL=model-name AIP_EVAL_KEY_ENV=MY_API_KEY \
-  pnpm --filter @ai-personal/providers test
+FATCAT_AI_EVAL_LIVE=1 FATCAT_AI_EVAL_BASE_URL=https://api.example.com/v1 FATCAT_AI_EVAL_MODEL=model-name FATCAT_AI_EVAL_KEY_ENV=MY_API_KEY \
+  pnpm --filter @fatcat-ai/providers test
 ```
 
 `pnpm check:secrets` fails if anything that looks like a credential appears in a fixture.

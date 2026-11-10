@@ -2,14 +2,17 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import type { Server } from 'node:http';
 import { serve } from '@hono/node-server';
-import { EventBus, RunManager } from '@ai-personal/agent';
-import { createItemService, createKnowledgeBase } from '@ai-personal/items';
-import { createProvider, Redactor, SecretStore } from '@ai-personal/providers';
-import { createRepositories, openStorage } from '@ai-personal/storage';
+import { EventBus, RunManager } from '@fatcat-ai/agent';
+import { createItemService, createKnowledgeBase } from '@fatcat-ai/items';
+import { createProvider, Redactor, SecretStore } from '@fatcat-ai/providers';
+import { applyLegacyEnv, legacyEnvWarning } from '@fatcat-ai/shared';
+import { createRepositories, openStorage } from '@fatcat-ai/storage';
 import { createMailComplete, createSummarizer, createToolRegistry, createTurnExtractor } from './agent-setup.js';
-import { runInWorker } from '@ai-personal/mail';
+import { runInWorker } from '@fatcat-ai/mail';
 import { createApp } from './app.js';
 import { createMcpControl } from './mcp-setup.js';
 import { createMailService } from './mail-setup.js';
@@ -18,14 +21,41 @@ import { startMaintenance } from './maintenance-setup.js';
 import { itemProviders } from './memory-provider.js';
 import { createEmbeddingService } from './embeddings.js';
 import { randomToken } from './auth/crypto.js';
-import { loadConfig } from './config.js';
+import { loadConfig, SERVER_ENV_NAMES } from './config.js';
+import { LEGACY_DATA_DIR_NAME, migrateLegacyDataDir } from './data-dir.js';
 import { createLogger } from './log.js';
 import { attachWebSocket } from './ws.js';
 
+// 改名前的 AIP_* 环境变量暂时兼容读取(ADR 0019)
+const legacyEnv = applyLegacyEnv(process.env, SERVER_ENV_NAMES);
 const config = loadConfig();
 // 脱敏器登记本进程加载过的模型密钥;日志每一行写出前都经过它(ADR 0006)
 const redactor = new Redactor();
 const logger = createLogger({ level: config.logLevel, redactLine: (line) => redactor.redact(line) });
+if (legacyEnv.length > 0) logger.warn({ variables: legacyEnv }, legacyEnvWarning(legacyEnv));
+
+// 使用默认数据目录时,把改名前的 ~/.ai-personal 迁到 ~/.fatcat-ai(只做一次,不覆盖已有目录;ADR 0019)
+if (!process.env.FATCAT_AI_DATA_DIR) {
+    const legacyDir = join(homedir(), LEGACY_DATA_DIR_NAME);
+    const migration = migrateLegacyDataDir(legacyDir, config.dataDir);
+    if (migration.action === 'renamed' || migration.action === 'copied') {
+        logger.info(
+            { from: legacyDir, to: config.dataDir, ...migration },
+            'migrated the data directory to the new name',
+        );
+        if (migration.action === 'copied' && !migration.legacyRemoved) {
+            logger.warn(
+                { from: legacyDir },
+                'copied the data directory but could not remove the old one; delete it manually',
+            );
+        }
+    } else if (migration.action === 'kept-existing') {
+        logger.warn(
+            { from: legacyDir, to: config.dataDir },
+            'both the old and the new data directory exist; using the new one and leaving the old one untouched',
+        );
+    }
+}
 
 mkdirSync(config.dataDir, { recursive: true, mode: 0o700 });
 const { conn, migrated } = await openStorage({ dataDir: config.dataDir });
@@ -43,7 +73,7 @@ if (repos.owners.count() === 0) {
         // 设置码只在初始化前有效,打印到本地日志是有意为之,便于部署者从容器日志中读取
         logger.warn({ code: setupCode }, 'owner account not created yet; use this one-time setup code');
     } else {
-        logger.warn('owner account not created yet; use the setup code from AIP_SETUP_CODE');
+        logger.warn('owner account not created yet; use the setup code from FATCAT_AI_SETUP_CODE');
     }
 }
 

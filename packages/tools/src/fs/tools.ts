@@ -16,7 +16,7 @@ import {
     writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import type { UntrustedContent } from '@ai-personal/shared';
+import type { UntrustedContent } from '@fatcat-ai/shared';
 import { z } from 'zod';
 import type { ToolContext, ToolDefinition } from '../types.js';
 import { documentKind, type DocumentKind, type ExtractedDocument } from '../docs/extract.js';
@@ -276,7 +276,7 @@ export function createFsTools(options: FsToolOptions): ToolDefinition[] {
                 throw new PathError('the file exists; pass overwrite: true to replace it');
             // 原子写入:在同一个已校验的目录中写临时文件,改名前再校验一次
             const dir = path.dirname(target);
-            const temp = path.join(dir, `.aip-${randomBytes(6).toString('hex')}.tmp`);
+            const temp = path.join(dir, `.fatcat-${randomBytes(6).toString('hex')}.tmp`);
             writeFileSync(temp, input.content, { flag: 'wx' });
             try {
                 resolve(ctx, target, true);

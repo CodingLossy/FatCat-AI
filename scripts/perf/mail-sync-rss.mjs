@@ -15,9 +15,9 @@
 //   CHECK=1 node scripts/perf/mail-sync-rss.mjs   # 按 ADR 0018 规则 3、4 判定,不满足时退出码 1(CI 用)
 //
 // 连接已运行的服务器(例如 `pnpm dev`;建议用单独的数据目录,脚本会在其中建、删一个 perf 邮件账户):
-//   ATTACH=http://127.0.0.1:8787 AIP_PERF_USER=owner AIP_PERF_PASSWORD=... node scripts/perf/mail-sync-rss.mjs
-//   第一次运行会在 TLS_DIR(默认系统临时目录下的 aip-perf-tls)生成证书,并提示启动服务器时要带的两个环境变量:
-//   NODE_EXTRA_CA_CERTS=<证书> 与 AIP_PERF_MAIL_PASSWORD=<任意值>。主进程 PID 按端口自动查找,也可用 SERVER_PID 指定。
+//   ATTACH=http://127.0.0.1:8787 FATCAT_AI_PERF_USER=owner FATCAT_AI_PERF_PASSWORD=... node scripts/perf/mail-sync-rss.mjs
+//   第一次运行会在 TLS_DIR(默认系统临时目录下的 fatcat-perf-tls)生成证书,并提示启动服务器时要带的两个环境变量:
+//   NODE_EXTRA_CA_CERTS=<证书> 与 FATCAT_AI_PERF_MAIL_PASSWORD=<任意值>。主进程 PID 按端口自动查找,也可用 SERVER_PID 指定。
 //   PowerShell 中先 `$env:ATTACH='http://127.0.0.1:8787'` 等再运行。
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync } from 'node:fs';
@@ -192,8 +192,8 @@ function ensureCert(tlsDir) {
     return { keyPath, certPath };
 }
 
-const dir = mkdtempSync(join(tmpdir(), 'aip-mail-rss-'));
-const tlsDir = ATTACH ? (process.env.TLS_DIR ?? join(tmpdir(), 'aip-perf-tls')) : dir;
+const dir = mkdtempSync(join(tmpdir(), 'fatcat-mail-rss-'));
+const tlsDir = ATTACH ? (process.env.TLS_DIR ?? join(tmpdir(), 'fatcat-perf-tls')) : dir;
 const hadCert = existsSync(join(tlsDir, 'cert.pem'));
 let keyPath;
 let certPath;
@@ -209,7 +209,7 @@ try {
 }
 if (ATTACH && !hadCert && !(process.env.TLS_KEY && process.env.TLS_CERT)) {
     rmSync(dir, { recursive: true, force: true });
-    const vars = { NODE_EXTRA_CA_CERTS: certPath, AIP_PERF_MAIL_PASSWORD: 'fake-password' };
+    const vars = { NODE_EXTRA_CA_CERTS: certPath, FATCAT_AI_PERF_MAIL_PASSWORD: 'fake-password' };
     console.log(`Generated a self-signed certificate in ${tlsDir}.`);
     console.log('Start the server with these environment variables, then run this script again:');
     for (const [name, value] of Object.entries(vars))
@@ -235,12 +235,12 @@ if (ATTACH) {
         env: {
             ...process.env,
             NODE_ENV: 'production',
-            AIP_HOST: '127.0.0.1',
-            AIP_PORT: String(port),
-            AIP_DATA_DIR: join(dir, 'data'),
-            AIP_LOG_LEVEL: 'warn',
+            FATCAT_AI_HOST: '127.0.0.1',
+            FATCAT_AI_PORT: String(port),
+            FATCAT_AI_DATA_DIR: join(dir, 'data'),
+            FATCAT_AI_LOG_LEVEL: 'warn',
             NODE_EXTRA_CA_CERTS: certPath,
-            AIP_PERF_MAIL_PASSWORD: 'fake-password',
+            FATCAT_AI_PERF_MAIL_PASSWORD: 'fake-password',
         },
         stdio: ['ignore', 'ignore', 'inherit'],
     });
@@ -270,7 +270,7 @@ const account = {
     label: 'perf',
     address: 'owner@example.test',
     username: 'owner@example.test',
-    passwordRef: 'env:AIP_PERF_MAIL_PASSWORD',
+    passwordRef: 'env:FATCAT_AI_PERF_MAIL_PASSWORD',
     imap: { host: 'localhost', port: imap.port, security: 'tls' },
     smtp: { host: 'localhost', port: 1, security: 'tls' },
     initialSyncDays: 30,
@@ -309,9 +309,9 @@ try {
     }
     let pid;
     if (ATTACH) {
-        const user = process.env.AIP_PERF_USER;
-        const password = process.env.AIP_PERF_PASSWORD;
-        if (!user || !password) throw new Error('ATTACH needs AIP_PERF_USER and AIP_PERF_PASSWORD');
+        const user = process.env.FATCAT_AI_PERF_USER;
+        const password = process.env.FATCAT_AI_PERF_PASSWORD;
+        if (!user || !password) throw new Error('ATTACH needs FATCAT_AI_PERF_USER and FATCAT_AI_PERF_PASSWORD');
         await api('POST', '/auth/login', { username: user, password });
         pid = Number(process.env.SERVER_PID ?? pidByPort(new URL(origin).port || 80));
         console.log(`attached to ${origin}, pid ${pid}`);

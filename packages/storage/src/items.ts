@@ -3,7 +3,7 @@
 
 // 条目索引(ADR 0003、ADR 0012 第 1 节):upsert / 移动 / 软删除都在事务中沿祖先链维护计数;recount 用递归 CTE 校正。
 // 计数只统计未删除的条目,只沿 primary contains 边。
-import type { Item, ItemCounts, ItemKind, ItemSort } from '@ai-personal/shared';
+import type { Item, ItemCounts, ItemKind, ItemSort } from '@fatcat-ai/shared';
 import { z } from 'zod';
 import { decodeCursor, encodeCursor, type Page } from './cursor.js';
 import type { Connection } from './db.js';

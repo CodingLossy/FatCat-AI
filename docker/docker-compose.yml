@@ -4,19 +4,19 @@
 # 用法(在仓库根目录):docker compose -f docker/docker-compose.yml up -d --build
 # 默认只绑定本机 127.0.0.1;对外提供服务请经反向代理(Caddy / Nginx)+ HTTPS。
 services:
-  ai-personal:
+  fatcat-ai:
     build:
       context: ..
       dockerfile: docker/Dockerfile
       args:
-        SOURCE_URL: ${AIP_SOURCE_URL:-}
-    image: ai-personal:local
+        SOURCE_URL: ${FATCAT_AI_SOURCE_URL:-}
+    image: fatcat-ai:local
     restart: unless-stopped
     ports:
-      - '127.0.0.1:${AIP_PORT:-8787}:8787'
+      - '127.0.0.1:${FATCAT_AI_PORT:-8787}:8787'
     environment:
       # 修改版部署者应改为自己的修改版源码地址(AGPL §13)
-      AIP_SOURCE_URL: ${AIP_SOURCE_URL:-}
+      FATCAT_AI_SOURCE_URL: ${FATCAT_AI_SOURCE_URL:-}
     volumes:
       - ai-personal-data:/data
     mem_limit: 512m

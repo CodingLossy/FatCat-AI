@@ -4,12 +4,12 @@
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { type HealthResponse, MetaResponseSchema, PROTOCOL_VERSION, SERVER_LICENSE } from '@ai-personal/shared';
-import type { EventBus, RunManager } from '@ai-personal/agent';
-import { detectCredential } from '@ai-personal/memory';
+import { type HealthResponse, MetaResponseSchema, PROTOCOL_VERSION, SERVER_LICENSE } from '@fatcat-ai/shared';
+import type { EventBus, RunManager } from '@fatcat-ai/agent';
+import { detectCredential } from '@fatcat-ai/memory';
 import type { MemoryStack } from './memory-setup.js';
-import { createProvider, type ProviderDeps, type SecretStore } from '@ai-personal/providers';
-import { newId, type Repositories } from '@ai-personal/storage';
+import { createProvider, type ProviderDeps, type SecretStore } from '@fatcat-ai/providers';
+import { newId, type Repositories } from '@fatcat-ai/storage';
 import type { Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { secureHeaders } from 'hono/secure-headers';
@@ -25,7 +25,7 @@ import { memoryRoutes } from './routes/memory.js';
 import { modelRoutes } from './routes/models.js';
 import { runRoutes } from './routes/runs.js';
 import { settingsRoutes } from './routes/settings.js';
-import type { ItemService, KnowledgeBase } from '@ai-personal/items';
+import type { ItemService, KnowledgeBase } from '@fatcat-ai/items';
 import { fsRoutes } from './routes/fs.js';
 import { itemRoutes } from './routes/items.js';
 import { mcpRoutes } from './routes/mcp.js';
@@ -148,7 +148,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         .openapi(metaRoute, (c) =>
             c.json(
                 {
-                    name: 'AI-Personal' as const,
+                    name: 'FatCat-AI' as const,
                     serverVersion: SERVER_VERSION,
                     protocolVersion: PROTOCOL_VERSION,
                     license: SERVER_LICENSE,
@@ -230,7 +230,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
     });
     app.doc31('/api/v1/openapi.json', {
         openapi: '3.1.0',
-        info: { title: 'AI-Personal API', version: SERVER_VERSION, license: { name: SERVER_LICENSE } },
+        info: { title: 'FatCat-AI API', version: SERVER_VERSION, license: { name: SERVER_LICENSE } },
         security: [{ bearer: [] }, { session: [] }],
     });
 

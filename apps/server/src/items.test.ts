@@ -5,14 +5,14 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { AuditEntry, FsRoot, Item, ItemContent, ItemCounts, ItemSubtree, pageOf } from '@ai-personal/shared';
+import { AuditEntry, FsRoot, Item, ItemContent, ItemCounts, ItemSubtree, pageOf } from '@fatcat-ai/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 let s: TestServer;
 let base: string;
 beforeEach(() => {
-    base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'aip-items-api-')));
+    base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'fatcat-items-api-')));
     mkdirSync(path.join(base, 'Books'));
     writeFileSync(
         path.join(base, 'Books', '凡人.txt'),

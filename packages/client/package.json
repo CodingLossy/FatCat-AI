@@ -1,18 +1,18 @@
 {
-  "name": "@ai-personal/client",
+  "name": "@fatcat-ai/client",
   "version": "0.0.0",
   "private": true,
-  "description": "AI-Personal API v1 client SDK",
+  "description": "FatCat-AI API v1 client SDK",
   "license": "Apache-2.0",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/packages/client",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/client",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
     "directory": "packages/client"
   },
   "bugs": {
-    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
   },
   "type": "module",
   "exports": {
@@ -31,6 +31,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-personal/shared": "workspace:*"
+    "@fatcat-ai/shared": "workspace:*"
   }
 }

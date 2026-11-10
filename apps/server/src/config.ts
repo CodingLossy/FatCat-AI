@@ -3,7 +3,8 @@
 
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { OFFICIAL_SOURCE_URL } from '@ai-personal/shared';
+import { OFFICIAL_SOURCE_URL } from '@fatcat-ai/shared';
+import { DATA_DIR_NAME } from './data-dir.js';
 
 export type CookieSecure = 'auto' | 'always' | 'never';
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -28,6 +29,18 @@ export interface ServerConfig {
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8787;
 
+/** 服务器读取的环境变量(不带 FATCAT_AI_ 前缀);改名前的 AIP_ 旧名由 applyLegacyEnv 兼容(ADR 0019)。 */
+export const SERVER_ENV_NAMES = [
+    'HOST',
+    'PORT',
+    'SETUP_CODE',
+    'SOURCE_URL',
+    'WEB_DIR',
+    'DATA_DIR',
+    'COOKIE_SECURE',
+    'LOG_LEVEL',
+] as const;
+
 function oneOf<T extends string>(name: string, value: string | undefined, allowed: readonly T[], fallback: T): T {
     if (value === undefined || value === '') return fallback;
     if (!(allowed as readonly string[]).includes(value)) {
@@ -37,22 +50,27 @@ function oneOf<T extends string>(name: string, value: string | undefined, allowe
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
-    const port = env.AIP_PORT === undefined ? DEFAULT_PORT : Number(env.AIP_PORT);
+    const port = env.FATCAT_AI_PORT === undefined ? DEFAULT_PORT : Number(env.FATCAT_AI_PORT);
     if (!Number.isInteger(port) || port < 1 || port > 65535) {
-        throw new Error(`AIP_PORT is invalid: ${env.AIP_PORT}`);
+        throw new Error(`FATCAT_AI_PORT is invalid: ${env.FATCAT_AI_PORT}`);
     }
-    const setupCode = env.AIP_SETUP_CODE || null;
+    const setupCode = env.FATCAT_AI_SETUP_CODE || null;
     if (setupCode !== null && setupCode.length < 8) {
-        throw new Error('AIP_SETUP_CODE must be at least 8 characters');
+        throw new Error('FATCAT_AI_SETUP_CODE must be at least 8 characters');
     }
     return {
-        host: env.AIP_HOST ?? DEFAULT_HOST,
+        host: env.FATCAT_AI_HOST ?? DEFAULT_HOST,
         port,
-        sourceUrl: env.AIP_SOURCE_URL || OFFICIAL_SOURCE_URL,
-        webDir: env.AIP_WEB_DIR || null,
-        dataDir: env.AIP_DATA_DIR || join(homedir(), '.ai-personal'),
-        cookieSecure: oneOf('AIP_COOKIE_SECURE', env.AIP_COOKIE_SECURE, ['auto', 'always', 'never'], 'auto'),
+        sourceUrl: env.FATCAT_AI_SOURCE_URL || OFFICIAL_SOURCE_URL,
+        webDir: env.FATCAT_AI_WEB_DIR || null,
+        dataDir: env.FATCAT_AI_DATA_DIR || join(homedir(), DATA_DIR_NAME),
+        cookieSecure: oneOf(
+            'FATCAT_AI_COOKIE_SECURE',
+            env.FATCAT_AI_COOKIE_SECURE,
+            ['auto', 'always', 'never'],
+            'auto',
+        ),
         setupCode,
-        logLevel: oneOf('AIP_LOG_LEVEL', env.AIP_LOG_LEVEL, ['debug', 'info', 'warn', 'error'], 'info'),
+        logLevel: oneOf('FATCAT_AI_LOG_LEVEL', env.FATCAT_AI_LOG_LEVEL, ['debug', 'info', 'warn', 'error'], 'info'),
     };
 }

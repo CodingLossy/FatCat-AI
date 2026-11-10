@@ -10,7 +10,7 @@ import type {
     PreauthConstraint,
     Preauthorization,
     ToolRisk,
-} from '@ai-personal/shared';
+} from '@fatcat-ai/shared';
 import { z } from 'zod';
 import { decodeCursor, encodeCursor, type Page } from './cursor.js';
 import type { Connection } from './db.js';

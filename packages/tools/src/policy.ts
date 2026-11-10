@@ -9,7 +9,7 @@ import type {
     PreauthRemember,
     ToolApproval,
     ToolRisk,
-} from '@ai-personal/shared';
+} from '@fatcat-ai/shared';
 import { isWithin } from './fs/paths.js';
 import type { ToolContext, ToolDefinition } from './types.js';
 

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 设置页中的邮件账户(ADR 0016 第 1 节):只填密码引用(env:NAME 或 file:NAME),不接收明文密码。
-import type { MailAccount, MailPreset } from '@ai-personal/shared';
+import type { MailAccount, MailPreset } from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';

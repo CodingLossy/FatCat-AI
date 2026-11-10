@@ -4,8 +4,8 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createReplayFetch, loadFixture } from '@ai-personal/eval';
-import { ModelProfile, ModelTestResult, ProblemDetails } from '@ai-personal/shared';
+import { createReplayFetch, loadFixture } from '@fatcat-ai/eval';
+import { ModelProfile, ModelTestResult, ProblemDetails } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 

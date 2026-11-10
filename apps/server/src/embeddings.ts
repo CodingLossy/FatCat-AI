@@ -3,9 +3,9 @@
 
 // 嵌入队列 worker(ADR 0014):并发 1、批量、失败退避重试、每日上限。嵌入是网络请求,不占 CPU,
 // 所以在主线程中异步运行,不用 worker_threads。没有 embed 配置档时不加载 sqlite-vec,也不运行。
-import type { EmbeddingStatus } from '@ai-personal/shared';
-import { type ModelProvider, ProviderError } from '@ai-personal/providers';
-import type { ModelProfileRecord, Repositories, VectorMatch } from '@ai-personal/storage';
+import type { EmbeddingStatus } from '@fatcat-ai/shared';
+import { type ModelProvider, ProviderError } from '@fatcat-ai/providers';
+import type { ModelProfileRecord, Repositories, VectorMatch } from '@fatcat-ai/storage';
 
 export const DEFAULT_EMBED_BATCH = 32;
 /** 每个 owner 每天(UTC)最多嵌入的文本条数。 */

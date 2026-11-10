@@ -4,10 +4,10 @@
 // 本地知识库(ADR 0015):条目同步之后,把授权目录中的文本与文档分块,放进嵌入队列;
 // 检索时优先用向量,没有向量(没有 embed 配置档、需要重建、上游失败)时用全文检索兜底。
 import { basename, extname } from 'node:path';
-import type { KbCitation, KbSearchOutput } from '@ai-personal/shared';
-import type { KbChunk, KbChunkInput, Repositories } from '@ai-personal/storage';
-import { detectCredential, redactCredentials } from '@ai-personal/memory/secrets';
-import { isWithin, type ToolDefinition } from '@ai-personal/tools';
+import type { KbCitation, KbSearchOutput } from '@fatcat-ai/shared';
+import type { KbChunk, KbChunkInput, Repositories } from '@fatcat-ai/storage';
+import { detectCredential, redactCredentials } from '@fatcat-ai/memory/secrets';
+import { isWithin, type ToolDefinition } from '@fatcat-ai/tools';
 import { z } from 'zod';
 import { readAuthorizedFile } from '../files.js';
 import { chunkText } from './chunk.js';

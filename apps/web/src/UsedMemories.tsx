@@ -3,7 +3,7 @@
 
 // 「本次用到的记忆」面板,带反馈按钮(《记忆模块补充设计》第 6 节;ADR 0007 第 5.8 节)。
 // 记忆正文按纯文本显示。
-import type { FeedbackSignal, Memory } from '@ai-personal/shared';
+import type { FeedbackSignal, Memory } from '@fatcat-ai/shared';
 import { useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';

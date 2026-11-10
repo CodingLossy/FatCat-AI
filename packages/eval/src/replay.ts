@@ -145,10 +145,10 @@ export function createRecordingFetch(options: RecordOptions) {
 }
 
 /**
- * 测试入口:默认回放 fixture;设置 AIP_EVAL_LIVE=1 时改为对真实端点录制并覆盖 fixture。
+ * 测试入口:默认回放 fixture;设置 FATCAT_AI_EVAL_LIVE=1 时改为对真实端点录制并覆盖 fixture。
  */
 export function fixtureFetch(path: string, live?: { redact: (text: string) => string }) {
-    if (process.env.AIP_EVAL_LIVE === '1' && live) {
+    if (process.env.FATCAT_AI_EVAL_LIVE === '1' && live) {
         const name = loadFixture(path).name;
         const rec = createRecordingFetch({ name, redact: live.redact });
         return { fetch: rec.fetch, done: () => rec.save(path), live: true as const };

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { Preauthorization } from '@ai-personal/shared';
+import type { Preauthorization } from '@fatcat-ai/shared';
 import { describe, expect, it } from 'vitest';
 import {
     checkRemember,

@@ -2,8 +2,8 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { fileURLToPath } from 'node:url';
-import { createReplayFetch, loadFixture } from '@ai-personal/eval';
-import type { ChatChunk, ChatRequest, ModelProvider } from '@ai-personal/providers';
+import { createReplayFetch, loadFixture } from '@fatcat-ai/eval';
+import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
 import {
     EventEnvelope,
     Memory,
@@ -15,7 +15,7 @@ import {
     MemorySearchResult,
     ProblemDetails,
     Session,
-} from '@ai-personal/shared';
+} from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
@@ -421,7 +421,7 @@ describe('记忆 API:反馈、出处、历史、冲突、隔离区与忘记(PR 1
         const ownerId = s.repos.owners.ids()[0]!;
         // 用户明说 + 抽取的矛盾值 → 冲突
         await post('/api/v1/memory', { text: '用户是后端工程师', entityKey: 'user.role' });
-        const memory = (await import('@ai-personal/memory')).createMemoryService(s.repos);
+        const memory = (await import('@fatcat-ai/memory')).createMemoryService(s.repos);
         memory.write(ownerId, { text: '用户是产品经理', entityKey: 'user.role' }, { origin: 'extracted' });
         const conflicts = (await (await req('/api/v1/memory/conflicts')).json()) as {
             items: { id: string; a: Memory; b: Memory }[];

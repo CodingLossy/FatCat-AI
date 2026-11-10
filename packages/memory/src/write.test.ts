@@ -4,7 +4,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { type Connection, createRepositories, openStorage, type Repositories } from '@ai-personal/storage';
+import { type Connection, createRepositories, openStorage, type Repositories } from '@fatcat-ai/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { normalizeEntityKey } from './entity-keys.js';
 import { looksLikeInstruction } from './instructions.js';
@@ -15,7 +15,7 @@ describe('normalizeEntityKey', () => {
         ['user.location.city', 'user.location.city', 'single', 'life'],
         [' User.City ', 'user.location.city', 'single', 'life'],
         ['user company', 'user.employer', 'single', 'work'],
-        ['project.ai-personal.license', 'project.ai-personal.license', 'single', 'work'],
+        ['project.fatcat-ai.license', 'project.fatcat-ai.license', 'single', 'work'],
         ['person.zhangsan.relation', 'person.zhangsan.relation', 'single', 'life'],
         ['favorite food', 'x.favorite.food', 'multi', 'general'],
         ['x.hobby', 'x.hobby', 'multi', 'general'],
@@ -51,7 +51,7 @@ describe('MemoryService.write', () => {
     let ownerId: string;
 
     beforeEach(async () => {
-        dir = mkdtempSync(join(tmpdir(), 'aip-memory-write-'));
+        dir = mkdtempSync(join(tmpdir(), 'fatcat-memory-write-'));
         ({ conn } = await openStorage({ dataDir: dir }));
         repos = createRepositories(conn);
         memory = createMemoryService(repos);
@@ -148,7 +148,7 @@ describe('MemoryService.write', () => {
     it('决策生命周期:proposed → accepted → done;不合法的迁移被拒绝;更替时变为 superseded', () => {
         const d = memory.write(
             ownerId,
-            { text: '1.0 只做企业微信和微信', subtype: 'decision', entityKey: 'project.ai-personal.channels' },
+            { text: '1.0 只做企业微信和微信', subtype: 'decision', entityKey: 'project.fatcat-ai.channels' },
             { origin: 'user_explicit' },
         );
         expect(repos.memories.decisionState(ownerId, d.id!)).toBe('proposed');
@@ -157,7 +157,7 @@ describe('MemoryService.write', () => {
         expect(repos.memories.setDecisionState(ownerId, d.id!, 'rejected')).toBe('invalid');
         expect(repos.memories.setDecisionState(ownerId, d.id!, 'done')).toBe('ok');
 
-        const key = 'project.ai-personal.license';
+        const key = 'project.fatcat-ai.license';
         const e = memory.write(
             ownerId,
             { text: '许可证用 AGPL', subtype: 'decision', entityKey: key, decisionState: 'accepted' },
@@ -224,7 +224,7 @@ describe('更替与冲突回放', () => {
     let conn: Connection;
 
     beforeEach(() => {
-        dir = mkdtempSync(join(tmpdir(), 'aip-memory-replay-'));
+        dir = mkdtempSync(join(tmpdir(), 'fatcat-memory-replay-'));
     });
     afterEach(() => {
         conn.close();

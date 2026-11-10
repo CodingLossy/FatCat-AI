@@ -10,7 +10,7 @@ import {
     type MaintenanceRow,
     openStorage,
     type Repositories,
-} from '@ai-personal/storage';
+} from '@fatcat-ai/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createMaintenanceRunner, decayScore, nextTier } from './maintenance.js';
 import { createRetriever } from './retrieve.js';
@@ -68,7 +68,7 @@ describe('MaintenanceRunner', () => {
     let ownerId: string;
 
     beforeEach(async () => {
-        dir = mkdtempSync(join(tmpdir(), 'aip-memory-maint-'));
+        dir = mkdtempSync(join(tmpdir(), 'fatcat-memory-maint-'));
         ({ conn } = await openStorage({ dataDir: dir }));
         clock = T0;
         repos = createRepositories(conn, { now: () => clock });

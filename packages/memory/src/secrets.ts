@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 凭据检测(《记忆模块补充设计》第 3 节第 2 条):命中即拒存。纯函数、纯本地规则、不依赖任何包,
-// 记忆以外的地方(日志、审批卡片、导入)也可以直接用 `@ai-personal/memory/secrets` 引入。
+// 记忆以外的地方(日志、审批卡片、导入)也可以直接用 `@fatcat-ai/memory/secrets` 引入。
 // 规则由本项目自行编写;只返回命中类型,从不返回或记录命中的原文。
 
 export type CredentialKind =

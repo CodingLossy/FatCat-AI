@@ -1,18 +1,18 @@
 {
-  "name": "@ai-personal/plugin-sdk",
+  "name": "@fatcat-ai/plugin-sdk",
   "version": "0.0.0",
   "private": true,
-  "description": "AI-Personal plugin SDK",
+  "description": "FatCat-AI plugin SDK",
   "license": "Apache-2.0",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/packages/plugin-sdk",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/plugin-sdk",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
     "directory": "packages/plugin-sdk"
   },
   "bugs": {
-    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
   },
   "type": "module",
   "exports": {

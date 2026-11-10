@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 登录会话与个人访问令牌。表中只存令牌的哈希,明文从不落库(ADR 0004 第 2 节)。
-import type { AccessToken } from '@ai-personal/shared';
+import type { AccessToken } from '@fatcat-ai/shared';
 import type { Connection } from './db.js';
 import { newId } from './ids.js';
 import { selectList, type AccessTokenRow, type AuthSessionRow } from './schema.js';

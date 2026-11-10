@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "AI-Personal API",
+    "title": "FatCat-AI API",
     "version": "0.0.0",
     "license": {
       "name": "AGPL-3.0-only"
@@ -49,7 +49,7 @@
                     "name": {
                       "type": "string",
                       "enum": [
-                        "AI-Personal"
+                        "FatCat-AI"
                       ]
                     },
                     "serverVersion": {
@@ -30002,7 +30002,7 @@
                           },
                           "appendToSent": {
                             "type": "boolean",
-                            "description": "Read only: whether AI-Personal will APPEND a copy to Sent after sending, computed from sentCopy and the IMAP host."
+                            "description": "Read only: whether FatCat-AI will APPEND a copy to Sent after sending, computed from sentCopy and the IMAP host."
                           },
                           "sentCopy": {
                             "type": "string",
@@ -30512,7 +30512,7 @@
                     },
                     "appendToSent": {
                       "type": "boolean",
-                      "description": "Read only: whether AI-Personal will APPEND a copy to Sent after sending, computed from sentCopy and the IMAP host."
+                      "description": "Read only: whether FatCat-AI will APPEND a copy to Sent after sending, computed from sentCopy and the IMAP host."
                     },
                     "sentCopy": {
                       "type": "string",
@@ -30990,7 +30990,7 @@
                     },
                     "appendToSent": {
                       "type": "boolean",
-                      "description": "Read only: whether AI-Personal will APPEND a copy to Sent after sending, computed from sentCopy and the IMAP host."
+                      "description": "Read only: whether FatCat-AI will APPEND a copy to Sent after sending, computed from sentCopy and the IMAP host."
                     },
                     "sentCopy": {
                       "type": "string",
@@ -31583,7 +31583,7 @@
                     },
                     "appendToSent": {
                       "type": "boolean",
-                      "description": "Read only: whether AI-Personal will APPEND a copy to Sent after sending, computed from sentCopy and the IMAP host."
+                      "description": "Read only: whether FatCat-AI will APPEND a copy to Sent after sending, computed from sentCopy and the IMAP host."
                     },
                     "sentCopy": {
                       "type": "string",

@@ -2,8 +2,8 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 邮件账户 REST 与同步调度(ADR 0016):只收密码引用、响应不含密码;同步写入缓存;同一账户的同步不会并行。
-import { MailAccount, MailConnectionTest, MailFolder, MailSyncResult } from '@ai-personal/shared';
-import type { MailJob, MailJobRunner, SyncOutput } from '@ai-personal/mail';
+import { MailAccount, MailConnectionTest, MailFolder, MailSyncResult } from '@fatcat-ai/shared';
+import type { MailJob, MailJobRunner, SyncOutput } from '@fatcat-ai/mail';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 

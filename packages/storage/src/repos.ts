@@ -12,7 +12,7 @@ import type {
     RunStatus,
     Session,
     Usage,
-} from '@ai-personal/shared';
+} from '@fatcat-ai/shared';
 import { z } from 'zod';
 import { createAuthRepositories } from './auth.js';
 import { createMemoryRepository, createSummaryRepository } from './memory.js';

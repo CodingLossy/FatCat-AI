@@ -8,7 +8,7 @@ import { lookup as dnsLookup, type LookupAddress } from 'node:dns';
 import { request as httpRequest, type IncomingMessage } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { isIP, type LookupFunction } from 'node:net';
-import type { UntrustedContent } from '@ai-personal/shared';
+import type { UntrustedContent } from '@fatcat-ai/shared';
 import { z } from 'zod';
 import type { ToolDefinition } from '../types.js';
 import { htmlToText } from './html.js';
@@ -124,7 +124,7 @@ export async function guardedFetch(raw: string, partial: WebFetchOptions = {}): 
         isBlocked: partial.isBlocked ?? isBlockedAddress,
         timeoutMs: partial.timeoutMs ?? TIMEOUT_MS,
         maxBytes: partial.maxBytes ?? MAX_BODY_BYTES,
-        userAgent: partial.userAgent ?? 'AI-Personal (+https://github.com/CodingLossy/AI-Personal)',
+        userAgent: partial.userAgent ?? 'FatCat-AI (+https://github.com/CodingLossy/FatCat-AI)',
     };
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), options.timeoutMs);

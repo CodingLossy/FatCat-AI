@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 function tempDir(): string {
-    const dir = mkdtempSync(join(tmpdir(), 'aip-memv2-'));
+    const dir = mkdtempSync(join(tmpdir(), 'fatcat-memv2-'));
     dirs.push(dir);
     return dir;
 }

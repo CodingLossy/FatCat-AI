@@ -4,12 +4,13 @@
 // MCP 服务器配置(ADR 0013):只能由用户经 API / UI 增删,模型不能修改。M2 只支持 stdio。
 import { z } from 'zod';
 import { Id, IsoDateTime } from './common.js';
+import { isOwnEnvName } from './rename.js';
 import { ToolRisk } from './tools.js';
 
 const EnvName = z
     .string()
     .regex(/^[A-Za-z_][A-Za-z0-9_]{0,63}$/)
-    .refine((name) => !/^AIP_/i.test(name), 'AIP_* variables are never passed to MCP servers');
+    .refine((name) => !isOwnEnvName(name), 'FATCAT_AI_* and AIP_* variables are never passed to MCP servers');
 
 export const McpServerInput = z.strictObject({
     /** 用于工具名 mcp.<name>.<tool>。 */

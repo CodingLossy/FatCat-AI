@@ -21,7 +21,7 @@ export interface TestDb {
 
 /** 在临时目录建一个已迁移的真实 SQLite 文件,并创建主人账户。 */
 export async function createTestDb(options: { now?: () => Date } = {}): Promise<TestDb> {
-    const dir = mkdtempSync(join(tmpdir(), 'aip-storage-'));
+    const dir = mkdtempSync(join(tmpdir(), 'fatcat-storage-'));
     const path = join(dir, 'db.sqlite');
     const conn = openDatabase(path);
     await migrate(conn.sqlite, migrations, { backupDir: join(dir, 'backups') });

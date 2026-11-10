@@ -3,8 +3,8 @@
 
 // 记忆维护任务的调度(ADR 0007 第 5.7 节):croner 每天 03:30(服务器本地时间)运行 decay → tier → expire;
 // 推迟时 10 分钟后重试;启动 10 分钟后补跑当天还没做完的任务。M6 的通用调度器上线后迁移过去。
-import { createMaintenanceRunner, type MaintenanceRunner } from '@ai-personal/memory';
-import type { Repositories } from '@ai-personal/storage';
+import { createMaintenanceRunner, type MaintenanceRunner } from '@fatcat-ai/memory';
+import type { Repositories } from '@fatcat-ai/storage';
 import { Cron } from 'croner';
 
 export const MAINTENANCE_CRON = '30 3 * * *';

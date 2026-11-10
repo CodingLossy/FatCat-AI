@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 进行中的一轮对话:把一次运行的事件归并成可渲染的状态(ADR 0009 第 3 节)。纯函数,便于单测。
-import type { ApprovalWarning, EventEnvelope, ProblemDetails, ToolRisk } from '@ai-personal/shared';
+import type { ApprovalWarning, EventEnvelope, ProblemDetails, ToolRisk } from '@fatcat-ai/shared';
 
 export interface LiveTool {
     callId: string;

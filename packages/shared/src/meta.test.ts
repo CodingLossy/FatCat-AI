@@ -7,7 +7,7 @@ import { MetaResponseSchema, PROTOCOL_VERSION } from './meta.js';
 describe('MetaResponseSchema', () => {
     it('接受合法的 meta 响应', () => {
         const meta = {
-            name: 'AI-Personal',
+            name: 'FatCat-AI',
             serverVersion: '0.0.0',
             protocolVersion: PROTOCOL_VERSION,
             license: 'AGPL-3.0-only',
@@ -19,7 +19,7 @@ describe('MetaResponseSchema', () => {
 
     it('拒绝非法的 sourceUrl', () => {
         const result = MetaResponseSchema.safeParse({
-            name: 'AI-Personal',
+            name: 'FatCat-AI',
             serverVersion: '0.0.0',
             protocolVersion: 1,
             license: 'AGPL-3.0-only',

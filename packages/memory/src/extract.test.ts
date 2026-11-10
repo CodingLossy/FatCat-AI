@@ -4,7 +4,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { type Connection, createRepositories, openStorage, type Repositories } from '@ai-personal/storage';
+import { type Connection, createRepositories, openStorage, type Repositories } from '@fatcat-ai/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type Complete, createExtractor, EXTRACT_PROMPT, EXTRACT_PROMPT_VERSION, type TurnInfo } from './extract.js';
 import { createMemoryService, type MemoryService } from './service.js';
@@ -16,7 +16,7 @@ let memory: MemoryService;
 let ownerId: string;
 
 beforeEach(async () => {
-    dir = mkdtempSync(join(tmpdir(), 'aip-memory-extract-'));
+    dir = mkdtempSync(join(tmpdir(), 'fatcat-memory-extract-'));
     ({ conn } = await openStorage({ dataDir: dir }));
     repos = createRepositories(conn);
     memory = createMemoryService(repos);

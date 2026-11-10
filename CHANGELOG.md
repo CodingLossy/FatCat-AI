@@ -4,11 +4,22 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Renamed to FatCat-AI
+
+The project was renamed from AI-Personal to FatCat-AI and moved to <https://github.com/CodingLossy/FatCat-AI> (ADR 0019).
+
+#### Changed
+
+- Packages are now `@fatcat-ai/*`, the CLI command is `fatcat-ai`, and the Docker image is `fatcat-ai`. The client SDK exports `FatCatClient`, `FatCatApiError` and `FatCatNetworkError`.
+- The default data directory is `~/.fatcat-ai`. On the first start, the server moves an existing `~/.ai-personal` there (a rename, or a verified copy across drives); it never overwrites an existing `~/.fatcat-ai`. Docker keeps `/data` and the `ai-personal-data` volume.
+- Environment variables now start with `FATCAT_AI_` instead of `AIP_` (for example `FATCAT_AI_PORT`, `FATCAT_AI_DATA_DIR`, `FATCAT_AI_TOKEN`). The old names still work for now and print a deprecation warning.
+- Unchanged on purpose: the `aip_pat_` token prefix, the `aip_session` / `aip_csrf` cookies and the `X-AIP-Server-Version` header, so existing tokens and API v1 clients keep working.
+
 ### M3.x · Cleanup
 
 #### Fixed
 
-- Memory now drops back after a large mail sync. Syncing 10,000 messages used to leave the server at about 265 MiB, and it stayed there; it now settles at about 141–145 MiB and stays flat over repeated syncs. The server now limits the V8 young generation with `--max-semi-space-size=8`, which otherwise grew to about 128 MiB and was never returned, and the SQLite page cache is 4 MiB instead of 16 MiB. The flag is set automatically in the Docker image (`NODE_OPTIONS`) and by `pnpm dev` and `pnpm --filter @ai-personal/server start`, on Windows too; only if you start `node apps/server/dist/index.js` yourself do you need to add it.
+- Memory now drops back after a large mail sync. Syncing 10,000 messages used to leave the server at about 265 MiB, and it stayed there; it now settles at about 141–145 MiB and stays flat over repeated syncs. The server now limits the V8 young generation with `--max-semi-space-size=8`, which otherwise grew to about 128 MiB and was never returned, and the SQLite page cache is 4 MiB instead of 16 MiB. The flag is set automatically in the Docker image (`NODE_OPTIONS`) and by `pnpm dev` and `pnpm --filter @fatcat-ai/server start`, on Windows too; only if you start `node apps/server/dist/index.js` yourself do you need to add it.
 - New `pnpm perf:mail-sync` runs this measurement against a local fake IMAP server with synthetic mail (Linux and Windows; after `pnpm build` it starts its own server, or with `ATTACH=<url>` measures one that is already running, such as `pnpm dev`). The numbers above come from this synthetic setup on a Linux host, not from the Docker container.
 
 ### M3 · Mail (2026-11-05)
@@ -21,11 +32,11 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
   - "Test connection" checks the IMAP and SMTP logins without sending anything.
 - **Sync** ([#36](https://github.com/CodingLossy/AI-Personal/pull/36)):
   - Inbox and Sent are synced every 5 minutes by default, the first time only for the last 30 days (`initialSyncDays`);
-  - read state and deletions follow the server, and bodies are always read with `BODY.PEEK`, so AI-Personal never marks mail as read;
+  - read state and deletions follow the server, and bodies are always read with `BODY.PEEK`, so FatCat-AI never marks mail as read;
   - the IMAP `ID` command is sent after login, which 163 requires;
   - headers, a plain-text body and the attachment index are cached locally; attachments are only downloaded when you ask;
   - sync runs in a short-lived child process, so idle memory stays the same when no account is configured.
-- **Mail tools** ([#37](https://github.com/CodingLossy/AI-Personal/pull/37)): `mail.list` (including "unread today"), `mail.search`, `mail.read` and `mail.summarize` (read, output marked as untrusted), `mail.draft` (saves a local draft) and `mail.send` (sends a saved draft only, needs your approval every time and can't be pre-authorized). If a draft changes while its approval is pending, the approval is cancelled. After sending, a copy goes to the server's Sent folder, either saved by the server itself or appended by AI-Personal (see Fixed below).
+- **Mail tools** ([#37](https://github.com/CodingLossy/AI-Personal/pull/37)): `mail.list` (including "unread today"), `mail.search`, `mail.read` and `mail.summarize` (read, output marked as untrusted), `mail.draft` (saves a local draft) and `mail.send` (sends a saved draft only, needs your approval every time and can't be pre-authorized). If a draft changes while its approval is pending, the approval is cancelled. After sending, a copy goes to the server's Sent folder, either saved by the server itself or appended by FatCat-AI (see Fixed below).
 - **Session-level taint** ([#37](https://github.com/CodingLossy/AI-Personal/pull/37)): once any tool in a session returns untrusted content (web, files or mail), the whole session stays tainted, also after a restart. In a tainted session conditional pre-authorizations no longer apply (so `memory.write` always asks), and a recipient that neither you typed in the session nor is the sender of the mail being answered gets a red `recipient_untrusted` warning on the approval card.
 - `pnpm eval` also runs 14 mail injection cases.
 - **Mail in the knowledge map and the Web UI** ([#38](https://github.com/CodingLossy/AI-Personal/pull/38)):
@@ -37,11 +48,11 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 #### Fixed
 
-- Sending from a 163 account no longer leaves two copies in Sent. 163 (like Gmail) saves mail sent over SMTP by itself, and AI-Personal also appended its own copy. Accounts now have a Sent copy setting, `sentCopy` (ADR 0016 §14):
+- Sending from a 163 account no longer leaves two copies in Sent. 163 (like Gmail) saves mail sent over SMTP by itself, and FatCat-AI also appended its own copy. Accounts now have a Sent copy setting, `sentCopy` (ADR 0016 §14):
   - `auto` (the default): no copy is appended for `imap.163.com` and `imap.gmail.com`, because the server keeps one; every other host, including your own, gets a copy appended;
   - `append` or `off`: always or never append a copy, on any host. Setting `appendToSent` to `true` or `false` sets these too, and what you set explicitly is never overridden by the host.
-  - The account response shows `sentCopy` and, in `appendToSent`, whether AI-Personal will append a copy for that account.
-  - In the result of `mail.send`, `savedToSent` only means that AI-Personal's own append succeeded. A copy the server saves by itself is not checked. The new `sentCopy` field says what happened: `append`, `append-failed`, `server`, `off` or `no-sent-folder`.
+  - The account response shows `sentCopy` and, in `appendToSent`, whether FatCat-AI will append a copy for that account.
+  - In the result of `mail.send`, `savedToSent` only means that FatCat-AI's own append succeeded. A copy the server saves by itself is not checked. The new `sentCopy` field says what happened: `append`, `append-failed`, `server`, `off` or `no-sent-folder`.
   - A duplicate that was already saved stays on the server.
 - A message that is in both Inbox and Sent (for example one you sent to yourself) now shows up in both the Inbox and the Sent filters, and in "unread today".
 
@@ -132,7 +143,7 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 - **Tools and approvals**: a tool loop with an approval step; tools that need approval pause the run until you approve or reject them. ([#7](https://github.com/CodingLossy/AI-Personal/pull/7))
 - **Memory v1**: the assistant can `memory.save` (needs your approval) and `memory.search`; credentials are refused. List, search, edit, retract and delete memories over the API, the CLI and the Web UI. Long sessions are summarized with the cheap profile; the original messages are always kept. ([#7](https://github.com/CodingLossy/AI-Personal/pull/7))
 - **Storage**: a single SQLite database in the data directory with versioned migrations, a backup before each migration, and foreign keys enforced. ([#2](https://github.com/CodingLossy/AI-Personal/pull/2))
-- **Client SDK `@ai-personal/client`** (Apache-2.0, no runtime dependencies) and the **`ai-personal` CLI**: `setup`, `login`, `chat`, `ask`, `sessions`, `models`, `memory`, `approve`, `serve`. ([#8](https://github.com/CodingLossy/AI-Personal/pull/8))
+- **Client SDK `@fatcat-ai/client`** (Apache-2.0, no runtime dependencies) and the **`fatcat-ai` CLI**: `setup`, `login`, `chat`, `ask`, `sessions`, `models`, `memory`, `approve`, `serve`. ([#8](https://github.com/CodingLossy/AI-Personal/pull/8))
 - **Web UI**: setup and sign-in, session list, streamed Markdown chat that resumes after a page refresh, approve / reject buttons, settings (language zh-CN / en, light / dark / system theme, default profiles), model profile management and a memory page. ([#9](https://github.com/CodingLossy/AI-Personal/pull/9))
 - `GET` / `PUT /api/v1/settings`. ([#9](https://github.com/CodingLossy/AI-Personal/pull/9))
 - Real recorded DeepSeek fixtures for replay tests; keys are never written to fixtures, and CI scans them. ([#5](https://github.com/CodingLossy/AI-Personal/pull/5))
@@ -155,21 +166,30 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ## 中文摘要(未发布)
 
+### 改名为 FatCat-AI
+
+项目由 AI-Personal 改名为 FatCat-AI,仓库迁到 <https://github.com/CodingLossy/FatCat-AI>(ADR 0019)。
+
+- 包名改为 `@fatcat-ai/*`,命令改为 `fatcat-ai`,Docker 镜像改为 `fatcat-ai`;客户端 SDK 导出 `FatCatClient`、`FatCatApiError`、`FatCatNetworkError`。
+- 默认数据目录改为 `~/.fatcat-ai`。首次启动时服务器把已有的 `~/.ai-personal` 迁过去(重命名,跨盘时复制并校验);已有 `~/.fatcat-ai` 时不覆盖。Docker 仍用 `/data` 与 `ai-personal-data` 卷。
+- 环境变量前缀由 `AIP_` 改为 `FATCAT_AI_`(如 `FATCAT_AI_PORT`、`FATCAT_AI_DATA_DIR`、`FATCAT_AI_TOKEN`);旧名暂时仍可用,并打印弃用警告。
+- 有意不改:令牌前缀 `aip_pat_`、Cookie `aip_session` / `aip_csrf` 与响应头 `X-AIP-Server-Version`,现有令牌与 API v1 客户端不受影响。
+
 ### M3.x · 清理
 
-- **修复**:大量同步邮件后内存能回落了。以前同步 1 万封后服务器停在约 265 MiB 不下降;现在稳定在约 141–145 MiB,反复同步也不再上涨。原因是 V8 新生代涨到约 128 MiB 后不归还,以及 SQLite 页缓存 16 MiB 填满后一直占着。服务器现在用 `--max-semi-space-size=8` 限制新生代,SQLite 页缓存改为 4 MiB。Docker 镜像(`NODE_OPTIONS`)、`pnpm dev` 与 `pnpm --filter @ai-personal/server start` 都会自动带上这个参数,Windows 下也一样;只有自己直接运行 `node apps/server/dist/index.js` 时才需要手动加。
+- **修复**:大量同步邮件后内存能回落了。以前同步 1 万封后服务器停在约 265 MiB 不下降;现在稳定在约 141–145 MiB,反复同步也不再上涨。原因是 V8 新生代涨到约 128 MiB 后不归还,以及 SQLite 页缓存 16 MiB 填满后一直占着。服务器现在用 `--max-semi-space-size=8` 限制新生代,SQLite 页缓存改为 4 MiB。Docker 镜像(`NODE_OPTIONS`)、`pnpm dev` 与 `pnpm --filter @fatcat-ai/server start` 都会自动带上这个参数,Windows 下也一样;只有自己直接运行 `node apps/server/dist/index.js` 时才需要手动加。
 - 新增 `pnpm perf:mail-sync`:用本地假 IMAP 服务器与合成邮件测这项内存(Linux 与 Windows;先 `pnpm build` 后自己起服务器,或用 `ATTACH=<地址>` 测已在运行的服务器,如 `pnpm dev`)。上面的数字来自 Linux 主机上的这套合成环境,不是 Docker 容器。
 
 ### M3 · 邮件(2026-11-05)
 
 - **邮件账户**(ADR 0016):在「设置 → 邮件账户」添加 IMAP/SMTP 账户,有 QQ、163、Gmail 预设;密码(应用专用密码或授权码)只能用 `env:NAME` 或 `file:NAME` 引用,不存明文;只支持 TLS 与 STARTTLS,不支持 OAuth;「测试连接」分别检查 IMAP 与 SMTP 登录,不发信。
 - **同步**:默认每 5 分钟同步收件箱与已发送,首次只拉最近 30 天(`initialSyncDays`);已读状态与删除跟随服务器,读取正文一律用 `BODY.PEEK`,不会把邮件标为已读;登录后发送 IMAP `ID` 命令(163 需要);本地缓存邮件头、纯文本正文与附件索引,附件只在你要求时下载;同步在短时的子进程中进行,没有配置账户时空闲内存不变。
-- **邮件工具**:`mail.list`(含「今天未读」)、`mail.search`、`mail.read`、`mail.summarize`(只读,输出标为不可信)、`mail.draft`(只存本地草稿)与 `mail.send`(只发送已保存的草稿,每次都要你批准,不能预授权)。审批等待期间草稿被修改时,原审批作废。发出后「已发送」中的副本由服务器自动保存或由 AI-Personal APPEND(见下方「修复」)。
+- **邮件工具**:`mail.list`(含「今天未读」)、`mail.search`、`mail.read`、`mail.summarize`(只读,输出标为不可信)、`mail.draft`(只存本地草稿)与 `mail.send`(只发送已保存的草稿,每次都要你批准,不能预授权)。审批等待期间草稿被修改时,原审批作废。发出后「已发送」中的副本由服务器自动保存或由 FatCat-AI APPEND(见下方「修复」)。
 - **会话级污染**:会话中只要有工具返回过不可信内容(网页、文件或邮件),整个会话就一直视为被污染,重启后仍然有效。被污染的会话中条件预授权全部失效(`memory.write` 一定要审批);收件人既不是你在本会话中亲自输入的地址、也不是被回复邮件的发件人时,审批卡片会标红显示 `recipient_untrusted` 警告。
 - `pnpm eval` 增加 14 条邮件注入用例。
 - **知识地图与 Web 中的邮件**:知识地图显示「邮件 → 账户 → 文件夹 → 会话串 → 邮件」,正文不进条目搜索;新的「邮件」页可按账户与文件夹浏览、立即同步、查看纯文本正文,以及查看、修改、删除草稿;附件(`.md`、`.txt`、`.pdf`、`.docx`、`.xlsx`,不超过 20 MB)可「加入知识库」,与文件相同地做凭据检测后供 `kb.search` 检索,只保存分块;单封邮件上的「问 AI」新建一个从一开始就视为被污染的会话,预填的提示只含邮件 id。
 - 新增 `/mail` 下的端点:预设、账户(含文件夹、测试与同步)、邮件、问 AI、附件加入知识库与草稿。
-- **修复**:用 163 账户发信后「已发送」不再有两份。163(与 Gmail 一样)会由服务器自动保存经 SMTP 发出的邮件,AI-Personal 又 APPEND 了一份。账户新增「已发送」副本策略 `sentCopy`(ADR 0016 第 14 节):默认 `auto`,对 `imap.163.com` 与 `imap.gmail.com` 不 APPEND(交给服务器),其他主机(含自定义主机)APPEND;`append` / `off` 在任何主机上总是 / 从不 APPEND,`appendToSent` 设为 `true` / `false` 等同于它们,显式设置不会被主机覆盖。账户响应带 `sentCopy`,`appendToSent` 表示该账户发送后 AI-Personal 是否会 APPEND。`mail.send` 结果中的 `savedToSent` 只表示 AI-Personal 自己的 APPEND 成功,服务器自动保存的那一份不核实;新字段 `sentCopy` 说明这一次的处理(`append`、`append-failed`、`server`、`off`、`no-sent-folder`)。已经产生的重复不会自动删除。
+- **修复**:用 163 账户发信后「已发送」不再有两份。163(与 Gmail 一样)会由服务器自动保存经 SMTP 发出的邮件,FatCat-AI 又 APPEND 了一份。账户新增「已发送」副本策略 `sentCopy`(ADR 0016 第 14 节):默认 `auto`,对 `imap.163.com` 与 `imap.gmail.com` 不 APPEND(交给服务器),其他主机(含自定义主机)APPEND;`append` / `off` 在任何主机上总是 / 从不 APPEND,`appendToSent` 设为 `true` / `false` 等同于它们,显式设置不会被主机覆盖。账户响应带 `sentCopy`,`appendToSent` 表示该账户发送后 FatCat-AI 是否会 APPEND。`mail.send` 结果中的 `savedToSent` 只表示 FatCat-AI 自己的 APPEND 成功,服务器自动保存的那一份不核实;新字段 `sentCopy` 说明这一次的处理(`append`、`append-failed`、`server`、`off`、`no-sent-folder`)。已经产生的重复不会自动删除。
 - **升级**:旧账户分不清默认值与用户选择,`appendToSent: true` 记为 `auto`,`false` 记为 `off`;只有 163 / Gmail 上原为 `true` 的账户停止 APPEND,需要时把 `sentCopy` 设为 `append`。同时在收件箱与已发送中的邮件(例如发给自己的)现在在两边的筛选以及「今天未读」中都能看到。
 - 说明:「今天」按服务器时区(容器的 `TZ`)计算;用「总是允许」保存的预授权(如某目录的 `fs.write`)在被污染的会话中仍然有效,请谨慎设置;联系人与「人物」推迟到 M5,Gmail/Outlook OAuth、IDLE、HTML 富渲染、定时摘要、标为已读等写操作、其他文件夹与附件自动入库推迟;无邮件账户时 CI 中 Docker 镜像空闲内存为 110 MiB(门禁 120 MiB)。自检报告见 [docs/milestones/M3-self-check.md](docs/milestones/M3-self-check.md)。
 
@@ -233,7 +253,7 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 - **工具与审批**:需要审批的工具调用会暂停运行,等你批准或拒绝。
 - **记忆 v1**:助手可调用 `memory.save`(需批准)与 `memory.search`,凭据拒存;可通过 API、命令行和 Web UI 查看、搜索、编辑、撤回、删除记忆;长会话用廉价配置档压缩,原文始终保留。
 - **存储**:数据目录中的单个 SQLite 数据库,版本化迁移,迁移前自动备份,强制外键约束。
-- **客户端 SDK `@ai-personal/client`**(Apache-2.0,零运行时依赖)与 **`ai-personal` 命令行**。
+- **客户端 SDK `@fatcat-ai/client`**(Apache-2.0,零运行时依赖)与 **`fatcat-ai` 命令行**。
 - **Web UI**:初始化与登录、会话列表、流式 Markdown 聊天(刷新页面后续看)、批准 / 拒绝按钮、设置(中英文、深浅色、默认配置档)、模型配置档管理、记忆页。
 - 说明:1.0 只有一个主人账户;默认只监听 127.0.0.1;Docker 镜像空闲内存低于 120 MiB(CI 中为 95 MiB)。
 

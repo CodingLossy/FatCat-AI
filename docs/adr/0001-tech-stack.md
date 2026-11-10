@@ -6,7 +6,7 @@
 
 ## 背景
 
-AI-Personal 需要同时满足:可在 2GB 内存服务器常驻、桌面安装包轻量、插件生态覆盖面大、前后端类型共享,且主要由 AI 编码代理(Claude Code)开发。计划第 3 节比较了 TypeScript(Node)、Python、Java(Spring AI)三种方案。
+FatCat-AI 需要同时满足:可在 2GB 内存服务器常驻、桌面安装包轻量、插件生态覆盖面大、前后端类型共享,且主要由 AI 编码代理(Claude Code)开发。计划第 3 节比较了 TypeScript(Node)、Python、Java(Spring AI)三种方案。
 
 ## 决定
 
@@ -31,7 +31,7 @@ AI-Personal 需要同时满足:可在 2GB 内存服务器常驻、桌面安装�
 - **Prettier**:4 空格缩进、120 列、单引号、LF;JSON / YAML / Markdown 用 2 空格。
 - **包构建**:每个包用 `tsc` 输出到 `dist/`,`exports` 指向 `dist`;Turborepo 的 `build` / `typecheck` / `test` / `dev` 均依赖上游包先 `build`。
 - **server 开发模式**:`node --watch --import tsx src/index.ts`。`tsx watch` 在 turbo 的子进程中无法启动,已弃用。
-- **Docker**:`node:24-slim` 多阶段构建;build 阶段构建后执行 `pnpm install --prod --filter "@ai-personal/server..."` 只保留 server 的生产依赖(`pnpm deploy --legacy` 会跳过安装、产出空的 `node_modules`,已弃用)。运行时代码归 root 所有,以 `node` 用户运行,`--max-old-space-size=384`。
+- **Docker**:`node:24-slim` 多阶段构建;build 阶段构建后执行 `pnpm install --prod --filter "@fatcat-ai/server..."` 只保留 server 的生产依赖(`pnpm deploy --legacy` 会跳过安装、产出空的 `node_modules`,已弃用)。运行时代码归 root 所有,以 `node` 用户运行,`--max-old-space-size=384`。
 - **SQLite**(M1 起):每个连接打开后执行 `PRAGMA foreign_keys = ON`,使 ADR 0003 中的外键与 `ON DELETE CASCADE` 生效。
 - 核心默认只监听 `127.0.0.1:8787`,Docker 内监听 `0.0.0.0`,compose 只映射到宿主机 `127.0.0.1`。
 

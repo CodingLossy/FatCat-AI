@@ -2,8 +2,8 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { createRoute } from '@hono/zod-openapi';
-import { Settings, SettingsPatch } from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
+import { Settings, SettingsPatch } from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';

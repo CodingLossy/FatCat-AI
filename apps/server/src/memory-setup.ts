@@ -10,8 +10,8 @@ import {
     type DigestBuilder,
     type MemoryService,
     type Retriever,
-} from '@ai-personal/memory';
-import type { Repositories } from '@ai-personal/storage';
+} from '@fatcat-ai/memory';
+import type { Repositories } from '@fatcat-ai/storage';
 import type { EmbeddingService } from './embeddings.js';
 
 export interface MemoryStack {

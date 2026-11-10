@@ -2,8 +2,8 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { createRoute } from '@hono/zod-openapi';
-import { AuthStatus, LoginRequest, LoginResponse, Me, SetupRequest } from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
+import { AuthStatus, LoginRequest, LoginResponse, Me, SetupRequest } from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
 import type { Context } from 'hono';
 import { deleteCookie, setCookie } from 'hono/cookie';
 import { dummyPasswordHash, hashPassword, randomToken, safeEqual, sha256, verifyPassword } from '../auth/crypto.js';

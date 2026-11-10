@@ -1,18 +1,18 @@
 {
-  "name": "@ai-personal/storage",
+  "name": "@fatcat-ai/storage",
   "version": "0.0.0",
   "private": true,
   "description": "SQLite connection, migrations, backups, table definitions and repositories",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/packages/storage",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/storage",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
     "directory": "packages/storage"
   },
   "bugs": {
-    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
   },
   "type": "module",
   "exports": {
@@ -34,7 +34,7 @@
     "@types/better-sqlite3": "^9.6.0"
   },
   "dependencies": {
-    "@ai-personal/shared": "workspace:*",
+    "@fatcat-ai/shared": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "sqlite-vec": "0.1.9",
     "ulidx": "^2.4.1",

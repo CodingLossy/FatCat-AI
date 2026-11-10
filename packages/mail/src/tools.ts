@@ -12,9 +12,9 @@ import {
     type MailDraftAttachmentInfo,
     MailSendInput,
     type UntrustedContent,
-} from '@ai-personal/shared';
-import type { MailMessageRecord, Repositories } from '@ai-personal/storage';
-import { resolveInRoots, type ToolContext, type ToolDefinition } from '@ai-personal/tools';
+} from '@fatcat-ai/shared';
+import type { MailMessageRecord, Repositories } from '@fatcat-ai/storage';
+import { resolveInRoots, type ToolContext, type ToolDefinition } from '@fatcat-ai/tools';
 import { statSync } from 'node:fs';
 import { z } from 'zod';
 import type { MailJobRunner } from './run.js';
@@ -497,7 +497,7 @@ export function createMailTools(options: MailToolOptions): ToolDefinition[] {
                 messageId: result.messageId,
                 accepted: result.accepted,
                 rejected: result.rejected,
-                // 只表示 AI-Personal 自己 APPEND 成功;服务器自动保存的那一份不算,也不核实(ADR 0016 第 14 节)
+                // 只表示 FatCat-AI 自己 APPEND 成功;服务器自动保存的那一份不算,也不核实(ADR 0016 第 14 节)
                 savedToSent: result.appended,
                 sentCopy: sentCopy.action === 'append' && !result.appended ? 'append-failed' : sentCopy.action,
                 ...(result.appendError ? { saveToSentError: result.appendError } : {}),

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { Item, ItemContent } from '@ai-personal/shared';
-import type { ItemInput, Repositories } from '@ai-personal/storage';
+import type { Item, ItemContent } from '@fatcat-ai/shared';
+import type { ItemInput, Repositories } from '@fatcat-ai/storage';
 
 /** 同步时提供者能用的操作(ADR 0012 第 3 节);写入都经过 storage 的计数维护。 */
 export interface SyncContext {

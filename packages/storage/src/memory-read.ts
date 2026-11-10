@@ -3,7 +3,7 @@
 
 // 记忆检索与 digest 的读路径(《记忆模块补充设计》第 4 节;ADR 0007 第 5.6 节)。只读查询加上
 // access_count 批量更新与 memory_digest 缓存;融合、重排与渲染在 packages/memory 中。
-import type { Memory } from '@ai-personal/shared';
+import type { Memory } from '@fatcat-ai/shared';
 import type { Connection } from './db.js';
 
 /** 检索候选:重排与可信度说明需要的全部字段。 */

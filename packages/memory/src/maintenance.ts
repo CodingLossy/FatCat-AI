@@ -5,7 +5,7 @@
 // 单线程分批执行:每批 500 行一个事务,批之间让出事件循环;有对话进行中或 RSS 超过上限时推迟。
 // 状态存进 jobs_state(当天的游标与是否完成),中断后从游标继续,同一天重复运行不会重复处理。
 // 不调用模型、不启动额外服务。sleep(整理)推迟到 M6,hygiene / optimize 推迟(M2 方案第 7 节)。
-import type { MaintenanceRow, Repositories } from '@ai-personal/storage';
+import type { MaintenanceRow, Repositories } from '@fatcat-ai/storage';
 import { isProfileKey } from './entity-keys.js';
 
 const DAY_MS = 86_400_000;

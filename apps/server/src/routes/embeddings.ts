@@ -3,7 +3,7 @@
 
 // 嵌入与向量索引的状态和手动重建(ADR 0014)。
 import { createRoute } from '@hono/zod-openapi';
-import { EmbeddingRebuildResult, EmbeddingStatus } from '@ai-personal/shared';
+import { EmbeddingRebuildResult, EmbeddingStatus } from '@fatcat-ai/shared';
 import type { EmbeddingService } from '../embeddings.js';
 import { requireOwner } from '../auth/middleware.js';
 import { authErrors, json, router } from './common.js';

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { EventEnvelope } from '@ai-personal/shared';
-import { AipNetworkError } from './errors.js';
+import type { EventEnvelope } from '@fatcat-ai/shared';
+import { FatCatNetworkError } from './errors.js';
 import { parseSse } from './sse.js';
 import type { Transport } from './transport.js';
 
@@ -57,7 +57,7 @@ export class RunStream implements AsyncIterable<EventEnvelope> {
         this.lastSeq = known.afterSeq ?? 0;
     }
 
-    /** 请求取消运行;运行已结束时服务器返回 409(此处抛出 AipApiError)。 */
+    /** 请求取消运行;运行已结束时服务器返回 409(此处抛出 FatCatApiError)。 */
     async cancel(): Promise<void> {
         if (!this.runId) throw new Error('The run has not started yet');
         await this.transport.json(`/runs/${encodeURIComponent(this.runId)}/cancel`, { method: 'POST' });
@@ -83,7 +83,7 @@ export class RunStream implements AsyncIterable<EventEnvelope> {
             try {
                 const res = first ? await this.open() : this.runId ? await this.resume() : await this.open();
                 first = false;
-                if (!res.body) throw new AipNetworkError('Empty event stream');
+                if (!res.body) throw new FatCatNetworkError('Empty event stream');
                 for await (const message of parseSse(res.body)) {
                     if (message.event !== SSE_EVENT) continue;
                     const envelope = JSON.parse(message.data) as EventEnvelope;
@@ -99,12 +99,12 @@ export class RunStream implements AsyncIterable<EventEnvelope> {
                 first = false;
                 if (signal?.aborted) throw error;
                 // 服务器明确拒绝(4xx / 5xx problem)不重试,交给调用方
-                if (!(error instanceof AipNetworkError) && !(error instanceof TypeError)) throw error;
+                if (!(error instanceof FatCatNetworkError) && !(error instanceof TypeError)) throw error;
             }
             // 流在终止事件之前结束:续看
             attempt += 1;
             if (attempt > maxReconnects) {
-                throw new AipNetworkError(`The event stream ended early and ${maxReconnects} reconnects failed`);
+                throw new FatCatNetworkError(`The event stream ended early and ${maxReconnects} reconnects failed`);
             }
             await sleep(backoff(attempt), signal);
         }

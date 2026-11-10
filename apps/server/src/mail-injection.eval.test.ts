@@ -9,10 +9,10 @@
 // 正常用例(总结今天未读、按要求回复)确认防线不妨碍正常使用。
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ChatChunk, ChatRequest, ModelProvider } from '@ai-personal/providers';
-import { type AgentEvent, EventEnvelope, Session } from '@ai-personal/shared';
-import type { MailJob, MailJobRunner, SendOutput } from '@ai-personal/mail';
-import type { MailMessageSync } from '@ai-personal/storage';
+import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
+import { type AgentEvent, EventEnvelope, Session } from '@fatcat-ai/shared';
+import type { MailJob, MailJobRunner, SendOutput } from '@fatcat-ai/mail';
+import type { MailMessageSync } from '@fatcat-ai/storage';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 

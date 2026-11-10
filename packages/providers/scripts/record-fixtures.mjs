@@ -3,21 +3,21 @@
 
 // 对真实的 OpenAI 兼容端点录制 fixture(计划第 11 节「LLM 录制回放」)。
 // 用法(先 pnpm build):
-//   AIP_EVAL_BASE_URL=https://api.deepseek.com/v1 AIP_EVAL_MODEL=deepseek-chat AIP_EVAL_KEY_ENV=DEEPSEEK_API_KEY \
-//   AIP_EVAL_PREFIX=deepseek node packages/providers/scripts/record-fixtures.mjs
+//   FATCAT_AI_EVAL_BASE_URL=https://api.deepseek.com/v1 FATCAT_AI_EVAL_MODEL=deepseek-chat FATCAT_AI_EVAL_KEY_ENV=DEEPSEEK_API_KEY \
+//   FATCAT_AI_EVAL_PREFIX=deepseek node packages/providers/scripts/record-fixtures.mjs
 // 密钥只从环境变量读取;fixture 不含请求头,落盘前整体脱敏;本脚本只打印摘要,从不打印密钥或响应正文。
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRecordingFetch } from '@ai-personal/eval';
+import { createRecordingFetch } from '@fatcat-ai/eval';
 import { createProvider, Redactor, SecretStore } from '../dist/index.js';
 
-const baseURL = process.env.AIP_EVAL_BASE_URL;
-const model = process.env.AIP_EVAL_MODEL;
-const keyEnv = process.env.AIP_EVAL_KEY_ENV;
-const prefix = process.env.AIP_EVAL_PREFIX ?? 'recorded';
+const baseURL = process.env.FATCAT_AI_EVAL_BASE_URL;
+const model = process.env.FATCAT_AI_EVAL_MODEL;
+const keyEnv = process.env.FATCAT_AI_EVAL_KEY_ENV;
+const prefix = process.env.FATCAT_AI_EVAL_PREFIX ?? 'recorded';
 if (!baseURL || !model || !keyEnv) {
-    console.error('AIP_EVAL_BASE_URL, AIP_EVAL_MODEL and AIP_EVAL_KEY_ENV are required');
+    console.error('FATCAT_AI_EVAL_BASE_URL, FATCAT_AI_EVAL_MODEL and FATCAT_AI_EVAL_KEY_ENV are required');
     process.exit(2);
 }
 if (!process.env[keyEnv]) {
@@ -26,7 +26,7 @@ if (!process.env[keyEnv]) {
 }
 
 const FIXTURES = fileURLToPath(new URL('../test/fixtures/', import.meta.url));
-const INVALID_KEY_ENV = 'AIP_EVAL_INVALID_KEY';
+const INVALID_KEY_ENV = 'FATCAT_AI_EVAL_INVALID_KEY';
 process.env[INVALID_KEY_ENV] = 'sk-invalid-fixture-key-000000000000';
 
 const redactor = new Redactor();

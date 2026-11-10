@@ -19,3 +19,4 @@ export * from './sessions.js';
 export * from './settings.js';
 export * from './tools.js';
 export * from './ws.js';
+export * from './rename.js';

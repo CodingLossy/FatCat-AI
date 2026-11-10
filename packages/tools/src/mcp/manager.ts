@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // MCP 服务器管理(ADR 0013 第 3、4 节):连接已启用的服务器,把它们的工具作为一组注册进 ToolRegistry。
-import type { McpServer, McpServerStatus, ToolRisk, UntrustedContent } from '@ai-personal/shared';
+import type { McpServer, McpServerStatus, ToolRisk, UntrustedContent } from '@fatcat-ai/shared';
 import type { ToolRegistry } from '../registry.js';
 import type { ToolDefinition } from '../types.js';
 import { ToolDeniedError } from '../types.js';

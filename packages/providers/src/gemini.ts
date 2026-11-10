@@ -3,7 +3,7 @@
 
 // Gemini(Generative Language API)原生适配(ADR 0006 第 5 节):只用 fetch,不引入 SDK。
 // 流式:POST models/{model}:streamGenerateContent?alt=sse;密钥放 x-goog-api-key 头,不放 URL(URL 会进日志)。
-import type { ModelTestResult, Usage } from '@ai-personal/shared';
+import type { ModelTestResult, Usage } from '@fatcat-ai/shared';
 import type { NativeProviderOptions } from './anthropic.js';
 import {
     createHttp,

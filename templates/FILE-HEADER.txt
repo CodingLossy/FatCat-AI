@@ -20,7 +20,7 @@
 ## package.json
 "license": "AGPL-3.0-only",            // SDK packages: "Apache-2.0"
 "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-"repository": "github:CodingLossy/AI-Personal"
+"repository": "github:CodingLossy/FatCat-AI"
 
 ## Cargo.toml
 license = "AGPL-3.0-only"

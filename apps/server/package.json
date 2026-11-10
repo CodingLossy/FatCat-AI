@@ -1,18 +1,18 @@
 {
-  "name": "@ai-personal/server",
+  "name": "@fatcat-ai/server",
   "version": "0.0.0",
   "private": true,
-  "description": "AI-Personal headless core server",
+  "description": "FatCat-AI headless core server",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/apps/server",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/apps/server",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
     "directory": "apps/server"
   },
   "bugs": {
-    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -30,14 +30,14 @@
     "eval": "vitest run src/mail-injection.eval.test.ts --reporter=verbose --coverage.enabled=false"
   },
   "dependencies": {
-    "@ai-personal/agent": "workspace:*",
-    "@ai-personal/items": "workspace:*",
-    "@ai-personal/mail": "workspace:*",
-    "@ai-personal/memory": "workspace:*",
-    "@ai-personal/providers": "workspace:*",
-    "@ai-personal/shared": "workspace:*",
-    "@ai-personal/storage": "workspace:*",
-    "@ai-personal/tools": "workspace:*",
+    "@fatcat-ai/agent": "workspace:*",
+    "@fatcat-ai/items": "workspace:*",
+    "@fatcat-ai/mail": "workspace:*",
+    "@fatcat-ai/memory": "workspace:*",
+    "@fatcat-ai/providers": "workspace:*",
+    "@fatcat-ai/shared": "workspace:*",
+    "@fatcat-ai/storage": "workspace:*",
+    "@fatcat-ai/tools": "workspace:*",
     "@hono/node-server": "^2.1.6",
     "@hono/zod-openapi": "^1.6.3",
     "croner": "^11.0.0",
@@ -47,7 +47,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@ai-personal/eval": "workspace:*",
+    "@fatcat-ai/eval": "workspace:*",
     "@types/ws": "^8.18.2",
     "tsx": "^4.23.15"
   }

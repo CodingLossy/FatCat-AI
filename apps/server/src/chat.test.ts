@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ChatChunk, ChatRequest, ModelProvider } from '@ai-personal/providers';
-import { EventEnvelope, Message, ProblemDetails, Session } from '@ai-personal/shared';
+import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
+import { EventEnvelope, Message, ProblemDetails, Session } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 

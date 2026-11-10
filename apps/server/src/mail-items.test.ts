@@ -3,9 +3,9 @@
 
 // 邮件条目与附件入库(ADR 0016,M3 PR 4):知识地图可钻取到单封邮件并「问 AI」;附件进入知识库并能被检索到;
 // 删除账户后条目、缓存、草稿与附件的分块全部清理(属性测试)。
-import { Item, ItemContent, MailAskResult, MailAttachmentKbResult, pageOf } from '@ai-personal/shared';
-import type { MailJobRunner } from '@ai-personal/mail';
-import type { MailMessageSync } from '@ai-personal/storage';
+import { Item, ItemContent, MailAskResult, MailAttachmentKbResult, pageOf } from '@fatcat-ai/shared';
+import type { MailJobRunner } from '@fatcat-ai/mail';
+import type { MailMessageSync } from '@fatcat-ai/storage';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 

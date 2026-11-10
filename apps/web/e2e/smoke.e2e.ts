@@ -10,7 +10,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type Interaction, loadFixture } from '@ai-personal/eval';
+import { type Interaction, loadFixture } from '@fatcat-ai/eval';
 import { expect, test } from '@playwright/test';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -72,7 +72,7 @@ async function freePort(): Promise<number> {
 test.beforeAll(async () => {
     expect(existsSync(SERVER_ENTRY), 'build apps/server first').toBe(true);
     expect(existsSync(join(WEB_DIST, 'index.html')), 'build apps/web first').toBe(true);
-    dir = mkdtempSync(join(tmpdir(), 'aip-web-e2e-'));
+    dir = mkdtempSync(join(tmpdir(), 'fatcat-web-e2e-'));
     mock = await startMock();
     mockBase = `http://127.0.0.1:${(mock.address() as AddressInfo).port}/v1`;
     const port = await freePort();
@@ -81,11 +81,11 @@ test.beforeAll(async () => {
         env: {
             PATH: process.env.PATH,
             SystemRoot: process.env.SystemRoot,
-            AIP_PORT: String(port),
-            AIP_HOST: '127.0.0.1',
-            AIP_DATA_DIR: join(dir, 'data'),
-            AIP_WEB_DIR: WEB_DIST,
-            AIP_LOG_LEVEL: 'error',
+            FATCAT_AI_PORT: String(port),
+            FATCAT_AI_HOST: '127.0.0.1',
+            FATCAT_AI_DATA_DIR: join(dir, 'data'),
+            FATCAT_AI_WEB_DIR: WEB_DIST,
+            FATCAT_AI_LOG_LEVEL: 'error',
             DEEPSEEK_API_KEY: FAKE_KEY,
         },
         stdio: ['ignore', 'ignore', 'inherit'],

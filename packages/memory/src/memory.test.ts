@@ -4,7 +4,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createRepositories, openStorage, type Repositories } from '@ai-personal/storage';
+import { createRepositories, openStorage, type Repositories } from '@fatcat-ai/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { detectCredential } from './secrets.js';
 import { createMemoryService } from './service.js';
@@ -39,7 +39,7 @@ describe('MemoryService', () => {
     let ownerId: string;
 
     beforeEach(async () => {
-        dir = mkdtempSync(join(tmpdir(), 'aip-memory-'));
+        dir = mkdtempSync(join(tmpdir(), 'fatcat-memory-'));
         const { conn } = await openStorage({ dataDir: dir });
         close = () => conn.close();
         repos = createRepositories(conn);

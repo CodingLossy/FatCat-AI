@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { OpenAPIHono } from '@hono/zod-openapi';
-import { ProblemDetails } from '@ai-personal/shared';
+import { ProblemDetails } from '@fatcat-ai/shared';
 import type { AppEnv } from '../env.js';
 import { validationError } from '../errors.js';
 

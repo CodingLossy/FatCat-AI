@@ -31,7 +31,7 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - name: Install Playwright Chromium
-        run: pnpm --filter @ai-personal/web exec playwright install --with-deps chromium
+        run: pnpm --filter @fatcat-ai/web exec playwright install --with-deps chromium
       - name: Web UI smoke test (Playwright)
         run: pnpm test:e2e
       - name: Upload Playwright traces
@@ -42,7 +42,7 @@ jobs:
           path: apps/web/test-results
       - name: OpenAPI document is up to date
         run: |
-          pnpm --filter @ai-personal/server openapi:export
+          pnpm --filter @fatcat-ai/server openapi:export
           git diff --exit-code -- apps/server/openapi/v1.json
       - name: Upload OpenAPI document
         uses: actions/upload-artifact@v4
@@ -63,7 +63,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Tools tests (with coverage gate)
-        run: pnpm turbo run test --filter=@ai-personal/tools
+        run: pnpm turbo run test --filter=@fatcat-ai/tools
 
   openapi-compat:
     name: OpenAPI breaking changes
@@ -117,7 +117,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build image
         run: >
-          docker build -f docker/Dockerfile -t ai-personal:ci
+          docker build -f docker/Dockerfile -t fatcat-ai:ci
           --build-arg SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
           .
       - uses: actions/setup-node@v4
@@ -126,7 +126,7 @@ jobs:
       - name: Run and check /healthz, auth, data dir, user and idle memory
         run: |
           set -x
-          docker run -d --name aip -p 127.0.0.1:8787:8787 ai-personal:ci
+          docker run -d --name fatcat-ai -p 127.0.0.1:8787:8787 fatcat-ai:ci
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:8787/healthz && break
             sleep 1
@@ -136,27 +136,27 @@ jobs:
           STATUS="$(curl -fsS http://127.0.0.1:8787/api/v1/auth/status)"
           grep -q '"initialized":false' <<<"$STATUS"
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8787/api/v1/auth/me)" = "401"
-          docker exec aip test -f /data/db.sqlite
-          LOGS="$(docker logs aip 2>&1)"
+          docker exec fatcat-ai test -f /data/db.sqlite
+          LOGS="$(docker logs fatcat-ai 2>&1)"
           grep -q 'one-time setup code' <<<"$LOGS"
-          test "$(docker inspect -f '{{.Config.User}}' aip)" = "node"
+          test "$(docker inspect -f '{{.Config.User}}' fatcat-ai)" = "node"
           # 空闲内存:启动后 10 秒起采样 3 次(间隔 5 秒)取中位数,按 ADR 0018 规则 1、2 检查(250 MiB 上限、相对基线)
           sleep 10
           SAMPLES=""
           for i in 1 2 3; do
             if [ "$i" -gt 1 ]; then sleep 5; fi
-            SAMPLES="$SAMPLES $(docker exec aip sh -c 'grep VmRSS /proc/1/status' | awk '{print $2}')"
+            SAMPLES="$SAMPLES $(docker exec fatcat-ai sh -c 'grep VmRSS /proc/1/status' | awk '{print $2}')"
           done
           node scripts/perf/idle-budget.mjs $SAMPLES
       - name: Memory breakdown (informational)
         continue-on-error: true
         run: |
-          docker run --rm ai-personal:ci node --input-type=module -e "
+          docker run --rm fatcat-ai:ci node --input-type=module -e "
           const mb = () => Math.round(process.memoryUsage().rss / 1048576);
           const heap = () => Math.round(process.memoryUsage().heapUsed / 1048576);
           const row = (label) => console.log(label.padEnd(22), 'rss', String(mb()).padStart(4), 'MiB  heap', String(heap()).padStart(4), 'MiB');
           row('node baseline');
-          for (const m of ['/app/packages/storage/node_modules/better-sqlite3/lib/index.js', '@ai-personal/storage', 'pino', 'hono', '@hono/node-server', '@hono/zod-openapi', './dist/app.js']) {
+          for (const m of ['/app/packages/storage/node_modules/better-sqlite3/lib/index.js', '@fatcat-ai/storage', 'pino', 'hono', '@hono/node-server', '@hono/zod-openapi', './dist/app.js']) {
             await import(m);
             row('+ ' + m.replace(/^.*node_modules\//, '').replace('/lib/index.js', ''));
           }
@@ -170,8 +170,8 @@ jobs:
       - name: Show container status and logs
         if: failure()
         run: |
-          docker ps -a --filter name=aip
-          docker logs aip || true
+          docker ps -a --filter name=fatcat-ai
+          docker logs fatcat-ai || true
       - name: Remove container
         if: always()
-        run: docker rm -f aip || true
+        run: docker rm -f fatcat-ai || true

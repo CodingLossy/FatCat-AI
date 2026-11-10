@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { PreauthConstraintKind, ToolInfo } from '@ai-personal/shared';
+import type { PreauthConstraintKind, ToolInfo } from '@fatcat-ai/shared';
 import { defaultApproval, isEnabled, isPreauthorizable, type PolicyOptions } from './policy.js';
 import type { ToolDefinition } from './types.js';
 

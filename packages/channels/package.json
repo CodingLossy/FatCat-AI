@@ -1,18 +1,18 @@
 {
-  "name": "@ai-personal/channels",
+  "name": "@fatcat-ai/channels",
   "version": "0.0.0",
   "private": true,
   "description": "Channel adapters (1.0: WeCom, WeChat)",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/packages/channels",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/channels",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
     "directory": "packages/channels"
   },
   "bugs": {
-    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
   },
   "type": "module",
   "exports": {

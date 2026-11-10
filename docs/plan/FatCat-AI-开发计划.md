@@ -1,7 +1,8 @@
-# AI-Personal 开发计划 v7(交给 Claude Code 执行)
+# FatCat-AI 开发计划 v7(交给 Claude Code 执行)
 
+> 改名说明:项目已于 2026-11-10 由 AI-Personal 改名为 FatCat-AI,仓库迁到 <https://github.com/CodingLossy/FatCat-AI>(见 `docs/adr/0019-rename-fatcat-ai.md`);本文已按新名称更新。
 > 版本:v7 · 2026-11-10(M5 拆为 M5a/M5b/M5c、内存预算改为防退化、补 M3.x 清理,见第 18 节;v6 · 2026-11-03 并入《记忆模块补充设计》与 M1 实施决定,见 ADR 0004–0007)· 许可证:**AGPL-3.0-only + 商业许可(双许可 / dual licensing)**,详见第 15 节;业主已定决策汇总见第 16 节
-> 作者 / 版权持有人:**尹绪柏 (Theodore Yin)** · 仓库名:**AI-Personal** · 商业许可联系:x19169738916@163.com
+> 作者 / 版权持有人:**尹绪柏 (Theodore Yin)** · 仓库名:**FatCat-AI** · 商业许可联系:x19169738916@163.com
 > 范围:**框架优先**——先做无界面(headless)核心服务 + 稳定的 HTTP/WebSocket API + Web UI + IM 渠道;桌面应用与 iOS/Android 客户端属于后续阶段,但核心从第一天起就按「客户端可随时接入」来设计。
 > 本文件即开发总纲。请 Claude Code 先通读全文(首条启动提示词见第 17 节),再从「第 8 节 M0」开始逐个里程碑实施;每个里程碑结束时跑通验收清单再进入下一个。不确定的地方遵循第 13 节「给 Claude Code 的工作约定」。
 
@@ -182,7 +183,7 @@
 - **统一事件流**:Agent 每一步(文本增量、工具调用、待审批、错误)都作为事件写入 SQLite 并推送到订阅的客户端,渠道适配器同样消费这些事件 → 天然支持断线续传、多端同步。
 - **统一条目索引(Item Index)**:邮件、文件/小说、人物、视频数据等各来源的「条目提供者(ItemProvider)」把内容登记到同一张 `items` 表,层级关系写入 `item_edges` 表;知识地图、搜索、「问 AI」都基于它(见 6.2)。
 - **工具审批**:工具声明 `risk: read | write | external | dangerous`;`write/external/dangerous` 默认需要用户在任一已登录客户端确认(IM 渠道里回复「确认」或点击卡片)。
-- **数据目录**:`~/.ai-personal/`(桌面)或 `/data`(Docker):`config.yaml`、`db.sqlite`、`files/`、`logs/`、`plugins/`。API Key 存系统钥匙串(桌面,Tauri keyring 插件)或加密存储(服务器,主密钥来自环境变量)。
+- **数据目录**:`~/.fatcat-ai/`(桌面)或 `/data`(Docker):`config.yaml`、`db.sqlite`、`files/`、`logs/`、`plugins/`。API Key 存系统钥匙串(桌面,Tauri keyring 插件)或加密存储(服务器,主密钥来自环境变量)。
 
 ---
 
@@ -222,7 +223,7 @@ Web UI(以及以后的桌面/移动客户端)只是 API 客户端。除聊天、
 ## 5. 仓库结构
 
 ```
-AI-Personal/
+FatCat-AI/
 ├─ apps/
 │  ├─ server/        # 核心服务(Node)
 │  ├─ web/           # React Web UI(也被桌面和 PWA 复用)
@@ -288,16 +289,16 @@ export interface ItemProvider { id: string; /* 由内置模块或插件注册 */
 ```
 
 HTTP API(v1,全部需要鉴权,OpenAPI 自动生成):
-`POST /api/v1/sessions`、`POST /api/v1/sessions/:id/messages`(SSE 返回 AgentEvent)、`POST /api/v1/approvals/:callId`、`GET/PUT /api/v1/settings`、`/api/v1/models`、`/api/v1/memory`、`/api/v1/files`、`/api/v1/tasks`、`/api/v1/plugins`、`/api/v1/items`(知识地图,见 6.2)。另提供 **OpenAI 兼容的 `/v1/chat/completions`**(可选开启),让其他工具把 AI-Personal 当模型端点用。
+`POST /api/v1/sessions`、`POST /api/v1/sessions/:id/messages`(SSE 返回 AgentEvent)、`POST /api/v1/approvals/:callId`、`GET/PUT /api/v1/settings`、`/api/v1/models`、`/api/v1/memory`、`/api/v1/files`、`/api/v1/tasks`、`/api/v1/plugins`、`/api/v1/items`(知识地图,见 6.2)。另提供 **OpenAI 兼容的 `/v1/chat/completions`**(可选开启),让其他工具把 FatCat-AI 当模型端点用。
 
 ---
 
 ### 6.1 Headless 核心与客户端 API(为桌面/移动预留)
 
-core 必须能在**没有任何 UI** 的情况下完整运行(`ai-personal serve`),所有能力都通过下列公开接口提供。Web UI 也只能用这些接口(禁止走内部捷径),以此保证未来的桌面/iOS/Android 客户端零改动接入。
+core 必须能在**没有任何 UI** 的情况下完整运行(`fatcat-ai serve`),所有能力都通过下列公开接口提供。Web UI 也只能用这些接口(禁止走内部捷径),以此保证未来的桌面/iOS/Android 客户端零改动接入。
 
 - **版本化**:REST 统一前缀 `/api/v1`;WebSocket `GET /api/v1/ws`,握手时协商 `protocolVersion`;响应头带 `X-AIP-Server-Version`;`GET /api/v1/meta` 返回服务器版本、协议版本、已启用能力(capabilities 列表,如 `voice`、`email`、`tasks`),客户端按能力渐进显示功能。
-- **契约优先**:zod schema → 自动生成 OpenAPI 3.1 文档(`/api/v1/openapi.json`)与 WebSocket 消息 JSON Schema;发布 `@ai-personal/client`(TS SDK),移动端可据 OpenAPI 生成 Swift/Kotlin 客户端。契约变更需在 CI 中通过「破坏性变更检测」(oasdiff)。
+- **契约优先**:zod schema → 自动生成 OpenAPI 3.1 文档(`/api/v1/openapi.json`)与 WebSocket 消息 JSON Schema;发布 `@fatcat-ai/client`(TS SDK),移动端可据 OpenAPI 生成 Swift/Kotlin 客户端。契约变更需在 CI 中通过「破坏性变更检测」(oasdiff)。
 - **WebSocket 协议**:JSON 帧 `{v:1, type, id, seq, payload}`;服务器推送 AgentEvent、`assistant-state`(语音/代理状态,见 4.1)、审批请求、任务通知、会话同步;每条事件有单调递增 `seq`,客户端断线重连时带 `lastSeq` 拉取遗漏事件(事件已持久化在 SQLite);心跳 ping/pong 30s;同一账号多端同时在线,审批在任一端完成即同步到其他端。
 - **移动端友好**:REST 分页统一用游标;附件走分片/断点续传上传(`/api/v1/uploads`);语音上传支持 `audio/webm`、`audio/mp4`(iOS)、`audio/ogg`;推送通知抽象为 `NotificationSink`(Web Push 先行,APNs/FCM 作为后续插件,通过可选的自建推送中继,不经第三方统计服务)。
 - **鉴权**:设备配对流程(服务器生成一次性配对码/二维码 → 客户端换取设备令牌,`/api/v1/devices` 可查看/吊销);令牌为短期 access + 可轮换 refresh;支持 OAuth 2.1 设备授权式流程作为后续扩展。
@@ -354,7 +355,7 @@ CREATE INDEX idx_items_type ON items(owner_id, type, updated_at);
 | `POST /api/v1/items/:id/ask` | 「问 AI」:以该条目(或 `scope: 'subtree'` 时整个子树摘要)为上下文创建会话,返回 `sessionId`;之后按普通会话 API(SSE)对话 |
 
 - **Agent 工具**(risk=read):`items.roots`、`items.children`、`items.get`、`items.search`、`items.open`——让模型也能「沿地图找资料」;`items.open` 返回的内容一律标记为不可信外部内容(第 7 节)。
-- **插件扩展**:`@ai-personal/plugin-sdk` 提供 `registerItemProvider()`(M7);1.0 内置提供者:`files`、`mail`、`novels`(文件夹规则)、`characters`(从知识库/记忆抽取,可手动编辑)、`sessions`。
+- **插件扩展**:`@fatcat-ai/plugin-sdk` 提供 `registerItemProvider()`(M7);1.0 内置提供者:`files`、`mail`、`novels`(文件夹规则)、`characters`(从知识库/记忆抽取,可手动编辑)、`sessions`。
 - **测试**:树一致性属性测试(随机增删后 `descendant_count` 与递归计算一致、无环)、分页稳定性、权限(无权访问的路径不出现在 children 中)、10 万条目下 `children`/`ancestors`/`counts` P95 < 50ms(2GB 机器)。
 
 ## 7. 安全模型
@@ -469,7 +470,7 @@ CREATE INDEX idx_items_type ON items(owner_id, type, updated_at);
 - **验收**:任务在重启后持久;时区正确(用户时区可配);推送到渠道成功;无人值守任务中的高风险工具仍按策略审批(可设置「预授权」白名单)。
 
 ### M7 · 插件系统与插件市场(约 2–3 周)
-- 插件形式:① MCP Server(任意语言,首选);② 原生 TS 插件(`@ai-personal/plugin-sdk`,Apache-2.0:注册工具、渠道、**知识地图条目提供者 `registerItemProvider`**(如「视频数据」)、设置页 UI 片段、定时任务模板)。
+- 插件形式:① MCP Server(任意语言,首选);② 原生 TS 插件(`@fatcat-ai/plugin-sdk`,Apache-2.0:注册工具、渠道、**知识地图条目提供者 `registerItemProvider`**(如「视频数据」)、设置页 UI 片段、定时任务模板)。
 - 清单 `plugin.json`:名称、版本、权限声明、入口、i18n 文案、最低核心版本。
 - 安装来源:npm 包、Git 仓库、本地目录;市场 = 一个公开的 GitHub 索引仓库(JSON 索引 + PR 审核),客户端从中浏览/搜索/安装。
 - 安全:安装时展示权限;原生插件运行在独立进程(子进程/worker + 受限 API),不直接拿到密钥;索引条目附校验和,可选 sigstore 签名。
@@ -492,7 +493,7 @@ CREATE INDEX idx_items_type ON items(owner_id, type, updated_at);
 ### M10 · 桌面应用 + 知识地图粒子球导航(约 3 周)
 - 前置条件:API v1 已冻结,6.2 节条目数据结构经 1.0 实际使用后稳定(如有调整先写 ADR);桌面只是 6.1 节 API 的一个客户端 + 可选内嵌核心。
 - Tauri v2 壳加载 `apps/web` 构建产物;核心以 sidecar 启动(Node SEA 产物;备选:附带 node 二进制 + bundle.mjs),壳负责进程守护、端口协商、随机令牌注入。
-- 原生能力:系统托盘、全局快捷键唤起「快速提问」小窗、开机自启、系统通知、文件拖拽、深链接 `aipersonal://`、API Key 存系统钥匙串。
+- 原生能力:系统托盘、全局快捷键唤起「快速提问」小窗、开机自启、系统通知、文件拖拽、深链接 `fatcat-ai://`、API Key 存系统钥匙串。
 - **知识地图粒子球导航 `KnowledgeSphere`(见 4.1.1)**:顶层类别簇 → 点击展开子类别 → 递归至内容条目(打开 / 问 AI);面包屑、返回、键盘导航、与树形视图一键切换;仅用 `/api/v1/items/*` REST,`subtree?depth=2` 预取;Web UI 同步获得该组件(桌面优先打磨)。
 - **记忆与会话可视化(见《记忆模块补充设计》第 7、9 节)**:粒子球中的记忆簇按类型着色、亮度表示置信度与分层、冲突描边;会话地图 2D 画布(fork 关系、点击定位到消息、与知识地图互跳)。
 - 安装包:Windows(MSI/NSIS)、macOS(dmg)、Linux(AppImage/deb/rpm)。**暂不购买付费代码签名**:不做 Apple Developer ID 签名/公证、不买 Windows 代码签名证书;macOS 用 ad-hoc 签名,文档说明首次打开需「右键 → 打开」或 `xattr -dr com.apple.quarantine`,Windows 说明 SmartScreen「仍要运行」;发布页提供 SHA-256 校验和 + cosign 签名供核验。Tauri updater 自动更新照常使用(其更新签名免费,与系统代码签名无关,更新源为 GitHub Releases)。将来有需要再评估购买证书(写 ADR)。
@@ -546,7 +547,7 @@ CREATE INDEX idx_items_type ON items(owner_id, type, updated_at);
 
 ## 12. 部署与资源预算(2GB 服务器)
 
-- `docker compose`:`ai-personal`(单容器)+ 可选 `caddy`。不引入 Postgres/Redis/向量库等额外服务(SQLite + sqlite-vec 足够个人规模)。
+- `docker compose`:`fatcat-ai`(单容器)+ 可选 `caddy`。不引入 Postgres/Redis/向量库等额外服务(SQLite + sqlite-vec 足够个人规模)。
 - 资源预算(业主 2026-11-10 改为防退化,不再卡死固定数字;细节见 ADR 0018;M3.x 起生效,CI 中固定的 120 MiB 门禁已删除):
   - 服务端空闲上限 **250 MiB**(不配置渠道时);每开一个渠道另定增量上限,在 M5a 实测微信长轮询的开销后再定;
   - 长时间运行和万封同步后,内存要能回落,不能持续上涨;
@@ -611,7 +612,7 @@ CREATE INDEX idx_items_type ON items(owner_id, type, updated_at);
    - **仅用 DCO 不够**:DCO 只证明贡献者有权按项目许可(AGPL)提交,并不授予作者以商业许可再许可的权利。因此本项目不采用 DCO 方案,**所有外部贡献者必须签 CLA**,CLA 授予尹绪柏 (Theodore Yin) 以商业许可再许可的权利。
 2. **第三方依赖只用宽松许可**:MIT/BSD/ISC/Apache-2.0/0BSD/Unlicense/MPL-2.0(未修改的库)。禁止 GPL/LGPL/AGPL/SSPL 等第三方 copyleft 代码进入核心,否则商业版无法合法发布。CI 用 license-checker 白名单强制。
 3. **不复制来源不明的代码**(包括未注明许可的网上片段);由 AI 生成的代码按项目许可提交,PR 中声明。
-4. **商标**:「AI-Personal」名称与 Logo 不随 AGPL 授权;在 TRADEMARKS.md 中说明 fork 需改名,防止他人以同名提供商业服务。
+4. **商标**:「FatCat-AI」名称与 Logo 不随 AGPL 授权;在 TRADEMARKS.md 中说明 fork 需改名,防止他人以同名提供商业服务。
 
 ### 15.3 SPDX 头(所有源文件)
 ```ts
@@ -639,44 +640,44 @@ SDK 包(`packages/plugin-sdk`、`packages/client`、`packages/shared`):
 ```md
 ## 许可证
 
-AI-Personal 采用双许可:
+FatCat-AI 采用双许可:
 
 - **开源版**:[GNU AGPL-3.0](LICENSE)(`AGPL-3.0-only`)。你可以自由使用、修改和分发,包括商业用途,但如果你分发修改版或**通过网络向他人提供修改版服务**,必须以 AGPL-3.0 公开相应的完整源代码。
-- **商业许可**:如果你希望在闭源产品或服务中使用、内嵌或修改 AI-Personal 而不承担 AGPL 的开源义务,请参阅 [COMMERCIAL.md](COMMERCIAL.md) 联系作者获取商业许可。
+- **商业许可**:如果你希望在闭源产品或服务中使用、内嵌或修改 FatCat-AI 而不承担 AGPL 的开源义务,请参阅 [COMMERCIAL.md](COMMERCIAL.md) 联系作者获取商业许可。
 
-插件 SDK(`@ai-personal/plugin-sdk`)与客户端 SDK(`@ai-personal/client`)以 [Apache-2.0](packages/plugin-sdk/LICENSE) 发布。
+插件 SDK(`@fatcat-ai/plugin-sdk`)与客户端 SDK(`@fatcat-ai/client`)以 [Apache-2.0](packages/plugin-sdk/LICENSE) 发布。
 
-贡献代码前需签署 [CLA](CLA.md)(PR 中会自动提示)。「AI-Personal」名称与 Logo 为作者商标,见 [TRADEMARKS.md](TRADEMARKS.md)。商业许可联系:x19169738916@163.com。
+贡献代码前需签署 [CLA](CLA.md)(PR 中会自动提示)。「FatCat-AI」名称与 Logo 为作者商标,见 [TRADEMARKS.md](TRADEMARKS.md)。商业许可联系:x19169738916@163.com。
 
 Copyright (C) 2026 尹绪柏 (Theodore Yin)
 ```
 ```md
 ## License
 
-AI-Personal is dual-licensed:
+FatCat-AI is dual-licensed:
 
 - **Open source**: [GNU AGPL-3.0](LICENSE) (`AGPL-3.0-only`). You may use, modify and distribute it, including commercially, but if you distribute a modified version or **make a modified version available to users over a network**, you must release the complete corresponding source under the AGPL-3.0.
-- **Commercial license**: to use, embed or modify AI-Personal in closed-source products or services without AGPL obligations, see [COMMERCIAL.md](COMMERCIAL.md).
+- **Commercial license**: to use, embed or modify FatCat-AI in closed-source products or services without AGPL obligations, see [COMMERCIAL.md](COMMERCIAL.md).
 
-The plugin SDK (`@ai-personal/plugin-sdk`) and client SDK (`@ai-personal/client`) are released under [Apache-2.0](packages/plugin-sdk/LICENSE).
+The plugin SDK (`@fatcat-ai/plugin-sdk`) and client SDK (`@fatcat-ai/client`) are released under [Apache-2.0](packages/plugin-sdk/LICENSE).
 
-Contributions require signing the [CLA](CLA.md) (prompted automatically on your PR). The "AI-Personal" name and logo are trademarks of the author; see [TRADEMARKS.md](TRADEMARKS.md). Commercial licensing: x19169738916@163.com.
+Contributions require signing the [CLA](CLA.md) (prompted automatically on your PR). The "FatCat-AI" name and logo are trademarks of the author; see [TRADEMARKS.md](TRADEMARKS.md). Commercial licensing: x19169738916@163.com.
 
 Copyright (C) 2026 尹绪柏 (Theodore Yin)
 ```
 
 ### 15.7 COMMERCIAL.md 模板(已填写,同 `templates/COMMERCIAL.md`)
 ```md
-# AI-Personal 商业许可 / Commercial License
+# FatCat-AI 商业许可 / Commercial License
 
-AI-Personal 社区版以 GNU AGPL-3.0-only 发布。如果你的使用方式无法或不愿遵守 AGPL-3.0,
+FatCat-AI 社区版以 GNU AGPL-3.0-only 发布。如果你的使用方式无法或不愿遵守 AGPL-3.0,
 可以向版权持有人购买商业许可。
 
 ## 什么时候需要商业许可?
-- 将 AI-Personal(或其修改版)内嵌到**闭源**软件、硬件或 App 中分发;
+- 将 FatCat-AI(或其修改版)内嵌到**闭源**软件、硬件或 App 中分发;
 - 以 SaaS / 托管服务形式向第三方提供**修改版**,且不希望公开修改后的源码;
 - 公司政策不允许使用 AGPL 软件;
-- 需要商业支持、SLA、定制开发或品牌授权(使用「AI-Personal」名称)。
+- 需要商业支持、SLA、定制开发或品牌授权(使用「FatCat-AI」名称)。
 
 不需要商业许可的情况:个人或公司内部使用未修改版本,或遵守 AGPL-3.0(公开修改源码)的任何使用,包括商业用途。
 
@@ -687,14 +688,14 @@ AI-Personal 社区版以 GNU AGPL-3.0-only 发布。如果你的使用方式无�
 - 专利与责任条款按合同约定。
 
 ## 如何申请
-请发送邮件至 **x19169738916@163.com**,标题「AI-Personal Commercial License」,并提供:
+请发送邮件至 **x19169738916@163.com**,标题「FatCat-AI Commercial License」,并提供:
 1. 公司/个人名称、国家/地区、联系人;
 2. 使用场景(内嵌产品 / SaaS / 内部系统等)与预计规模(用户数、部署数);
 3. 是否修改源码、是否需要支持服务;
 4. 期望的授权期限与开始时间。
 
 我们一般会在 5 个工作日内回复报价与协议草案。商业许可以双方签署的书面协议为准;
-在签署之前,你对 AI-Personal 的使用仍受 AGPL-3.0 约束。
+在签署之前,你对 FatCat-AI 的使用仍受 AGPL-3.0 约束。
 
 Copyright (C) 2026 尹绪柏 (Theodore Yin). All rights reserved for commercial licensing.
 ```
@@ -736,7 +737,7 @@ Copyright (C) 2026 尹绪柏 (Theodore Yin). All rights reserved for commercial 
 | 3 | 1.0 渠道 | **只做企业微信 + 微信**(iLink/ClawBot);**QQ 之后再做**(1.x 优先 / M12) | 2、8 M5、9 M12 |
 | 4 | 用户模型 | **1.0 仅单用户**(一个主人账户);**多用户移到 2.0**(M12),表结构预留 `ownerId` | 1.3、6.1、8 M1、9 M12 |
 | 5 | 代码签名 | **暂不购买** macOS(Apple Developer ID/公证)与 Windows 付费代码签名;用校验和 + cosign + 安装说明替代;Tauri updater 签名照常 | 9 M10、14 |
-| 6 | 仓库名 | **AI-Personal**(`github.com/<owner>/AI-Personal`);npm scope `@ai-personal/*` | 5 |
+| 6 | 仓库名 | **FatCat-AI**(`github.com/<owner>/FatCat-AI`);npm scope `@fatcat-ai/*` | 5 |
 | 7 | 作者 / 版权 | **尹绪柏 (Theodore Yin)**;统一写 `Copyright (C) 2026 尹绪柏 (Theodore Yin)`(NOTICE、README、COMMERCIAL.md、CLA、package.json `author`、文件头) | 13、15 |
 | 8 | 商业许可联系邮箱 | **x19169738916@163.com**(同时用于 SECURITY.md 漏洞报告与 CLA 联系) | 15.6–15.9 |
 | 9 | 新功能:知识地图 | 粒子球兼作**钻取式层级导航**:粒子 = 顶层类别(邮件、小说、人物、视频数据……),点击展开子类别,递归到最深内容条目(打开或问 AI)。数据层 = 统一条目表 `items` + 父子关系表 `item_edges` + 纯 REST 查询 API(`children`/`ancestors`/`counts`/`subtree` 等)。**v1.0 交付列表/树形分类浏览器**(同一 API);**粒子球导航在 M10(桌面)实现**,待数据结构稳定后 | 2、4.1.1、6.2、8 M2/M3/M5、9 M10 |
@@ -747,15 +748,15 @@ Copyright (C) 2026 尹绪柏 (Theodore Yin). All rights reserved for commercial 
 
 ## 17. 交给 Claude Code 的首条提示词
 
-> 业主在空目录(或新建的 `AI-Personal` 仓库)中启动 Claude Code 后,原样粘贴以下内容。
+> 业主在空目录(或新建的 `FatCat-AI` 仓库)中启动 Claude Code 后,原样粘贴以下内容。
 
 ```text
-你是 AI-Personal 项目的主力开发者。项目作者/版权持有人:尹绪柏 (Theodore Yin),联系邮箱 x19169738916@163.com。
+你是 FatCat-AI 项目的主力开发者。项目作者/版权持有人:尹绪柏 (Theodore Yin),联系邮箱 x19169738916@163.com。
 
-1. 先完整阅读 docs/plan/AI-Personal-开发计划.md(本计划,请先把它复制到该路径),尤其是第 6.2 节(知识地图数据模型)、第 13 节(工作约定)、第 15 节(许可证)和第 16 节(已定决策)。第 16 节的决策不得自行更改:
+1. 先完整阅读 docs/plan/FatCat-AI-开发计划.md(本计划,请先把它复制到该路径),尤其是第 6.2 节(知识地图数据模型)、第 13 节(工作约定)、第 15 节(许可证)和第 16 节(已定决策)。第 16 节的决策不得自行更改:
    - 许可证 AGPL-3.0-only + 商业许可,外部贡献需 CLA;plugin-sdk、client、shared 三个包为 Apache-2.0;
    - 1.0 只做企业微信 + 微信渠道(QQ 以后);1.0 仅单用户(表结构预留 ownerId);
-   - 不做付费 macOS/Windows 代码签名;仓库名 AI-Personal;
+   - 不做付费 macOS/Windows 代码签名;仓库名 FatCat-AI;
    - 知识地图:1.0 交付基于 /api/v1/items 的列表/树形分类浏览器,粒子球钻取导航放到 M10。
 2. 执行 M0(第 8 节):
    - pnpm + Turborepo 单仓,按第 5 节目录建 apps/ 与 packages/(含 packages/items 空包);TS strict、ESLint flat、Prettier、Vitest;

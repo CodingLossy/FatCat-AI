@@ -9,7 +9,7 @@ import type {
     MailAddress,
     MailFolder,
     MailSentCopy,
-} from '@ai-personal/shared';
+} from '@fatcat-ai/shared';
 import type { Connection } from './db.js';
 import { newId } from './ids.js';
 

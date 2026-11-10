@@ -13,8 +13,8 @@ import {
     type MemoryFeedbackInput,
     MemoryFeedbackInput as MemoryFeedbackInputSchema,
     type MemoryFeedbackResult,
-} from '@ai-personal/shared';
-import type { QuarantineReason, Repositories } from '@ai-personal/storage';
+} from '@fatcat-ai/shared';
+import type { QuarantineReason, Repositories } from '@fatcat-ai/storage';
 import { isProfileKey, normalizeEntityKey } from './entity-keys.js';
 import { looksLikeInstruction } from './instructions.js';
 import { detectCredential, detectCredentialIn } from './secrets.js';

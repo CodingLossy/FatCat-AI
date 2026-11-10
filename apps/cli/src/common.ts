@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { type AipClient, createClient } from '@ai-personal/client';
+import { type FatCatClient, createClient } from '@fatcat-ai/client';
 import { resolveConfig, type ResolvedConfig } from './config.js';
 import { type Ctx, UsageError } from './io.js';
 
@@ -23,7 +23,7 @@ export function parse<O extends Options>(args: string[], options: O) {
 }
 
 export interface Connection {
-    client: AipClient;
+    client: FatCatClient;
     config: ResolvedConfig;
 }
 
@@ -31,18 +31,18 @@ export interface Connection {
 export function connect(ctx: Ctx, server: string | undefined, requireToken = true): Connection {
     const config = resolveConfig(ctx.env, { server });
     if (requireToken && !config.token) {
-        throw new UsageError(`Not signed in to ${config.server}. Run "ai-personal login" or set AIP_TOKEN.`);
+        throw new UsageError(`Not signed in to ${config.server}. Run "fatcat-ai login" or set FATCAT_AI_TOKEN.`);
     }
     const client = createClient({ baseUrl: config.server, token: requireToken ? config.token : undefined });
     return { client, config };
 }
 
 /** 按 id 或 label 找模型配置档。 */
-export async function resolveModelId(client: AipClient, ref: string | undefined): Promise<string | undefined> {
+export async function resolveModelId(client: FatCatClient, ref: string | undefined): Promise<string | undefined> {
     if (!ref) return undefined;
     const { items } = await client.models.list();
     const match = items.find((m) => m.id === ref) ?? items.find((m) => m.label === ref);
-    if (!match) throw new UsageError(`Unknown model profile: ${ref} (see "ai-personal models list")`);
+    if (!match) throw new UsageError(`Unknown model profile: ${ref} (see "fatcat-ai models list")`);
     return match.id;
 }
 

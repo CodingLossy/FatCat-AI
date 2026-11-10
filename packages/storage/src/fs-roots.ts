@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { FsRoot } from '@ai-personal/shared';
+import type { FsRoot } from '@fatcat-ai/shared';
 import type { Connection } from './db.js';
 import { newId } from './ids.js';
 

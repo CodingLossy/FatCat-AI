@@ -10,7 +10,7 @@ import {
     type MemoryCandidate,
     openStorage,
     type Repositories,
-} from '@ai-personal/storage';
+} from '@fatcat-ai/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createMemoryContext } from './context.js';
 import { createDigestBuilder } from './digest.js';
@@ -71,7 +71,7 @@ describe('retrieve 与 digest', () => {
     let ownerId: string;
 
     beforeEach(async () => {
-        dir = mkdtempSync(join(tmpdir(), 'aip-memory-retrieve-'));
+        dir = mkdtempSync(join(tmpdir(), 'fatcat-memory-retrieve-'));
         ({ conn } = await openStorage({ dataDir: dir }));
         repos = createRepositories(conn);
         memory = createMemoryService(repos);

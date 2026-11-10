@@ -1,18 +1,18 @@
 {
-  "name": "@ai-personal/items",
+  "name": "@fatcat-ai/items",
   "version": "0.0.0",
   "private": true,
   "description": "Unified item index (knowledge map data layer)",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/packages/items",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/items",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
     "directory": "packages/items"
   },
   "bugs": {
-    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
   },
   "type": "module",
   "exports": {
@@ -31,10 +31,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-personal/memory": "workspace:*",
-    "@ai-personal/shared": "workspace:*",
-    "@ai-personal/storage": "workspace:*",
-    "@ai-personal/tools": "workspace:*",
+    "@fatcat-ai/memory": "workspace:*",
+    "@fatcat-ai/shared": "workspace:*",
+    "@fatcat-ai/storage": "workspace:*",
+    "@fatcat-ai/tools": "workspace:*",
     "zod": "^4.6.7"
   }
 }

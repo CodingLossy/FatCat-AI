@@ -10,8 +10,8 @@ import {
     type MemoryRetrieveResult,
     type RetrievedMemory,
     type TrustQualifier,
-} from '@ai-personal/shared';
-import type { MemoryCandidate, Repositories } from '@ai-personal/storage';
+} from '@fatcat-ai/shared';
+import type { MemoryCandidate, Repositories } from '@fatcat-ai/storage';
 import { detectCredential } from './secrets.js';
 import { redactSensitive } from './sensitive.js';
 import { estimateTokens, truncateToTokens } from './tokens.js';

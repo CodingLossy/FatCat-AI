@@ -15,9 +15,9 @@ describe('loadConfig', () => {
         expect(loadConfig({})).toEqual({
             host: '127.0.0.1',
             port: 8787,
-            sourceUrl: 'https://github.com/CodingLossy/AI-Personal',
+            sourceUrl: 'https://github.com/CodingLossy/FatCat-AI',
             webDir: null,
-            dataDir: join(homedir(), '.ai-personal'),
+            dataDir: join(homedir(), '.fatcat-ai'),
             cookieSecure: 'auto',
             setupCode: null,
             logLevel: 'info',
@@ -26,10 +26,10 @@ describe('loadConfig', () => {
 
     it('可用环境变量覆盖', () => {
         const c = loadConfig({
-            AIP_SOURCE_URL: 'https://example.com/fork',
-            AIP_DATA_DIR: '/data',
-            AIP_COOKIE_SECURE: 'always',
-            AIP_SETUP_CODE: 'abcdefgh',
+            FATCAT_AI_SOURCE_URL: 'https://example.com/fork',
+            FATCAT_AI_DATA_DIR: '/data',
+            FATCAT_AI_COOKIE_SECURE: 'always',
+            FATCAT_AI_SETUP_CODE: 'abcdefgh',
         });
         expect(c).toMatchObject({
             sourceUrl: 'https://example.com/fork',
@@ -40,9 +40,9 @@ describe('loadConfig', () => {
     });
 
     it('拒绝非法取值', () => {
-        expect(() => loadConfig({ AIP_PORT: '70000' })).toThrow();
-        expect(() => loadConfig({ AIP_COOKIE_SECURE: 'maybe' })).toThrow();
-        expect(() => loadConfig({ AIP_SETUP_CODE: 'short' })).toThrow();
+        expect(() => loadConfig({ FATCAT_AI_PORT: '70000' })).toThrow();
+        expect(() => loadConfig({ FATCAT_AI_COOKIE_SECURE: 'maybe' })).toThrow();
+        expect(() => loadConfig({ FATCAT_AI_SETUP_CODE: 'short' })).toThrow();
     });
 });
 

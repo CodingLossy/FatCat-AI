@@ -2,18 +2,20 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { readFileSync } from 'node:fs';
-import { AipApiError, AipNetworkError } from '@ai-personal/client';
+import { FatCatApiError, FatCatNetworkError } from '@fatcat-ai/client';
+import { applyLegacyEnv, legacyEnvWarning } from '@fatcat-ai/shared';
 import { approve, login, logout, setup, whoami } from './commands/auth.js';
 import { askCommand, chatCommand } from './commands/chat.js';
 import { memoryCommand } from './commands/memory.js';
 import { modelsCommand } from './commands/models.js';
 import { serveCommand } from './commands/serve.js';
 import { sessionsCommand } from './commands/sessions.js';
+import { CLI_ENV_NAMES } from './config.js';
 import { type Ctx, status, UsageError } from './io.js';
 
-export const HELP = `ai-personal: command-line client for an AI-Personal server
+export const HELP = `fatcat-ai: command-line client for a FatCat-AI server
 
-Usage: ai-personal <command> [options]
+Usage: fatcat-ai <command> [options]
 
 Account
   setup [-u name] [--password-stdin] [--setup-code code]   create the owner account (first run) and sign in
@@ -36,10 +38,10 @@ Server
   serve [--host h] [--port p] [--data-dir dir]              run the core server in this process
 
 Global options
-  --server <url>   server address (default: AIP_SERVER, then the saved one, then http://127.0.0.1:8787)
+  --server <url>   server address (default: FATCAT_AI_SERVER, then the saved one, then http://127.0.0.1:8787)
   -h, --help       show help;  -v, --version  show the version
 
-The token is read from AIP_TOKEN or the saved config (AIP_CLI_CONFIG, default ~/.ai-personal/cli.json).
+The token is read from FATCAT_AI_TOKEN or the saved config (FATCAT_AI_CLI_CONFIG, default ~/.fatcat-ai/cli.json).
 Tool calls that need approval are asked about in a terminal and rejected otherwise, unless --approve-tools.
 `;
 
@@ -77,13 +79,16 @@ export async function main(argv: string[], ctx: Ctx): Promise<number> {
     }
     const command = COMMANDS[name];
     if (!command) {
-        status(ctx, `Unknown command "${name}". Run "ai-personal --help".`);
+        status(ctx, `Unknown command "${name}". Run "fatcat-ai --help".`);
         return 2;
     }
     if (args.includes('--help') || args.includes('-h')) {
         ctx.stdout.write(HELP);
         return 0;
     }
+    // 改名前的 AIP_* 环境变量暂时兼容读取(ADR 0019)
+    const legacy = applyLegacyEnv(ctx.env, CLI_ENV_NAMES);
+    if (legacy.length > 0) status(ctx, `warning: ${legacyEnvWarning(legacy)}`);
     try {
         return await command(ctx, args);
     } catch (error) {
@@ -91,12 +96,12 @@ export async function main(argv: string[], ctx: Ctx): Promise<number> {
             status(ctx, error.message);
             return 2;
         }
-        if (error instanceof AipApiError) {
-            const hint = error.status === 401 ? ' (run "ai-personal login")' : '';
+        if (error instanceof FatCatApiError) {
+            const hint = error.status === 401 ? ' (run "fatcat-ai login")' : '';
             status(ctx, `error: ${error.message}${hint}`);
             return 1;
         }
-        if (error instanceof AipNetworkError) {
+        if (error instanceof FatCatNetworkError) {
             status(ctx, `error: ${error.message}`);
             return 1;
         }
