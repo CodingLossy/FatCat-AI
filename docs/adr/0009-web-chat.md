@@ -25,7 +25,7 @@ M1 方案原列了 TanStack Router / Query、Tailwind、i18next。页面只有�
 | 数据请求     | 组件内 `useEffect` + SDK,不引入缓存层                                                      |
 | 样式与深浅色 | 原生 CSS 变量;`<html data-theme>` 取 `system` / `light` / `dark`                           |
 | 中英文       | `src/i18n.ts` 两份字典 + `t(key, vars)`;M9 再迁到 `packages/i18n`(i18next)                 |
-| Markdown     | `react-markdown`(MIT),不启用原始 HTML;代码块带「复制」按钮;代码高亮留到以后                |
+| Markdown     | `react-markdown`(MIT),不启用原始 HTML;代码块带「复制」按钮;代码高亮见第 7 节(M3.x)         |
 | 端到端测试   | `@playwright/test`(Apache-2.0,仅开发)                                                      |
 
 唯一新增的运行时依赖是 `react-markdown` 及其 unified 依赖树(均为 MIT / ISC 等宽松许可,`pnpm check:licenses` 通过)。Web UI 只以静态文件进入 Docker 镜像,不影响服务器空闲内存。
@@ -50,6 +50,16 @@ M1 方案原列了 TanStack Router / Query、Tailwind、i18next。页面只有�
 
 - 单测只覆盖纯逻辑:`applyEvent()` 的事件归并、密钥引用校验;两份字典的键一致由类型(`Record<Key, string>`)在 typecheck 中保证。
 - Playwright 冒烟(`pnpm test:e2e`,CI 中单独一步):启动构建后的 server(托管 `apps/web/dist`,临时数据目录)与一个慢速回放 DeepSeek fixture 的假端点,在浏览器里完成:初始化 → 添加配置档(看到 `keyStatus`)→ 发送消息 → **流式中刷新页面** → 回复完整出现;`memory.save` 拒绝与批准两条路径;记忆页编辑与删除。
+
+### 7. 代码高亮(M3.x,2026-11-10)
+
+M1 遗留项。
+
+- **依赖**:`rehype-highlight`(MIT,经 `lowlight` 使用 `highlight.js`,BSD-3-Clause)。它在 Markdown 语法树上加 `<span class="hljs-…">` 节点,不生成 HTML 字符串、不经过 `innerHTML`,所以「不渲染原始 HTML」不变。
+- **范围**:只高亮写明语言的代码块(` ```ts `),不自动猜语言(`detect: false`),未写或未注册的语言照常显示纯文本。只注册常用的 14 种:bash(sh / shell / zsh)、css、diff、go、java、javascript、json、markdown、python、rust、sql、typescript、xml(html / svg)、yaml。
+- **体积**:高亮代码单独打包(`src/highlight.ts`,约 167 KB,gzip 约 55 KB),消息里第一次出现带语言的代码块时才动态加载;主包只增加约 2 KB。加载完成前和加载失败时显示未高亮的代码。
+- **颜色**:`styles.css` 中几个 `--code-*` 变量,深浅色各一套,不引入 highlight.js 的主题文件。
+- 不影响服务器:Web UI 只以静态文件进入镜像。
 
 ## 后果
 
