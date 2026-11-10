@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+name: Commit identity
+
+# 只在 PR 上运行:检查 base.sha..head.sha 中每个提交的作者、提交者与提交信息(scripts/check-commit-identity.mjs)。
+# job 名 `commit identity` 是 main 分支规则里的必过检查,不要改名。
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commit-identity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  identity:
+    name: commit identity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check author, committer and message of every PR commit
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/check-commit-identity.mjs "$BASE_SHA" "$HEAD_SHA"
