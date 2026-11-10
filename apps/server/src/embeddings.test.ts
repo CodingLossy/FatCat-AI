@@ -3,7 +3,7 @@
 
 // 嵌入队列与向量索引的端到端用例(ADR 0014):没有 embed 配置档时不加载 sqlite-vec;按维度建表;
 // 换模型或维度时提示手动重建,重建后检索正常;失败重试与每日上限;重建需要 CSRF。
-import { EmbeddingStatus, ModelProfile } from '@ai-personal/shared';
+import { EmbeddingStatus, ModelProfile } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEmbeddingService } from './embeddings.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';

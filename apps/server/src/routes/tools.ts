@@ -3,7 +3,7 @@
 
 // 工具、审批、预授权与审计的 REST(ADR 0010)。
 import { createRoute, z } from '@hono/zod-openapi';
-import type { RunManager } from '@ai-personal/agent';
+import type { RunManager } from '@fatcat-ai/agent';
 import {
     ApprovalDecision,
     ApprovalQuery,
@@ -14,9 +14,9 @@ import {
     pageOf,
     Preauthorization,
     ToolInfo,
-} from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
-import { inputDigest } from '@ai-personal/tools';
+} from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
+import { inputDigest } from '@fatcat-ai/tools';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';

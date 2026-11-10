@@ -4,8 +4,8 @@
 // files 提供者:「文件」→ 授权目录 → 文件夹 → 文件(ADR 0012 第 3 节)。
 // source_ref 为「授权目录 id:真实路径」,同一个文件出现在嵌套的两个授权目录下时也不会冲突。
 import { closeSync, openSync, readSync, statSync } from 'node:fs';
-import type { Item, ItemContent } from '@ai-personal/shared';
-import { documentKind, DocumentError, MAX_DOCUMENT_BYTES, parseInWorker, resolveInRoots } from '@ai-personal/tools';
+import type { Item, ItemContent } from '@fatcat-ai/shared';
+import { documentKind, DocumentError, MAX_DOCUMENT_BYTES, parseInWorker, resolveInRoots } from '@fatcat-ai/tools';
 import { type ItemProvider, MAX_CONTENT_CHARS, type OpenContext, type SyncContext, textContent } from './provider.js';
 import { walk } from './walk.js';
 

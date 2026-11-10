@@ -4,9 +4,9 @@
 // MCP 服务器配置的 REST(ADR 0013 第 1 节):只有用户能增删改,没有对应的工具。
 import path from 'node:path';
 import { createRoute, z } from '@hono/zod-openapi';
-import { Id, McpServerInput, McpServerPatch, McpServerStatus, McpServerView, pageOf } from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
-import { inputDigest } from '@ai-personal/tools';
+import { Id, McpServerInput, McpServerPatch, McpServerStatus, McpServerView, pageOf } from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
+import { inputDigest } from '@fatcat-ai/tools';
 import type { McpControl } from '../mcp-setup.js';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';

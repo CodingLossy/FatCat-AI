@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { AuthStatus, MetaResponse, Settings } from '@ai-personal/shared';
+import type { AuthStatus, MetaResponse, Settings } from '@fatcat-ai/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, errorText } from './api.js';
 import { AuthForm } from './AuthForm.js';

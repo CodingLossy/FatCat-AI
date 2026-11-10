@@ -1,18 +1,18 @@
 {
-  "name": "@ai-personal/i18n",
+  "name": "@fatcat-ai/i18n",
   "version": "0.0.0",
   "private": true,
   "description": "UI message catalogs",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/packages/i18n",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/i18n",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
     "directory": "packages/i18n"
   },
   "bugs": {
-    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
   },
   "type": "module",
   "exports": {

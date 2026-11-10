@@ -1,8 +1,10 @@
-# AI-Personal Contributor License Agreement / 贡献者许可协议
+# FatCat-AI Contributor License Agreement / 贡献者许可协议
 
 > Version 1.1 · 2026-11-03. Modeled on the Apache Individual/Corporate CLAs, using a "copyright license with outbound relicensing" model. **Copyright is not assigned.** The copyright holder will have this Agreement reviewed by a lawyer before signing the first commercial contract.
 >
 > 版本 1.1 · 2026-11-03。本协议以 Apache 个人/企业贡献者许可协议(ICLA/CCLA)为蓝本,采用「版权许可 + 允许向外再许可」方式,**不转让版权**。签署第一份商业合同前,版权持有人将请律师审阅本协议。
+
+> The Project was renamed from AI-Personal to FatCat-AI on 2026-11-10. An agreement signed for AI-Personal applies to FatCat-AI in the same way. / 本项目已于 2026-11-10 由 AI-Personal 改名为 FatCat-AI;为 AI-Personal 签署的协议同样适用于 FatCat-AI。
 
 This document has two parts / 本文件包含两部分:
 
@@ -17,11 +19,11 @@ This document has two parts / 本文件包含两部分:
 
 ## English Version (governing)
 
-This document is available at <https://github.com/CodingLossy/AI-Personal/blob/main/CLA.md>.
+This document is available at <https://github.com/CodingLossy/FatCat-AI/blob/main/CLA.md>.
 
 ### Part I · Individual Contributor License Agreement (ICLA)
 
-Thank you for your interest in AI-Personal (the "Project"). To clarify the intellectual property license granted with contributions, and to allow the Project to be distributed under dual licensing (GNU AGPL-3.0-only and a commercial license), the Maintainer requires every contributor to sign this Agreement. This Agreement protects you and the Project; you retain all right, title and interest in your Contributions and may use them for any other purpose.
+Thank you for your interest in FatCat-AI (the "Project"). To clarify the intellectual property license granted with contributions, and to allow the Project to be distributed under dual licensing (GNU AGPL-3.0-only and a commercial license), the Maintainer requires every contributor to sign this Agreement. This Agreement protects you and the Project; you retain all right, title and interest in your Contributions and may use them for any other purpose.
 
 **1. Definitions.** "Maintainer" means 尹绪柏 (Theodore Yin), the copyright holder and maintainer of the Project (x19169738916@163.com), including the Maintainer's successors and assignees designated in writing. "You" means the copyright owner, or a person authorized by the copyright owner, who signs this Agreement and submits Contributions to the Maintainer. "Contribution" means any original work of authorship, including any modifications or additions to an existing work, that You intentionally submit to the Maintainer for inclusion in the Project, including code, documentation, translations, designs, tests and data, submitted in electronic, verbal or written form through issues, pull requests, mailing lists or other channels of the Project, but excluding communication that You conspicuously mark in writing as "Not a Contribution". "Submitted" means any form of electronic, verbal or written communication sent to the Maintainer or its representatives.
 
@@ -55,7 +57,7 @@ A company or other organization (the "Corporation") must sign this Part when its
 
 **5. No Other Warranty.** As in Part I, Section 6.
 
-**6. How to Sign.** Email a scanned copy of this Part, completed (including Schedule A) and signed by an authorized signatory of the Corporation, to **x19169738916@163.com** with the subject "AI-Personal CCLA". The Maintainer will reply to confirm. Include the company name, registered address, contact person (email and phone), name and title of the authorized signatory, signature or company seal, date, and Schedule A (name, GitHub account and email of each Designated Contributor), using the form in the Chinese translation below.
+**6. How to Sign.** Email a scanned copy of this Part, completed (including Schedule A) and signed by an authorized signatory of the Corporation, to **x19169738916@163.com** with the subject "FatCat-AI CCLA". The Maintainer will reply to confirm. Include the company name, registered address, contact person (email and phone), name and title of the authorized signatory, signature or company seal, date, and Schedule A (name, GitHub account and email of each Designated Contributor), using the form in the Chinese translation below.
 
 ---
 
@@ -63,7 +65,7 @@ A company or other organization (the "Corporation") must sign this Part when its
 
 ### 第一部分 · 个人贡献者许可协议(ICLA)
 
-感谢你对 AI-Personal(以下简称「本项目」)的兴趣。为了明确贡献的知识产权许可,并使本项目能够以双许可方式(GNU AGPL-3.0-only 与商业许可)发布,项目维护者需要每一位贡献者签署本协议。本协议保护你和本项目;你仍保留你对自己贡献的全部权利和所有权,并可将其用于任何其他目的。
+感谢你对 FatCat-AI(以下简称「本项目」)的兴趣。为了明确贡献的知识产权许可,并使本项目能够以双许可方式(GNU AGPL-3.0-only 与商业许可)发布,项目维护者需要每一位贡献者签署本协议。本协议保护你和本项目;你仍保留你对自己贡献的全部权利和所有权,并可将其用于任何其他目的。
 
 #### 1. 定义
 
@@ -151,7 +153,7 @@ I have read the CLA Document and I hereby sign the CLA
 
 #### 6. 签署方式
 
-请将填写完整并由企业授权签字人签署的本部分(含附表 A)扫描件发送至 **x19169738916@163.com**,邮件标题「AI-Personal CCLA」。维护者确认后会回复确认邮件。
+请将填写完整并由企业授权签字人签署的本部分(含附表 A)扫描件发送至 **x19169738916@163.com**,邮件标题「FatCat-AI CCLA」。维护者确认后会回复确认邮件。
 
 | 项目                 | 内容 |
 | -------------------- | ---- |

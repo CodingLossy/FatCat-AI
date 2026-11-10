@@ -1,6 +1,7 @@
-# AI-Personal 记忆模块补充设计(Addendum · Memory v2)
+# FatCat-AI 记忆模块补充设计(Addendum · Memory v2)
 
-> 版本:v1 · 2026-11-03 · 适用于《AI-Personal-开发计划》v5 · 状态:**已采纳(业主 2026-11-03 确认),已并入主计划 v6;复审意见与落地约束见 `docs/adr/0007-memory-v2.md`**
+> 改名说明:项目已于 2026-11-10 由 AI-Personal 改名为 FatCat-AI,仓库迁到 <https://github.com/CodingLossy/FatCat-AI>(见 `docs/adr/0019-rename-fatcat-ai.md`);本文已按新名称更新。
+> 版本:v1 · 2026-11-03 · 适用于《FatCat-AI-开发计划》v5 · 状态:**已采纳(业主 2026-11-03 确认),已并入主计划 v6;复审意见与落地约束见 `docs/adr/0007-memory-v2.md`**
 > 作者 / 版权持有人:尹绪柏 (Theodore Yin) · 许可:随主项目 AGPL-3.0-only + 商业许可(`packages/shared` 中的 schema 为 Apache-2.0)
 > 范围:把主计划中的「长期记忆 v1(M1:`memory.save / memory.search`)」扩展为**有类型、可更替、可衰减、带来源证据、可反馈**的记忆系统,并挂到 6.2 的 `items` / `item_edges` 知识地图上。核心落在 **M2**,可视化落在 **M10**。
 
@@ -55,7 +56,7 @@
 - **交叉边**(非 primary):`derived`(记忆 → 来源条目,如邮件 / 文件 / 会话)、`mentions`(记忆 → 人物条目)、新增 `supersedes`(新 → 旧)、`forked_from`(会话 → 会话)。`rel` 的 zod 枚举需要扩展,这是 `packages/shared` 的契约变更,必须先写 ADR。
 - 记忆分类对照(借 deepmemory 的思想,按我们的方式重新落地):
 
-| 概念 | 在 AI-Personal 中的位置 |
+| 概念 | 在 FatCat-AI 中的位置 |
 |---|---|
 | short_term(短期) | 不入库:会话上下文中最近 N 轮的原文(§4.6) |
 | semantic / process | `memory_facts.mem_type = semantic / procedural` |
@@ -73,7 +74,7 @@ CREATE TABLE memory_facts (
   owner_id       TEXT NOT NULL,
   mem_type       TEXT NOT NULL CHECK (mem_type IN ('episodic','semantic','procedural')),
   subtype        TEXT,                       -- 'profile'|'preference'|'decision'|'task'|'relation'|NULL
-  entity_key     TEXT,                       -- 规范化键,如 'user.location.city'、'project.ai-personal.license'
+  entity_key     TEXT,                       -- 规范化键,如 'user.location.city'、'project.fatcat-ai.license'
   cardinality    TEXT NOT NULL DEFAULT 'multi' CHECK (cardinality IN ('single','multi')),
   value_json     TEXT,                       -- 单值事实的结构化值,如 {"city":"杭州"}
   status         TEXT NOT NULL DEFAULT 'active'
@@ -300,7 +301,7 @@ M2 里由 core 内一个轻量 `MaintenanceRunner` 执行:用 croner 调度,状�
 | `GET /memory/quarantine` · `POST /memory/quarantine/:id/promote` | 隔离区查看 / 人工提升为记忆 |
 | `GET /memory?cursor&type&status&tier&domain` · `POST /memory/export` | 列表 / 导出(JSON,不含敏感原文) |
 
-**Agent 工具**:同名工具也通过 AI-Personal 自身的 MCP Server 暴露。M1 的 `memory.save` / `memory.search` 保留为别名。
+**Agent 工具**:同名工具也通过 FatCat-AI 自身的 MCP Server 暴露。M1 的 `memory.save` / `memory.search` 保留为别名。
 - `memory.write`(risk `write`,**默认预授权**:写入后在会话里提示「已记住:… [撤销]」;sensitivity ≥1 或更替画像类事实时需要审批)
 - `memory.retrieve`(read)、`memory.digest`(read)、`memory.feedback`(write,预授权)、`memory.forget`(write,**每次都要审批**)
 
@@ -379,7 +380,7 @@ export const MemoryFeedbackInput = z.object({
 ## 10. 给 Claude Code 的提示词(原样粘贴)
 
 ```text
-你是 AI-Personal 的主力开发者。请先完整阅读 docs/plan/AI-Personal-开发计划.md(主计划)和 docs/plan/AI-Personal-记忆模块补充设计.md(本补充设计,请先复制到该路径)。
+你是 FatCat-AI 的主力开发者。请先完整阅读 docs/plan/FatCat-AI-开发计划.md(主计划)和 docs/plan/FatCat-AI-记忆模块补充设计.md(本补充设计,请先复制到该路径)。
 
 任务 A · 复审与并入(只改文档,不写功能代码):
 1. 对照主计划 §6.2(items/item_edges)、§7(安全)、§12(2GB 预算)、§13(工作约定)、§15/§16(许可证与已定决策),逐条复审本补充设计:找出与主计划冲突、遗漏、过度设计,或在 better-sqlite3 + sqlite-vec + FTS5(trigram)上不可行的地方(例如 vec0 rowid 映射、虚拟表无外键、ALTER TABLE 加外键列的限制、部分唯一索引),给出修改建议。

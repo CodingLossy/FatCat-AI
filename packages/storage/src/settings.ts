@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 设置:每个 owner 一组键值(value_json),读取时与默认值合并,未知键忽略。
-import { DEFAULT_SETTINGS, type Settings, type SettingsPatch } from '@ai-personal/shared';
+import { DEFAULT_SETTINGS, type Settings, type SettingsPatch } from '@fatcat-ai/shared';
 import type { Connection } from './db.js';
 
 type Key = keyof Settings;

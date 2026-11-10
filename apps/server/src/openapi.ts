@@ -2,10 +2,10 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 生成 OpenAPI 文档的静态副本(业主决定:/api/v1/openapi.json 需要鉴权,CI 另导出静态文件)。
-import { EventBus, RunManager } from '@ai-personal/agent';
-import { createItemService } from '@ai-personal/items';
-import { Redactor, SecretStore } from '@ai-personal/providers';
-import { createRepositories, migrate, migrations, openDatabase } from '@ai-personal/storage';
+import { EventBus, RunManager } from '@fatcat-ai/agent';
+import { createItemService } from '@fatcat-ai/items';
+import { Redactor, SecretStore } from '@fatcat-ai/providers';
+import { createRepositories, migrate, migrations, openDatabase } from '@fatcat-ai/storage';
 import { createApp } from './app.js';
 import { createLogger } from './log.js';
 import { createMemoryStack } from './memory-setup.js';
@@ -39,7 +39,7 @@ export async function buildOpenApiDocument(): Promise<unknown> {
         });
         return app.getOpenAPI31Document({
             openapi: '3.1.0',
-            info: { title: 'AI-Personal API', version: SERVER_VERSION, license: { name: 'AGPL-3.0-only' } },
+            info: { title: 'FatCat-AI API', version: SERVER_VERSION, license: { name: 'AGPL-3.0-only' } },
             security: [{ bearer: [] }, { session: [] }],
         });
     } finally {

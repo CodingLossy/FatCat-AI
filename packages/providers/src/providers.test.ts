@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createReplayFetch, fixtureFetch, loadFixture } from '@ai-personal/eval';
+import { createReplayFetch, fixtureFetch, loadFixture } from '@fatcat-ai/eval';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createOpenAICompatibleProvider } from './openai-compatible.js';
 import { Redactor } from './redact.js';
@@ -16,16 +16,16 @@ import { type ChatChunk, ProviderError, type ProviderProfile } from './types.js'
 const FIXTURES = fileURLToPath(new URL('../test/fixtures/', import.meta.url));
 const fixture = (name: string) => join(FIXTURES, `${name}.json`);
 
-const LIVE = process.env.AIP_EVAL_LIVE === '1';
-const BASE = LIVE ? (process.env.AIP_EVAL_BASE_URL ?? '') : 'http://fixture.test/v1';
+const LIVE = process.env.FATCAT_AI_EVAL_LIVE === '1';
+const BASE = LIVE ? (process.env.FATCAT_AI_EVAL_BASE_URL ?? '') : 'http://fixture.test/v1';
 const FAKE_KEY = 'sk-test-THIS-IS-NOT-A-REAL-KEY-0123456789';
 
 const profile = (over: Partial<ProviderProfile> = {}): ProviderProfile => ({
     id: '01JC0000000000000000000000',
     kind: 'openai-compatible',
     baseURL: BASE,
-    apiKeyRef: LIVE ? `env:${process.env.AIP_EVAL_KEY_ENV ?? 'OPENAI_API_KEY'}` : null,
-    model: LIVE ? (process.env.AIP_EVAL_MODEL ?? '') : 'qwen3:8b',
+    apiKeyRef: LIVE ? `env:${process.env.FATCAT_AI_EVAL_KEY_ENV ?? 'OPENAI_API_KEY'}` : null,
+    model: LIVE ? (process.env.FATCAT_AI_EVAL_MODEL ?? '') : 'qwen3:8b',
     purpose: ['chat'],
     ...over,
 });
@@ -354,7 +354,7 @@ describe('密钥不泄露', () => {
 describe('密钥引用 env: / file:', () => {
     let dir: string;
     beforeEach(() => {
-        dir = mkdtempSync(join(tmpdir(), 'aip-secrets-'));
+        dir = mkdtempSync(join(tmpdir(), 'fatcat-secrets-'));
     });
     afterEach(() => rmSync(dir, { recursive: true, force: true }));
 

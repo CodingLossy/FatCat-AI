@@ -3,7 +3,7 @@
 
 // entity_key 注册表与规范化(《记忆模块补充设计》第 2.2 节补充约定;我们自己维护)。
 // 每个键声明 cardinality 与默认 domain;不在表中的键归一为 x.<slug>,默认 multi。
-import type { Memory } from '@ai-personal/shared';
+import type { Memory } from '@fatcat-ai/shared';
 
 export interface EntityKeySpec {
     cardinality: Memory['cardinality'];

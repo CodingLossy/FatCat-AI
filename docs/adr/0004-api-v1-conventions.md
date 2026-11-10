@@ -20,8 +20,8 @@ Web UI、CLI、IM 渠道以及以后的桌面 / 移动客户端都只能通过�
 ### 2. 鉴权
 
 - **公开端点只有三个**:`GET /api/v1/meta`、`GET /api/v1/auth/status`、`POST /api/v1/auth/login`;另外 `POST /api/v1/auth/setup` 只在尚未初始化主人账户时可用,且只接受来自本机回环地址的请求,或携带启动日志中打印的一次性设置码。其余端点(包括 `GET /api/v1/openapi.json`)一律需要鉴权,否则返回 401。
-- **Web**:登录后下发 HttpOnly、`SameSite=Strict`、`Secure`(HTTPS 下,或 `AIP_COOKIE_SECURE=always`)、`Path=/` 的会话 Cookie `aip_session`,有效期 30 天,活跃时滑动续期;修改类请求(非 GET / HEAD / OPTIONS)必须带 `X-CSRF-Token`。CSRF 令牌在登录响应中返回,同时放在非 HttpOnly 的 `aip_csrf` Cookie 中,便于页面刷新后读取;服务器只存它的哈希,并与会话绑定。
-- **初始化的「本机」判断**:TCP 对端是回环地址,且请求不带 `X-Forwarded-For` / `Forwarded` / `X-Real-IP`(否则本机上的反向代理会让所有远程请求看起来都来自本机)。不满足时必须提供设置码;设置码可由 `AIP_SETUP_CODE` 指定,未指定时启动时随机生成并打印到本地日志,初始化后即失效。
+- **Web**:登录后下发 HttpOnly、`SameSite=Strict`、`Secure`(HTTPS 下,或 `FATCAT_AI_COOKIE_SECURE=always`)、`Path=/` 的会话 Cookie `aip_session`,有效期 30 天,活跃时滑动续期;修改类请求(非 GET / HEAD / OPTIONS)必须带 `X-CSRF-Token`。CSRF 令牌在登录响应中返回,同时放在非 HttpOnly 的 `aip_csrf` Cookie 中,便于页面刷新后读取;服务器只存它的哈希,并与会话绑定。
+- **初始化的「本机」判断**:TCP 对端是回环地址,且请求不带 `X-Forwarded-For` / `Forwarded` / `X-Real-IP`(否则本机上的反向代理会让所有远程请求看起来都来自本机)。不满足时必须提供设置码;设置码可由 `FATCAT_AI_SETUP_CODE` 指定,未指定时启动时随机生成并打印到本地日志,初始化后即失效。
 - **密码**:scrypt(N=2^16、r=8、p=1,随机盐),常量时间比较;用户名不存在时也做一次同等开销的校验。
 - **CLI / 脚本**:`Authorization: Bearer aip_pat_<随机串>` 个人访问令牌;明文只在创建时返回一次,库中只存 SHA-256 哈希;可设过期时间,可吊销。Bearer 请求不需要 CSRF 头。
 - **单用户**:1.0 只有一个主人账户;所有数据带 `ownerId`,API 中不出现任何多用户概念。

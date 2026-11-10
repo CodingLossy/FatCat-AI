@@ -2,9 +2,9 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { createRoute, z } from '@hono/zod-openapi';
-import { Id, ModelProfile, ModelProfileInput, ModelProfilePatch, ModelTestResult, pageOf } from '@ai-personal/shared';
-import { createProvider, type ProviderDeps, type SecretStore } from '@ai-personal/providers';
-import type { ModelProfileRecord, Repositories } from '@ai-personal/storage';
+import { Id, ModelProfile, ModelProfileInput, ModelProfilePatch, ModelTestResult, pageOf } from '@fatcat-ai/shared';
+import { createProvider, type ProviderDeps, type SecretStore } from '@fatcat-ai/providers';
+import type { ModelProfileRecord, Repositories } from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
 import { notFound, validationError } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';

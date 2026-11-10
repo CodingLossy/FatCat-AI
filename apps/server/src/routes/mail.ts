@@ -13,11 +13,11 @@ import {
     MailPreset,
     MailSyncResult,
     pageOf,
-} from '@ai-personal/shared';
-import { appendsToSent, MAIL_PRESETS } from '@ai-personal/mail';
-import type { SecretStore } from '@ai-personal/providers';
-import type { MailAccountRecord, Repositories } from '@ai-personal/storage';
-import type { ItemService, KnowledgeBase } from '@ai-personal/items';
+} from '@fatcat-ai/shared';
+import { appendsToSent, MAIL_PRESETS } from '@fatcat-ai/mail';
+import type { SecretStore } from '@fatcat-ai/providers';
+import type { MailAccountRecord, Repositories } from '@fatcat-ai/storage';
+import type { ItemService, KnowledgeBase } from '@fatcat-ai/items';
 import { requireOwner } from '../auth/middleware.js';
 import { notFound } from '../errors.js';
 import type { MailService } from '../mail-setup.js';

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { MailSentCopy } from '@ai-personal/shared';
+import type { MailSentCopy } from '@fatcat-ai/shared';
 import { describe, expect, it } from 'vitest';
 import { appendsToSent, MAIL_PRESETS, planSentCopy, serverSavesSent } from './presets.js';
 
 const account = (sentCopy: MailSentCopy, host: string) => ({ sentCopy, imap: { host } });
 
 describe('发送后「已发送」副本(ADR 0016 第 14 节)', () => {
-    it('auto:163 与 Gmail 交给服务器自动保存,其他主机(含自定义主机)由 AI-Personal APPEND', () => {
+    it('auto:163 与 Gmail 交给服务器自动保存,其他主机(含自定义主机)由 FatCat-AI APPEND', () => {
         expect(planSentCopy(account('auto', 'imap.163.com'), '已发送')).toEqual({ action: 'server', folder: null });
         expect(planSentCopy(account('auto', ' IMAP.Gmail.com '), 'Sent')).toEqual({ action: 'server', folder: null });
         expect(planSentCopy(account('auto', 'imap.qq.com'), 'Sent Messages')).toEqual({

@@ -1,5 +1,7 @@
 # M2b 自检报告(块 C,PR 10–15)
 
+> 注:项目已于 2026-11-10 由 AI-Personal 改名为 FatCat-AI(ADR 0019)。本文是当时的记录,文中的包名 `@ai-personal/*`、命令 `ai-personal`、目录 `~/.ai-personal` 与 `AIP_*` 环境变量现在分别是 `@fatcat-ai/*`、`fatcat-ai`、`~/.fatcat-ai` 与 `FATCAT_AI_*`。
+
 - 日期:2026-11-05
 - 基线:`main` @ `9805104`(M2 方案 PR 10–14 已合并,对应 GitHub PR #28–#32),加本 PR(PR 15 `docs/m2-wrapup`)
 - 对照依据:开发计划第 8 节 M2 验收;`docs/plan/AI-Personal-记忆模块补充设计.md` 第 9 节验收 ①–⑧;`docs/milestones/M2-plan.md` 第 2 节各 PR 验收、第 3 节验收对照、第 7 节推迟项

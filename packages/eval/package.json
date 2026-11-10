@@ -1,18 +1,18 @@
 {
-  "name": "@ai-personal/eval",
+  "name": "@fatcat-ai/eval",
   "version": "0.0.0",
   "private": true,
   "description": "Evaluation framework and datasets",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/packages/eval",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/eval",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
     "directory": "packages/eval"
   },
   "bugs": {
-    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
   },
   "type": "module",
   "exports": {
@@ -35,7 +35,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@ai-personal/memory": "workspace:*",
-    "@ai-personal/storage": "workspace:*"
+    "@fatcat-ai/memory": "workspace:*",
+    "@fatcat-ai/storage": "workspace:*"
   }
 }

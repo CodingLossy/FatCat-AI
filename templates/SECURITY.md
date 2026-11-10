@@ -3,10 +3,10 @@
 ## 报告漏洞 / Reporting a Vulnerability
 
 请**不要**在公开 Issue 中报告安全漏洞。请发送邮件至 **x19169738916@163.com**,
-标题以「[AI-Personal Security]」开头,并尽量包含:受影响版本、复现步骤、影响范围、可能的修复建议。
+标题以「[FatCat-AI Security]」开头,并尽量包含:受影响版本、复现步骤、影响范围、可能的修复建议。
 
 Please do **not** report security vulnerabilities in public issues. Email
-**x19169738916@163.com** with a subject starting with "[AI-Personal Security]",
+**x19169738916@163.com** with a subject starting with "[FatCat-AI Security]",
 including affected versions, reproduction steps, impact, and any suggested fix.
 
 我们会在 5 个工作日内确认收到,并在修复发布后公开致谢(如你愿意)。

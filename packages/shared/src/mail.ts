@@ -50,9 +50,9 @@ export type MailAddress = z.infer<typeof MailAddress>;
 /**
  * 发送后在服务器「已发送」中留存副本的策略(ADR 0016 第 14 节)。
  * - `auto`:IMAP 主机已知会自动保存经 SMTP 发出的邮件(163、Gmail)时不 APPEND,其他主机 APPEND;
- * - `append`:总是由 AI-Personal APPEND 一份;
+ * - `append`:总是由 FatCat-AI APPEND 一份;
  * - `off`:从不 APPEND。
- * 服务器自己保存的那一份不经过 AI-Personal,AI-Personal 也不核实它是否存在。
+ * 服务器自己保存的那一份不经过 FatCat-AI,FatCat-AI 也不核实它是否存在。
  */
 export const MailSentCopy = z
     .enum(['auto', 'append', 'off'])
@@ -76,7 +76,7 @@ const MailAccountFields = z.strictObject({
     /** 定时拉取的间隔(分钟,默认 5)。 */
     syncIntervalMinutes: z.number().int().min(5).max(1440).default(5),
     /**
-     * 显式指定发送后是否由 AI-Personal APPEND 一份到「已发送」(true = `sentCopy: 'append'`,false = `'off'`)。
+     * 显式指定发送后是否由 FatCat-AI APPEND 一份到「已发送」(true = `sentCopy: 'append'`,false = `'off'`)。
      * 不给且不给 `sentCopy` 时为 `'auto'`。两者都给时以 `sentCopy` 为准。ADR 0016 第 6、14 节。
      */
     appendToSent: z
@@ -122,11 +122,11 @@ export const MailAccount = MailAccountFields.extend({
     passwordStatus: MailPasswordStatus,
     /** 账户保存的策略:`auto`(按服务器决定)、`append`(总是 APPEND)或 `off`(从不 APPEND)。 */
     sentCopy: MailSentCopy,
-    /** 按当前策略与 IMAP 主机,发送成功后 AI-Personal 是否会 APPEND 一份(只读的计算结果)。 */
+    /** 按当前策略与 IMAP 主机,发送成功后 FatCat-AI 是否会 APPEND 一份(只读的计算结果)。 */
     appendToSent: z
         .boolean()
         .describe(
-            'Read only: whether AI-Personal will APPEND a copy to Sent after sending, computed from sentCopy and the IMAP host.',
+            'Read only: whether FatCat-AI will APPEND a copy to Sent after sending, computed from sentCopy and the IMAP host.',
         ),
     /** 最近一次同步的时间与错误摘要(人能看懂、已脱敏)。 */
     lastSyncedAt: IsoDateTime.nullable(),

@@ -5,14 +5,14 @@ import { connect, parse, table } from '../common.js';
 import { type Ctx, status, UsageError } from '../io.js';
 
 const USAGE = [
-    'Usage: ai-personal memory list [--limit n] [--json]',
-    '       ai-personal memory search <query> [--json]',
-    '       ai-personal memory add <text>',
-    '       ai-personal memory edit <id> <text>',
-    '       ai-personal memory forget <id>',
+    'Usage: fatcat-ai memory list [--limit n] [--json]',
+    '       fatcat-ai memory search <query> [--json]',
+    '       fatcat-ai memory add <text>',
+    '       fatcat-ai memory edit <id> <text>',
+    '       fatcat-ai memory forget <id>',
 ].join('\n');
 
-/** ai-personal memory:查看、搜索、添加、修改与删除长期记忆(记忆 v1 的 REST,ADR 0007)。 */
+/** fatcat-ai memory:查看、搜索、添加、修改与删除长期记忆(记忆 v1 的 REST,ADR 0007)。 */
 export async function memoryCommand(ctx: Ctx, args: string[]): Promise<number> {
     const [sub, ...rest] = args;
     const { values, positionals } = parse(rest, { limit: { type: 'string' }, json: { type: 'boolean' } });

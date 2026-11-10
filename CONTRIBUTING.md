@@ -1,10 +1,10 @@
-# Contributing to AI-Personal
+# Contributing to FatCat-AI
 
-Thank you for your interest in contributing! Source code and issues live at <https://github.com/CodingLossy/AI-Personal>.
+Thank you for your interest in contributing! Source code and issues live at <https://github.com/CodingLossy/FatCat-AI>.
 
 ## 1. Sign the CLA first
 
-AI-Personal is dual-licensed (AGPL-3.0-only + a commercial license). So that the author can include your contribution in the commercial edition as well, **every external contributor must sign the [CLA](CLA.md)**.
+FatCat-AI is dual-licensed (AGPL-3.0-only + a commercial license). So that the author can include your contribution in the commercial edition as well, **every external contributor must sign the [CLA](CLA.md)**.
 
 - Individuals: CLA Assistant asks you to sign on your first pull request; just reply as instructed.
 - Contributing on behalf of a company: have the company sign Part II of CLA.md (the Corporate CLA) and email it to x19169738916@163.com.

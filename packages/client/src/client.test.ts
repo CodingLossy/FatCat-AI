@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { EventEnvelope } from '@ai-personal/shared';
+import type { EventEnvelope } from '@fatcat-ai/shared';
 import { describe, expect, it } from 'vitest';
 import { createClient } from './client.js';
-import { AipApiError, AipNetworkError } from './errors.js';
+import { FatCatApiError, FatCatNetworkError } from './errors.js';
 import { parseSse } from './sse.js';
 
 const RUN = '01JC0000000000000000000RUN';
@@ -99,7 +99,7 @@ describe('请求与鉴权', () => {
         expect(f.calls[1]!.init.credentials).toBe('include');
     });
 
-    it('非 2xx 转为 AipApiError(保留 problem 字段),无正文时合成', async () => {
+    it('非 2xx 转为 FatCatApiError(保留 problem 字段),无正文时合成', async () => {
         const problem = { title: 'Conflict', status: 409, code: 'conflict', requestId: 'r1', detail: 'busy' };
         const f = fakeFetch([
             new Response(JSON.stringify(problem), { status: 409 }),
@@ -107,20 +107,20 @@ describe('请求与鉴权', () => {
         ]);
         const client = createClient({ baseUrl: 'http://h', token: 'aip_pat_x', fetch: f.fn });
         const e1 = await client.sessions.create().catch((e: unknown) => e);
-        expect(e1).toBeInstanceOf(AipApiError);
-        expect((e1 as AipApiError).code).toBe('conflict');
-        expect((e1 as AipApiError).message).toBe('Conflict: busy');
-        const e2 = (await client.meta().catch((e: unknown) => e)) as AipApiError;
+        expect(e1).toBeInstanceOf(FatCatApiError);
+        expect((e1 as FatCatApiError).code).toBe('conflict');
+        expect((e1 as FatCatApiError).message).toBe('Conflict: busy');
+        const e2 = (await client.meta().catch((e: unknown) => e)) as FatCatApiError;
         expect(e2.status).toBe(502);
         expect(e2.problem.requestId).toBe('r2');
         expect(e2.code).toBe('internal');
     });
 
-    it('连不上时抛 AipNetworkError,错误里没有令牌', async () => {
+    it('连不上时抛 FatCatNetworkError,错误里没有令牌', async () => {
         const f = fakeFetch([new TypeError('fetch failed')]);
         const client = createClient({ baseUrl: 'http://h', token: 'aip_pat_secret', fetch: f.fn });
         const err = (await client.meta().catch((e: unknown) => e)) as Error;
-        expect(err).toBeInstanceOf(AipNetworkError);
+        expect(err).toBeInstanceOf(FatCatNetworkError);
         expect(err.message).not.toContain('aip_pat_secret');
     });
 });
@@ -173,11 +173,13 @@ describe('RunStream', () => {
         const problem = { title: 'Conflict', status: 409, code: 'conflict', requestId: 'r' };
         const f = fakeFetch([new Response(JSON.stringify(problem), { status: 409 })]);
         const client = createClient({ baseUrl: 'http://h', token: 'aip_pat_x', fetch: f.fn });
-        await expect(collect(client.sessions.send(SESSION, { text: 'x' }, noWait))).rejects.toBeInstanceOf(AipApiError);
+        await expect(collect(client.sessions.send(SESSION, { text: 'x' }, noWait))).rejects.toBeInstanceOf(
+            FatCatApiError,
+        );
         expect(f.calls).toHaveLength(1);
     });
 
-    it('续看次数用尽后抛 AipNetworkError', async () => {
+    it('续看次数用尽后抛 FatCatNetworkError', async () => {
         const f = fakeFetch([
             sseResponse(streamOf([frame(started)])),
             new TypeError('fetch failed'),
@@ -185,7 +187,7 @@ describe('RunStream', () => {
         ]);
         const client = createClient({ baseUrl: 'http://h', token: 'aip_pat_x', fetch: f.fn });
         const stream = client.sessions.send(SESSION, { text: 'x' }, { ...noWait, maxReconnects: 2 });
-        await expect(collect(stream)).rejects.toBeInstanceOf(AipNetworkError);
+        await expect(collect(stream)).rejects.toBeInstanceOf(FatCatNetworkError);
         expect(f.calls).toHaveLength(3);
     });
 

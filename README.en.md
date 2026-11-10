@@ -1,10 +1,10 @@
-# AI-Personal
+# FatCat-AI
 
-[中文](README.md) · Source: <https://github.com/CodingLossy/AI-Personal> · Issues: <https://github.com/CodingLossy/AI-Personal/issues>
+[中文](README.md) · Source: <https://github.com/CodingLossy/FatCat-AI> · Issues: <https://github.com/CodingLossy/FatCat-AI/issues>
 
 An AI assistant that is truly your own: self-hostable, open source, bring-your-own-model (BYO LLM), local-first, **telemetry-free**, and pluggable (MCP is a first-class citizen).
 
-> Status: **M3 · mail** (pre-release, not yet versioned). On top of M2's tools, local files, knowledge base and long-term memory it adds IMAP/SMTP mail: Inbox and Sent are synced, and the assistant can summarize mail, draft replies and send them after you approve. Instructions inside an e-mail can't make it send anything (session-level taint and recipient checks), and you can drill down to a message in the knowledge map and use "Ask AI" on it. Usable from the Web UI, the command line or curl. See [CHANGELOG.md](CHANGELOG.md) for changes and the development plan (Chinese) at [docs/plan/AI-Personal-开发计划.md](docs/plan/AI-Personal-开发计划.md).
+> Status: **M3 · mail** (pre-release, not yet versioned). On top of M2's tools, local files, knowledge base and long-term memory it adds IMAP/SMTP mail: Inbox and Sent are synced, and the assistant can summarize mail, draft replies and send them after you approve. Instructions inside an e-mail can't make it send anything (session-level taint and recipient checks), and you can drill down to a message in the knowledge map and use "Ask AI" on it. Usable from the Web UI, the command line or curl. See [CHANGELOG.md](CHANGELOG.md) for changes and the development plan (Chinese) at [docs/plan/FatCat-AI-开发计划.md](docs/plan/FatCat-AI-开发计划.md).
 
 ## Features (planned)
 
@@ -18,7 +18,7 @@ An AI assistant that is truly your own: self-hostable, open source, bring-your-o
 
 ## Telemetry-free
 
-AI-Personal contains **no** analytics or crash-reporting code. It only connects to the model endpoints, mailboxes, channels and plugins you configure, plus an optional (can be disabled) GitHub Releases update check.
+FatCat-AI contains **no** analytics or crash-reporting code. It only connects to the model endpoints, mailboxes, channels and plugins you configure, plus an optional (can be disabled) GitHub Releases update check.
 
 ## Quick start
 
@@ -31,8 +31,8 @@ Model keys are only read from environment variables or a local file. The Web UI 
 macOS / Linux:
 
 ```bash
-git clone https://github.com/CodingLossy/AI-Personal.git
-cd AI-Personal
+git clone https://github.com/CodingLossy/FatCat-AI.git
+cd FatCat-AI
 pnpm install
 export DEEPSEEK_API_KEY='<your key>'   # DeepSeek as an example; a local Ollama needs no key
 pnpm dev
@@ -41,8 +41,8 @@ pnpm dev
 Windows (PowerShell):
 
 ```powershell
-git clone https://github.com/CodingLossy/AI-Personal.git
-cd AI-Personal
+git clone https://github.com/CodingLossy/FatCat-AI.git
+cd FatCat-AI
 pnpm install
 $env:DEEPSEEK_API_KEY = '<your key>'
 pnpm dev
@@ -50,9 +50,11 @@ pnpm dev
 
 - Core server: <http://127.0.0.1:8787/healthz>
 - Web UI: <http://127.0.0.1:5173>. Create the owner account when asked (1.0 has exactly one account), add a profile under Settings → Model profiles with the key reference `env:DEEPSEEK_API_KEY` (leave it empty for a local Ollama), and start chatting once it shows "Key: Set".
-- When you run it locally, the core server doesn't serve the Web UI by default: without `AIP_WEB_DIR`, <http://127.0.0.1:8787/> returns 404. That is expected; with `pnpm dev`, use port 5173. To serve the Web UI from port 8787 (for example after `pnpm build`, with `pnpm --filter @ai-personal/server start`, which also sets the memory flag `--max-semi-space-size=8`), set `AIP_WEB_DIR` to the absolute path of `apps/web/dist` first. The Docker image already sets it.
+- When you run it locally, the core server doesn't serve the Web UI by default: without `FATCAT_AI_WEB_DIR`, <http://127.0.0.1:8787/> returns 404. That is expected; with `pnpm dev`, use port 5173. To serve the Web UI from port 8787 (for example after `pnpm build`, with `pnpm --filter @fatcat-ai/server start`, which also sets the memory flag `--max-semi-space-size=8`), set `FATCAT_AI_WEB_DIR` to the absolute path of `apps/web/dist` first. The Docker image already sets it.
 
-Instead of an environment variable, you can put keys in `secrets.yaml` in the data directory (`~/.ai-personal` by default, `%USERPROFILE%\.ai-personal` on Windows), one `NAME: value` per line, and reference them as `file:NAME`. Changes take effect without a restart.
+Instead of an environment variable, you can put keys in `secrets.yaml` in the data directory (`~/.fatcat-ai` by default, `%USERPROFILE%\.fatcat-ai` on Windows), one `NAME: value` per line, and reference them as `file:NAME`. Changes take effect without a restart.
+
+> This project used to be called AI-Personal. After upgrading, the server moves an old `~/.ai-personal` to `~/.fatcat-ai` on its first start (it never overwrites an existing `~/.fatcat-ai`). Old `AIP_*` environment variables still work for now, with a warning to switch to `FATCAT_AI_*`.
 
 ### 2. Docker
 
@@ -64,7 +66,7 @@ The image also serves the Web UI at <http://127.0.0.1:8787>. Data, including `se
 
 ```bash
 printf 'DEEPSEEK_API_KEY: "%s"\n' '<your key>' | \
-  docker compose -f docker/docker-compose.yml exec -T ai-personal sh -c 'umask 077; cat > /data/secrets.yaml'
+  docker compose -f docker/docker-compose.yml exec -T fatcat-ai sh -c 'umask 077; cat > /data/secrets.yaml'
 ```
 
 It only listens on 127.0.0.1 by default; to reach it from other machines, put it behind a reverse proxy with HTTPS. Setting it up from another machine or through a proxy needs the one-time setup code printed in the startup log (`docker compose -f docker/docker-compose.yml logs`).
@@ -126,32 +128,32 @@ $sid = (Invoke-RestMethod -Method Post "$api/sessions" -Headers $h -ContentType 
 
 ### 4. Command-line client
 
-You can also set up and chat without the Web UI (after `pnpm build`, run `pnpm --filter @ai-personal/cli exec ai-personal …`, or `node dist/bin.js …` in `apps/cli`):
+You can also set up and chat without the Web UI (after `pnpm build`, run `pnpm --filter @fatcat-ai/cli exec fatcat-ai …`, or `node dist/bin.js …` in `apps/cli`):
 
 ```bash
-ai-personal setup -u owner          # create the owner and save a personal access token (~/.ai-personal/cli.json, mode 0600)
-ai-personal models add --label deepseek --base-url https://api.deepseek.com/v1 --model deepseek-chat --key-ref env:DEEPSEEK_API_KEY
-ai-personal ask "Explain AGPL section 13 in three sentences"
-ai-personal chat                    # interactive chat: /new /model /retry /exit; Ctrl+C stops the current reply
+fatcat-ai setup -u owner          # create the owner and save a personal access token (~/.fatcat-ai/cli.json, mode 0600)
+fatcat-ai models add --label deepseek --base-url https://api.deepseek.com/v1 --model deepseek-chat --key-ref env:DEEPSEEK_API_KEY
+fatcat-ai ask "Explain AGPL section 13 in three sentences"
+fatcat-ai chat                    # interactive chat: /new /model /retry /exit; Ctrl+C stops the current reply
 ```
 
 For Anthropic or Gemini use `--kind anthropic` or `--kind gemini` (no `--base-url` needed). Tool calls that need approval (such as `memory.save`) are asked about in a terminal and rejected when not interactive, unless you pass `--approve-tools`.
 
 ### Development
 
-`pnpm lint`, `pnpm typecheck`, `pnpm test` (Vitest), and after `pnpm build`, `pnpm test:e2e` (Playwright smoke test; run `pnpm --filter @ai-personal/web exec playwright install chromium` once first). Conventions are in [AGENTS.md](AGENTS.md) and changes in [CHANGELOG.md](CHANGELOG.md).
+`pnpm lint`, `pnpm typecheck`, `pnpm test` (Vitest), and after `pnpm build`, `pnpm test:e2e` (Playwright smoke test; run `pnpm --filter @fatcat-ai/web exec playwright install chromium` once first). Conventions are in [AGENTS.md](AGENTS.md) and changes in [CHANGELOG.md](CHANGELOG.md).
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing.
 
 ## License
 
-AI-Personal is dual-licensed:
+FatCat-AI is dual-licensed:
 
 - **Open source**: [GNU AGPL-3.0](LICENSE) (`AGPL-3.0-only`). You may use, modify and distribute it, including commercially, but if you distribute a modified version or **make a modified version available to users over a network**, you must release the complete corresponding source under the AGPL-3.0.
-- **Commercial license**: to use, embed or modify AI-Personal in closed-source products or services without AGPL obligations, see [COMMERCIAL.md](COMMERCIAL.md).
+- **Commercial license**: to use, embed or modify FatCat-AI in closed-source products or services without AGPL obligations, see [COMMERCIAL.md](COMMERCIAL.md).
 
-The plugin SDK (`@ai-personal/plugin-sdk`) and client SDK (`@ai-personal/client`) are released under [Apache-2.0](packages/plugin-sdk/LICENSE).
+The plugin SDK (`@fatcat-ai/plugin-sdk`) and client SDK (`@fatcat-ai/client`) are released under [Apache-2.0](packages/plugin-sdk/LICENSE).
 
-Contributions require signing the [CLA](CLA.md) (prompted automatically on your PR). The "AI-Personal" name and logo are trademarks of the author; see [TRADEMARKS.md](TRADEMARKS.md). Commercial licensing: x19169738916@163.com.
+Contributions require signing the [CLA](CLA.md) (prompted automatically on your PR). The "FatCat-AI" name and logo are trademarks of the author; see [TRADEMARKS.md](TRADEMARKS.md). Commercial licensing: x19169738916@163.com.
 
 Copyright (C) 2026 尹绪柏 (Theodore Yin)

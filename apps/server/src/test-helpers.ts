@@ -6,18 +6,18 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Writable } from 'node:stream';
-import { EventBus, RunManager } from '@ai-personal/agent';
-import { createProvider, type ModelProvider, Redactor, SecretStore } from '@ai-personal/providers';
-import { type Connection, createRepositories, openStorage, type Repositories } from '@ai-personal/storage';
-import type { WebFetchOptions } from '@ai-personal/tools';
-import { createItemService, createKnowledgeBase, type KnowledgeBase } from '@ai-personal/items';
+import { EventBus, RunManager } from '@fatcat-ai/agent';
+import { createProvider, type ModelProvider, Redactor, SecretStore } from '@fatcat-ai/providers';
+import { type Connection, createRepositories, openStorage, type Repositories } from '@fatcat-ai/storage';
+import type { WebFetchOptions } from '@fatcat-ai/tools';
+import { createItemService, createKnowledgeBase, type KnowledgeBase } from '@fatcat-ai/items';
 import { createMailComplete, createSummarizer, createToolRegistry } from './agent-setup.js';
 import { createApp, type AppDeps } from './app.js';
 import { createMemoryStack } from './memory-setup.js';
 import { itemProviders } from './memory-provider.js';
 import { createMcpControl } from './mcp-setup.js';
 import { createMailService, type MailService } from './mail-setup.js';
-import type { MailJobRunner } from '@ai-personal/mail';
+import type { MailJobRunner } from '@fatcat-ai/mail';
 import { createEmbeddingService, type EmbeddingService } from './embeddings.js';
 import { FailureLimiter } from './auth/rate-limit.js';
 import { createLogger } from './log.js';
@@ -65,7 +65,7 @@ export async function createTestServer(
     overrides: Partial<AppDeps['config']> = {},
     options: TestServerOptions = {},
 ): Promise<TestServer> {
-    const dir = mkdtempSync(join(tmpdir(), 'aip-server-'));
+    const dir = mkdtempSync(join(tmpdir(), 'fatcat-server-'));
     const { conn } = await openStorage({ dataDir: dir });
     const repos = createRepositories(conn);
     const logs: string[] = [];
@@ -131,7 +131,7 @@ export async function createTestServer(
         kb,
         embeddings,
         config: {
-            sourceUrl: 'https://github.com/CodingLossy/AI-Personal',
+            sourceUrl: 'https://github.com/CodingLossy/FatCat-AI',
             webDir: null,
             cookieSecure: 'auto',
             setupCode: TEST_SETUP_CODE,

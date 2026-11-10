@@ -11,9 +11,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough, Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
-import { createClient } from '@ai-personal/client';
-import { type Interaction, loadFixture } from '@ai-personal/eval';
-import { EventEnvelope } from '@ai-personal/shared';
+import { createClient } from '@fatcat-ai/client';
+import { type Interaction, loadFixture } from '@fatcat-ai/eval';
+import { EventEnvelope } from '@fatcat-ai/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Ctx } from './io.js';
 import { main } from './main.js';
@@ -87,7 +87,7 @@ async function cli(args: string[], options: { stdin?: string; env?: Record<strin
     out.on('data', (c: Buffer) => (stdout += c.toString('utf8')));
     err.on('data', (c: Buffer) => (stderr += c.toString('utf8')));
     const ctx: Ctx = {
-        env: { AIP_SERVER: base, AIP_CLI_CONFIG: join(dir, 'cli.json'), ...options.env },
+        env: { FATCAT_AI_SERVER: base, FATCAT_AI_CLI_CONFIG: join(dir, 'cli.json'), ...options.env },
         stdin: Readable.from(options.stdin === undefined ? [] : [Buffer.from(options.stdin)]),
         stdout: out,
         stderr: err,
@@ -102,7 +102,7 @@ const enqueue = (name: string) => queue.push(...loadFixture(join(FIXTURES, `${na
 
 beforeAll(async () => {
     expect(existsSync(SERVER_ENTRY), 'build apps/server first').toBe(true);
-    dir = mkdtempSync(join(tmpdir(), 'aip-cli-e2e-'));
+    dir = mkdtempSync(join(tmpdir(), 'fatcat-cli-e2e-'));
     mock = await startMock();
     mockBase = `http://127.0.0.1:${(mock.address() as AddressInfo).port}/v1`;
     const port = await freePort();
@@ -111,11 +111,11 @@ beforeAll(async () => {
         env: {
             PATH: process.env.PATH,
             SystemRoot: process.env.SystemRoot,
-            AIP_PORT: String(port),
-            AIP_HOST: '127.0.0.1',
-            AIP_DATA_DIR: join(dir, 'data'),
-            AIP_LOG_LEVEL: 'error',
-            AIP_SETUP_CODE: 'e2e-setup-code',
+            FATCAT_AI_PORT: String(port),
+            FATCAT_AI_HOST: '127.0.0.1',
+            FATCAT_AI_DATA_DIR: join(dir, 'data'),
+            FATCAT_AI_LOG_LEVEL: 'error',
+            FATCAT_AI_SETUP_CODE: 'e2e-setup-code',
         },
         stdio: ['ignore', 'ignore', 'inherit'],
     });
@@ -138,7 +138,7 @@ describe('CLI 端到端(不开 Web UI)', () => {
     it('没有令牌时直接提示登录,不发请求', async () => {
         const r = await cli(['whoami']);
         expect(r.code).toBe(2);
-        expect(r.stderr).toContain('ai-personal login');
+        expect(r.stderr).toContain('fatcat-ai login');
     });
 
     it('非终端里不能交互输入密码', async () => {
@@ -305,9 +305,9 @@ describe('CLI 端到端(不开 Web UI)', () => {
     });
 
     it('无效令牌返回 401 并提示登录', async () => {
-        const r = await cli(['whoami'], { env: { AIP_TOKEN: 'aip_pat_invalidinvalidinvalidinvalid00' } });
+        const r = await cli(['whoami'], { env: { FATCAT_AI_TOKEN: 'aip_pat_invalidinvalidinvalidinvalid00' } });
         expect(r.code).toBe(1);
-        expect(r.stderr).toContain('ai-personal login');
+        expect(r.stderr).toContain('fatcat-ai login');
     });
 
     it('logout 吊销令牌并删除本地配置', async () => {

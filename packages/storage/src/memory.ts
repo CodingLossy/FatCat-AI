@@ -3,7 +3,7 @@
 
 // 记忆 v1(ADR 0007 的 M1 子集):每条记忆是一个 items 行(source='memory')加一个 memory_facts 行。
 // 检索用 items_fts(trigram);少于 3 个字符的查询 trigram 无法命中,回退为 LIKE。
-import type { DecisionState, Memory } from '@ai-personal/shared';
+import type { DecisionState, Memory } from '@fatcat-ai/shared';
 import type { Connection } from './db.js';
 import { newId } from './ids.js';
 import type { ItemRepository } from './items.js';

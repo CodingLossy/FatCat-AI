@@ -4,8 +4,8 @@
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { serve } from '@hono/node-server';
-import type { ChatChunk, ModelProvider } from '@ai-personal/providers';
-import { ServerFrame } from '@ai-personal/shared';
+import type { ChatChunk, ModelProvider } from '@fatcat-ai/providers';
+import { ServerFrame } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';

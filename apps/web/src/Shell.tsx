@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { Session, Settings } from '@ai-personal/shared';
+import type { Session, Settings } from '@fatcat-ai/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from './api.js';
 import { ApprovalPanel } from './ApprovalPanel.js';

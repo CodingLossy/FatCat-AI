@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ApprovalWarning, PreauthConstraintKind, ToolRisk } from '@ai-personal/shared';
+import type { ApprovalWarning, PreauthConstraintKind, ToolRisk } from '@fatcat-ai/shared';
 
 /**
  * 工具在执行中发现请求越权(例如路径在授权目录之外)时抛出的错误:core 把这次调用按「拒绝」审计,

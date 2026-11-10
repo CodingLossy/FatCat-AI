@@ -1,18 +1,18 @@
 {
-  "name": "@ai-personal/mail",
+  "name": "@fatcat-ai/mail",
   "version": "0.0.0",
   "private": true,
   "description": "Mail accounts: IMAP sync, parsing and SMTP (loaded on demand)",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/packages/mail",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/mail",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
     "directory": "packages/mail"
   },
   "bugs": {
-    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
   },
   "type": "module",
   "exports": {
@@ -31,10 +31,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-personal/items": "workspace:*",
-    "@ai-personal/shared": "workspace:*",
-    "@ai-personal/storage": "workspace:*",
-    "@ai-personal/tools": "workspace:*",
+    "@fatcat-ai/items": "workspace:*",
+    "@fatcat-ai/shared": "workspace:*",
+    "@fatcat-ai/storage": "workspace:*",
+    "@fatcat-ai/tools": "workspace:*",
     "imapflow": "^2.10.2",
     "mailparser": "^3.14.2",
     "nodemailer": "^10.3.1",

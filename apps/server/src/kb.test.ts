@@ -6,15 +6,15 @@
 import { mkdtempSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { ChatChunk, ChatRequest, ModelProvider } from '@ai-personal/providers';
-import { EventEnvelope, KbSearchOutput, Session } from '@ai-personal/shared';
+import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
+import { EventEnvelope, KbSearchOutput, Session } from '@fatcat-ai/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 let s: TestServer;
 let base: string;
 beforeEach(() => {
-    base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'aip-kb-')));
+    base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'fatcat-kb-')));
 });
 afterEach(async () => {
     await s?.cleanup();

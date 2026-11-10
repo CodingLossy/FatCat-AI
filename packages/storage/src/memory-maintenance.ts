@@ -3,7 +3,7 @@
 
 // 记忆维护任务的数据访问(《记忆模块补充设计》第 5 节;ADR 0007 第 5.7 节):按 item_id 游标分批读取,
 // 每批在一个事务里写回;任务状态存进 jobs_state。计算规则在 packages/memory 中。
-import type { Memory } from '@ai-personal/shared';
+import type { Memory } from '@fatcat-ai/shared';
 import type { Connection } from './db.js';
 
 export interface MaintenanceRow {

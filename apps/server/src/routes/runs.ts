@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { createRoute, z } from '@hono/zod-openapi';
-import { EventEnvelope, Id, Run } from '@ai-personal/shared';
+import { EventEnvelope, Id, Run } from '@fatcat-ai/shared';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
 import { resumeFrom, streamRunEvents } from '../sse.js';

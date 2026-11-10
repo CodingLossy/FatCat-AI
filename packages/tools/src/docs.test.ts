@@ -133,7 +133,7 @@ describe('worker 中解析', () => {
 describe('fs.read 读取文档', () => {
     let root: string;
     beforeEach(() => {
-        root = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'aip-docs-')));
+        root = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'fatcat-docs-')));
     });
     afterEach(() => rmSync(root, { recursive: true, force: true }));
 

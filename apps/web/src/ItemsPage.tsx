@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { Item, ItemContent } from '@ai-personal/shared';
+import type { Item, ItemContent } from '@fatcat-ai/shared';
 import { useEffect, useState } from 'react';
 import { askAboutMail } from './MailPage.js';
 import { api, errorText } from './api.js';

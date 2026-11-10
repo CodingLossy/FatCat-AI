@@ -4,11 +4,11 @@
 // 把邮件附件加入知识库(ADR 0016 第 3 节,M3 PR 4):只由用户在 Web 上点击触发,没有对应的工具。
 // 附件在邮件子进程中下载,文档在解析 worker 中解析;只保存分块(凭据已替换),不在本地保存原文件。
 import { extname } from 'node:path';
-import type { MailAttachmentKbResult } from '@ai-personal/shared';
-import type { ItemService, KnowledgeBase } from '@ai-personal/items';
-import { KB_EXTENSIONS, decodeText } from '@ai-personal/items';
-import type { Repositories } from '@ai-personal/storage';
-import { documentKind, MAX_DOCUMENT_BYTES, parseInWorker } from '@ai-personal/tools';
+import type { MailAttachmentKbResult } from '@fatcat-ai/shared';
+import type { ItemService, KnowledgeBase } from '@fatcat-ai/items';
+import { KB_EXTENSIONS, decodeText } from '@fatcat-ai/items';
+import type { Repositories } from '@fatcat-ai/storage';
+import { documentKind, MAX_DOCUMENT_BYTES, parseInWorker } from '@fatcat-ai/tools';
 import type { MailJobRunner } from './run.js';
 
 export class AttachmentError extends Error {

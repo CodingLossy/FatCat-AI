@@ -32,7 +32,7 @@ export function AuthForm({ initialized, onDone }: { initialized: boolean; onDone
 
     return (
         <main className="auth">
-            <h1>AI-Personal</h1>
+            <h1>FatCat-AI</h1>
             <p className="muted">{t('app.tagline')}</p>
             <form className="card form" onSubmit={submit}>
                 <h2>{initialized ? t('auth.loginTitle') : t('auth.setupTitle')}</h2>

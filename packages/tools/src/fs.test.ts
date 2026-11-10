@@ -68,7 +68,7 @@ describe('词法检查(Windows 规则在所有系统上都测)', () => {
 
     it('Windows 允许普通路径;Linux 上冒号与设备名是普通字符', () => {
         expect(() => checkLexical('C:\\Users\\me\\Docs\\notes.md', 'win32')).not.toThrow();
-        expect(() => checkLexical('D:/Projects/AI-Personal/../x', 'win32')).not.toThrow();
+        expect(() => checkLexical('D:/Projects/FatCat-AI/../x', 'win32')).not.toThrow();
         expect(() => checkLexical('/home/u/a:b/CON', 'linux')).not.toThrow();
         expect(() => checkLexical('/home/u/a\0b', 'linux')).toThrow(/NUL/);
     });
@@ -94,7 +94,7 @@ describe('真实文件系统', () => {
     let outside: string;
 
     beforeEach(() => {
-        base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'aip-fs-')));
+        base = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'fatcat-fs-')));
         root = path.join(base, 'Root');
         outside = path.join(base, 'Outside');
         mkdirSync(path.join(root, 'sub'), { recursive: true });

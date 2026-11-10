@@ -4,8 +4,8 @@
 // novels 提供者:「小说」→ 书 → 章(ADR 0012 第 3 节)。授权目录中的 .txt 文件,至少有 2 行章节标题时识别为小说。
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { Item, ItemContent } from '@ai-personal/shared';
-import { resolveInRoots } from '@ai-personal/tools';
+import type { Item, ItemContent } from '@fatcat-ai/shared';
+import { resolveInRoots } from '@fatcat-ai/tools';
 import { type ItemProvider, type OpenContext, type SyncContext, textContent } from './provider.js';
 import { walk } from './walk.js';
 

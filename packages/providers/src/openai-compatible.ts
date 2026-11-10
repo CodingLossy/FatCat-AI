@@ -3,7 +3,7 @@
 
 // OpenAI 兼容端点(OpenAI、DeepSeek、Ollama、LM Studio、vLLM 等)的流式实现。
 // 只用 fetch 与 ReadableStream,不引入 SDK:AI SDK 7 加载即增加约 22 MiB RSS,而 2GB 机器的空闲预算只有 120 MiB(ADR 0006)。
-import type { ModelTestResult, Usage } from '@ai-personal/shared';
+import type { ModelTestResult, Usage } from '@fatcat-ai/shared';
 import {
     createHttp,
     guardedStream,

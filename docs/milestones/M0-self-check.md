@@ -1,5 +1,7 @@
 # M0 自检报告
 
+> 注:项目已于 2026-11-10 由 AI-Personal 改名为 FatCat-AI(ADR 0019)。本文是当时的记录,文中的包名 `@ai-personal/*`、命令 `ai-personal`、目录 `~/.ai-personal` 与 `AIP_*` 环境变量现在分别是 `@fatcat-ai/*`、`fatcat-ai`、`~/.fatcat-ai` 与 `FATCAT_AI_*`。
+
 - 日期:2026-11-03(第二版:已按业主答复修订)
 - 分支:`main`(本地仓库,尚未推送;共 18 个提交,提交说明均为英文)
 - 环境:Windows 11,Node 24.15.0,pnpm 10.11.1;**本机未安装 Docker**

@@ -74,7 +74,7 @@ import type {
     MailMessage,
     MailPreset,
     MailSyncResult,
-} from '@ai-personal/shared';
+} from '@fatcat-ai/shared';
 import { RunStream, type StreamOptions } from './run-stream.js';
 import { Transport, type TransportOptions } from './transport.js';
 import {
@@ -419,4 +419,4 @@ export function createClient(options: ClientOptions) {
     };
 }
 
-export type AipClient = ReturnType<typeof createClient>;
+export type FatCatClient = ReturnType<typeof createClient>;

@@ -13,7 +13,7 @@ M2 验收第 3 条:接入官方示例 MCP Server 后可用。M2 只做 stdio 传
 ### 1. 自己实现最小客户端,不引入 SDK
 
 - M2 方案问题 9 同意了 `@modelcontextprotocol/sdk`,并允许「超出门禁就自己实现」。stdio 客户端只需要按行分隔的 JSON-RPC 2.0 与三个方法(`initialize`、`tools/list`、`tools/call`),约 200 行;SDK v1 会带进 express 等服务端依赖,v2 的 `@modelcontextprotocol/client` 也带 OAuth 与 SSE 依赖。自己实现后**没有新的运行时依赖**。
-- 实现位于 `packages/tools/src/mcp/`,以单独的入口 `@ai-personal/tools/mcp` 导出。服务器只在至少有一个服务器要连接时才 `import()` 这个入口,没有配置服务器时空闲内存不变。
+- 实现位于 `packages/tools/src/mcp/`,以单独的入口 `@fatcat-ai/tools/mcp` 导出。服务器只在至少有一个服务器要连接时才 `import()` 这个入口,没有配置服务器时空闲内存不变。
 - 协议版本发 `2025-06-18`;服务器回答它支持的版本,我们不拒绝(只用到三个方法,各版本一致)。服务器发来的请求(sampling、elicitation 等)一律回答「方法不存在」,通知忽略,stdout 上不是 JSON 的行忽略。
 - 单条消息上限 4 MB,超出时断开;每个请求超时 30 秒。
 - 集成测试使用官方示例 `@modelcontextprotocol/server-filesystem`(devDependency,不联网)。它的 `package.json` 写的是 `SEE LICENSE IN LICENSE`,仓库许可证为 MIT 与 Apache-2.0(许可证迁移期,都是白名单内的宽松许可),在 `scripts/check-licenses.mjs` 中按人工核对的例外登记。另有一个手写的假服务器覆盖翻页、超时、进程退出等情况。
@@ -33,7 +33,7 @@ M2 验收第 3 条:接入官方示例 MCP Server 后可用。M2 只做 stdio 传
 | `tool_risks_json` | 按工具覆盖级别,例如 `{ "read_text_file": "read" }`                      |
 
 - 没有对应的 Agent 工具,模型不能新增、修改或启动服务器。
-- **环境变量**:子进程只拿到运行程序所需的少数变量(`PATH`、`HOME`、`TEMP`、`SYSTEMROOT` 等)加上用户列出的名字。`AIP_*` 永远不传,即使用户列出(API 返回 400,客户端再过滤一次)。需要 API Key 的服务器可以让部署者把密钥放进服务器进程的环境,再在这里列出名字;数据库和日志里只有名字。
+- **环境变量**:子进程只拿到运行程序所需的少数变量(`PATH`、`HOME`、`TEMP`、`SYSTEMROOT` 等)加上用户列出的名字。`FATCAT_AI_*`(以及改名前的 `AIP_*`,ADR 0019)永远不传,即使用户列出(API 返回 400,客户端再过滤一次)。需要 API Key 的服务器可以让部署者把密钥放进服务器进程的环境,再在这里列出名字;数据库和日志里只有名字。
 - 删除服务器时,`mcp.<name>.` 开头的预授权一并删除,并按 `preauth-revoked` 审计(ADR 0010 第 3 节)。与授权目录一样,配置变更本身不写审计;日志只记服务器名,不记命令参数。
 
 ### 3. 生命周期

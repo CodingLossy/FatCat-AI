@@ -12,7 +12,7 @@ M1 的 Web UI 要有登录、会话列表、聊天窗口、设置页、深浅色
 
 ### 1. 只走公开 API
 
-- 所有请求经 `@ai-personal/client`(ADR 0008),浏览器用 Cookie 会话:登录 / 初始化后服务器下发 HttpOnly 的 `aip_session` 与可读的 `aip_csrf`,修改类请求从 `aip_csrf` Cookie 读出令牌放进 `X-CSRF-Token`。页面里不保存任何令牌或密钥。
+- 所有请求经 `@fatcat-ai/client`(ADR 0008),浏览器用 Cookie 会话:登录 / 初始化后服务器下发 HttpOnly 的 `aip_session` 与可读的 `aip_csrf`,修改类请求从 `aip_csrf` Cookie 读出令牌放进 `X-CSRF-Token`。页面里不保存任何令牌或密钥。
 - 补上 M1 方案第 5 节已列出但尚未实现的 `GET /settings` · `PUT /settings`(契约早已在 `packages/shared` 的 `Settings` / `SettingsPatch` 中,只是增量新增端点,不改 schema)。`PUT` 只改给出的键,`memory` 浅合并;默认配置档必须存在,否则 400。`defaultChatProfileId` / `defaultCheapProfileId` 现在参与选择配置档:请求指定 > 会话设置 > 设置中的默认值 > 第一个声明该用途的配置档。SDK 增加 `settings.get()` / `settings.update()`。
 
 ### 2. 依赖从简

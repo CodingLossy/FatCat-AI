@@ -2,8 +2,8 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 条目服务:按需同步各提供者,打开条目时交给对应提供者(ADR 0012 第 4、5 节)。
-import type { Item, ItemContent } from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
+import type { Item, ItemContent } from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
 import { filesProvider } from './files.js';
 import { novelsProvider } from './novels.js';
 import type { ItemProvider } from './provider.js';

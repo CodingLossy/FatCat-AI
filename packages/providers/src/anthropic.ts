@@ -3,7 +3,7 @@
 
 // Anthropic Messages API 原生适配(ADR 0006 第 5 节):只用 fetch,不引入 SDK。
 // 流式事件:message_start / content_block_start / content_block_delta / content_block_stop / message_delta / message_stop。
-import type { ModelTestResult, Usage } from '@ai-personal/shared';
+import type { ModelTestResult, Usage } from '@fatcat-ai/shared';
 import {
     createHttp,
     guardedStream,

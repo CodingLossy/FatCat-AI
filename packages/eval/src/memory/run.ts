@@ -9,8 +9,8 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createDigestBuilder, createExtractor, createMemoryService, createRetriever } from '@ai-personal/memory';
-import { createRepositories, openStorage } from '@ai-personal/storage';
+import { createDigestBuilder, createExtractor, createMemoryService, createRetriever } from '@fatcat-ai/memory';
+import { createRepositories, openStorage } from '@fatcat-ai/storage';
 import { type MemoryCase, MEMORY_CASES } from './cases.js';
 
 const NOW = new Date('2026-11-05T00:00:00Z');
@@ -34,7 +34,7 @@ export interface MemoryEvalReport {
 }
 
 async function runCase(c: MemoryCase): Promise<CaseResult & { recallHit?: boolean; staleHit?: boolean }> {
-    const dir = mkdtempSync(join(tmpdir(), 'aip-memory-eval-'));
+    const dir = mkdtempSync(join(tmpdir(), 'fatcat-memory-eval-'));
     const { conn } = await openStorage({ dataDir: dir });
     try {
         let clock = NOW;

@@ -2,8 +2,8 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { createRoute, z } from '@hono/zod-openapi';
-import { AccessToken, CreatedAccessToken, CreateTokenRequest, Id, pageOf } from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
+import { AccessToken, CreatedAccessToken, CreateTokenRequest, Id, pageOf } from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
 import { newAccessToken, sha256 } from '../auth/crypto.js';
 import { requireOwner } from '../auth/middleware.js';
 import { notFound } from '../errors.js';

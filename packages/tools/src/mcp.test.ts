@@ -76,9 +76,16 @@ describe('StdioMcpClient(假服务器)', () => {
     });
 
     it('子进程只拿到最小环境与允许传递的变量', () => {
-        const env = { PATH: '/bin', MCP_TEST_ALLOWED: 'yes', MCP_TEST_SECRET: 'no', HOME: '/home/u', AIP_KEY: 'k' };
-        // AIP_* 即使被列出也不传
-        expect(childEnv(['MCP_TEST_ALLOWED', 'AIP_KEY', 'aip_key'], env)).toEqual({
+        const env = {
+            PATH: '/bin',
+            MCP_TEST_ALLOWED: 'yes',
+            MCP_TEST_SECRET: 'no',
+            HOME: '/home/u',
+            FATCAT_AI_KEY: 'k',
+            AIP_KEY: 'old',
+        };
+        // FATCAT_AI_* 与旧名 AIP_* 即使被列出也不传(大小写不敏感)
+        expect(childEnv(['MCP_TEST_ALLOWED', 'FATCAT_AI_KEY', 'fatcat_ai_key', 'AIP_KEY', 'aip_key'], env)).toEqual({
             PATH: '/bin',
             HOME: '/home/u',
             MCP_TEST_ALLOWED: 'yes',
@@ -160,7 +167,7 @@ describe.runIf(Number(process.versions.node.split('.')[0]) >= 24)(
     '官方 @modelcontextprotocol/server-filesystem',
     () => {
         it('列出工具并读取授权目录中的文件', async () => {
-            const dir = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'aip-mcp-official-')));
+            const dir = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'fatcat-mcp-official-')));
             writeFileSync(path.join(dir, 'hello.txt'), 'hello from MCP');
             try {
                 const registry = new ToolRegistry();

@@ -2,7 +2,7 @@
 # Copyright (C) 2026 尹绪柏 (Theodore Yin)
 #
 # 多阶段构建:build 阶段安装依赖并构建全部包,runtime 阶段只含 server 生产依赖与 Web UI 静态文件,以非 root 用户运行。
-# 构建:docker build -f docker/Dockerfile -t ai-personal .
+# 构建:docker build -f docker/Dockerfile -t fatcat-ai .
 
 ARG NODE_IMAGE=node:24-slim
 
@@ -15,12 +15,12 @@ COPY . .
 RUN pnpm install --frozen-lockfile && pnpm build
 # 只重新安装 server 及其工作区依赖的生产依赖(pnpm deploy --legacy 在这里会跳过安装,产出空的 node_modules)
 RUN rm -rf node_modules apps/*/node_modules packages/*/node_modules \
-    && pnpm install --frozen-lockfile --prod --filter "@ai-personal/server..."
+    && pnpm install --frozen-lockfile --prod --filter "@fatcat-ai/server..."
 
 FROM ${NODE_IMAGE} AS runtime
 ARG SOURCE_URL=""
 ARG VERSION="0.0.0"
-LABEL org.opencontainers.image.title="AI-Personal" \
+LABEL org.opencontainers.image.title="FatCat-AI" \
       org.opencontainers.image.description="Self-hostable personal AI assistant framework" \
       org.opencontainers.image.licenses="AGPL-3.0-only" \
       org.opencontainers.image.authors="尹绪柏 (Theodore Yin) <x19169738916@163.com>" \
@@ -30,11 +30,11 @@ LABEL org.opencontainers.image.title="AI-Personal" \
 # 空闲时也不归还。与 SQLite 页缓存降到 4 MiB 合计,万封同步后的常驻内存从约 265 MiB 降到约 141–145 MiB(ADR 0018 第 4 节)。scripts/perf/mail-sync-rss.mjs 读取这一行。
 ENV NODE_ENV=production \
     NODE_OPTIONS="--max-old-space-size=384 --max-semi-space-size=8" \
-    AIP_HOST=0.0.0.0 \
-    AIP_PORT=8787 \
-    AIP_WEB_DIR=/app/apps/web/dist \
-    AIP_SOURCE_URL=${SOURCE_URL} \
-    AIP_DATA_DIR=/data
+    FATCAT_AI_HOST=0.0.0.0 \
+    FATCAT_AI_PORT=8787 \
+    FATCAT_AI_WEB_DIR=/app/apps/web/dist \
+    FATCAT_AI_SOURCE_URL=${SOURCE_URL} \
+    FATCAT_AI_DATA_DIR=/data
 WORKDIR /app
 # 代码与依赖归 root 所有,运行用户 node 只读;只有 /data 可写
 COPY --from=build /repo/LICENSE /repo/NOTICE /repo/package.json ./

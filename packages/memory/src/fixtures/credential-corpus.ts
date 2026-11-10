@@ -125,7 +125,7 @@ export const CREDENTIAL_NEGATIVES: readonly string[] = [
     'The secret to good bread is patience',
     'secret: santa',
     '用户的 GitHub 用户名是 CodingLossy',
-    '仓库地址 https://github.com/CodingLossy/AI-Personal',
+    '仓库地址 https://github.com/CodingLossy/FatCat-AI',
     '文档在 https://example.com/docs/getting-started?tab=install#step-2',
     '用户的博客是 https://blog.example.org/2026/11/04/memory-v2-notes',
     'commit 8e12353 修复了迁移问题',

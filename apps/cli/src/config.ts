@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import { chmodSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 export const DEFAULT_SERVER = 'http://127.0.0.1:8787';
 
-/** ~/.ai-personal/cli.json 的内容;只有服务器地址与令牌,令牌从不打印。 */
+/** ~/.fatcat-ai/cli.json 的内容;只有服务器地址与令牌,令牌从不打印。 */
 export interface CliConfigFile {
     server?: string;
     token?: string;
@@ -24,8 +24,18 @@ export interface ResolvedConfig {
     path: string;
 }
 
-export function configPath(env: NodeJS.ProcessEnv): string {
-    return env.AIP_CLI_CONFIG || join(homedir(), '.ai-personal', 'cli.json');
+/** CLI 读取的环境变量(不带 FATCAT_AI_ 前缀);改名前的 AIP_ 旧名由 applyLegacyEnv 兼容(ADR 0019)。 */
+export const CLI_ENV_NAMES = ['SERVER', 'TOKEN', 'CLI_CONFIG'] as const;
+
+/**
+ * 配置文件路径。默认在 ~/.fatcat-ai;改名前的 ~/.ai-personal 还没被服务器迁移(新目录不存在)时继续用旧目录,
+ * 免得 CLI 先建出新目录而让服务器跳过迁移(ADR 0019)。
+ */
+export function configPath(env: NodeJS.ProcessEnv, home: string = homedir()): string {
+    if (env.FATCAT_AI_CLI_CONFIG) return env.FATCAT_AI_CLI_CONFIG;
+    const dir = join(home, '.fatcat-ai');
+    const legacyDir = join(home, '.ai-personal');
+    return join(!existsSync(dir) && existsSync(legacyDir) ? legacyDir : dir, 'cli.json');
 }
 
 export function readConfigFile(path: string): CliConfigFile {
@@ -50,12 +60,12 @@ export function removeConfigFile(path: string): void {
     rmSync(path, { force: true });
 }
 
-/** 优先级:命令行参数 > 环境变量 AIP_SERVER / AIP_TOKEN > 配置文件(M1 方案第 5 节)。 */
+/** 优先级:命令行参数 > 环境变量 FATCAT_AI_SERVER / FATCAT_AI_TOKEN > 配置文件(M1 方案第 5 节)。 */
 export function resolveConfig(env: NodeJS.ProcessEnv, flags: { server?: string | undefined }): ResolvedConfig {
     const path = configPath(env);
     const file = readConfigFile(path);
-    const server = (flags.server || env.AIP_SERVER || file.server || DEFAULT_SERVER).replace(/\/+$/, '');
-    const envToken = env.AIP_TOKEN || undefined;
+    const server = (flags.server || env.FATCAT_AI_SERVER || file.server || DEFAULT_SERVER).replace(/\/+$/, '');
+    const envToken = env.FATCAT_AI_TOKEN || undefined;
     // 文件里的令牌只属于文件里的那个服务器,换了服务器就不能带过去
     const fileToken = !file.server || file.server.replace(/\/+$/, '') === server ? file.token : undefined;
     const token = envToken ?? fileToken;

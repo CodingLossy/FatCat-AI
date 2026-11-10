@@ -3,7 +3,7 @@
 
 // 每轮交给模型的记忆上下文(《记忆模块补充设计》第 4.4–4.6 节):会话的第一轮注入一次 digest;
 // 每轮按用户消息检索,结果装进记忆块,并去掉 digest 里已有的条目。
-import type { Repositories } from '@ai-personal/storage';
+import type { Repositories } from '@fatcat-ai/storage';
 import type { DigestBuilder } from './digest.js';
 import type { Retriever, RetrieveOptions } from './retrieve.js';
 

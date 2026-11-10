@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // sessions 提供者:「会话」→ 每个会话(ADR 0012 第 3 节)。
-import type { Item, ItemContent } from '@ai-personal/shared';
+import type { Item, ItemContent } from '@fatcat-ai/shared';
 import { type ItemProvider, type OpenContext, type SyncContext, textContent } from './provider.js';
 
 export const SESSIONS_ROOT_REF = 'sessions';

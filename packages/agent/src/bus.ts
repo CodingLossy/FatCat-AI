@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { EventEnvelope } from '@ai-personal/shared';
+import type { EventEnvelope } from '@fatcat-ai/shared';
 
 /** runId 为 null 表示与运行无关的事件。 */
 export type EventListener = (envelope: EventEnvelope, runId: string | null) => void;

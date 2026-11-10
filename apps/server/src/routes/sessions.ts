@@ -2,8 +2,8 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { createRoute, z } from '@hono/zod-openapi';
-import { RunConflictError, type RunManager } from '@ai-personal/agent';
-import { type SecretStore, selectProfile } from '@ai-personal/providers';
+import { RunConflictError, type RunManager } from '@fatcat-ai/agent';
+import { type SecretStore, selectProfile } from '@fatcat-ai/providers';
 import {
     CreateSessionRequest,
     EventEnvelope,
@@ -15,8 +15,8 @@ import {
     SendMessageRequest,
     Session,
     UpdateSessionRequest,
-} from '@ai-personal/shared';
-import type { ModelProfileRecord, Repositories } from '@ai-personal/storage';
+} from '@fatcat-ai/shared';
+import type { ModelProfileRecord, Repositories } from '@fatcat-ai/storage';
 import type { Context } from 'hono';
 import { requireOwner } from '../auth/middleware.js';
 import type { AppEnv } from '../env.js';

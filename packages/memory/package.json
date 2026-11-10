@@ -1,18 +1,18 @@
 {
-  "name": "@ai-personal/memory",
+  "name": "@fatcat-ai/memory",
   "version": "0.0.0",
   "private": true,
   "description": "Long-term memory and vector search",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-  "homepage": "https://github.com/CodingLossy/AI-Personal/tree/main/packages/memory",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/memory",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CodingLossy/AI-Personal.git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
     "directory": "packages/memory"
   },
   "bugs": {
-    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
   },
   "type": "module",
   "exports": {
@@ -35,7 +35,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-personal/shared": "workspace:*",
-    "@ai-personal/storage": "workspace:*"
+    "@fatcat-ai/shared": "workspace:*",
+    "@fatcat-ai/storage": "workspace:*"
   }
 }

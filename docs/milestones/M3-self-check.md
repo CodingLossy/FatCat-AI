@@ -1,5 +1,7 @@
 # M3 自检报告(邮件,PR 1–5)
 
+> 注:项目已于 2026-11-10 由 AI-Personal 改名为 FatCat-AI(ADR 0019)。本文是当时的记录,文中的包名 `@ai-personal/*`、命令 `ai-personal`、目录 `~/.ai-personal` 与 `AIP_*` 环境变量现在分别是 `@fatcat-ai/*`、`fatcat-ai`、`~/.fatcat-ai` 与 `FATCAT_AI_*`。
+
 - 日期:2026-11-05(America/Los_Angeles)
 - 基线:`main` @ `6668847`(M3 PR 1–4 已合并,对应 GitHub PR #35–#38),加 PR 5(`docs/m3-wrapup`):本自检、M3 用户可见文档,以及 Shy 真机发信测试发现的两项缺陷的修复
 - 对照依据:开发计划第 8 节 M3 验收、第 12 节资源预算;`docs/milestones/M3-plan.md` 第 2–4、6 节;`docs/adr/0016-mail.md`

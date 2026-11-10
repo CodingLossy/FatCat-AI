@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 工具、审批、预授权与审计的 REST(ADR 0010),含越权用例。
-import type { ChatChunk, ChatRequest, ModelProvider } from '@ai-personal/providers';
+import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
 import {
     ApprovalRequest,
     AuditEntry,
@@ -12,10 +12,10 @@ import {
     ProblemDetails,
     Session,
     ToolInfo,
-} from '@ai-personal/shared';
+} from '@fatcat-ai/shared';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { isBlockedAddress } from '@ai-personal/tools';
+import { isBlockedAddress } from '@fatcat-ai/tools';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 

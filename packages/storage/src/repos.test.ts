@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { AgentEvent } from '@ai-personal/shared';
+import type { AgentEvent } from '@fatcat-ai/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { InvalidCursorError } from './cursor.js';
 import { newId } from './ids.js';

@@ -4,8 +4,8 @@
 // 会话开头的 digest(《记忆模块补充设计》第 4.5 节):置顶 → 画像类单值事实 → accepted 的决策 →
 // procedural 偏好 → 未解决的冲突(列成待确认问题)。上限 400 tokens(可在设置中调整)、最多 15 条。
 // 预先计算并缓存在 memory_digest 中;记忆变更后防抖 30 秒重建。纯 SQL + 模板,不调用模型。
-import type { MemoryDigest } from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
+import type { MemoryDigest } from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
 import { QUALIFIER_LABEL, qualify } from './retrieve.js';
 import { estimateTokens, truncateToTokens } from './tokens.js';
 

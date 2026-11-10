@@ -22,7 +22,7 @@ const tableExists = (conn: Connection, name: string) =>
     conn.sqlite.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(name) !== undefined;
 
 beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'aip-migrate-'));
+    dir = mkdtempSync(join(tmpdir(), 'fatcat-migrate-'));
     conns = [];
 });
 

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { hostname } from 'node:os';
-import { AipApiError } from '@ai-personal/client';
+import { FatCatApiError } from '@fatcat-ai/client';
 import { connect, parse } from '../common.js';
 import { readConfigFile, removeConfigFile, writeConfigFile } from '../config.js';
 import { type Ctx, promptLine, readAll, readHidden, status, UsageError } from '../io.js';
@@ -54,7 +54,7 @@ export async function logout(ctx: Ctx, args: string[]): Promise<number> {
     const { values } = parse(args, {});
     const { client, config } = connect(ctx, values.server);
     if (config.tokenSource === 'env') {
-        throw new UsageError('The token comes from AIP_TOKEN; unset it instead (it was not revoked).');
+        throw new UsageError('The token comes from FATCAT_AI_TOKEN; unset it instead (it was not revoked).');
     }
     const file = readConfigFile(config.path);
     if (file.tokenId) {
@@ -62,7 +62,7 @@ export async function logout(ctx: Ctx, args: string[]): Promise<number> {
             await client.tokens.revoke(file.tokenId);
         } catch (error) {
             // 令牌已失效或已被吊销时仍然删除本地配置
-            if (!(error instanceof AipApiError) || (error.status !== 401 && error.status !== 404)) throw error;
+            if (!(error instanceof FatCatApiError) || (error.status !== 401 && error.status !== 404)) throw error;
         }
     }
     removeConfigFile(config.path);
@@ -81,7 +81,7 @@ export async function whoami(ctx: Ctx, args: string[]): Promise<number> {
 export async function approve(ctx: Ctx, args: string[]): Promise<number> {
     const { values, positionals } = parse(args, { reject: { type: 'boolean' } });
     const callId = positionals[0];
-    if (!callId) throw new UsageError('Usage: ai-personal approve <callId> [--reject]');
+    if (!callId) throw new UsageError('Usage: fatcat-ai approve <callId> [--reject]');
     const { client } = connect(ctx, values.server);
     const result = await client.approvals.decide(callId, values.reject ? 'reject' : 'approve');
     status(ctx, `${result.callId}: ${result.decision}d`);

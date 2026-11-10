@@ -4,9 +4,9 @@
 // mail 条目提供者(ADR 0016,M3 PR 4):「邮件 → 账户 → 文件夹 → 会话串 → 邮件」,加入知识库的附件挂在邮件下。
 // 条目只有主题与发件人 / 日期摘要,正文不进 items_fts(正文的全文检索在 mail_fts,ADR 0016 第 3 节)。
 // 账户的缓存没有变化时(指纹相同)跳过整个账户,1 万封邮件也不会每次重写。
-import type { Item, ItemContent } from '@ai-personal/shared';
-import type { MailItemRow } from '@ai-personal/storage';
-import { type ItemProvider, type OpenContext, type SyncContext, textContent } from '@ai-personal/items';
+import type { Item, ItemContent } from '@fatcat-ai/shared';
+import type { MailItemRow } from '@fatcat-ai/storage';
+import { type ItemProvider, type OpenContext, type SyncContext, textContent } from '@fatcat-ai/items';
 import { fullText } from './tools.js';
 
 export const MAIL_ROOT_REF = 'mail';

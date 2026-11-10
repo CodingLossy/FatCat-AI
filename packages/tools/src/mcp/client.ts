@@ -4,6 +4,7 @@
 // 最小的 MCP stdio 客户端(ADR 0013 第 2 节):按行分隔的 JSON-RPC 2.0,只实现 initialize、tools/list 与 tools/call。
 // 不经过 shell 启动;子进程只拿到最小环境与用户允许传递的变量。
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
+import { isOwnEnvName } from '@fatcat-ai/shared';
 
 export const MCP_PROTOCOL_VERSION = '2025-06-18';
 export const REQUEST_TIMEOUT_MS = 30_000;
@@ -52,8 +53,8 @@ export function childEnv(passthrough: readonly string[], env: NodeJS.ProcessEnv 
         'LOCALAPPDATA',
     ];
     const out: Record<string, string> = {};
-    // 本服务自己的配置(AIP_*)永远不传给子进程,即使用户写了
-    for (const name of [...base, ...passthrough.filter((n) => !n.toUpperCase().startsWith('AIP_'))]) {
+    // 本服务自己的配置(FATCAT_AI_*,以及改名前的 AIP_*)永远不传给子进程,即使用户写了
+    for (const name of [...base, ...passthrough.filter((n) => !isOwnEnvName(n))]) {
         const value = env[name];
         if (value !== undefined) out[name] = value;
     }
@@ -104,7 +105,7 @@ export class StdioMcpClient {
         await this.request('initialize', {
             protocolVersion: MCP_PROTOCOL_VERSION,
             capabilities: {},
-            clientInfo: { name: 'AI-Personal', version: '0.0.0' },
+            clientInfo: { name: 'FatCat-AI', version: '0.0.0' },
         });
         this.notify('notifications/initialized');
     }

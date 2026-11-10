@@ -4,8 +4,8 @@
 // 对话峰值内存(M2 方案问题 7、PR 15):1 万条记忆时连续对话,进程 RSS 峰值 < 400 MB。
 // 在测试进程内测量,包含 vitest 自身的开销,所以结果偏保守;空闲 RSS 由 CI 的容器门禁测量。
 import { performance } from 'node:perf_hooks';
-import type { ChatChunk, ModelProvider } from '@ai-personal/providers';
-import { Session } from '@ai-personal/shared';
+import type { ChatChunk, ModelProvider } from '@fatcat-ai/providers';
+import { Session } from '@fatcat-ai/shared';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 

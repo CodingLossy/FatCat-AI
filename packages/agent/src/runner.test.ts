@@ -4,9 +4,9 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { type ChatChunk, type ChatRequest, type ModelProvider, ProviderError } from '@ai-personal/providers';
-import type { EventEnvelope } from '@ai-personal/shared';
-import { createRepositories, type ModelProfileRecord, openStorage, type Repositories } from '@ai-personal/storage';
+import { type ChatChunk, type ChatRequest, type ModelProvider, ProviderError } from '@fatcat-ai/providers';
+import type { EventEnvelope } from '@fatcat-ai/shared';
+import { createRepositories, type ModelProfileRecord, openStorage, type Repositories } from '@fatcat-ai/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EventBus } from './bus.js';
 import { RunConflictError, RunManager } from './runner.js';
@@ -33,7 +33,7 @@ const fakeProvider: ModelProvider = {
 };
 
 beforeEach(async () => {
-    dir = mkdtempSync(join(tmpdir(), 'aip-agent-'));
+    dir = mkdtempSync(join(tmpdir(), 'fatcat-agent-'));
     const { conn } = await openStorage({ dataDir: dir });
     close = () => conn.close();
     repos = createRepositories(conn);

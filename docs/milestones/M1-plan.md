@@ -1,5 +1,7 @@
 # M1 实施方案 · 对话核心 + BYO LLM + API v1
 
+> 注:项目已于 2026-11-10 由 AI-Personal 改名为 FatCat-AI(ADR 0019)。本文是当时的记录,文中的包名 `@ai-personal/*`、命令 `ai-personal`、目录 `~/.ai-personal` 与 `AIP_*` 环境变量现在分别是 `@fatcat-ai/*`、`fatcat-ai`、`~/.fatcat-ai` 与 `FATCAT_AI_*`。
+
 - 版本:v1.1 · 2026-11-03 · 状态:**业主已确认(2026-11-03),按第 8 节顺序分 PR 实施**
 - 实施中的调整:存储层不用 Drizzle / drizzle-kit,改为手写 SQL 迁移与参数化查询(PR #2、#3,见 ADR 0005);下文中提到 Drizzle 的地方以 ADR 0005 为准;模型网关不用 AI SDK,改为 fetch 自写(PR #4,见 ADR 0006)
 - 依据:开发计划第 3 节(技术栈,3.4 / 3.5)、第 6 节(核心接口)、6.1(headless 核心与 v1 API)、第 7 节(安全)、第 8 节 M1;《记忆模块补充设计》第 9 节对 M1 的建议

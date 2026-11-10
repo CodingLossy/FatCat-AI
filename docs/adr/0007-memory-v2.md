@@ -2,7 +2,7 @@
 
 - 状态:已采纳(业主 2026-11-03 正式采纳《记忆模块补充设计》)
 - 日期:2026-11-03
-- 来源:`docs/plan/AI-Personal-记忆模块补充设计.md`(下称「补充设计」);开发计划 6.2、第 7、12、13、15、16 节
+- 来源:`docs/plan/FatCat-AI-记忆模块补充设计.md`(下称「补充设计」);开发计划 6.2、第 7、12、13、15、16 节
 - 编号说明:补充设计原拟 `0004-memory-v2.md`;0004–0006 已用于 M1 契约,本 ADR 顺延为 0007。
 
 ## 0. 净室声明(必须遵守)
@@ -128,7 +128,7 @@ CREATE INDEX idx_mem_lookup ON memory_facts(owner_id, status, mem_type);
 
 ### 5.5 写入路径(M2 PR 11)
 
-- **凭据检测**是 `packages/memory/src/secrets.ts` 中不依赖任何包的纯函数 `detectCredential`,也以 `@ai-personal/memory/secrets` 单独导出,供日志、审批卡片等复用。规则覆盖补充设计第 3 节,另加 URL 中的用户名密码、Stripe / Hugging Face / GitLab 前缀与 HTTP Bearer。语料在 `packages/memory/src/fixtures/credential-corpus.ts`(≥ 60 正例、≥ 60 反例);其中的假密钥在运行时拼出,仓库里没有完整的密钥串。凭据检测针对除 `source` 以外的所有输入字段(`source` 里是 core 填的 ULID)。
+- **凭据检测**是 `packages/memory/src/secrets.ts` 中不依赖任何包的纯函数 `detectCredential`,也以 `@fatcat-ai/memory/secrets` 单独导出,供日志、审批卡片等复用。规则覆盖补充设计第 3 节,另加 URL 中的用户名密码、Stripe / Hugging Face / GitLab 前缀与 HTTP Bearer。语料在 `packages/memory/src/fixtures/credential-corpus.ts`(≥ 60 正例、≥ 60 反例);其中的假密钥在运行时拼出,仓库里没有完整的密钥串。凭据检测针对除 `source` 以外的所有输入字段(`source` 里是 core 填的 ULID)。
 - **脱敏**(`sensitive.ts`):Luhn 银行卡号、校验位正确的 18 位身份证号、手机号、详细住址替换为占位文字,sensitivity = 2;生日、家庭成员只标记 sensitivity = 1。病历类关键词暂不处理。
 - **entity_key 注册表**(`entity-keys.ts`)含别名(如 `user.city` → `user.location.city`)与键族 `project.<slug>.status|license|stack`、`person.<slug>.relation`;不在表中的键归一为 `x.<key>`,默认 multi。M1 中已存的未登记 `user.*` 键不改。
 - **去重**只用 FTS:按词(≥ 3 字符)取同类型 active 记忆为候选,再比较「小写并去掉空白、标点」后的文本;没有可用的词时退回全文相等。

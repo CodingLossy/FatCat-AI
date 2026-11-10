@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { Message } from '@ai-personal/client';
+import type { Message } from '@fatcat-ai/client';
 import { connect, parse, table } from '../common.js';
 import { type Ctx, UsageError } from '../io.js';
 
-const USAGE = 'Usage: ai-personal sessions list [--limit n] | sessions show <id>';
+const USAGE = 'Usage: fatcat-ai sessions list [--limit n] | sessions show <id>';
 
 function textOf(message: Message): string {
     return message.parts

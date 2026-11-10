@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { AipClient } from '@ai-personal/client';
+import type { FatCatClient } from '@fatcat-ai/client';
 import { connect, parse, resolveModelId } from '../common.js';
 import { type Ctx, isInteractive, lineReader, readAll, status, UsageError } from '../io.js';
 import { approverFor, runTurn, type TurnResult } from '../turn.js';
@@ -10,11 +10,11 @@ const exitCode = (r: TurnResult) => (r.outcome === 'finished' ? 0 : r.outcome ==
 
 const titleOf = (text: string) => text.replace(/\s+/g, ' ').trim().slice(0, 60);
 
-async function newSession(client: AipClient, text: string, modelId: string | undefined) {
+async function newSession(client: FatCatClient, text: string, modelId: string | undefined) {
     return client.sessions.create({ title: titleOf(text), ...(modelId ? { modelProfileId: modelId } : {}) });
 }
 
-/** ai-personal ask:单次提问,适合脚本。 */
+/** fatcat-ai ask:单次提问,适合脚本。 */
 export async function askCommand(ctx: Ctx, args: string[]): Promise<number> {
     const { values, positionals } = parse(args, {
         stdin: { type: 'boolean' },
@@ -26,7 +26,7 @@ export async function askCommand(ctx: Ctx, args: string[]): Promise<number> {
     const parts = [positionals.join(' ').trim()];
     if (values.stdin) parts.push((await readAll(ctx)).trim());
     const text = parts.filter(Boolean).join('\n\n');
-    if (!text) throw new UsageError('Usage: ai-personal ask "question" (or --stdin)');
+    if (!text) throw new UsageError('Usage: fatcat-ai ask "question" (or --stdin)');
 
     const { client } = connect(ctx, values.server);
     const modelId = await resolveModelId(client, values.model);
@@ -53,7 +53,7 @@ export async function askCommand(ctx: Ctx, args: string[]): Promise<number> {
 
 const CHAT_HELP = `Commands: /new  new session · /model <id|label>  switch profile · /retry  regenerate · /exit`;
 
-/** ai-personal chat:交互式聊天。 */
+/** fatcat-ai chat:交互式聊天。 */
 export async function chatCommand(ctx: Ctx, args: string[]): Promise<number> {
     const { values } = parse(args, {
         session: { type: 'string', short: 's' },

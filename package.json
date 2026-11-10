@@ -1,17 +1,17 @@
 {
-  "name": "ai-personal",
+  "name": "fatcat-ai",
   "version": "0.0.0",
   "private": true,
   "description": "A self-hostable, open-source personal AI assistant framework",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
-  "homepage": "https://github.com/CodingLossy/AI-Personal",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CodingLossy/AI-Personal.git"
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git"
   },
   "bugs": {
-    "url": "https://github.com/CodingLossy/AI-Personal/issues"
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
   },
   "type": "module",
   "packageManager": "pnpm@10.11.1",
@@ -24,8 +24,8 @@
     "lint": "eslint scripts eslint.config.js && turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "test:e2e": "pnpm --filter @ai-personal/web test:e2e",
-    "eval": "pnpm --filter @ai-personal/eval run eval && pnpm --filter @ai-personal/server run eval",
+    "test:e2e": "pnpm --filter @fatcat-ai/web test:e2e",
+    "eval": "pnpm --filter @fatcat-ai/eval run eval && pnpm --filter @fatcat-ai/server run eval",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:spdx": "node scripts/check-spdx.mjs",

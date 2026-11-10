@@ -15,8 +15,8 @@
 3. **SDK 例外**:`packages/plugin-sdk`、`packages/client` 及其依赖的 `packages/shared` 使用 **Apache-2.0**,让第三方插件与客户端开发者不受 AGPL 约束。每个 SDK 包内单独放 Apache-2.0 `LICENSE`。
 4. **贡献**:所有外部贡献者必须签 **CLA**(版权许可式,允许以任何许可、包括商业许可再许可,并含专有许可);公司贡献签企业 CCLA。**不采用 DCO**——DCO 不授予再许可权。通过 CLA Assistant(GitHub Action)在 PR 上强制,签名存于 `cla-signatures` 分支。
 5. **依赖**:只允许宽松许可(MIT / BSD / ISC / Apache-2.0 / 0BSD / Unlicense 等;MPL-2.0 仅以未修改库形式使用)。禁止任何第三方 copyleft。
-6. **商标**:「AI-Personal」名称与 Logo 不随 AGPL 授权,fork 须改名(`TRADEMARKS.md`)。
-7. **AGPL §13**:`GET /api/v1/meta` 返回 `license` 与 `sourceUrl`;Web UI 页脚显示源码链接;Docker 镜像带 OCI `licenses` / `source` 标签。`sourceUrl` 由 `AIP_SOURCE_URL` 配置,修改版部署者须改为自己的源码地址。
+6. **商标**:「FatCat-AI」名称与 Logo 不随 AGPL 授权,fork 须改名(`TRADEMARKS.md`)。
+7. **AGPL §13**:`GET /api/v1/meta` 返回 `license` 与 `sourceUrl`;Web UI 页脚显示源码链接;Docker 镜像带 OCI `licenses` / `source` 标签。`sourceUrl` 由 `FATCAT_AI_SOURCE_URL` 配置,修改版部署者须改为自己的源码地址。
 
 ## 工程落实
 

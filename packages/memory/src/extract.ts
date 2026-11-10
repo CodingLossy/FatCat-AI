@@ -5,7 +5,7 @@
 // 最终回答交给 cheap 模型,不含工具输出;每轮最多 3 条;每天的调用次数有上限;默认关闭。
 // 本模块不依赖模型网关:调用方传入 complete 函数。提示词由本项目自行编写。
 import { createHash } from 'node:crypto';
-import type { Repositories } from '@ai-personal/storage';
+import type { Repositories } from '@fatcat-ai/storage';
 import type { MemoryService } from './service.js';
 
 /** 每轮最多写入的条数。 */

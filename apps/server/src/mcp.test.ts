@@ -3,7 +3,7 @@
 
 // MCP 服务器配置 REST(ADR 0013):只有登录且带 CSRF 的用户能配置;工具默认需审批;删除时预授权一并删除并审计。
 import { fileURLToPath } from 'node:url';
-import { AuditEntry, McpServerView, pageOf, ToolInfo } from '@ai-personal/shared';
+import { AuditEntry, McpServerView, pageOf, ToolInfo } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
@@ -46,12 +46,14 @@ describe('MCP 服务器 REST', () => {
         expect(await list()).toEqual([]);
     });
 
-    it('拒绝不合法的名字、相对 cwd 与 AIP_* 环境变量', async () => {
+    it('拒绝不合法的名字、相对 cwd 与本项目的环境变量(FATCAT_AI_* 与旧名 AIP_*)', async () => {
         const { send } = await setup();
         expect((await send('POST', '/api/v1/mcp/servers', { ...config, name: 'Bad Name' })).status).toBe(400);
         expect((await send('POST', '/api/v1/mcp/servers', { ...config, cwd: 'relative/dir' })).status).toBe(400);
-        const env = await send('POST', '/api/v1/mcp/servers', { ...config, envPassthrough: ['AIP_DATA_DIR'] });
+        const env = await send('POST', '/api/v1/mcp/servers', { ...config, envPassthrough: ['FATCAT_AI_DATA_DIR'] });
         expect(env.status).toBe(400);
+        const legacy = await send('POST', '/api/v1/mcp/servers', { ...config, envPassthrough: ['AIP_DATA_DIR'] });
+        expect(legacy.status).toBe(400);
     });
 
     it('新增后注册 mcp.<server>.<tool>(默认需审批);重名 409;停用后工具移除;删除时预授权一并删除并审计', async () => {

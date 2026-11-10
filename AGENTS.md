@@ -1,6 +1,6 @@
 # AGENTS.md · 给 AI 编码代理(Claude Code 等)的工作约定
 
-本文件是仓库内 AI 代理与人类贡献者共同遵守的约定,内容来自开发计划第 13 节。开发总纲见 [docs/plan/AI-Personal-开发计划.md](docs/plan/AI-Personal-开发计划.md);**第 16 节「已定决策」不得自行更改**。
+本文件是仓库内 AI 代理与人类贡献者共同遵守的约定,内容来自开发计划第 13 节。开发总纲见 [docs/plan/FatCat-AI-开发计划.md](docs/plan/FatCat-AI-开发计划.md);**第 16 节「已定决策」不得自行更改**。
 
 ## 项目一句话
 
@@ -16,7 +16,7 @@
 | `pnpm lint` / `pnpm typecheck` / `pnpm test`                          | ESLint / tsc / Vitest                                            |
 | `pnpm format` / `pnpm format:check`                                   | Prettier                                                         |
 | `pnpm check:spdx` / `pnpm check:licenses` / `pnpm check:placeholders` | 许可证头、依赖白名单、占位符残留                                 |
-| `pnpm --filter @ai-personal/server test`                              | 只跑某个包                                                       |
+| `pnpm --filter @fatcat-ai/server test`                                | 只跑某个包                                                       |
 | `pnpm test:e2e` / `pnpm eval`                                         | Playwright 冒烟 / 记忆评测(召回率、过时率、错误率)与邮件注入评测 |
 | `docker compose -f docker/docker-compose.yml up --build`              | 本地容器运行                                                     |
 
@@ -29,7 +29,7 @@
 - `packages/items` 统一条目索引(知识地图数据层,见 `docs/adr/0003-item-index.md`)。
 - `packages/storage` 唯一的数据库入口:SQLite 连接、迁移与备份、表定义与仓储(见 `docs/adr/0005-storage.md`)。其他包不得自己打开数据库。
 - 设计记录放 `docs/adr/NNNN-标题.md`;模板文件放 `templates/`(不参与构建)。
-- 包名统一 `@ai-personal/*`,ESM only(`"type": "module"`),相对导入写 `.js` 后缀。
+- 包名统一 `@fatcat-ai/*`,ESM only(`"type": "module"`),相对导入写 `.js` 后缀。
 - 代码风格:Prettier(4 空格缩进、120 列、单引号、LF);TS strict + `noUncheckedIndexedAccess`。
 
 ## 工作约定(计划第 13 节)

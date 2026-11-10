@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 主线程与同步 worker 之间传递的数据(ADR 0016 第 2 节)。只有可结构化克隆的普通对象。
-import type { MailAddress, MailServer } from '@ai-personal/shared';
+import type { MailAddress, MailServer } from '@fatcat-ai/shared';
 
 export type FolderRole = 'inbox' | 'sent';
 

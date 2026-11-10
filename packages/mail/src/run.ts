@@ -7,7 +7,7 @@
 import { fork } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { MailConnectionTest } from '@ai-personal/shared';
+import type { MailConnectionTest } from '@fatcat-ai/shared';
 import type { DownloadInput, ImapConnectOptions, SendInput, SendOutput, SyncInput, SyncOutput } from './types.js';
 
 export type MailJob =

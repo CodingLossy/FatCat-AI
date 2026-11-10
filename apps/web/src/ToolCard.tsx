@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ApprovalWarning, KbSearchOutput } from '@ai-personal/shared';
+import type { ApprovalWarning, KbSearchOutput } from '@fatcat-ai/shared';
 import { useState } from 'react';
 import { api, errorText } from './api.js';
 import { ApprovalActions } from './ApprovalActions.js';

@@ -2,9 +2,9 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // Agent 工具 items.*(全部为 read,ADR 0012 第 6 节):让模型沿知识地图找资料。items.open 的输出标为不可信。
-import type { Item, UntrustedContent } from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
-import type { ToolDefinition } from '@ai-personal/tools';
+import type { Item, UntrustedContent } from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
+import type { ToolDefinition } from '@fatcat-ai/tools';
 import { z } from 'zod';
 import type { ItemService } from './service.js';
 

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ModelKind, ModelProfileInput, ModelPurpose } from '@ai-personal/client';
+import type { ModelKind, ModelProfileInput, ModelPurpose } from '@fatcat-ai/client';
 import { connect, parse, resolveModelId, table } from '../common.js';
 import { type Ctx, status, UsageError } from '../io.js';
 
 const USAGE = [
-    'Usage: ai-personal models list',
-    '       ai-personal models add --label <name> --base-url <url> --model <name> [--key-ref env:NAME|file:NAME]',
+    'Usage: fatcat-ai models list',
+    '       fatcat-ai models add --label <name> --base-url <url> --model <name> [--key-ref env:NAME|file:NAME]',
     '                              [--kind openai-compatible|anthropic|gemini] [--purpose chat,cheap]',
-    '       ai-personal models test <id|label>',
+    '       fatcat-ai models test <id|label>',
 ].join('\n');
 
 const KINDS: readonly ModelKind[] = ['openai-compatible', 'anthropic', 'gemini'];
@@ -35,7 +35,7 @@ export async function modelsCommand(ctx: Ctx, args: string[]): Promise<number> {
             return 0;
         }
         if (items.length === 0) {
-            status(ctx, 'No model profiles yet; add one with "ai-personal models add"');
+            status(ctx, 'No model profiles yet; add one with "fatcat-ai models add"');
             return 0;
         }
         table(ctx, [

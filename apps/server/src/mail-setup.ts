@@ -2,11 +2,11 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 邮件同步的调度(ADR 0016 第 2 节):定时拉取,每个账户一把锁,全局并发 1,失败指数退避。
-// 网络与解析在 worker 中完成(@ai-personal/mail 的 runInWorker),主进程只写数据库。
-import type { MailConnectionTest, MailSyncResult } from '@ai-personal/shared';
-import { type MailJobRunner, ownThreadKey, runInWorker } from '@ai-personal/mail';
-import type { MailAccountRecord, MailFolderSync, Repositories } from '@ai-personal/storage';
-import type { SecretStore } from '@ai-personal/providers';
+// 网络与解析在 worker 中完成(@fatcat-ai/mail 的 runInWorker),主进程只写数据库。
+import type { MailConnectionTest, MailSyncResult } from '@fatcat-ai/shared';
+import { type MailJobRunner, ownThreadKey, runInWorker } from '@fatcat-ai/mail';
+import type { MailAccountRecord, MailFolderSync, Repositories } from '@fatcat-ai/storage';
+import type { SecretStore } from '@fatcat-ai/providers';
 
 /** 每分钟检查一次哪些账户到了同步时间。 */
 export const MAIL_TICK_MS = 60_000;

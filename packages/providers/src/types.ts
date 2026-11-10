@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ModelKind, ModelPurpose, ModelTestResult, ProviderErrorCode, Usage } from '@ai-personal/shared';
+import type { ModelKind, ModelPurpose, ModelTestResult, ProviderErrorCode, Usage } from '@fatcat-ai/shared';
 
 /** 模型网关只关心的配置档字段;来自 model_profiles 表(ADR 0006)。 */
 export interface ProviderProfile {

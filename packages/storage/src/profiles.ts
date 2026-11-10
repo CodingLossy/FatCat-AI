@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 模型配置档。只保存 env: / file: 形式的密钥引用,从不保存明文(ADR 0006)。
-import type { ModelKind, ModelProfileInput, ModelPurpose } from '@ai-personal/shared';
+import type { ModelKind, ModelProfileInput, ModelPurpose } from '@fatcat-ai/shared';
 import type { Connection } from './db.js';
 import { newId } from './ids.js';
 import { selectList } from './schema.js';

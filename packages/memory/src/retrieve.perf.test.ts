@@ -7,7 +7,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { type Connection, createRepositories, openStorage } from '@ai-personal/storage';
+import { type Connection, createRepositories, openStorage } from '@fatcat-ai/storage';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDigestBuilder } from './digest.js';
 import { createMaintenanceRunner } from './maintenance.js';
@@ -26,7 +26,7 @@ describe(`性能:${N} 条记忆`, () => {
     let ownerId: string;
 
     beforeAll(async () => {
-        dir = mkdtempSync(join(tmpdir(), 'aip-memory-perf-'));
+        dir = mkdtempSync(join(tmpdir(), 'fatcat-memory-perf-'));
         ({ conn } = await openStorage({ dataDir: dir }));
         const repos = createRepositories(conn);
         ownerId = repos.owners.create({ username: 'owner', passwordHash: 'x' }).id;

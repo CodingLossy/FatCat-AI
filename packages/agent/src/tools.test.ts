@@ -4,14 +4,14 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ChatChunk, ChatRequest, ModelProvider } from '@ai-personal/providers';
-import type { EventEnvelope, Message } from '@ai-personal/shared';
-import { createRepositories, type ModelProfileRecord, openStorage, type Repositories } from '@ai-personal/storage';
+import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
+import type { EventEnvelope, Message } from '@fatcat-ai/shared';
+import { createRepositories, type ModelProfileRecord, openStorage, type Repositories } from '@fatcat-ai/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EventBus } from './bus.js';
 import { estimateTokens, planContext, SUMMARY_PREFIX } from './context.js';
 import { RunManager, SYSTEM_PROMPT } from './runner.js';
-import { ToolRegistry, type ToolDefinition } from '@ai-personal/tools';
+import { ToolRegistry, type ToolDefinition } from '@fatcat-ai/tools';
 
 let dir: string;
 let close: () => void;
@@ -66,7 +66,7 @@ const answer = (text: string) =>
     };
 
 beforeEach(async () => {
-    dir = mkdtempSync(join(tmpdir(), 'aip-agent-tools-'));
+    dir = mkdtempSync(join(tmpdir(), 'fatcat-agent-tools-'));
     const { conn } = await openStorage({ dataDir: dir });
     close = () => conn.close();
     repos = createRepositories(conn);

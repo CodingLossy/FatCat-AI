@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 本地邮件缓存的查询与草稿(ADR 0016 第 3、6 节;M3 PR 3 的 mail.* 工具)。所有查询都按 owner 限定。
-import type { MailAddress, MailAttachment, MailDraft, MailDraftAttachmentInfo, MailMessage } from '@ai-personal/shared';
+import type { MailAddress, MailAttachment, MailDraft, MailDraftAttachmentInfo, MailMessage } from '@fatcat-ai/shared';
 import type { Connection } from './db.js';
 import { newId } from './ids.js';
 

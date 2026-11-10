@@ -3,15 +3,15 @@
 
 import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
-import type { EventBus } from '@ai-personal/agent';
+import type { EventBus } from '@fatcat-ai/agent';
 import {
     ClientFrame,
     type EventEnvelope,
     PROTOCOL_VERSION,
     type ServerFrame,
     WS_PING_INTERVAL_MS,
-} from '@ai-personal/shared';
-import type { Repositories } from '@ai-personal/storage';
+} from '@fatcat-ai/shared';
+import type { Repositories } from '@fatcat-ai/storage';
 import type { WebSocket, WebSocketServer } from 'ws';
 import { PAT_PREFIX, safeEqual, sha256 } from './auth/crypto.js';
 import { SESSION_COOKIE } from './auth/middleware.js';

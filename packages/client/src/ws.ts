@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ClientFrame, EventEnvelope, ProblemDetails, ServerFrame } from '@ai-personal/shared';
+import type { ClientFrame, EventEnvelope, ProblemDetails, ServerFrame } from '@fatcat-ai/shared';
 
 /** 与 shared 的 PROTOCOL_VERSION 一致(这里不在运行时加载 shared)。 */
 export const CLIENT_PROTOCOL_VERSION = 1;

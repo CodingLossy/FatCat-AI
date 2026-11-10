@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 常见邮箱的默认服务器与授权码说明(开发计划 M3 第 1 条;ADR 0016 第 1 节)。
-import type { MailPreset, MailSentCopy } from '@ai-personal/shared';
+import type { MailPreset, MailSentCopy } from '@fatcat-ai/shared';
 
 export const MAIL_PRESETS: readonly MailPreset[] = [
     {
@@ -41,7 +41,7 @@ export function serverSavesSent(imapHost: string): boolean {
     return SERVERS_THAT_SAVE_SENT.has(imapHost.trim().toLowerCase());
 }
 
-/** 按策略与主机,发送成功后 AI-Personal 是否 APPEND 一份(ADR 0016 第 14 节)。显式的 `append` / `off` 总是生效。 */
+/** 按策略与主机,发送成功后 FatCat-AI 是否 APPEND 一份(ADR 0016 第 14 节)。显式的 `append` / `off` 总是生效。 */
 export function appendsToSent(account: { sentCopy: MailSentCopy; imap: { host: string } }): boolean {
     if (account.sentCopy === 'auto') return !serverSavesSent(account.imap.host);
     return account.sentCopy === 'append';
@@ -49,7 +49,7 @@ export function appendsToSent(account: { sentCopy: MailSentCopy; imap: { host: s
 
 /**
  * 发送前决定「已发送」副本怎么处理:
- * - `append`:AI-Personal 把发出的原文 APPEND 到 `folder`;
+ * - `append`:FatCat-AI 把发出的原文 APPEND 到 `folder`;
  * - `server`:`auto` 策略且主机会自动保存,不 APPEND(服务器那一份不经过也不核实);
  * - `off`:账户关闭了 APPEND;
  * - `no-sent-folder`:要 APPEND 但还没同步到「已发送」文件夹。
