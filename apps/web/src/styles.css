@@ -20,6 +20,10 @@
     --danger: #b3261e;
     --ok: #1e7b34;
     --warn: #8a5a00;
+    --code-keyword: #a626a4;
+    --code-string: #50a14f;
+    --code-number: #b76b01;
+    --code-title: #4078f2;
     color-scheme: light;
 }
 
@@ -34,6 +38,10 @@
     --danger: #ff8a80;
     --ok: #7bd88f;
     --warn: #f0c060;
+    --code-keyword: #c678dd;
+    --code-string: #98c379;
+    --code-number: #d19a66;
+    --code-title: #61afef;
     color-scheme: dark;
 }
 
@@ -49,6 +57,10 @@
         --danger: #ff8a80;
         --ok: #7bd88f;
         --warn: #f0c060;
+        --code-keyword: #c678dd;
+        --code-string: #98c379;
+        --code-number: #d19a66;
+        --code-title: #61afef;
         color-scheme: dark;
     }
 }
@@ -563,4 +575,43 @@ td .badge {
     .mail-layout {
         grid-template-columns: 1fr;
     }
+}
+
+/* 代码高亮(ADR 0009 第 7 节):只给 highlight.js 的几类记号上色,颜色跟随主题。 */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-type {
+    color: var(--code-keyword);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute {
+    color: var(--code-string);
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-symbol {
+    color: var(--code-number);
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-attr,
+.hljs-name {
+    color: var(--code-title);
+}
+
+.hljs-comment,
+.hljs-quote,
+.hljs-meta {
+    color: var(--muted);
+    font-style: italic;
+}
+
+.hljs-deletion {
+    color: var(--danger);
 }
