@@ -22,6 +22,7 @@ function MemoryItem({ memory, onChanged }: { memory: Memory; onChanged: () => Pr
     const [error, setError] = useState<string | null>(null);
     const [history, setHistory] = useState<Memory[] | null>(null);
     const [sources, setSources] = useState<MemorySource[] | null>(null);
+    const [loadingSources, setLoadingSources] = useState(false);
 
     const toggleHistory = async () => {
         if (history) return setHistory(null);
@@ -35,10 +36,14 @@ function MemoryItem({ memory, onChanged }: { memory: Memory; onChanged: () => Pr
     /** 点开才请求,避免列表里每条记忆都发一次请求。 */
     const toggleSources = async () => {
         if (sources) return setSources(null);
+        setLoadingSources(true);
         try {
             setSources((await api.memory.sources(memory.id)).items);
+            setError(null);
         } catch (err) {
             setError(errorText(err));
+        } finally {
+            setLoadingSources(false);
         }
     };
 
@@ -99,7 +104,7 @@ function MemoryItem({ memory, onChanged }: { memory: Memory; onChanged: () => Pr
                     <button type="button" onClick={() => void toggleHistory()}>
                         {t('memory.history')}
                     </button>
-                    <button type="button" onClick={() => void toggleSources()}>
+                    <button type="button" disabled={loadingSources} onClick={() => void toggleSources()}>
                         {t('memory.sources')}
                     </button>
                     <button type="button" className="danger" onClick={() => void remove()}>
