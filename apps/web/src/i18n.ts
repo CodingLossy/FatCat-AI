@@ -251,6 +251,19 @@ const zh = {
     'mail.test': '测试连接',
     'mail.ok': '正常',
     'mail.removeConfirm': '删除邮件账户 {name}?本地缓存、草稿与加入知识库的附件都会删除,服务器上的邮件不受影响。',
+    'mail.sentCopy': '「已发送」副本',
+    'mail.sentCopy.auto': '自动(163 / Gmail 由服务器保存,其他由 FatCat-AI 保存)',
+    'mail.sentCopy.append': '总是由 FatCat-AI 保存一份',
+    'mail.sentCopy.off': '不保存',
+    'mail.sentCopyNote.append': '发送后 FatCat-AI 会把一份副本存到「已发送」。',
+    'mail.sentCopyNote.server': '这个邮箱的服务器会自己把发出的邮件存到「已发送」,FatCat-AI 不再存一份。',
+    'mail.sentCopyNote.off': 'FatCat-AI 不往「已发送」存副本;服务器会不会自己保存取决于邮箱本身的设置。',
+    'mail.sentCopyDuplicate':
+        '注意:这个邮箱的服务器本身会保存发出的邮件,再由 FatCat-AI 保存一份,「已发送」里每封会出现两份。',
+    'settings.autoExtract': '自动抽取记忆(每轮结束后用廉价模型从你的消息与最终回答中抽取,每天最多 {n} 次)',
+    'memory.autoExtractOn': '自动抽取已开启:每轮对话结束后会用廉价模型从你的消息与最终回答中抽取记忆。',
+    'memory.autoExtractOff': '一键关闭自动抽取',
+    'memory.autoExtractStopped': '自动抽取已关闭,已有的记忆不受影响。可以在设置中重新打开。',
     'common.loading': '加载中…',
     'common.error': '出错了:{msg}',
 };
@@ -515,6 +528,24 @@ const en: Record<Key, string> = {
     'mail.ok': 'OK',
     'mail.removeConfirm':
         'Remove the mail account {name}? Its local cache, drafts and attachments in the knowledge base are deleted; mail on the server is not affected.',
+    'mail.sentCopy': 'Copy in Sent',
+    'mail.sentCopy.auto': 'Auto (163 / Gmail save it on the server, others: FatCat-AI saves it)',
+    'mail.sentCopy.append': 'Always saved by FatCat-AI',
+    'mail.sentCopy.off': 'Do not save',
+    'mail.sentCopyNote.append': 'After sending, FatCat-AI saves a copy to Sent.',
+    'mail.sentCopyNote.server':
+        'This mail server saves sent mail to Sent by itself, so FatCat-AI does not save another copy.',
+    'mail.sentCopyNote.off':
+        'FatCat-AI does not save a copy to Sent. Whether the server saves one depends on the mailbox settings.',
+    'mail.sentCopyDuplicate':
+        'Note: this mail server already saves sent mail by itself. With FatCat-AI saving a copy too, every message will appear twice in Sent.',
+    'settings.autoExtract':
+        'Extract memories automatically (after each turn, the cheap model reads your message and the final answer; at most {n} times a day)',
+    'memory.autoExtractOn':
+        'Automatic extraction is on: after each turn the cheap model extracts memories from your message and the final answer.',
+    'memory.autoExtractOff': 'Turn off automatic extraction',
+    'memory.autoExtractStopped':
+        'Automatic extraction is off. Existing memories are kept. You can turn it on again in Settings.',
     'common.loading': 'Loading…',
     'common.error': 'Something went wrong: {msg}',
 };

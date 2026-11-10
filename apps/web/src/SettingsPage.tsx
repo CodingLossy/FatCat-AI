@@ -334,6 +334,15 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                         }}
                     />
                 </label>
+                <label className="inline">
+                    <input
+                        type="checkbox"
+                        name="autoExtract"
+                        checked={settings.memory.autoExtract}
+                        onChange={(e) => void update({ memory: { autoExtract: e.target.checked } })}
+                    />{' '}
+                    {t('settings.autoExtract', { n: settings.memory.extractDailyLimit })}
+                </label>
                 {note ? <p className="small muted">{note}</p> : null}
             </section>
             <ModelProfiles onChanged={setProfiles} />

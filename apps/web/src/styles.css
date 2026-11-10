@@ -143,6 +143,10 @@ pre {
     color: var(--danger);
 }
 
+.warning {
+    color: var(--warn);
+}
+
 .page-message {
     padding: 2rem;
     text-align: center;

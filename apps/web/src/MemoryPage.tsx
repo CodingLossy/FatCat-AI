@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ConflictResolution, Memory, MemoryConflict, QuarantinedMemory } from '@fatcat-ai/shared';
+import type { ConflictResolution, Memory, MemoryConflict, QuarantinedMemory, Settings } from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { AutoExtractNotice } from './AutoExtractNotice.js';
 
 function MemoryItem({ memory, onChanged }: { memory: Memory; onChanged: () => Promise<void> }) {
     const { t, locale } = useI18n();
@@ -213,8 +214,19 @@ function Quarantine({ onChanged }: { onChanged: () => Promise<void> }) {
     );
 }
 
-export function MemoryPage() {
+export function MemoryPage({ settings, onSettings }: { settings: Settings; onSettings: (s: Settings) => void }) {
     const { t } = useI18n();
+    const [stopped, setStopped] = useState(false);
+    const [switchError, setSwitchError] = useState<string | null>(null);
+    const turnOffAutoExtract = async () => {
+        setSwitchError(null);
+        try {
+            onSettings(await api.settings.update({ memory: { autoExtract: false } }));
+            setStopped(true);
+        } catch (e) {
+            setSwitchError(errorText(e));
+        }
+    };
     const [items, setItems] = useState<Memory[] | null>(null);
     const [query, setQuery] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -248,6 +260,12 @@ export function MemoryPage() {
                 placeholder={t('memory.search')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+            />
+            <AutoExtractNotice
+                autoExtract={settings.memory.autoExtract}
+                stopped={stopped}
+                error={switchError}
+                onTurnOff={() => void turnOffAutoExtract()}
             />
             {error ? <p className="error">{error}</p> : null}
             <Conflicts onChanged={reload} />
