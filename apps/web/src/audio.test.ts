@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { describe, expect, it } from 'vitest';
-import { isUsableRecording, MIN_RECORDING_MS, playSegments, SILENCE_LEVEL } from './audio.js';
+import { isUsableRecording, MIN_LEVEL_SAMPLES, MIN_RECORDING_MS, playSegments, SILENCE_LEVEL } from './audio.js';
 
 describe('playSegments', () => {
     it('停止后被中止的预取段不会留下未处理的 rejection', async () => {
@@ -38,5 +38,8 @@ describe('isUsableRecording', () => {
         expect(isUsableRecording(2000, SILENCE_LEVEL)).toBe(true);
         expect(isUsableRecording(2000, null)).toBe(true);
         expect(isUsableRecording(100, null)).toBe(false);
+        // 标签页在后台时几乎没有电平采样,不按静音丢掉
+        expect(isUsableRecording(2000, 0, 0)).toBe(true);
+        expect(isUsableRecording(2000, 0, MIN_LEVEL_SAMPLES)).toBe(false);
     });
 });

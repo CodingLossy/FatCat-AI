@@ -51,10 +51,16 @@ export const MIN_RECORDING_MS = 500;
  */
 export const SILENCE_LEVEL = 0.04;
 
-/** 录音是否值得发去转写;peakLevel 为 null 表示浏览器不能测电平,此时只看时长。 */
-export function isUsableRecording(durationMs: number, peakLevel: number | null): boolean {
+/** 电平采样少于这么多帧时不判断静音:标签页在后台时 requestAnimationFrame 不运行,电平一直是 0。 */
+export const MIN_LEVEL_SAMPLES = 5;
+
+/**
+ * 录音是否值得发去转写。peakLevel 为 null(浏览器不能测电平)或采样帧数不够时只看时长。
+ */
+export function isUsableRecording(durationMs: number, peakLevel: number | null, samples = Infinity): boolean {
     if (durationMs < MIN_RECORDING_MS) return false;
-    return peakLevel === null || peakLevel >= SILENCE_LEVEL;
+    if (peakLevel === null || samples < MIN_LEVEL_SAMPLES) return true;
+    return peakLevel >= SILENCE_LEVEL;
 }
 
 export interface Recording {
@@ -74,9 +80,11 @@ export async function startRecording(onLevel: LevelListener, onLimit: () => void
     };
     const ctx = audioContext();
     let peak: number | null = ctx ? 0 : null;
+    let samples = 0;
     const stopMeter = ctx
         ? meter(ctx.createMediaStreamSource(stream), ctx, (level) => {
               peak = Math.max(peak ?? 0, level);
+              samples++;
               onLevel(level);
           })
         : () => undefined;
@@ -93,7 +101,7 @@ export async function startRecording(onLevel: LevelListener, onLimit: () => void
             new Promise((resolve) => {
                 recorder.onstop = () => {
                     release();
-                    const usable = chunks.length > 0 && isUsableRecording(performance.now() - startedAt, peak);
+                    const usable = chunks.length > 0 && isUsableRecording(performance.now() - startedAt, peak, samples);
                     resolve(usable ? new Blob(chunks, { type: recorder.mimeType }) : null);
                 };
                 if (recorder.state === 'inactive') recorder.onstop(new Event('stop'));
