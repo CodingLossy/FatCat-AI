@@ -4,7 +4,7 @@
 
 一个真正属于你自己的 AI 助手:可自托管、开源、自带模型(BYO LLM)、本地优先、**零遥测**、插件化(MCP 为一等公民)。
 
-> 当前状态:**M3 · 邮件**(预发布,尚未打版本)。在 M2 的工具、本地文件、知识库与长期记忆之上,增加了 IMAP/SMTP 邮件:同步收件箱与已发送,让助手总结、起草回复,并在你批准后发送;邮件中的指令不能让助手发信(会话级污染与收件人检查);邮件可在知识地图中下钻并「问 AI」。可用 Web UI / 命令行 / curl。更新记录见 [CHANGELOG.md](CHANGELOG.md),开发计划见 [docs/plan/FatCat-AI-开发计划.md](docs/plan/FatCat-AI-开发计划.md)。
+> 当前状态:**M4 · 语音与图片**(预发布,尚未打版本)。在 M3 的邮件、工具、本地文件、知识库与长期记忆之上,增加了语音与图片:按住说话转写、回复朗读、语音状态指示器,以及在对话里发送图片给支持看图的模型(语音与看图都经你配置的 OpenAI 兼容端点,密钥只留在服务器上)。可用 Web UI / 命令行 / curl。更新记录见 [CHANGELOG.md](CHANGELOG.md),开发计划见 [docs/plan/FatCat-AI-开发计划.md](docs/plan/FatCat-AI-开发计划.md)。
 
 ## 特性(规划中)
 
@@ -92,7 +92,7 @@ AUTH="authorization: Bearer $TOKEN"
 
 # 添加模型配置档;返回的 keyStatus 为 present 表示服务器读到了密钥
 curl -s -X POST $API/models -H "$AUTH" -H 'content-type: application/json' \
-  -d '{"label":"deepseek","kind":"openai-compatible","baseURL":"https://api.deepseek.com/v1","apiKeyRef":"env:DEEPSEEK_API_KEY","model":"deepseek-chat","purpose":["chat","cheap"]}'
+  -d '{"label":"deepseek","kind":"openai-compatible","baseURL":"https://api.deepseek.com/v1","apiKeyRef":"env:DEEPSEEK_API_KEY","model":"deepseek-flash","purpose":["chat","cheap"]}'
 
 # 新建会话并发送消息;-N 让回复按 SSE 事件流式输出
 SID=$(curl -s -X POST $API/sessions -H "$AUTH" -H 'content-type: application/json' -d '{}' \
@@ -121,7 +121,7 @@ $tok = Invoke-RestMethod -Method Post "$api/tokens" -WebSession $s -Headers @{ '
 $h = @{ Authorization = "Bearer $($tok.token)" }
 Invoke-RestMethod -Method Post "$api/models" -Headers $h -ContentType 'application/json' -Body (@{
     label = 'deepseek'; kind = 'openai-compatible'; baseURL = 'https://api.deepseek.com/v1'
-    apiKeyRef = 'env:DEEPSEEK_API_KEY'; model = 'deepseek-chat'; purpose = @('chat', 'cheap')
+    apiKeyRef = 'env:DEEPSEEK_API_KEY'; model = 'deepseek-flash'; purpose = @('chat', 'cheap')
 } | ConvertTo-Json)
 $sid = (Invoke-RestMethod -Method Post "$api/sessions" -Headers $h -ContentType 'application/json' -Body '{}').id
 '{"text":"Hello"}' | curl.exe -N -X POST "$api/sessions/$sid/messages" -H "Authorization: Bearer $($tok.token)" `
@@ -134,7 +134,7 @@ $sid = (Invoke-RestMethod -Method Post "$api/sessions" -Headers $h -ContentType 
 
 ```bash
 fatcat-ai setup -u owner          # 创建主人账户并保存个人访问令牌(~/.fatcat-ai/cli.json,权限 0600)
-fatcat-ai models add --label deepseek --base-url https://api.deepseek.com/v1 --model deepseek-chat --key-ref env:DEEPSEEK_API_KEY
+fatcat-ai models add --label deepseek --base-url https://api.deepseek.com/v1 --model deepseek-flash --key-ref env:DEEPSEEK_API_KEY
 fatcat-ai ask "用三句话解释 AGPL 第 13 条"
 fatcat-ai chat                    # 交互式聊天:/new /model /retry /exit,Ctrl+C 中断当前回复
 ```
