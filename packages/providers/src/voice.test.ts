@@ -109,4 +109,17 @@ describe('voice client', () => {
             }),
         ).toThrow();
     });
+
+    it('picks the client by params.voiceProtocol and refuses protocols that are not implemented yet', () => {
+        const make = (voiceProtocol?: 'openai' | 'openai-chat' | 'volcengine') =>
+            createVoiceClient({
+                profile: { ...profile, params: voiceProtocol ? { voiceProtocol } : undefined },
+                getApiKey: () => null,
+                redactor: new Redactor(),
+            });
+        expect(make()).toHaveProperty('transcribe');
+        expect(make('openai')).toHaveProperty('speak');
+        expect(() => make('openai-chat')).toThrow('not implemented');
+        expect(() => make('volcengine')).toThrow('not implemented');
+    });
 });

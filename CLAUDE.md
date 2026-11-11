@@ -22,17 +22,17 @@ Claude Code 的项目说明。完整约定在 AGENTS.md 中(下面一行会把�
 
 ## 自动流程
 
-- 每个 PR 合并后,自己 `git switch main && git pull --ff-only`,按 `docs/plan` 和 `docs/milestones` 的路线(当前是 M3.x,之后是 M4 → M5a → M5b → M5c)挑下一个未完成的项,直接开 PR,不用等用户下指令。M3.x 的开发项已做完(见 `docs/milestones/M3x-self-check.md`),只剩真机补测,由用户和 X 补;业主同意后进入 M4。
+- 每个 PR 合并后,自己 `git switch main && git pull --ff-only`,按 `docs/plan` 和 `docs/milestones` 的路线(当前是 M5a,之后是 M5b → M5c)挑下一个未完成的项,直接开 PR,不用等用户下指令。M4 已完成(真机结果见 `docs/milestones/M4-self-check.md`),用户 2026-11-10 同意进入 M5a;M5a 先发方案再写代码。
 - 在 FatCat-AI 的 GitHub 上(PR 标题、描述、评论、提交信息),代理叫 C,审查者叫 X。任何地方都不要出现 Claude、Claude Code、Anthropic、claude.ai 或「AI 生成」之类的字样,也不要加这类尾注或链接。
 - X 审查会以 PR 评论的形式出现,开头是「X 审查(@ SHA)」。推送后过一段时间要回到 PR 查看评论,按评论修改后在同一个 PR 上推送。改了什么在项目线程里回复,不在 GitHub 上发评论(会话的 GitHub 通道会自动给评论和 PR 描述加尾注,C 删不掉;新 PR 描述里自动加上的署名与尾注由用户手动删除)。
-- PR 被用户合并之后(`main` 上能看到合并提交),再开始下一个 PR;同一时间只开一个功能 PR。
+- PR 被用户或 X 合并之后(`main` 上能看到合并提交),再开始下一个 PR;同一时间只开一个功能 PR。
 - 需要用户决定的问题写在 PR 描述里并给出推荐;合并、发信、改动数据目录或真实数据,必须等用户明确同意。
 - 需要真实邮箱或 Windows 真机验证的部分,在 PR 描述里列成清单,不要自己做。
 - 提交身份规则不变:作者和提交者都是 尹绪柏 (Theodore Yin) <x19169738916@163.com>,不加任何 AI 署名;不要自己合并。
 
 ## 新会话快速上手(省额度)
 
-- 开工前只读 `docs/milestones/M2-plan.md` 里当前 PR 的那一节和它引用的 ADR,不要通读代码;需要时按文件名或关键字搜索。
+- 开工前只读当前里程碑方案(`docs/milestones/M*-plan.md`)里当前 PR 的那一节和它引用的 ADR,不要通读代码;需要时按文件名或关键字搜索。
 - 进度以 `git log` 与计划为准,本文件不记录进度。
 - 本地只跑受影响的包的测试以及 lint 和 typecheck,完整检查交给 CI。
 - 只写必要的单测,不重复手动验证每个子命令。

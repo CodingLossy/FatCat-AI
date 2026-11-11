@@ -36,6 +36,9 @@ export interface WsDeps {
     voiceLimiter?: WindowLimiter;
 }
 
+/** 每个用户各个连接最后上报的语音状态;一个端断开时,据此决定补发 idle 还是其他端仍在用的状态。1.0 只有单用户,按用户的外层表不清理。 */
+type VoiceStates = Map<string, Map<WebSocket, VoiceStateReport>>;
+
 /**
  * 浏览器上报的 listening / speaking / idle 转成 assistant-state 事件,写入事件表并推给本人所有在线的端
  * (ADR 0021 第 6 节)。sessionId 不属于本人时按 null 处理。
@@ -100,6 +103,7 @@ function reject(socket: Duplex, status: 401 | 403 | 404): void {
  */
 export function attachWebSocket(server: Server, input: WsDeps): { close(): void } {
     let wss: WebSocketServer | null = null;
+    const voiceStates: VoiceStates = new Map();
     const deps: WsDeps = {
         ...input,
         voiceLimiter: input.voiceLimiter ?? new WindowLimiter(MAX_VOICE_STATE_FRAMES_PER_SECOND, 1000),
@@ -112,7 +116,7 @@ export function attachWebSocket(server: Server, input: WsDeps): { close(): void 
         if (!auth.ok) return reject(socket, auth.status);
         void import('ws').then(({ WebSocketServer }) => {
             wss ??= new WebSocketServer({ noServer: true, maxPayload: MAX_PAYLOAD_BYTES });
-            wss.handleUpgrade(req, socket, head, (ws) => handleConnection(ws, auth.ownerId, deps));
+            wss.handleUpgrade(req, socket, head, (ws) => handleConnection(ws, auth.ownerId, deps, voiceStates));
         });
     });
 
@@ -124,7 +128,7 @@ export function attachWebSocket(server: Server, input: WsDeps): { close(): void 
     };
 }
 
-function handleConnection(ws: WebSocket, ownerId: string, deps: WsDeps): void {
+function handleConnection(ws: WebSocket, ownerId: string, deps: WsDeps, voiceStates: VoiceStates): void {
     let frameId = 0;
     let last = 0;
     let live = false;
@@ -132,8 +136,9 @@ function handleConnection(ws: WebSocket, ownerId: string, deps: WsDeps): void {
     let alive = true;
     const pending: EventEnvelope[] = [];
     let unsubscribe: (() => void) | null = null;
-    /** 本连接最后上报的语音状态;断开时如果还在听 / 朗读,替它发一次 idle。 */
-    let voice: VoiceStateReport | null = null;
+    /** 本用户各连接的语音状态;本连接断开时如果还在听 / 朗读,替它补发(见 close 处理)。 */
+    const ownerVoices = voiceStates.get(ownerId) ?? new Map<WebSocket, VoiceStateReport>();
+    voiceStates.set(ownerId, ownerVoices);
 
     const send = (frame: ServerFrame) => {
         if (ws.readyState !== ws.OPEN) return;
@@ -199,7 +204,7 @@ function handleConnection(ws: WebSocket, ownerId: string, deps: WsDeps): void {
             if (!helloDone) return fail(4400, 'hello first');
             // 超过每秒上限的帧直接丢弃,不报错
             if (deps.voiceLimiter && deps.voiceLimiter.take(ownerId) > 0) return;
-            voice = frame.payload;
+            ownerVoices.set(ws, frame.payload);
             publishVoiceState(deps, ownerId, frame.payload);
             return;
         }
@@ -243,9 +248,13 @@ function handleConnection(ws: WebSocket, ownerId: string, deps: WsDeps): void {
         clearTimeout(helloTimer);
         clearInterval(pingTimer);
         unsubscribe?.();
+        const voice = ownerVoices.get(ws);
+        ownerVoices.delete(ws);
         if (voice && voice.state !== 'idle') {
+            // 其他端还在听 / 朗读时,指示器改回那一端的状态,而不是置为 idle
+            const other = [...ownerVoices.values()].findLast((v) => v.state !== 'idle');
             try {
-                publishVoiceState(deps, ownerId, { state: 'idle', sessionId: voice.sessionId });
+                publishVoiceState(deps, ownerId, other ?? { state: 'idle', sessionId: voice.sessionId });
             } catch (error) {
                 deps.logger.debug({ err: (error as Error).message }, 'voice idle on close failed');
             }

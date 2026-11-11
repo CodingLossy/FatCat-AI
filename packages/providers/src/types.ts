@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ModelKind, ModelPurpose, ModelTestResult, ProviderErrorCode, Usage } from '@fatcat-ai/shared';
+import type {
+    ModelKind,
+    ModelPurpose,
+    ModelTestResult,
+    ProviderErrorCode,
+    Usage,
+    VoiceProtocol,
+} from '@fatcat-ai/shared';
 
 /** 模型网关只关心的配置档字段;来自 model_profiles 表(ADR 0006)。 */
 export interface ProviderProfile {
@@ -12,7 +19,12 @@ export interface ProviderProfile {
     model: string;
     purpose: ModelPurpose[];
     params?:
-        | { temperature?: number | undefined; maxOutputTokens?: number | undefined; voice?: string | undefined }
+        | {
+              temperature?: number | undefined;
+              maxOutputTokens?: number | undefined;
+              voice?: string | undefined;
+              voiceProtocol?: VoiceProtocol | undefined;
+          }
         | undefined;
 }
 

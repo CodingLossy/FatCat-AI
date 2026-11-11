@@ -19,7 +19,7 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 
 ### M4 · Voice and images (2026-11-10)
 
-The development items are done; tests with real voice and image endpoints and on Windows are still pending (`docs/milestones/M4-self-check.md`). In CI, with a fake endpoint, FatCat-AI adds about 15 ms to a voice round trip (recording → reply → first audio), well under the 1-second target, and idle memory is unchanged at about 110 MiB.
+Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`) for chat and images and SiliconFlow for voice (`Qwen/Qwen3-ASR-1.7B`, `FunAudioLLM/CosyVoice2-0.5B`): transcription of MP3, WebM, Ogg and WAV, reading aloud and images all worked. With a real microphone the transcripts came out wrong (in another language) although the same formats transcribe correctly from synthetic audio; this points to the microphone input on that machine, and the owner decided to accept it. Firefox wasn't tested. See `docs/milestones/M4-self-check.md`. In CI, with a fake endpoint, FatCat-AI adds about 15 ms to a voice round trip (recording → reply → first audio), well under the 1-second target, and idle memory is unchanged at about 110 MiB.
 
 #### Added
 
@@ -34,9 +34,20 @@ The development items are done; tests with real voice and image endpoints and on
 - Settings → Voice: choose the speech-to-text and read-aloud profiles and the two switches above. Model profiles can now be given the `stt` and `tts` purposes in the form, plus a voice name for read-aloud.
 - API: a `voice-state` WebSocket frame (the browser reports listening / speaking / idle; the server turns it into an `assistant-state` event for all your clients), a `label` on `assistant-state` events in your interface language, and `activityLabel` on tools.
 
+- Model profiles: an optional `params.voiceProtocol` (`openai`, `openai-chat` or `volcengine`; default `openai`) to choose how a voice profile calls its service. Only `openai` is implemented so far; the other values are reserved and are refused with `validation_failed` until they are implemented.
+
+#### Changed
+
+- Hold to talk: recordings shorter than half a second, or almost silent, are not sent for transcription; the chat says "Didn't catch that" instead. Speech models tend to answer near-silence with made-up text in another language.
+
 #### Fixed
 
 - Editing a model profile no longer clears its "Supports images" setting when the change doesn't include it.
+- Read aloud now also splits sentences at full-width ！？； and at an English full stop followed by a space (not inside numbers or domain names), and no longer drops the underscores in names such as `snake_case` or `__init__`.
+- Stopping read-aloud no longer leaves an unhandled error in the browser console from the segment that was being prefetched.
+- Closing one tab while another tab is still listening or reading aloud no longer resets the voice indicator to idle on your other clients.
+- Code highlighting is retried for the next code block if loading it failed once (for example while offline).
+- Image file names: zero-width and other invisible formatting characters are removed, as control and bidirectional characters already were.
 
 #### Changed
 
@@ -213,7 +224,7 @@ The development items are done; tests with real voice and image endpoints and on
 
 ### M4 · 语音与图片(2026-11-10)
 
-开发项已完成;用真实语音 / 图片端点与在 Windows 上的测试还没做(见 `docs/milestones/M4-self-check.md`)。CI 中用假端点测得,一次语音往返(录音 → 回复 → 开始朗读)FatCat-AI 自身只多约 15 ms,远低于 1 秒的目标;空闲内存不变,约 110 MiB。
+已完成。业主侧在 Windows 上的测试(2026-11-10)用 DeepSeek(`deepseek-flash`)聊天与看图、硅基流动语音(`Qwen/Qwen3-ASR-1.7B`、`FunAudioLLM/CosyVoice2-0.5B`):MP3、WebM、Ogg、WAV 四种录音的转写、朗读与看图都正常;用真实麦克风时转写结果不对(出现别的语言),同样格式的合成音频都能正确转写,判断是那台机器的麦克风输入问题,用户决定按通过处理。Firefox 未测。详见 `docs/milestones/M4-self-check.md`。CI 中用假端点测得,一次语音往返(录音 → 回复 → 开始朗读)FatCat-AI 自身只多约 15 ms,远低于 1 秒的目标;空闲内存不变,约 110 MiB。
 
 - **新增**:聊天中可以用「图片」按钮、粘贴或拖放给一条消息附上最多 4 张图片(PNG、JPEG、WebP、GIF,每张 ≤ 5 MiB;ADR 0020),发送前有预览、可移除。上传前浏览器会把长边缩到 2048 px 以内,顺带去掉 EXIF(含 GPS 位置);GIF 原样上传。发出的图片显示在对话里,只有你自己能看到。
 - **新增**:设置 → 模型配置档中加入「支持图片」勾选框,只有确认模型能读图时才勾选,FatCat-AI 不会自己猜。当前配置档没勾时,聊天里会说明不能发图片的原因;服务器也会返回 `model_no_vision` 拒绝,而不是悄悄丢掉图片。
@@ -226,6 +237,13 @@ The development items are done; tests with real voice and image endpoints and on
 - **新增**:设置 → 语音:选择语音转文字与朗读的配置档,以及上面两个开关。配置档表单的用途可以勾选 `stt` / `tts`,并可填写朗读音色。
 - **新增**:API:WebSocket 客户端帧 `voice-state`(浏览器上报正在听 / 正在朗读 / 结束,服务器转成 `assistant-state` 事件推给你所有的端);`assistant-state` 事件带界面语言的 `label`;工具带 `activityLabel`。
 - **修复**:编辑模型配置档时,如果这次修改没有带上「支持图片」,它不再被清掉。
+- **新增**:配置档可选的 `params.voiceProtocol`(`openai` / `openai-chat` / `volcengine`,默认 `openai`),选择语音配置档调用服务的方式。目前只实现 `openai`,其他取值先预留,实现前会以 `validation_failed` 拒绝。
+- **变更**:按住说话时,短于半秒或几乎无声的录音不再发去转写,直接提示「没有听清」;转写模型遇到几乎无声的录音时常会胡乱输出别的语言。
+- **修复**:朗读切句时也识别全角的 ！？； 和后面跟空格的英文句号(数字与网址里的点不切);不再删掉 `snake_case`、`__init__` 这类名字里的下划线。
+- **修复**:停止朗读后,正在预取的那一段不再在浏览器控制台留下未处理的错误。
+- **修复**:关掉一个标签页时,如果另一个标签页还在听或朗读,其他端的语音指示器不再被重置为空闲。
+- **修复**:代码高亮加载失败一次(例如断网)后,下一个代码块会重新加载。
+- **修复**:图片文件名中的零宽字符等不可见格式字符也会被去掉(此前已去掉控制字符与双向控制字符)。
 - **变更**:数据目录多了 `attachments/` 文件夹,删除会话时一并删除其中的图片;上传后从未发送的图片 24 小时后清理。自己备份数据目录时请连同这个文件夹一起备份。首次启动会执行数据库迁移 0013。
 
 ### M3.x · 清理

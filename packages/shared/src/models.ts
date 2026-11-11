@@ -20,11 +20,23 @@ export const ApiKeyRef = z
     .nullable();
 export type ApiKeyRef = z.infer<typeof ApiKeyRef>;
 
+/**
+ * 语音配置档的调用方式(ADR 0021 第 2 节):openai = /audio/transcriptions 与 /audio/speech;
+ * openai-chat = 经 /chat/completions 传音频(部分国内服务);volcengine = 火山引擎(豆包)自有接口。
+ * 先定下取值,目前只实现 openai;其他取值在创建或修改配置档时拒绝,实现后再放开。自 M4 起提供。
+ */
+export const VoiceProtocol = z.enum(['openai', 'openai-chat', 'volcengine']);
+export type VoiceProtocol = z.infer<typeof VoiceProtocol>;
+export const DEFAULT_VOICE_PROTOCOL: VoiceProtocol = 'openai';
+export const IMPLEMENTED_VOICE_PROTOCOLS: readonly VoiceProtocol[] = ['openai'];
+
 export const ModelParams = z.object({
     temperature: z.number().min(0).max(2).optional(),
     maxOutputTokens: z.number().int().positive().max(1_000_000).optional(),
     /** TTS 的音色;省略时服务器发 alloy(ADR 0021 第 2 节)。自 M4 起提供。 */
     voice: z.string().trim().min(1).max(64).optional(),
+    /** 语音配置档的调用方式;省略即 openai(ADR 0021 第 2 节)。自 M4 起提供。 */
+    voiceProtocol: VoiceProtocol.optional(),
 });
 
 /** 未知字段一律拒绝,避免客户端误把明文密钥放进其他字段后被静默丢弃(ADR 0006)。 */
@@ -48,11 +60,16 @@ const baseUrlIssue = { message: 'baseURL is required for openai-compatible profi
 const voiceNeedsOpenAI = (p: { kind?: ModelKind; purpose?: readonly ModelPurpose[] | undefined }) =>
     p.kind === 'openai-compatible' || !(p.purpose ?? []).some((x) => x === 'stt' || x === 'tts');
 const voiceIssue = { message: 'stt and tts profiles must be openai-compatible', path: ['purpose'] };
+const protocolImplemented = (p: { params?: { voiceProtocol?: VoiceProtocol | undefined } | undefined }) =>
+    IMPLEMENTED_VOICE_PROTOCOLS.includes(p.params?.voiceProtocol ?? DEFAULT_VOICE_PROTOCOL);
+const protocolIssue = {
+    message: `voiceProtocol is not implemented yet; supported: ${IMPLEMENTED_VOICE_PROTOCOLS.join(', ')}`,
+    path: ['params', 'voiceProtocol'],
+};
 
-export const ModelProfileInput = ModelProfileFields.refine(requireBaseUrl, baseUrlIssue).refine(
-    voiceNeedsOpenAI,
-    voiceIssue,
-);
+export const ModelProfileInput = ModelProfileFields.refine(requireBaseUrl, baseUrlIssue)
+    .refine(voiceNeedsOpenAI, voiceIssue)
+    .refine(protocolImplemented, protocolIssue);
 export type ModelProfileInput = z.infer<typeof ModelProfileInput>;
 
 /** PATCH:字段均可选;改 kind 为 openai-compatible 时仍须给出 baseURL(服务端合并后再校验)。 */

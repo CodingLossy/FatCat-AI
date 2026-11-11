@@ -29,6 +29,8 @@ describe('sniffAudioType', () => {
         expect(sniffAudioType(bytes(0, 0, 0, 0x20, ...ascii('fty')))).toBeNull();
         expect(sniffAudioType(bytes(0, 0, 0, 0x18, ...ascii('ftypheic')))).toBeNull(); // HEIC 图片
         expect(sniffAudioType(bytes(0, 0, 0, 0x18, ...ascii('ftypqt  ')))).toBeNull(); // QuickTime 视频
+        expect(sniffAudioType(bytes(0, 0, 0, 0x18, ...ascii('ftypmif1')))).toBeNull(); // HEIF 图片
+        expect(sniffAudioType(bytes(0, 0, 0, 0x18, ...ascii('ftypavc1')))).toBeNull(); // H.264 视频
     });
 });
 
@@ -66,6 +68,11 @@ describe('schema', () => {
         const tts = { ...base, kind: 'openai-compatible', baseURL: 'http://x/v1', purpose: ['tts'] };
         expect(ModelProfileInput.safeParse({ ...tts, params: { voice: 'nova' } }).success).toBe(true);
         expect(ModelProfileInput.safeParse({ ...tts, params: { voice: 'x'.repeat(65) } }).success).toBe(false);
+        // voiceProtocol:取值先定下,目前只接受 openai
+        expect(ModelProfileInput.safeParse({ ...tts, params: { voiceProtocol: 'openai' } }).success).toBe(true);
+        expect(ModelProfileInput.safeParse({ ...tts, params: { voiceProtocol: 'openai-chat' } }).success).toBe(false);
+        expect(ModelProfileInput.safeParse({ ...tts, params: { voiceProtocol: 'volcengine' } }).success).toBe(false);
+        expect(ModelProfileInput.safeParse({ ...tts, params: { voiceProtocol: 'xiaomi' } }).success).toBe(false);
         expect(DEFAULT_SETTINGS.voice).toEqual(DEFAULT_VOICE_SETTINGS);
         expect(SettingsPatch.parse({ voice: { autoSpeak: true } })).toEqual({ voice: { autoSpeak: true } });
     });

@@ -3,7 +3,7 @@
 
 // OpenAI 兼容的语音接口:/audio/transcriptions 与 /audio/speech(ADR 0021)。只用 fetch 与 FormData;
 // 音频不写日志,朗读的音频逐块转发,不在内存里攒整段。
-import type { AudioMediaType, SpeechFormat } from '@fatcat-ai/shared';
+import { type AudioMediaType, DEFAULT_VOICE_PROTOCOL, type SpeechFormat, type VoiceProtocol } from '@fatcat-ai/shared';
 import { createHttp } from './http.js';
 import type { Redactor } from './redact.js';
 import { ProviderError, type ProviderProfile } from './types.js';
@@ -84,7 +84,23 @@ function abortScope(signal: AbortSignal | undefined) {
     };
 }
 
+/**
+ * 按配置档的 params.voiceProtocol 选择调用方式(ADR 0021 第 2 节)。目前只实现 openai;
+ * 其他取值在配置档校验时已被拒绝,这里再兜底抛错,不会静默按 openai 调用别家的接口。
+ */
 export function createVoiceClient(options: VoiceClientOptions): VoiceClient {
+    const protocol: VoiceProtocol = options.profile.params?.voiceProtocol ?? DEFAULT_VOICE_PROTOCOL;
+    switch (protocol) {
+        case 'openai':
+            return openAIVoiceClient(options);
+        case 'openai-chat':
+        case 'volcengine':
+            throw new Error(`voice protocol ${protocol} is not implemented yet`);
+    }
+}
+
+/** OpenAI 的 /audio/transcriptions 与 /audio/speech。 */
+function openAIVoiceClient(options: VoiceClientOptions): VoiceClient {
     const { profile } = options;
     if (profile.kind !== 'openai-compatible' || !profile.baseURL) {
         throw new Error('voice needs an openai-compatible profile with a baseURL');

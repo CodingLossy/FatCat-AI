@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import ReactMarkdown from 'react-markdown';
 import { describe, expect, it } from 'vitest';
 import { highlightPlugins } from './highlight.js';
-import { FENCE_WITH_LANG, Markdown } from './Markdown.js';
+import { FENCE_WITH_LANG, loadHighlight, Markdown } from './Markdown.js';
 
 const highlighted = (text: string) =>
     renderToStaticMarkup(<ReactMarkdown rehypePlugins={highlightPlugins}>{text}</ReactMarkdown>);
@@ -37,6 +37,8 @@ describe('code highlighting', () => {
         expect(FENCE_WITH_LANG.test('~~~python\nx\n~~~')).toBe(true);
         expect(FENCE_WITH_LANG.test('```\nx\n```')).toBe(false);
         expect(FENCE_WITH_LANG.test('行内 `code` 不算')).toBe(false);
+        // 只认空格与制表符缩进,全角空格不算
+        expect(FENCE_WITH_LANG.test('\u3000```ts\nx\n```')).toBe(false);
     });
 });
 
@@ -47,5 +49,13 @@ describe('Markdown', () => {
         );
         expect(html).toContain('const x = 1;');
         expect(html).not.toContain('<img');
+    });
+});
+
+// 放在最后:加载成功后模块里会缓存高亮插件,之后渲染的代码块都会高亮
+describe('loadHighlight', () => {
+    it('加载失败后可以重试', async () => {
+        await expect(loadHighlight(() => Promise.reject(new Error('offline')))).rejects.toThrow('offline');
+        await expect(loadHighlight(() => Promise.resolve({ highlightPlugins }))).resolves.toBe(highlightPlugins);
     });
 });

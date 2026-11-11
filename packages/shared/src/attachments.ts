@@ -68,9 +68,12 @@ const EXTENSIONS: Record<AttachmentMediaType, string> = {
     'image/gif': 'gif',
 };
 
-/** C0 / C1 控制字符与双向控制字符(后者可用 RLO 等把「gpj.exe」显示成「exe.jpg」)。 */
+/**
+ * C0 / C1 控制字符、双向控制字符(可用 RLO 等把「gpj.exe」显示成「exe.jpg」),
+ * 以及零宽与其他不可见格式字符(零宽空格 / 连接符、单词连接符、不可见运算符、BOM、软连字符)。
+ */
 // eslint-disable-next-line no-control-regex
-const UNSAFE_CHARS = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+const UNSAFE_CHARS = /[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g;
 
 /**
  * 显示用文件名:去掉路径部分、控制字符与双向控制字符,截到 255 个字符;为空时用 image.<扩展名>。

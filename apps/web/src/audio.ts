@@ -43,8 +43,22 @@ export function canRecord(): boolean {
     return typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 }
 
+/** 短于这个时长的录音不发去转写(多半是误触)。 */
+export const MIN_RECORDING_MS = 500;
+/**
+ * 整段录音的最大电平(与 meter 相同的 0–1 刻度,约为 RMS 0.01)低于这个值时视为静音。
+ * 几乎无声的录音交给转写模型时,常被「转写」成别的语言的胡乱文字(M4 真机测试)。
+ */
+export const SILENCE_LEVEL = 0.04;
+
+/** 录音是否值得发去转写;peakLevel 为 null 表示浏览器不能测电平,此时只看时长。 */
+export function isUsableRecording(durationMs: number, peakLevel: number | null): boolean {
+    if (durationMs < MIN_RECORDING_MS) return false;
+    return peakLevel === null || peakLevel >= SILENCE_LEVEL;
+}
+
 export interface Recording {
-    /** 结束录音并返回音频;太短(没有数据)时返回 null。 */
+    /** 结束录音并返回音频;没有数据、太短(< 0.5 秒)或几乎无声时返回 null,不发去转写。 */
     stop(): Promise<Blob | null>;
     /** 放弃这次录音。 */
     cancel(): void;
@@ -59,7 +73,14 @@ export async function startRecording(onLevel: LevelListener, onLimit: () => void
         if (e.data.size > 0) chunks.push(e.data);
     };
     const ctx = audioContext();
-    const stopMeter = ctx ? meter(ctx.createMediaStreamSource(stream), ctx, onLevel) : () => undefined;
+    let peak: number | null = ctx ? 0 : null;
+    const stopMeter = ctx
+        ? meter(ctx.createMediaStreamSource(stream), ctx, (level) => {
+              peak = Math.max(peak ?? 0, level);
+              onLevel(level);
+          })
+        : () => undefined;
+    const startedAt = performance.now();
     const limit = setTimeout(onLimit, MAX_RECORDING_SECONDS * 1000);
     const release = () => {
         clearTimeout(limit);
@@ -72,7 +93,8 @@ export async function startRecording(onLevel: LevelListener, onLimit: () => void
             new Promise((resolve) => {
                 recorder.onstop = () => {
                     release();
-                    resolve(chunks.length > 0 ? new Blob(chunks, { type: recorder.mimeType }) : null);
+                    const usable = chunks.length > 0 && isUsableRecording(performance.now() - startedAt, peak);
+                    resolve(usable ? new Blob(chunks, { type: recorder.mimeType }) : null);
                 };
                 if (recorder.state === 'inactive') recorder.onstop(new Event('stop'));
                 else recorder.stop();
@@ -102,12 +124,18 @@ export function playSegments(
     let stopMeter: () => void = () => undefined;
     const done = (async () => {
         let started = false;
-        // 下一段在当前段播放时就开始请求,减少段间停顿
-        let next: Promise<Blob> | null = segments[0] ? fetchAudio(segments[0], controller.signal) : null;
+        // 下一段在当前段播放时就开始请求,减少段间停顿。预取的 Promise 先挂一个空的 catch:
+        // 停止或出错后循环不再 await 它,它被中止时的 rejection 不能变成未处理的错误。
+        const prefetch = (text: string | undefined) => {
+            if (!text) return null;
+            const promise = fetchAudio(text, controller.signal);
+            promise.catch(() => undefined);
+            return promise;
+        };
+        let next = prefetch(segments[0]);
         for (let i = 0; i < segments.length && next; i++) {
             const blob = await next;
-            const following = segments[i + 1];
-            next = following ? fetchAudio(following, controller.signal) : null;
+            next = prefetch(segments[i + 1]);
             if (controller.signal.aborted) return;
             const url = URL.createObjectURL(blob);
             try {

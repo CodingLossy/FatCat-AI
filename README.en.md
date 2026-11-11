@@ -4,7 +4,7 @@
 
 An AI assistant that is truly your own: self-hostable, open source, bring-your-own-model (BYO LLM), local-first, **telemetry-free**, and pluggable (MCP is a first-class citizen).
 
-> Status: **M3 · mail** (pre-release, not yet versioned). On top of M2's tools, local files, knowledge base and long-term memory it adds IMAP/SMTP mail: Inbox and Sent are synced, and the assistant can summarize mail, draft replies and send them after you approve. Instructions inside an e-mail can't make it send anything (session-level taint and recipient checks), and you can drill down to a message in the knowledge map and use "Ask AI" on it. Usable from the Web UI, the command line or curl. See [CHANGELOG.md](CHANGELOG.md) for changes and the development plan (Chinese) at [docs/plan/FatCat-AI-开发计划.md](docs/plan/FatCat-AI-开发计划.md).
+> Status: **M4 · voice and images** (pre-release, not yet versioned). On top of M3's mail, tools, local files, knowledge base and long-term memory it adds voice and images: hold to talk and have it transcribed, replies read aloud, a voice status indicator, and images in chat for models that can read them (voice and images go through the OpenAI-compatible endpoint you configure; the key stays on the server). Usable from the Web UI, the command line or curl. See [CHANGELOG.md](CHANGELOG.md) for changes and the development plan (Chinese) at [docs/plan/FatCat-AI-开发计划.md](docs/plan/FatCat-AI-开发计划.md).
 
 ## Features (planned)
 
@@ -92,7 +92,7 @@ AUTH="authorization: Bearer $TOKEN"
 
 # Add a model profile; keyStatus "present" means the server found the key
 curl -s -X POST $API/models -H "$AUTH" -H 'content-type: application/json' \
-  -d '{"label":"deepseek","kind":"openai-compatible","baseURL":"https://api.deepseek.com/v1","apiKeyRef":"env:DEEPSEEK_API_KEY","model":"deepseek-chat","purpose":["chat","cheap"]}'
+  -d '{"label":"deepseek","kind":"openai-compatible","baseURL":"https://api.deepseek.com/v1","apiKeyRef":"env:DEEPSEEK_API_KEY","model":"deepseek-flash","purpose":["chat","cheap"]}'
 
 # Create a session and send a message; -N streams the reply as server-sent events
 SID=$(curl -s -X POST $API/sessions -H "$AUTH" -H 'content-type: application/json' -d '{}' \
@@ -121,7 +121,7 @@ $tok = Invoke-RestMethod -Method Post "$api/tokens" -WebSession $s -Headers @{ '
 $h = @{ Authorization = "Bearer $($tok.token)" }
 Invoke-RestMethod -Method Post "$api/models" -Headers $h -ContentType 'application/json' -Body (@{
     label = 'deepseek'; kind = 'openai-compatible'; baseURL = 'https://api.deepseek.com/v1'
-    apiKeyRef = 'env:DEEPSEEK_API_KEY'; model = 'deepseek-chat'; purpose = @('chat', 'cheap')
+    apiKeyRef = 'env:DEEPSEEK_API_KEY'; model = 'deepseek-flash'; purpose = @('chat', 'cheap')
 } | ConvertTo-Json)
 $sid = (Invoke-RestMethod -Method Post "$api/sessions" -Headers $h -ContentType 'application/json' -Body '{}').id
 '{"text":"Hello"}' | curl.exe -N -X POST "$api/sessions/$sid/messages" -H "Authorization: Bearer $($tok.token)" `
@@ -134,7 +134,7 @@ You can also set up and chat without the Web UI (after `pnpm build`, run `node a
 
 ```bash
 fatcat-ai setup -u owner          # create the owner and save a personal access token (~/.fatcat-ai/cli.json, mode 0600)
-fatcat-ai models add --label deepseek --base-url https://api.deepseek.com/v1 --model deepseek-chat --key-ref env:DEEPSEEK_API_KEY
+fatcat-ai models add --label deepseek --base-url https://api.deepseek.com/v1 --model deepseek-flash --key-ref env:DEEPSEEK_API_KEY
 fatcat-ai ask "Explain AGPL section 13 in three sentences"
 fatcat-ai chat                    # interactive chat: /new /model /retry /exit; Ctrl+C stops the current reply
 ```

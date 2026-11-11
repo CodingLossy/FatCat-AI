@@ -19,7 +19,7 @@
 | 记忆:Web 设置页加 `memory.autoExtract` 开关,支持一键关闭             | ✅ 完成                | #5:设置 → 通用中的勾选框(#6 起保存中禁用);记忆页在开启时显示提示与「一键关闭自动抽取」按钮(`role="status"`)                                                                                                                                                                            |
 | 记忆:记忆页显示每条记忆的生成来源 `extractRun`(模型、状态、时间)     | ✅ 完成                | #6:每条记忆的「生成来源」按钮,点开才请求 `GET /memory/{id}/sources`;自动抽取的出处显示模型、成功 / 失败(带错误码)、时间、提示词版本,其他出处说明没有生成记录。浏览器中用本地假模型真实抽出一条记忆验证                                                                                 |
 | M1 / M2 遗留:Web 代码高亮                                            | ✅ 完成                | #7:`rehype-highlight`(MIT,highlight.js 为 BSD-3-Clause),只高亮写明语言的代码块,14 种常用语言,不猜语言;单独打包、按需加载,主包只多约 2 KB;深浅色各一套颜色;ADR 0009 第 7 节                                                                                                             |
-| M1 / M2 遗留:覆盖率门禁从 `tools` 扩大到其他核心包                   | ✅ 完成(2026-11-10 补) | 原有 `agent`、`items`、`mail`、`memory`、`providers`、`storage`、`tools`;2026-11-10 给 `shared`(98.4% 行)与 `server`(88.9% 行、84.8% 语句,不计进程入口 `index.ts`)加了同样的行 / 语句 ≥ 80% 门禁,并补了 OpenAPI 文档的单测。`client`、`cli`、`web` 按业主决定暂不设门禁,M5c 发布前再定 |
+| M1 / M2 遗留:覆盖率门禁从 `tools` 扩大到其他核心包                   | ✅ 完成(2026-11-10 补) | 原有 `agent`、`items`、`mail`、`memory`、`providers`、`storage`、`tools`;2026-11-10 给 `shared`(98.4% 行)与 `server`(88.9% 行、84.8% 语句,不计进程入口 `index.ts`)加了同样的行 / 语句 ≥ 80% 门禁,并补了 OpenAPI 文档的单测。`client`、`cli`、`web` 按自检建议暂不设门禁,M5c 发布前再定 |
 
 ## 二、内存(CI 实测,`main`)
 
