@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 语音的契约(ADR 0021)。Settings.voice 与 params.voice 自 M4 PR 4 起提供;
-// ClientFrame 的 voice-state 与 ToolInfo.activityLabel 在 PR 5 接入。
+// ClientFrame 的 voice-state 与 ToolInfo.activityLabel 自 M4 PR 5 起提供。
 import { z } from 'zod';
 import { Id } from './common.js';
 import { isRiff, matchesAt } from './magic.js';
@@ -64,7 +64,7 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
     autoSpeak: false,
 };
 
-/** WebSocket 客户端帧 voice-state 的 payload(PR 5 起提供);不带电平(ADR 0021 第 6 节)。 */
+/** WebSocket 客户端帧 voice-state 的 payload;不带电平(ADR 0021 第 6 节)。 */
 export const VoiceStateReport = z.object({
     state: z.enum(['listening', 'speaking', 'idle']),
     sessionId: Id.nullable(),
@@ -105,3 +105,8 @@ export function sniffAudioType(bytes: Uint8Array): AudioMediaType | null {
     }
     return null;
 }
+
+/** 同一用户每秒最多接受的 voice-state 帧数;多余的丢弃(ADR 0021 第 6 节)。 */
+export const MAX_VOICE_STATE_FRAMES_PER_SECOND = 5;
+/** 补发得到的 assistant-state 早于这么久时按 idle 显示(ADR 0021 第 6 节)。 */
+export const STALE_ASSISTANT_STATE_MS = 30_000;

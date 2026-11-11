@@ -12,7 +12,7 @@ import { MailAccounts } from './MailAccounts.js';
 import { EmbeddingIndex } from './EmbeddingIndex.js';
 import { Preauthorizations } from './Preauthorizations.js';
 
-const PURPOSES: ModelPurpose[] = ['chat', 'cheap'];
+const PURPOSES: ModelPurpose[] = ['chat', 'cheap', 'stt', 'tts'];
 
 const KINDS: ModelKind[] = ['openai-compatible', 'anthropic', 'gemini'];
 
@@ -30,6 +30,8 @@ interface Draft {
     apiKeyRef: string;
     purpose: ModelPurpose[];
     vision: boolean;
+    /** TTS 音色(params.voice);空串表示用服务器默认。 */
+    voice: string;
 }
 
 const emptyDraft: Draft = {
@@ -40,6 +42,7 @@ const emptyDraft: Draft = {
     apiKeyRef: '',
     purpose: ['chat'],
     vision: false,
+    voice: '',
 };
 
 function ProfileForm({
@@ -133,6 +136,19 @@ function ProfileForm({
                 {t('models.vision')}
             </label>
             <span className="small muted">{t('models.visionHint')}</span>
+            {d.purpose.includes('tts') ? (
+                <label>
+                    {t('models.voice')}
+                    <input
+                        name="voice"
+                        placeholder="alloy"
+                        maxLength={64}
+                        value={d.voice}
+                        onChange={(e) => setD({ ...d, voice: e.target.value })}
+                    />
+                    <span className="small muted">{t('models.voiceHint')}</span>
+                </label>
+            ) : null}
             {error ? <p className="error">{error}</p> : null}
             <div className="row">
                 <button type="submit" className="primary" disabled={!keyRefOk || d.purpose.length === 0}>
@@ -168,6 +184,11 @@ function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) =>
     }, [reload]);
 
     const save = async (id: string | null, d: Draft) => {
+        // params 整体替换:保留其他参数,只改音色
+        const otherParams = { ...profiles?.find((p) => p.id === id)?.params };
+        delete otherParams.voice;
+        const voice = d.voice.trim();
+        const params = voice ? { ...otherParams, voice } : otherParams;
         const body = {
             label: d.label,
             kind: d.kind,
@@ -176,6 +197,7 @@ function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) =>
             apiKeyRef: d.apiKeyRef === '' ? null : d.apiKeyRef,
             purpose: d.purpose,
             vision: d.vision,
+            ...(Object.keys(params).length > 0 || id ? { params } : {}),
         };
         if (id) await api.models.update(id, body);
         else await api.models.create(body);
@@ -221,6 +243,7 @@ function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) =>
                                     apiKeyRef: p.apiKeyRef ?? '',
                                     purpose: p.purpose,
                                     vision: p.vision === true,
+                                    voice: p.params?.voice ?? '',
                                 }}
                                 onSave={(d) => save(p.id, d)}
                                 onCancel={() => setEditing(null)}
@@ -298,6 +321,26 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
         </select>
     );
 
+    const voiceSelect = (key: 'defaultSttProfileId' | 'defaultTtsProfileId', purpose: 'stt' | 'tts') => (
+        <select
+            name={key}
+            value={settings.voice[key] ?? ''}
+            onChange={(e) => void update({ voice: { [key]: e.target.value === '' ? null : e.target.value } })}
+        >
+            <option value="">{t('settings.auto')}</option>
+            {profiles
+                .filter(
+                    (p) =>
+                        (p.kind === 'openai-compatible' && p.purpose.includes(purpose)) || p.id === settings.voice[key],
+                )
+                .map((p) => (
+                    <option key={p.id} value={p.id}>
+                        {p.label}
+                    </option>
+                ))}
+        </select>
+    );
+
     return (
         <div className="page">
             <h1>{t('settings.title')}</h1>
@@ -366,6 +409,36 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                     {t('settings.autoExtract', { n: settings.memory.extractDailyLimit })}
                 </label>
                 {note ? <p className="small muted">{note}</p> : null}
+            </section>
+            <section className="card form" aria-label={t('settings.voice')}>
+                <h2>{t('settings.voice')}</h2>
+                <label>
+                    {t('settings.voiceStt')}
+                    {voiceSelect('defaultSttProfileId', 'stt')}
+                </label>
+                <label>
+                    {t('settings.voiceTts')}
+                    {voiceSelect('defaultTtsProfileId', 'tts')}
+                </label>
+                <label className="inline">
+                    <input
+                        type="checkbox"
+                        name="voiceAutoSend"
+                        checked={settings.voice.autoSend}
+                        onChange={(e) => void update({ voice: { autoSend: e.target.checked } })}
+                    />{' '}
+                    {t('settings.voiceAutoSend')}
+                </label>
+                <label className="inline">
+                    <input
+                        type="checkbox"
+                        name="voiceAutoSpeak"
+                        checked={settings.voice.autoSpeak}
+                        onChange={(e) => void update({ voice: { autoSpeak: e.target.checked } })}
+                    />{' '}
+                    {t('settings.voiceAutoSpeak')}
+                </label>
+                <span className="small muted">{t('settings.voiceHint')}</span>
             </section>
             <ModelProfiles onChanged={setProfiles} />
             {/* 配置档变化(新增 embed 档、改模型)后重新读取状态 */}

@@ -6,6 +6,7 @@ import { Id } from './common.js';
 import { DEFAULT_VOICE_SETTINGS, VoiceSettings } from './voice.js';
 
 export const Locale = z.enum(['zh-CN', 'en']);
+export type Locale = z.infer<typeof Locale>;
 export const Theme = z.enum(['system', 'light', 'dark']);
 
 /** GET / PUT /api/v1/settings。PUT 接受部分字段并与现有设置合并。 */

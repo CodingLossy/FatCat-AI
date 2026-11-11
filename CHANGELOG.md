@@ -27,6 +27,10 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - API: `POST /api/v1/attachments` (multipart upload) and `GET /api/v1/attachments/{id}`; `attachmentIds` when sending a message; an `image` message part; `vision` on model profiles; new error codes `model_no_vision`, `payload_too_large` and `unsupported_media_type`. The file type is checked from the file's first bytes, not from its name. All changes are additive.
 - Voice API (ADR 0021; the browser controls follow in the next update): `POST /api/v1/voice/transcriptions` turns a recording (WebM, Ogg, MP4/M4A, WAV or MP3, at most 10 MiB) into text, and `POST /api/v1/voice/speech` reads up to 4,000 characters aloud as streamed MP3, Opus or WAV. Both use a model profile with the `stt` or `tts` purpose, which must be OpenAI-compatible; the key stays on the server. Each user can make 20 of each per minute. Recordings, transcripts and spoken text are not saved or logged; the log only records the profile, sizes and timing.
 - Settings: a `voice` group (`defaultSttProfileId`, `defaultTtsProfileId`, `autoSend`, `autoSpeak`) and a `params.voice` field on model profiles for the TTS voice name (defaults to `alloy`). The client SDK has `voice.transcribe()` and `voice.speak()`.
+- Chat: a "Hold to talk" button. Hold it (or hold Space outside the message box) and release to transcribe; a quick tap starts a voice message and a second tap ends it. Recordings stop at 120 seconds. By default the text is sent right away; turn off "Send automatically" in Settings → Voice to only fill the message box. Replies have a "Read aloud" button, and "Read replies aloud when they finish" reads every reply. Code blocks are skipped ("(code omitted)") and links are read as their text.
+- Chat: a voice status indicator: a small particle sphere with a status line (idle, listening, thinking, speaking, or the tool in use, for example "Reading a web page…"). It pulses with the volume while you talk or it reads aloud, shows the same state on every open tab and device, uses a still circle when the system asks for reduced motion, and falls back to the text alone when the browser can't draw it.
+- Settings → Voice: choose the speech-to-text and read-aloud profiles and the two switches above. Model profiles can now be given the `stt` and `tts` purposes in the form, plus a voice name for read-aloud.
+- API: a `voice-state` WebSocket frame (the browser reports listening / speaking / idle; the server turns it into an `assistant-state` event for all your clients), a `label` on `assistant-state` events in your interface language, and `activityLabel` on tools.
 
 #### Fixed
 
@@ -213,6 +217,10 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - **新增**:API 增加 `POST /api/v1/attachments`(multipart 上传)与 `GET /api/v1/attachments/{id}`;发送消息时可带 `attachmentIds`;消息多了 `image` 段;配置档多了 `vision`;新错误码 `model_no_vision`、`payload_too_large`、`unsupported_media_type`。类型按文件开头的字节判断,不看文件名。都是向后兼容的增量。
 - **新增**:语音接口(ADR 0021;浏览器里的按钮在下一次更新中加入):`POST /api/v1/voice/transcriptions` 把录音(WebM、Ogg、MP4/M4A、WAV、MP3,≤ 10 MiB)转成文字,`POST /api/v1/voice/speech` 把最多 4,000 字朗读成 MP3、Opus 或 WAV 音频流。两者都用 purpose 含 `stt` / `tts` 的配置档,且必须是 OpenAI 兼容;密钥只在服务器。每个用户每分钟各 20 次。录音、转写文字与朗读文字都不保存、不写日志,日志只记配置档、大小与耗时。
 - **新增**:设置中加入 `voice` 一组(`defaultSttProfileId`、`defaultTtsProfileId`、`autoSend`、`autoSpeak`),配置档的 `params.voice` 填 TTS 音色(默认 `alloy`)。客户端 SDK 增加 `voice.transcribe()` 与 `voice.speak()`。
+- **新增**:聊天中的「按住说话」按钮:按住(或在输入框外按住空格键)说话,松开后转写;轻点一下开始语音消息,再点一下结束。录音最长 120 秒。默认转写后直接发送,在设置 → 语音中关掉「自动发送」则只填进输入框。回复旁有「朗读」按钮,打开「回复结束后自动朗读」则每条回复都会读出来;代码块读成「(代码已省略)」,链接只读文字。
+- **新增**:语音状态指示器:一个小的粒子球加一行状态文字(空闲、正在听、正在思考、正在朗读,或正在使用的工具,例如「正在读取网页…」)。说话或朗读时随音量脉动;所有打开的页面与设备显示同一个状态;系统要求减少动态效果时显示静止的圆,浏览器画不出来时只显示文字。
+- **新增**:设置 → 语音:选择语音转文字与朗读的配置档,以及上面两个开关。配置档表单的用途可以勾选 `stt` / `tts`,并可填写朗读音色。
+- **新增**:API:WebSocket 客户端帧 `voice-state`(浏览器上报正在听 / 正在朗读 / 结束,服务器转成 `assistant-state` 事件推给你所有的端);`assistant-state` 事件带界面语言的 `label`;工具带 `activityLabel`。
 - **修复**:编辑模型配置档时,如果这次修改没有带上「支持图片」,它不再被清掉。
 - **变更**:数据目录多了 `attachments/` 文件夹,删除会话时一并删除其中的图片;上传后从未发送的图片 24 小时后清理。自己备份数据目录时请连同这个文件夹一起备份。首次启动会执行数据库迁移 0013。
 

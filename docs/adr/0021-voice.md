@@ -1,6 +1,6 @@
 # ADR 0021 · 语音:服务器转发的 STT / TTS、语音状态的来源
 
-- 状态:第 1–5 节已实施(M4 PR 4 `feat/voice-api`);第 6、7 节在 M4 PR 5 `feat/voice-web`
+- 状态:已实施(第 1–5 节在 M4 PR 4 `feat/voice-api`,第 6、7 节与 Web 在 M4 PR 5 `feat/voice-web`)
 - 日期:2026-11-11
 - 相关:开发计划第 4.1 节(语音状态指示器)、第 6.1 节(`assistant-state`)、第 8 节 M4、第 12 节(资源预算);`docs/milestones/M4-plan.md`;ADR 0004(API v1 约定)、ADR 0006(模型网关)、ADR 0010(工具与审批、审计)、ADR 0018(内存预算)、ADR 0020(附件的魔数检查与错误码)
 
@@ -63,6 +63,7 @@ M4 要让用户在浏览器里说话、听回复。计划要求「前端不自�
 - 请求:JSON `{ text, profileId?, format? }`,`text` 去掉首尾空白后 1–4,000 个字符(`MAX_SPEECH_CHARS`),`format` 为 `mp3`(默认)/ `opus` / `wav`。未知字段拒绝。
 - 服务器发给端点:`POST {baseURL}/audio/speech`,`{ model, input: text, voice, response_format: format }`。
 - 响应 `200`:把上游的音频流**逐块转发**,`Content-Type` 按 `format`(`audio/mpeg` / `audio/ogg` / `audio/wav`),`Cache-Control: no-store`;不在内存里攒整段音频,客户端断开时中止上游请求。
+- Web 目前把每段音频读完再播放(`Blob` + `<audio>`),下一段在当前段播放时就开始请求;服务器端的逐块转发为以后用 MediaSource 边下边播留好了接口。
 - 文字由客户端准备:Web 把回复的 Markdown 转成纯文本(代码块换成「(代码已省略)」/ "(code omitted)",链接只读文字),超过 4,000 字时按句子边界切成几段依次请求。服务器不解析 Markdown。
 
 ## 5. 公共规则(两个接口相同)
@@ -80,7 +81,7 @@ M4 要让用户在浏览器里说话、听回复。计划要求「前端不自�
 
 服务器看不到麦克风与播放,所以由浏览器上报、服务器广播(M4 方案问题 4):
 
-- WebSocket 客户端帧增加 `voice-state`(PR 5 起提供;旧服务器会对它回 `error` 帧,客户端忽略即可):
+- WebSocket 客户端帧增加 `voice-state`(PR 5 起提供)。实施时更正:旧服务器收到不认识的帧会回 `error` 帧**并断开连接**(`4400`),不是只回 `error`;Web 与服务器一起发布,不受影响,其他客户端应先确认服务器版本再发。`voice-state` 必须在 `hello` 之后:
 
   ```ts
   frame(
@@ -103,7 +104,7 @@ M4 要让用户在浏览器里说话、听回复。计划要求「前端不自�
 
 - runner 发 `assistant-state` 时带 `label`:`thinking` →「正在思考…」/ "Thinking…";`executing` → 工具的 `activityLabel`,没有时用「正在使用 <工具名>…」/ "Using <tool>…"。浏览器上报的状态由服务器补上 `label`(「正在听…」「正在朗读…」)。
 - `label` 按设置里的界面语言(`Settings.locale`)生成,文字表放在服务器端;客户端直接显示 `label`,没有 `label` 时(旧服务器)按 `state` 用自己的默认文字。
-- 内置工具可以声明 `activityLabel`(中英文各一句,例如 `mail.send` →「正在发送邮件…」);MCP 工具没有,使用默认文字。`ToolInfo` 增加可选的 `activityLabel`(PR 5 起提供),方便设置页显示。
+- 内置工具可以声明 `activityLabel`(中英文各一句,`{ 'zh-CN', en }`,例如 `mail.send` →「正在发送邮件…」);没有声明的内置工具按名称前缀取默认值(`packages/tools/src/activity.ts`),MCP 工具没有,使用默认文字。`ToolInfo` 增加可选的 `activityLabel`(PR 5 起提供),方便设置页显示。
 - 状态变化在客户端去抖 ≥ 150 ms 再改文字,避免 `thinking` / `executing` 快速交替时闪烁;`aria-live="polite"`。
 
 ## 8. 契约(`packages/shared`,本 PR 加入)

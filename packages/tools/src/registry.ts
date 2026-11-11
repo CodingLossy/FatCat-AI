@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
+import { defaultActivityLabel } from './activity.js';
 import type { PreauthConstraintKind, ToolInfo } from '@fatcat-ai/shared';
 import { defaultApproval, isEnabled, isPreauthorizable, type PolicyOptions } from './policy.js';
 import type { ToolDefinition } from './types.js';
@@ -25,7 +26,9 @@ export class ToolRegistry {
         for (const tool of tools) {
             if (!NAME.test(tool.name) || tool.name.length > 200) throw new Error(`invalid tool name: ${tool.name}`);
             if (this.tools.has(tool.name)) throw new Error(`duplicate tool: ${tool.name}`);
-            this.tools.set(tool.name, tool);
+            const activityLabel =
+                tool.activityLabel ?? (tool.source === 'mcp' ? undefined : defaultActivityLabel(tool.name));
+            this.tools.set(tool.name, activityLabel ? { ...tool, activityLabel } : tool);
         }
         return this;
     }
@@ -41,7 +44,9 @@ export class ToolRegistry {
         const added: string[] = [];
         for (const tool of tools) {
             if (!NAME.test(tool.name) || tool.name.length > 200 || this.tools.has(tool.name)) continue;
-            this.tools.set(tool.name, tool);
+            const activityLabel =
+                tool.activityLabel ?? (tool.source === 'mcp' ? undefined : defaultActivityLabel(tool.name));
+            this.tools.set(tool.name, activityLabel ? { ...tool, activityLabel } : tool);
             added.push(tool.name);
         }
         if (added.length > 0) this.groups.set(group, added);
@@ -77,6 +82,7 @@ export class ToolRegistry {
                 preauthorizable: isPreauthorizable(t) && isEnabled(t, this.options),
                 constraints: Object.keys(t.constraints ?? {}) as PreauthConstraintKind[],
                 requiredConstraint: t.requireConstraint ?? null,
+                ...(t.activityLabel ? { activityLabel: t.activityLabel } : {}),
             }))
             .sort((a, b) => a.name.localeCompare(b.name));
     }
