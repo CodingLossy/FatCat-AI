@@ -154,8 +154,7 @@ export function createMailCacheRepository(conn: Connection, now: () => Date) {
             `SELECT m.id, mf.folder_id AS folderId, m.thread_key AS threadKey, m.subject, m.from_json AS fromJson, m.date
              FROM mail_messages m
              JOIN mail_message_folders mf ON mf.message_id = m.id
-               AND mf.rowid = (SELECT min(x.rowid) FROM mail_message_folders x WHERE x.message_id = m.id)
-             WHERE m.account_id = ? ORDER BY m.date`,
+             WHERE m.account_id = ? ORDER BY m.date, mf.folder_id`,
         ),
         downloadedAttachments: sqlite.prepare<
             [string],
@@ -316,7 +315,7 @@ export function createMailCacheRepository(conn: Connection, now: () => Date) {
             });
             return this.getDraft(ownerId, id);
         },
-        /** 条目索引(mail 提供者)用:账户内全部邮件,每封取一个所在文件夹。 */
+        /** 条目索引(mail 提供者)用:账户内全部邮件,每个所在文件夹一行(同一封可以同时在收件箱和已发送)。 */
         itemRows(accountId: string): MailItemRow[] {
             const atts = new Map<string, MailItemRow['attachments']>();
             for (const a of q.downloadedAttachments.all(accountId)) {

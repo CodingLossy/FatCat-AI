@@ -8,6 +8,7 @@ export type ChannelCommand =
     | { type: 'bind'; code: string }
     | { type: 'approval'; decision: 'approve' | 'reject'; code: string }
     | { type: 'new' }
+    | { type: 'clear' }
     | { type: 'source' }
     | { type: 'help' };
 
@@ -20,6 +21,7 @@ const BIND = /^(?:绑定|bind) ?(\d{6})$/i;
 const APPROVAL = /^(确认|拒绝|approve|deny) ?([a-z]\d)$/i;
 const SLASH: Record<string, ChannelCommand> = {
     '/new': { type: 'new' },
+    '/clear': { type: 'clear' },
     '/source': { type: 'source' },
     '/help': { type: 'help' },
 };
@@ -38,6 +40,7 @@ export function parseCommand(text: string): ChannelCommand | null {
             code: approval[2]!.toUpperCase(),
         };
     }
+    if (t === '清空') return { type: 'clear' };
     return SLASH[t.toLowerCase()] ?? null;
 }
 

@@ -34,8 +34,13 @@ export const Item = z.object({
     color: z.string().nullable(),
     /** 直接子项数(只计未删除的条目,沿 primary contains 边)。 */
     childCount: z.number().int().nonnegative(),
-    /** 后代总数(同上)。 */
+    /** 后代总数(同上,含分类节点)。 */
     descendantCount: z.number().int().nonnegative(),
+    /**
+     * 默认展开时能看到的内容条数:kind 为 content 的后代,不含分类节点,也不进入 meta.hidden 的子树。
+     * 知识地图括号里的数字用它,与逐层展开看到的内容一致(ADR 0025)。服务器总会返回;旧客户端可以忽略。
+     */
+    contentCount: z.number().int().nonnegative().optional(),
     meta: z.record(z.string(), z.unknown()).nullable(),
     createdAt: IsoDateTime,
     updatedAt: IsoDateTime,

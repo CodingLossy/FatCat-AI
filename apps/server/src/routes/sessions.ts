@@ -21,6 +21,7 @@ import { AttachmentLinkError, type ModelProfileRecord, type Repositories } from 
 import type { AttachmentFiles } from '../attachment-files.js';
 import type { Context } from 'hono';
 import { requireOwner } from '../auth/middleware.js';
+import { removeOwnerSessions } from '../session-delete.js';
 import type { AppEnv } from '../env.js';
 import { ApiError, notFound } from '../errors.js';
 import { streamRunEvents, type RunStreamDeps } from '../sse.js';
@@ -159,6 +160,16 @@ const patchRoute = createRoute({
     },
 });
 
+const clearRoute = createRoute({
+    method: 'delete',
+    path: '/sessions',
+    tags: ['sessions'],
+    summary: 'Delete every conversation of the signed-in owner. Memories are kept.',
+    responses: {
+        204: { description: 'All conversations of this owner were deleted. Memories were not.' },
+        ...authErrors,
+    },
+});
 const deleteRoute = createRoute({
     method: 'delete',
     path: '/sessions/{id}',
@@ -204,6 +215,12 @@ const regenerateRoute = createRoute({
 
 export function sessionRoutes(deps: SessionRouteDeps) {
     const { repos, runs } = deps;
+    const removal = (c: Context<AppEnv>) => ({
+        repos,
+        runs,
+        files: deps.files,
+        warn: (err: unknown) => c.get('logger').warn({ err }, 'attachment cleanup failed'),
+    });
 
     const sessionOr404 = (ownerId: string, id: string) => {
         const session = repos.sessions.get(ownerId, id);
@@ -235,18 +252,15 @@ export function sessionRoutes(deps: SessionRouteDeps) {
             checkProfile(ownerId, body.modelProfileId);
             return c.json(repos.sessions.update(ownerId, id, body)!, 200);
         })
+        .openapi(clearRoute, async (c) => {
+            const ownerId = requireOwner(c);
+            await removeOwnerSessions(removal(c), ownerId, repos.sessions.ids(ownerId));
+            return c.body(null, 204);
+        })
         .openapi(deleteRoute, async (c) => {
             const ownerId = requireOwner(c);
             const session = sessionOr404(ownerId, c.req.valid('param').id);
-            if (session.activeRunId) await runs.stop(session.activeRunId);
-            const attachmentIds = repos.attachments.idsForSession(ownerId, session.id);
-            repos.sessions.delete(ownerId, session.id);
-            // 行已随外键删除;文件删除失败只写警告,每天的清理任务会再删(ADR 0020 第 3 节)
-            for (const id of attachmentIds) {
-                await deps.files
-                    .remove(id)
-                    .catch((err: unknown) => c.get('logger').warn({ err }, 'attachment cleanup failed'));
-            }
+            await removeOwnerSessions(removal(c), ownerId, [session.id]);
             return c.body(null, 204);
         })
         .openapi(messagesRoute, (c) => {

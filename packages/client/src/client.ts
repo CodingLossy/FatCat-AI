@@ -231,6 +231,8 @@ export function createClient(options: ClientOptions) {
             update: (id: string, body: UpdateSessionRequest) =>
                 t.json<Session>(`/sessions/${enc(id)}`, { method: 'PATCH', body }),
             delete: (id: string) => t.json<void>(`/sessions/${enc(id)}`, { method: 'DELETE' }),
+            /** 清空当前主人的全部对话。记忆保留。 */
+            clear: () => t.json<void>('/sessions', { method: 'DELETE' }),
             messages: (id: string, page: PageParams = {}) =>
                 t.json<Page<Message>>(`/sessions/${enc(id)}/messages`, { query: { ...page } }),
             /**

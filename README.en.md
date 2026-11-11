@@ -52,7 +52,7 @@ pnpm dev
 - Web UI: <http://127.0.0.1:5173>. Create the owner account when asked (1.0 has exactly one account), add a profile under Settings → Model profiles with the key reference `env:DEEPSEEK_API_KEY` (leave it empty for a local Ollama), and start chatting once it shows "Key: Set".
 - When you run it locally, the core server doesn't serve the Web UI by default: without `FATCAT_AI_WEB_DIR`, <http://127.0.0.1:8787/> returns 404. That is expected; with `pnpm dev`, use port 5173. To serve the Web UI from port 8787 (for example after `pnpm build`, with `pnpm --filter @fatcat-ai/server start`, which also sets the memory flag `--max-semi-space-size=8`), set `FATCAT_AI_WEB_DIR` to the absolute path of `apps/web/dist` first. The Docker image already sets it.
 
-Instead of an environment variable, you can put keys in `secrets.yaml` in the data directory (`~/.fatcat-ai` by default, `%USERPROFILE%\.fatcat-ai` on Windows), one `NAME: value` per line, and reference them as `file:NAME`. Changes take effect without a restart.
+Instead of an environment variable, you can put keys in `secrets.yaml` in the data directory (`~/.fatcat-ai` by default, `%USERPROFILE%\.fatcat-ai` on Windows), one `NAME: value` per line, and reference them as `file:NAME`. Changes take effect without a restart. When the server writes this file itself (for example a WeChat login token), on Windows it removes inherited access entries and leaves full control only for the current user. If that step fails it logs a warning and keeps the file.
 
 > This project used to be called AI-Personal. After upgrading, the server moves an old `~/.ai-personal` to `~/.fatcat-ai` on its first start (it never overwrites an existing `~/.fatcat-ai`). Old `AIP_*` environment variables still work for now, with a warning to switch to `FATCAT_AI_*`.
 
@@ -144,8 +144,8 @@ For Anthropic or Gemini use `--kind anthropic` or `--kind gemini` (no `--base-ur
 ### 5. WeChat
 
 1. Settings → Channels: add a WeChat channel, enable it, click "Log in with QR code", scan with the WeChat account the assistant should use and confirm on the phone.
-2. The login token is stored in `secrets.yaml` in the data directory (key `ILINK_TOKEN_<channel id>`). Before writing, the server copies the file to `backups/secrets-<UTC time>.yaml` (mode 600, newest 5 kept) and changes only that line; it doesn't write if `secrets.yaml` doesn't parse. Deleting the channel removes only that line.
-3. Click "Create pairing code" and send 「绑定 123456」 from your own WeChat to the assistant account. After that only your direct messages reach the chat; approve or deny actions with 「确认 K7」 / 「拒绝 K7」.
+2. The login token is stored in `secrets.yaml` in the data directory (key `ILINK_TOKEN_<channel id>`). Before writing, the server copies the file to `backups/secrets-<UTC time>.yaml` (mode 600, newest 5 kept) and changes only that line; it doesn't write if `secrets.yaml` doesn't parse. On Windows it then removes inherited access entries so only the current user has full control. Deleting the channel removes only that line.
+3. Click "Create pairing code" and send 「绑定 123456」 from your own WeChat to the assistant account. After that only your direct messages reach the chat; approve or deny actions with 「确认 K7」 / 「拒绝 K7」. `/clear` or 「清空」 clears only this channel's current conversation and does not delete memories. In the Web session list you can delete one conversation, or clear all of them (memories are kept there too).
 4. When the login expires the channel shows "Needs QR login"; scan again. Images, files and logins that ask for a PIN are not supported yet.
 
 ### Development

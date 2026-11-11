@@ -39,9 +39,13 @@ describe('parseCommand', () => {
 
     it('斜杠指令完全匹配才算', () => {
         expect(parseCommand('/new')).toEqual({ type: 'new' });
+        expect(parseCommand('/clear')).toEqual({ type: 'clear' });
+        expect(parseCommand(' 清空 ')).toEqual({ type: 'clear' });
+        expect(parseCommand('／CLEAR')).toEqual({ type: 'clear' });
         expect(parseCommand(' /SOURCE ')).toEqual({ type: 'source' });
         expect(parseCommand('／help')).toEqual({ type: 'help' });
         expect(parseCommand('/new please')).toBeNull();
+        expect(parseCommand('请清空')).toBeNull();
         expect(parseCommand('你好')).toBeNull();
     });
 });

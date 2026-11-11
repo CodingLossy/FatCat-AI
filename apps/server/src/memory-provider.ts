@@ -47,8 +47,11 @@ function render(repos: Repositories, ownerId: string, item: Item): string | null
 export function createMemoryProvider(): ItemProvider {
     return {
         id: 'memory',
-        // 记忆的导航树在写入、更替与删除时同步维护,不需要另外同步
-        sync: () => Promise.resolve(),
+        // 写入时已经挂到导航树上;同步再校对一遍,补上没有父边或标题与正文不一致的记忆
+        sync: (ctx) => {
+            ctx.repos.memories.ensureTree(ctx.ownerId);
+            return Promise.resolve();
+        },
         open(item: Item, ctx): Promise<ItemContent> {
             if (item.kind === 'category') return Promise.resolve(textContent(item.title));
             const text = render(ctx.repos, ctx.ownerId, item);

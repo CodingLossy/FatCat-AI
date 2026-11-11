@@ -22,6 +22,7 @@
   - **软删除**:整棵子树设置 `deleted_at`,子树内所有计数清零;父项 `child_count - 1`,祖先减去 `1 + 原后代数`。
   - **恢复**:提供者再次同步到同一个 `(source, source_ref)` 时清除 `deleted_at`,按新建处理;它的子项随后在同步中逐个恢复。
 - `recount(ownerId)` 用递归 CTE 从叶子重新计算全部计数,返回修正的条数。属性测试用它作为对照。
+- 知识地图上括号里的数字不是 `descendant_count`,而是现算的 `contentCount`(只数内容条目,不含分类,也不进入 `meta.hidden` 子树)。见 ADR 0025。`descendant_count` 的含义不变。
 - 硬删除只用于记忆的「忘记」(ADR 0007):边由外键级联删除。记忆条目在 M2 没有父边,不影响导航树的计数。
 
 ### 2. REST(`/api/v1/items`,只读,需鉴权)

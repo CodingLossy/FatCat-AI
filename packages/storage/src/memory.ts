@@ -319,6 +319,9 @@ export function createMemoryRepository(conn: Connection, now: () => Date, items:
              WHERE owner_id = @ownerId AND id = @id`,
         ),
         get: sqlite.prepare<[string, string], Row>(`${SELECT} WHERE f.owner_id = ? AND f.item_id = ?`),
+        allForOwner: sqlite.prepare<[string], Row>(
+            `${SELECT} WHERE f.owner_id = ? AND i.deleted_at IS NULL ORDER BY f.item_id`,
+        ),
         list: sqlite.prepare<[string, number], Row>(
             `${SELECT} WHERE f.owner_id = ? AND f.status IN ('active','conflicted') ORDER BY f.updated_at DESC, f.item_id DESC LIMIT ?`,
         ),
@@ -800,6 +803,30 @@ export function createMemoryRepository(conn: Connection, now: () => Date, items:
          * 「忘记」:先从导航树上摘下(扣减祖先计数),再硬删除条目;记忆、出处、反馈、冲突、嵌入与向量
          * 由外键与触发器级联删除,FTS 由触发器同步(ADR 0007 第 5.2 节第 5 条)。
          */
+        /**
+         * 把每条记忆挂回「记忆 → 域 → 类型」(被更替的挂到历史版本),并让条目标题与正文一致。
+         * 写入时已经挂过;知识地图同步时再跑一遍,补上没有父边或标题过期的条目(例如任务类记忆)。
+         * 返回改动的条数。
+         */
+        ensureTree(ownerId: string): number {
+            return sqlite.transaction(() => {
+                let fixed = 0;
+                for (const row of q.allForOwner.all(ownerId)) {
+                    const want = parentFor(ownerId, { ...row, superseded: row.status === 'superseded' });
+                    if (items.parentId(row.id) !== want) {
+                        place(ownerId, row);
+                        fixed++;
+                    }
+                    const title = row.text.slice(0, TITLE_LENGTH);
+                    const item = items.get(ownerId, row.id);
+                    if (item && (item.title !== title || item.summary !== row.text)) {
+                        q.updateText.run(title, row.text, iso(), row.id);
+                        fixed++;
+                    }
+                }
+                return fixed;
+            })();
+        },
         delete(ownerId: string, id: string): boolean {
             return sqlite.transaction(() => {
                 if (!q.get.get(ownerId, id)) return false;

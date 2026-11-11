@@ -30,6 +30,22 @@ function rng(seed: number) {
     };
 }
 
+/** 默认展开能看到的内容条数:跳过 meta.hidden,内容节点计 1,再加上下面的。 */
+function visibleContent(items: TestDb['repos']['items'], ownerId: string, id: string): number {
+    let n = 0;
+    let cursor: string | undefined;
+    do {
+        const page = items.children(ownerId, id, { limit: 50, sort: 'position', ...(cursor ? { cursor } : {}) });
+        for (const child of page.items) {
+            if ((child.meta as { hidden?: unknown } | null)?.hidden === true) continue;
+            if (child.kind === 'content') n += 1;
+            n += visibleContent(items, ownerId, child.id);
+        }
+        cursor = page.nextCursor ?? undefined;
+    } while (cursor);
+    return n;
+}
+
 describe('items:计数与树', () => {
     it('新建、移动、软删除、恢复时祖先计数正确;移动到自己的后代被拒绝', () => {
         const { items } = t.repos;
@@ -104,6 +120,29 @@ describe('items:计数与树', () => {
             expect(new Set(chain).size).toBe(chain.length);
             expect(chain).not.toContain(item.id);
         }
+    });
+
+    it('每一层的 contentCount 等于默认展开能看到的内容条数', () => {
+        const { items } = t.repos;
+        const root = items.upsert(t.ownerId, input('root', null, { kind: 'category', type: 'test.root' }));
+        const folder = items.upsert(t.ownerId, input('folder', root.id, { kind: 'category', type: 'test.folder' }));
+        items.upsert(t.ownerId, input('leaf', folder.id));
+        items.upsert(t.ownerId, input('leaf-2', folder.id));
+        const hidden = items.upsert(
+            t.ownerId,
+            input('history', folder.id, { kind: 'category', type: 'test.history', meta: { hidden: true } }),
+        );
+        items.upsert(t.ownerId, input('old', hidden.id));
+        const check = (id: string) => {
+            const item = items.get(t.ownerId, id)!;
+            expect(item.contentCount).toBe(visibleContent(items, t.ownerId, id));
+        };
+        check(root.id);
+        check(folder.id);
+        check(hidden.id);
+        expect(items.get(t.ownerId, root.id)?.contentCount).toBe(2);
+        expect(items.get(t.ownerId, folder.id)?.contentCount).toBe(2);
+        expect(items.get(t.ownerId, hidden.id)?.contentCount).toBe(1);
     });
 
     it('recount 修正被破坏的计数', () => {

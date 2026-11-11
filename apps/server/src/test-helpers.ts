@@ -156,6 +156,7 @@ export async function createTestServer(
         runs,
         bus,
         secrets,
+        files: attachmentFiles,
         logger,
         sourceUrl: overrides.sourceUrl ?? 'https://github.com/CodingLossy/FatCat-AI',
         ...(adapters ? { adapters } : {}),
