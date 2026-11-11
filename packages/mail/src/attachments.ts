@@ -77,10 +77,11 @@ export async function addAttachmentToKb(
         error = (e instanceof Error ? e.message : String(e)).slice(0, 300);
     }
 
-    // 标记为已下载后同步条目:附件条目出现在邮件下面,再把分块挂到它上面
+    // 标记为已下载后同步条目:附件条目出现在邮件下面,再把分块挂到它上面。
+    // 同一封邮件可以挂在多个文件夹下,附件条目的 source_ref 带文件夹 id。
     repos.mailCache.markDownloaded(att.id);
     await deps.items.sync(ownerId);
-    const ref = `attachment:${att.id}`;
+    const ref = `attachment:${message.folderId}:${att.id}`;
     // 正在进行的同步可能早于上面的标记:再同步一次
     if (!repos.items.bySource(ownerId, 'mail', ref)) await deps.items.sync(ownerId);
     const item = repos.items.bySource(ownerId, 'mail', ref);

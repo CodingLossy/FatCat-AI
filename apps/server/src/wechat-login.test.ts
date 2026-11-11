@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 微信扫码授权(ADR 0024):假的 iLink 服务器上走完扫码 → 令牌写入 secrets.yaml → 渠道用令牌长轮询 → 删除渠道删掉令牌。
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
@@ -18,6 +18,7 @@ class FakeIlink {
     url = '';
     qrStatus: Record<string, unknown>[] = [];
     polls: IncomingMessage['headers'][] = [];
+    statusPolls = 0;
 
     constructor() {
         this.server = createServer((req, res) => {
@@ -27,8 +28,10 @@ class FakeIlink {
             const path = req.url ?? '';
             if (path.startsWith('/ilink/bot/get_bot_qrcode'))
                 return send({ qrcode: 'Q1', qrcode_img_content: 'https://qr.example/Q1' });
-            if (path.startsWith('/ilink/bot/get_qrcode_status'))
+            if (path.startsWith('/ilink/bot/get_qrcode_status')) {
+                this.statusPolls += 1;
                 return send(this.qrStatus.shift() ?? { status: 'wait' });
+            }
             if (path.startsWith('/ilink/bot/getupdates')) {
                 this.polls.push(req.headers);
                 const timer = setTimeout(() => send({ ret: 0, msgs: [], get_updates_buf: 'B' }), 100);
@@ -136,6 +139,26 @@ describe('WeChat QR-code login', () => {
         expect(await loginState(channel.id)).toEqual({ state: 'failed', code: 'secrets_write_failed' });
         expect(readFileSync(secretsFile(), 'utf8')).toBe(broken);
         expect(s.logs.join('')).not.toContain(TOKEN);
+    });
+
+    it('stopping during the status gap does not apply that status or poll again', async () => {
+        const channel = await createChannel();
+        fake.qrStatus.push({ status: 'scaned' }, { status: 'confirmed', bot_token: TOKEN, baseurl: fake.url });
+        expect((await req(`/api/v1/channels/${channel.id}/wechat/login`, { method: 'POST' })).status).toBe(201);
+        await until(() => fake.statusPolls === 1);
+        // 第一次状态已经返回,此刻正在 1 秒间隔里。只中止等待,登录记录还在,才能看出状态有没有被改掉。
+        await new Promise((r) => setTimeout(r, 50));
+        const watches = s.wechat as unknown as {
+            logins: Map<string, { controller: AbortController }>;
+        };
+        watches.logins.get(channel.id)!.controller.abort();
+        await new Promise((r) => setTimeout(r, 200));
+        expect(fake.statusPolls).toBe(1);
+        expect(await loginState(channel.id)).toEqual({ state: 'pending' });
+        if (existsSync(secretsFile())) expect(readFileSync(secretsFile(), 'utf8')).not.toContain(TOKEN);
+        await new Promise((r) => setTimeout(r, 900));
+        expect(fake.statusPolls).toBe(1);
+        expect(await loginState(channel.id)).toEqual({ state: 'pending' });
     });
 
     it('reports expiry and the unsupported PIN step', async () => {

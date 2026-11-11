@@ -3,7 +3,7 @@
 
 // 微信 iLink 的服务器部分(ADR 0024):适配器工厂(保存长轮询游标)与扫码授权。
 // 扫码确认后令牌按 ADR 0022 第 9 节写进 secrets.yaml 的 ILINK_TOKEN_<channelId>,渠道配置只记 file: 引用。
-import { IlinkClient, IlinkError, WechatAdapter } from '@fatcat-ai/channels';
+import { abortablePause, IlinkClient, IlinkError, WechatAdapter } from '@fatcat-ai/channels';
 import type { SecretStore } from '@fatcat-ai/providers';
 import type { WechatLoginStart, WechatLoginState } from '@fatcat-ai/shared';
 import type { ChannelRecord, Repositories } from '@fatcat-ai/storage';
@@ -140,15 +140,16 @@ export class WechatChannels {
                 );
             } catch {
                 if (signal.aborted) return;
-                // 协议说明:超时与网络错误按 wait 处理;稍等再轮询,避免对方立即报错时空转
-                await new Promise((r) => setTimeout(r, 1000).unref());
+                // 协议说明:超时与网络错误按 wait 处理;稍等再轮询,避免对方立即报错时空转。停止时立刻醒来。
+                await abortablePause(1000, signal);
                 continue;
             }
             if (signal.aborted) return;
-            // 平台没有挂起就立刻返回时,两次查询之间至少隔 1 秒
+            // 平台没有挂起就立刻返回时,两次查询之间至少隔 1 秒;停止或关机时不等满这一秒。
+            // abortablePause 在中止时是正常返回,所以醒来后必须再看一次,不能拿这次的旧状态继续往下走。
             const gap = 1000 - (Date.now() - started);
             if (gap > 0 && (status.status === 'wait' || status.status === 'scaned')) {
-                await new Promise((r) => setTimeout(r, gap).unref());
+                await abortablePause(gap, signal);
                 if (signal.aborted) return;
             }
             switch (status.status) {

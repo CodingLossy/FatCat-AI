@@ -35,7 +35,23 @@ const COLUMNS = `i.id, i.kind, i.type, i.source, i.source_ref AS sourceRef, i.ti
     i.child_count AS childCount, i.descendant_count AS descendantCount, i.meta AS metaJson,
     i.created_at AS createdAt, i.updated_at AS updatedAt, i.deleted_at AS deletedAt`;
 
-function toItem(row: Row): Item {
+/**
+ * 从某个节点向下,默认展开能看到的内容条目数(ADR 0025):
+ * kind 为 content,沿 primary contains 边,不进入 meta.hidden 的子树(记忆的「历史版本」)。
+ * 分类节点本身不计数。现算,不另存一列,所以不需要迁移。
+ */
+const CONTENT_COUNT = `WITH RECURSIVE vis(id, hidden) AS (
+    SELECT c.id, CASE WHEN json_extract(c.meta, '$.hidden') = 1 THEN 1 ELSE 0 END
+    FROM item_edges e JOIN items c ON c.id = e.child_id
+    WHERE e.parent_id = @root AND e.primary_edge = 1 AND e.rel = 'contains' AND c.deleted_at IS NULL
+    UNION ALL
+    SELECT c.id, CASE WHEN vis.hidden = 1 OR json_extract(c.meta, '$.hidden') = 1 THEN 1 ELSE 0 END
+    FROM item_edges e JOIN vis ON e.parent_id = vis.id JOIN items c ON c.id = e.child_id
+    WHERE e.primary_edge = 1 AND e.rel = 'contains' AND c.deleted_at IS NULL
+)
+SELECT count(*) AS n FROM vis JOIN items x ON x.id = vis.id WHERE vis.hidden = 0 AND x.kind = 'content'`;
+
+function toItem(row: Row, contentCount = 0): Item {
     return {
         id: row.id,
         kind: row.kind,
@@ -48,6 +64,7 @@ function toItem(row: Row): Item {
         color: row.color,
         childCount: row.childCount,
         descendantCount: row.descendantCount,
+        contentCount,
         meta: row.metaJson ? (JSON.parse(row.metaJson) as Record<string, unknown>) : null,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -163,11 +180,20 @@ export function createItemRepository(conn: Connection, now: () => Date) {
         setCounts: sqlite.prepare<[number, number, string]>(
             'UPDATE items SET child_count = ?, descendant_count = ? WHERE id = ?',
         ),
+        contentOf: sqlite.prepare<{ root: string }, { n: number }>(CONTENT_COUNT),
     };
+
+    function contentCount(id: string): number {
+        return q.contentOf.get({ root: id })?.n ?? 0;
+    }
+
+    function present(row: Row): Item {
+        return toItem(row, contentCount(row.id));
+    }
 
     function get(ownerId: string, id: string): Item | null {
         const row = q.get.get(ownerId, id);
-        return row ? toItem(row) : null;
+        return row ? present(row) : null;
     }
 
     /** 沿祖先链调整计数:父项 child_count 加 child,父项及所有祖先 descendant_count 加 desc。 */
@@ -211,7 +237,7 @@ export function createItemRepository(conn: Connection, now: () => Date) {
                     q.insertEdge.run(input.parentId, id, input.position ?? null);
                     adjustAncestors(input.parentId, 1, 1);
                 }
-                return toItem(q.get.get(ownerId, id)!);
+                return present(q.get.get(ownerId, id)!);
             }
 
             const wasDeleted = existing.deletedAt !== null;
@@ -234,7 +260,7 @@ export function createItemRepository(conn: Connection, now: () => Date) {
                 if (input.parentId) q.updateEdgePosition.run(input.position ?? null, existing.id);
                 if (wasDeleted) adjustAncestors(input.parentId, 1, 1);
             }
-            return toItem(q.get.get(ownerId, existing.id)!);
+            return present(q.get.get(ownerId, existing.id)!);
         })();
     }
 
@@ -285,7 +311,7 @@ export function createItemRepository(conn: Connection, now: () => Date) {
         const items = rows.slice(0, page.limit);
         const last = items.at(-1);
         return {
-            items: items.map(toItem),
+            items: items.map(present),
             nextCursor: rows.length > page.limit && last ? encodeCursor({ k: last.k, id: last.id }) : null,
         };
     }
@@ -339,7 +365,7 @@ export function createItemRepository(conn: Connection, now: () => Date) {
         attach,
         bySource(ownerId: string, source: string, sourceRef: string): Item | null {
             const row = q.bySource.get(ownerId, source, sourceRef);
-            return row ? toItem(row) : null;
+            return row ? present(row) : null;
         },
         upsert,
         softDelete,
@@ -352,7 +378,7 @@ export function createItemRepository(conn: Connection, now: () => Date) {
             return removed;
         },
         roots(ownerId: string): Item[] {
-            return q.roots.all(ownerId).map(toItem);
+            return q.roots.all(ownerId).map(present);
         },
         parentId(id: string): string | null {
             return q.parentOf.get(id)?.parentId ?? null;
@@ -360,7 +386,7 @@ export function createItemRepository(conn: Connection, now: () => Date) {
         /** 祖先链,根在前,不含自身。 */
         ancestors(ownerId: string, id: string): Item[] {
             if (!q.get.get(ownerId, id)) return [];
-            return q.ancestors.all({ id }).map(toItem);
+            return q.ancestors.all({ id }).map(present);
         },
         children,
         counts(ownerId: string, id: string): ItemCounts | null {
@@ -410,14 +436,14 @@ export function createItemRepository(conn: Connection, now: () => Date) {
                    WHERE items_fts MATCH @match AND ${base} ORDER BY bm25(items_fts) LIMIT @limit`
                 : `${scope}SELECT ${COLUMNS} FROM items i WHERE (i.title LIKE @like ESCAPE '\\' OR i.summary LIKE @like ESCAPE '\\')
                    AND ${base} ORDER BY i.updated_at DESC LIMIT @limit`;
-            return sqlite.prepare<Record<string, unknown>, Row>(sql).all(params).map(toItem);
+            return sqlite.prepare<Record<string, unknown>, Row>(sql).all(params).map(present);
         },
         changes(ownerId: string, page: { cursor?: string | undefined; limit: number }): Page<Item> {
             const after = page.cursor ? decodeCursor(page.cursor, changeCursor) : null;
             const rows = after
                 ? q.changesAfter.all(ownerId, after.t, after.t, after.id, page.limit + 1)
                 : q.changesFirst.all(ownerId, page.limit + 1);
-            const items = rows.slice(0, page.limit).map(toItem);
+            const items = rows.slice(0, page.limit).map(present);
             const last = items.at(-1);
             return {
                 items,

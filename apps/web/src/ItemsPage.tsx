@@ -7,42 +7,49 @@ import { askAboutMail } from './MailPage.js';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
 
-/** 一个可展开的节点:子项在第一次展开时才加载(ADR 0012)。 */
+/** 一个可展开的节点。每次展开都重新加载,这样新写入的记忆、邮件会立刻出现在树上(ADR 0012、ADR 0025)。 */
 function TreeNode({ item, onOpen, selected }: { item: Item; onOpen: (item: Item) => void; selected: string | null }) {
     const { t } = useI18n();
     const [open, setOpen] = useState(false);
+    const [shown, setShown] = useState(item);
     const [children, setChildren] = useState<Item[] | null>(null);
     const [cursor, setCursor] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    if (shown.id !== item.id) setShown(item);
 
     const load = async (next?: string) => {
         try {
-            const page = await api.items.children(item.id, { limit: 100, ...(next ? { cursor: next } : {}) });
+            const [fresh, page] = await Promise.all([
+                next ? Promise.resolve(shown) : api.items.get(item.id),
+                api.items.children(item.id, { limit: 100, ...(next ? { cursor: next } : {}) }),
+            ]);
+            if (!next) setShown(fresh);
             setChildren((old) => [...(next ? (old ?? []) : []), ...page.items]);
             setCursor(page.nextCursor);
+            setError(null);
         } catch (e) {
             setError(errorText(e));
         }
     };
 
     const toggle = () => {
-        if (!open && children === null) void load();
+        if (!open) void load();
         setOpen(!open);
     };
 
     return (
         <li className="tree-node" data-item-type={item.type}>
             <div className={`tree-row${selected === item.id ? ' active' : ''}`}>
-                {item.kind === 'category' ? (
+                {shown.kind === 'category' ? (
                     <button type="button" className="link tree-toggle" aria-expanded={open} onClick={toggle}>
-                        {open ? '▾' : '▸'} {item.title}
+                        {open ? '▾' : '▸'} {shown.title}
                     </button>
                 ) : (
-                    <button type="button" className="link" onClick={() => onOpen(item)}>
-                        {item.title}
+                    <button type="button" className="link tree-leaf" onClick={() => onOpen(shown)}>
+                        {shown.title}
                     </button>
                 )}
-                {item.kind === 'category' ? <span className="small muted"> ({item.descendantCount})</span> : null}
+                {shown.kind === 'category' ? <span className="small muted"> ({shown.contentCount ?? 0})</span> : null}
             </div>
             {error ? <p className="error small">{error}</p> : null}
             {open && children ? (

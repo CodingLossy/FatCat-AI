@@ -184,6 +184,7 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
              WHERE owner_id = @ownerId AND id = @id`,
         ),
         delete: sqlite.prepare('DELETE FROM sessions WHERE owner_id = ? AND id = ?'),
+        ids: sqlite.prepare<[string], { id: string }>('SELECT id FROM sessions WHERE owner_id = ?'),
         touch: sqlite.prepare('UPDATE sessions SET last_message_at = ?, updated_at = ? WHERE id = ?'),
         untrustedAt: sqlite.prepare<[string], { at: string | null }>(
             'SELECT untrusted_at AS at FROM sessions WHERE id = ?',
@@ -251,6 +252,10 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
         /** 删除会话;消息、运行、事件、摘要由外键级联删除。 */
         delete(ownerId: string, id: string): boolean {
             return sessionQ.delete.run(ownerId, id).changes > 0;
+        },
+        /** 该主人的全部会话 id(清空对话时用,不经过分页上限)。 */
+        ids(ownerId: string): string[] {
+            return sessionQ.ids.all(ownerId).map((r) => r.id);
         },
         /** 会话第一次读到不可信内容的时间;之后整个会话都不再满足条件预授权(ADR 0016 第 7 节)。 */
         untrustedAt(id: string): string | null {

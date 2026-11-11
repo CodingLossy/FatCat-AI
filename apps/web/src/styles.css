@@ -613,14 +613,33 @@ td .badge {
     background: var(--panel);
 }
 
+.tree-row button {
+    /* 按钮的默认对齐是居中,长标题换行后两行都挤在中间 */
+    text-align: left;
+    white-space: normal;
+    max-width: 100%;
+}
+
 .tree-toggle {
     color: var(--fg);
 }
 
 .item-text {
     white-space: pre-wrap;
+    text-align: left;
     max-height: 70vh;
     overflow-y: auto;
+}
+
+.session-row {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.session-row .session-link {
+    flex: 1;
+    min-width: 0;
 }
 
 @media (max-width: 720px) {

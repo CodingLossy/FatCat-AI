@@ -175,6 +175,7 @@ const channels = new ChannelHub({
     runs,
     bus,
     secrets,
+    files: attachmentFiles,
     logger,
     sourceUrl: config.sourceUrl,
     adapters: { wechat: wechat.factory },
