@@ -30,6 +30,8 @@ import type {
     Channel,
     ChannelCreate,
     ChannelPairing,
+    WechatLoginStart,
+    WechatLoginState,
     ChannelPatch,
     ChannelStatus,
     McpServerStatus,
@@ -414,6 +416,10 @@ export function createClient(options: ClientOptions) {
             pair: (id: string) => t.json<ChannelPairing>(`/channels/${enc(id)}/pairing`, { method: 'POST' }),
             unbind: (id: string) => t.json<void>(`/channels/${enc(id)}/binding`, { method: 'DELETE' }),
             status: (id: string) => t.json<ChannelStatus>(`/channels/${enc(id)}/status`),
+            /** 微信扫码登录(ADR 0024):qrContent 由客户端渲染成二维码,然后轮询 wechatLoginState。 */
+            wechatLogin: (id: string) =>
+                t.json<WechatLoginStart>(`/channels/${enc(id)}/wechat/login`, { method: 'POST' }),
+            wechatLoginState: (id: string) => t.json<WechatLoginState>(`/channels/${enc(id)}/wechat/login`),
         },
 
         preauthorizations: {

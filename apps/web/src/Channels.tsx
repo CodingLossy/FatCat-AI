@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { Channel, ChannelPairing, ChannelStatus } from '@fatcat-ai/shared';
+import type { Channel, ChannelPairing, ChannelStatus, WechatLoginState } from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { QrCode } from './QrCode.js';
 
 type Row = Channel & { status: ChannelStatus | null };
 
 /**
  * 设置页「渠道」(ADR 0022):列出渠道、启用 / 停用、生成配对码、显示绑定的账号与最近错误、降级提醒开关。
- * 1.0 只有微信;扫码登录随 M5a PR 7 加入。配对码只在生成时显示一次。
+ * 1.0 只有微信:扫码登录(ADR 0024)在本页渲染二维码并每 2 秒轮询状态。配对码只在生成时显示一次。
  */
 export function Channels() {
     const { t, locale } = useI18n();
@@ -18,6 +19,7 @@ export function Channels() {
     const [label, setLabel] = useState('');
     const [pairing, setPairing] = useState<(ChannelPairing & { channelId: string; minutes: number }) | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [login, setLogin] = useState<{ channelId: string; qrContent: string; state: WechatLoginState } | null>(null);
 
     const reload = useCallback(
         () =>
@@ -47,6 +49,29 @@ export function Channels() {
         const timer = setInterval(() => void reload(), 2000);
         return () => clearInterval(timer);
     }, [busy, reload]);
+
+    // 扫码进行中每 2 秒查询一次状态;确认后刷新列表(渠道会用新令牌重启)
+    const loginChannel =
+        login && (login.state.state === 'pending' || login.state.state === 'scanned') ? login.channelId : null;
+    useEffect(() => {
+        if (!loginChannel) return;
+        const timer = setInterval(() => {
+            api.channels
+                .wechatLoginState(loginChannel)
+                .then((state) => {
+                    setLogin((prev) => (prev?.channelId === loginChannel ? { ...prev, state } : prev));
+                    if (state.state === 'confirmed') void reload();
+                })
+                .catch((e: unknown) => {
+                    // 例如服务器重启后扫码记录没了(404):停止轮询,提示重新扫码
+                    setError(errorText(e));
+                    setLogin((prev) =>
+                        prev?.channelId === loginChannel ? { ...prev, state: { state: 'failed', code: 'lost' } } : prev,
+                    );
+                });
+        }, 2000);
+        return () => clearInterval(timer);
+    }, [loginChannel, reload]);
 
     const run = async (action: () => Promise<unknown>) => {
         setError(null);
@@ -106,6 +131,23 @@ export function Channels() {
                                 ) : null}
                             </div>
                             <div className="row">
+                                {c.kind === 'wechat' ? (
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            void run(async () => {
+                                                const start = await api.channels.wechatLogin(c.id);
+                                                setLogin({
+                                                    channelId: c.id,
+                                                    qrContent: start.qrContent,
+                                                    state: { state: 'pending' },
+                                                });
+                                            })
+                                        }
+                                    >
+                                        {t('channels.wechatLogin')}
+                                    </button>
+                                ) : null}
                                 {c.binding ? (
                                     <button
                                         type="button"
@@ -156,6 +198,17 @@ export function Channels() {
                                 </button>
                             </div>
                         </div>
+                        {login?.channelId === c.id ? (
+                            <div className="qr-login" role="status">
+                                {login.state.state === 'pending' || login.state.state === 'scanned' ? (
+                                    <QrCode value={login.qrContent} label={t('channels.wechatQr')} />
+                                ) : null}
+                                <p className="small">
+                                    {t(`channels.login.${login.state.state}`)}
+                                    {login.state.code ? ` (${login.state.code})` : ''}
+                                </p>
+                            </div>
+                        ) : null}
                         {pairing?.channelId === c.id && !c.binding ? (
                             <p className="small" role="status">
                                 <code>{pairing.code}</code>{' '}

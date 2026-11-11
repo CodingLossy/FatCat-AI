@@ -141,6 +141,13 @@ fatcat-ai chat                    # interactive chat: /new /model /retry /exit; 
 
 For Anthropic or Gemini use `--kind anthropic` or `--kind gemini` (no `--base-url` needed). Tool calls that need approval (such as `memory.save`) are asked about in a terminal and rejected when not interactive, unless you pass `--approve-tools`.
 
+### 5. WeChat
+
+1. Settings → Channels: add a WeChat channel, enable it, click "Log in with QR code", scan with the WeChat account the assistant should use and confirm on the phone.
+2. The login token is stored in `secrets.yaml` in the data directory (key `ILINK_TOKEN_<channel id>`). Before writing, the server copies the file to `backups/secrets-<UTC time>.yaml` (mode 600, newest 5 kept) and changes only that line; it doesn't write if `secrets.yaml` doesn't parse. Deleting the channel removes only that line.
+3. Click "Create pairing code" and send 「绑定 123456」 from your own WeChat to the assistant account. After that only your direct messages reach the chat; approve or deny actions with 「确认 K7」 / 「拒绝 K7」.
+4. When the login expires the channel shows "Needs QR login"; scan again. Images, files and logins that ask for a PIN are not supported yet.
+
 ### Development
 
 `pnpm lint`, `pnpm typecheck`, `pnpm test` (Vitest), and after `pnpm build`, `pnpm test:e2e` (Playwright smoke test; run `pnpm --filter @fatcat-ai/web exec playwright install chromium` once first). Conventions are in [AGENTS.md](AGENTS.md) and changes in [CHANGELOG.md](CHANGELOG.md).

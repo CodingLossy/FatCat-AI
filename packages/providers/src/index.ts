@@ -20,6 +20,9 @@ export { createProvider, selectProfile, type ProviderDeps } from './registry.js'
 export {
     parseSecretsFile,
     SECRETS_FILE,
+    SECRETS_BACKUP_DIR,
+    SecretsWriteError,
+    writeSecretsKey,
     SecretsFileError,
     SecretStore,
     type KeyStatusValue,

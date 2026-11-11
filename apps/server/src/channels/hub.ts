@@ -231,6 +231,12 @@ export class ChannelHub {
         else if (!channel.enabled && active) await this.stop(channel.id);
     }
 
+    /** 重新扫码之后:停止并按新配置重新启动(停用的渠道只停止)。 */
+    async restart(channel: ChannelRecord): Promise<void> {
+        await this.stop(channel.id);
+        if (channel.enabled) await this.start(channel);
+    }
+
     /** 删除渠道:停止并忘掉运行状态。 */
     async remove(channelId: string): Promise<void> {
         await this.stop(channelId);

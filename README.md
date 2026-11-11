@@ -141,6 +141,13 @@ fatcat-ai chat                    # 交互式聊天:/new /model /retry /exit,Ctr
 
 Anthropic / Gemini 用 `--kind anthropic` 或 `--kind gemini`(不需要 `--base-url`)。需要审批的工具调用(如 `memory.save`)会在终端里询问,非交互时默认拒绝,除非加 `--approve-tools`。
 
+### 5. 接入微信
+
+1. 设置 → 渠道:添加一个微信渠道并启用,点「扫码登录」,用要当作助手的微信账号扫码并在手机上确认。
+2. 登录令牌保存在数据目录的 `secrets.yaml`(键名 `ILINK_TOKEN_<渠道 id>`)。服务器写入前会把原文件复制到 `backups/secrets-<UTC 时间>.yaml`(权限 600,只保留最近 5 份),只改这一行;`secrets.yaml` 解析失败时不写入。删除渠道时同样只删这一行。
+3. 点「生成配对码」,用你自己的微信私聊助手账号发送「绑定 123456」。之后只有你的私聊消息会进入对话;需要确认的操作回复「确认 K7」或「拒绝 K7」。
+4. 登录失效时渠道显示「需要扫码登录」,重新扫码即可。暂不支持图片、文件和需要输入 PIN 的登录。
+
 ### 开发
 
 `pnpm lint`、`pnpm typecheck`、`pnpm test`(Vitest)、`pnpm build` 后运行 `pnpm test:e2e`(Playwright 冒烟,首次需 `pnpm --filter @fatcat-ai/web exec playwright install chromium`)。完整约定见 [AGENTS.md](AGENTS.md),更新记录见 [CHANGELOG.md](CHANGELOG.md)。
