@@ -63,6 +63,9 @@ importers:
       '@fatcat-ai/agent':
         specifier: workspace:*
         version: link:../../packages/agent
+      '@fatcat-ai/channels':
+        specifier: workspace:*
+        version: link:../../packages/channels
       '@fatcat-ai/items':
         specifier: workspace:*
         version: link:../../packages/items
@@ -180,7 +183,11 @@ importers:
         specifier: workspace:*
         version: link:../tools
 
-  packages/channels: {}
+  packages/channels:
+    dependencies:
+      '@fatcat-ai/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/client:
     dependencies:

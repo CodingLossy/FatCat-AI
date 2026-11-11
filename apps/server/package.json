@@ -27,10 +27,11 @@
     "lint": "eslint .",
     "test": "vitest run",
     "openapi:export": "node scripts/export-openapi.mjs",
-    "eval": "vitest run src/mail-injection.eval.test.ts --reporter=verbose --coverage.enabled=false"
+    "eval": "vitest run src/mail-injection.eval.test.ts src/channel-injection.eval.test.ts --reporter=verbose --coverage.enabled=false"
   },
   "dependencies": {
     "@fatcat-ai/agent": "workspace:*",
+    "@fatcat-ai/channels": "workspace:*",
     "@fatcat-ai/items": "workspace:*",
     "@fatcat-ai/mail": "workspace:*",
     "@fatcat-ai/memory": "workspace:*",

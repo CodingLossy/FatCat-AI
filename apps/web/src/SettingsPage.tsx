@@ -8,6 +8,7 @@ import { useI18n } from './i18n.js';
 import { isValidKeyRef } from './live-turn.js';
 import { FsRoots } from './FsRoots.js';
 import { McpServers } from './McpServers.js';
+import { Channels } from './Channels.js';
 import { MailAccounts } from './MailAccounts.js';
 import { EmbeddingIndex } from './EmbeddingIndex.js';
 import { Preauthorizations } from './Preauthorizations.js';
@@ -447,6 +448,7 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
             <EmbeddingIndex key={profiles.map((p) => `${p.id}:${p.model}:${p.purpose.join()}`).join()} />
             <FsRoots />
             <MailAccounts />
+            <Channels />
             <McpServers />
             <Preauthorizations />
         </div>

@@ -1,6 +1,6 @@
 # ADR 0022 · 渠道框架:IM 适配器、主人绑定、IM 审批与不可信内容
 
-- 状态:提议(M5a PR 3 `docs/m5a-contracts`);实现见 M5a PR 5 `feat/channel-core`(框架)与 PR 7 `feat/channel-wechat`(微信 iLink)
+- 状态:提议(M5a PR 3 `docs/m5a-contracts`);框架已在 M5a PR 5 `feat/channel-core` 实现(第 14 节),微信 iLink 见 PR 7 `feat/channel-wechat`
 - 日期:2026-11-10(America/Los_Angeles)
 - 相关:开发计划第 6 节(`ChannelAdapter`)、第 7 节(安全模型)、第 8 节 M5a、第 15.4 节(`/source`);ADR 0004(API v1 约定)、ADR 0006 第 2 节(密钥引用与 `secrets.yaml`)、ADR 0007(记忆的 `sensitivity` 与渠道过滤)、ADR 0010(工具与审批)、ADR 0016(不可信内容与注入评测)、ADR 0017(降级提醒)、ADR 0018 第 5 节(渠道内存增量)
 - 业主决定(2026-11-11,#17 评论):企业微信推迟,M5a 只做框架与微信 iLink;所有密钥统一放在数据目录的 `secrets.yaml`;iLink 令牌写入 `secrets.yaml`(写入规则见第 9 节)
@@ -185,6 +185,24 @@ export interface OutboundMessage {
 - `gfydfhcf/wechat-ilink-muse-bridge`。
 
 公开文档不足以实现时,在 PR 7 里列出缺少的接口细节,等业主决定,不去看代码。
+
+## 14. 实现记录(PR 5 `feat/channel-core`)
+
+与上文不一致或上文没写清的地方,按下面的做法实现;需要业主确认的列在 PR 描述里。
+
+- 代码位置:接口、指令解析、降级与切段、短码分配、限流与退避在 `packages/channels`;假渠道在子路径 `@fatcat-ai/channels/testing`,服务器的生产代码不引用它。绑定、会话、审批与排队的编排在 `apps/server/src/channels/hub.ts`(需要存储与 runner)。
+- `InboundMessage` 增加可选的 `replyContext`(第 2 节 `ChannelTarget.replyContext` 的来源),框架原样带回,不记日志。`ChannelSecrets` 先只有 `resolve`,写入运行时令牌随 PR 7。
+- `GET /channels` 返回与 `/tools`、`/mcp/servers` 一致的 `{ items, nextCursor: null }`(不分页)。已绑定时 `POST /channels/{id}/pairing` 返回 409(`conflict`)。
+- 审计:IM 审批调用 `RunManager.resolveApproval` 的同一个函数,多一个 `via` 参数;工具调用那条审计的 `summary` 末尾加「(via channel <渠道 id>)」。没有给 `AuditEntry` 加字段(需要改已有 schema 与迁移),以后需要按渠道筛选时再加。
+- 不可信内容:`quoted` 的每一段以 `{"untrusted":true,"kind":…,"content":…}` 的形式接在主人的话之后,前面一句说明;同时在开始这一轮之前置会话的 `untrustedAt`,runner 读到后条件预授权失效。
+- 配对码失败次数按渠道累计(没有按外部账号分别计数);没有配对码或已过期时回复「配对码不对」,不计数。
+- 语音:适配器给出 `voice.transcript` 且没有文字时用它作为主人的话;都没有时回复「暂时只能看文字,请发文字消息」。
+- 排队:入站处理不等这一轮结束(否则等待审批时收不到「确认 K7」);Web 正在同一会话里运行时,IM 的这一轮等它结束再开始(最多重试 3 次)。
+- 退避:`start` 抛错或适配器报告 `backoff` / `error` 时都按第 8 节退避重启,不会停止重试;`error` 只用于「这个类型没有注册适配器」(`adapter_unavailable`,PR 7 之前的微信渠道就是这样)。
+- 降级提醒只统计这个渠道当前会话里的运行;一轮正常结束(没有降级)即算恢复。
+- 一定会被忽略的消息(群聊、未绑定时的非绑定指令、非主人)每个渠道每分钟最多写 120 条去重记录,超出的只给 `ignoredCount` 加 1,不落库,避免陌生人刷消息撑大 `channel_inbox`。
+- 一轮进行中在 Web 解除或更换了绑定时,这一轮的回答不发出(发送前再读一次绑定)。
+- 去重记录由每天的定时任务(与记忆维护同一时间,按用户时区)清理 3 天前的行。
 
 ## 后果
 
