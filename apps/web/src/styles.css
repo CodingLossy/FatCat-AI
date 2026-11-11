@@ -714,3 +714,12 @@ td .badge {
 .hljs-deletion {
     color: var(--danger);
 }
+
+/* 「本次用到的记忆」面板里的召回说明(ADR 0017) */
+.recall-notes p {
+    margin: 0.2rem 0 0;
+}
+
+.used-memories details + .recall-notes {
+    margin-top: 0.5rem;
+}

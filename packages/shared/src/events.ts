@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import { Id, IsoDateTime, Usage } from './common.js';
 import { ProblemDetails } from './errors.js';
+import { MemoryDegradation } from './memory.js';
 import { ApprovalWarning, ToolRisk } from './tools.js';
 
 export const AssistantState = z.enum(['idle', 'listening', 'thinking', 'speaking', 'executing']);
@@ -23,7 +24,15 @@ export const AgentEvent = z.discriminatedUnion('type', [
     }),
     z.object({ type: z.literal('text-delta'), runId: Id, delta: z.string() }),
     /** 本次运行用到的记忆(M2 PR 12 起发送,ADR 0007 第 5.4 节);UI 据此显示「本次用到的记忆」与反馈按钮。 */
-    z.object({ type: z.literal('memory-used'), runId: Id, ids: z.array(Id) }),
+    z.object({
+        type: z.literal('memory-used'),
+        runId: Id,
+        ids: z.array(Id),
+        /** 自 M5a 起提供(ADR 0017):召回不完整时列出没有跑完的路径;没有降级时省略。有降级时 ids 可以为空。 */
+        degraded: z.array(MemoryDegradation).max(3).optional(),
+        /** 自 M5a 起提供:因预算没有展示给模型的相关记忆条数;为 0 时省略。 */
+        omitted: z.number().int().positive().optional(),
+    }),
     z.object({ type: z.literal('tool-call'), runId: Id, callId: z.string(), name: z.string(), input: z.unknown() }),
     z.object({
         type: z.literal('approval-required'),

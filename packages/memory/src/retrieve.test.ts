@@ -152,6 +152,53 @@ describe('retrieve 与 digest', () => {
         expect(Date.now() - started).toBeLessThan(1000);
         expect(aborted).toBe(true);
         expect(result.items.map((i) => [i.id, i.channels])).toEqual([[a, ['fts']]]);
+        expect(result.degraded).toEqual([{ path: 'vector', reason: 'timeout' }]);
+    });
+
+    it('降级标记(ADR 0017):按嵌入接口的错误归类,配置状态不算降级,FTS 结果不受影响', async () => {
+        const a = write('用户的猫叫 Mochi');
+        const providerError = (code: string, status?: number) =>
+            Object.assign(new Error('upstream returned HTTP'), { name: 'ProviderError', code, status });
+        const cases: [unknown, string, number | undefined][] = [
+            [providerError('auth_failed', 401), 'auth', 401],
+            [providerError('auth_failed', 403), 'auth', 403],
+            [providerError('bad_request', 400), 'rejected', 400],
+            [providerError('not_found', 404), 'rejected', 404],
+            [providerError('rate_limited', 429), 'error', 429],
+            [providerError('upstream_error', 503), 'error', 503],
+            [providerError('timeout', 408), 'timeout', 408],
+            [providerError('network_error'), 'error', undefined],
+            [new Error('vector table broken'), 'error', undefined],
+        ];
+        for (const [error, reason, httpStatus] of cases) {
+            const logged: unknown[] = [];
+            const retriever = createRetriever({
+                repos,
+                vectors: () => Promise.reject(error as Error),
+                onDegraded: (detail, context) => logged.push({ ...detail, ...context }),
+            });
+            const result = await retriever.retrieve(ownerId, { query: 'Mochi' }, { runId: 'run-1' });
+            expect(result.degraded).toEqual([{ path: 'vector', reason }]);
+            expect(result.items.map((i) => i.id)).toEqual([a]);
+            expect(logged).toEqual([
+                {
+                    path: 'vector',
+                    reason,
+                    elapsedMs: expect.any(Number) as number,
+                    ...(httpStatus ? { httpStatus } : {}),
+                    ownerId,
+                    runId: 'run-1',
+                },
+            ]);
+            // 日志详情里只有路径、原因、耗时与状态码,不带查询或错误原文
+            expect(JSON.stringify(logged)).not.toMatch(/Mochi|upstream/);
+        }
+
+        // 没有向量这一路(没有 embed 配置档)、维度不符(返回 null)、正常返回:都不算降级
+        for (const vectors of [undefined, () => Promise.resolve(null), () => Promise.resolve([{ itemId: a }])]) {
+            const result = await createRetriever({ repos, vectors }).retrieve(ownerId, { query: 'Mochi' });
+            expect(result).not.toHaveProperty('degraded');
+        }
     });
 
     it('默认不含已更替的记录;问「以前」时带上', async () => {

@@ -52,6 +52,26 @@ describe('applyEvent', () => {
         });
     });
 
+    it('memory-used 的降级标记与 omitted;旧服务器不发时为空(ADR 0017)', () => {
+        let turn = applyEvent(newTurn('问', RUN), env({ type: 'memory-used', runId: RUN, ids: [RUN] }));
+        expect(turn).toMatchObject({ memoryIds: [RUN], memoryDegraded: [], memoryOmitted: 0 });
+        turn = applyEvent(
+            newTurn('问', RUN),
+            env({
+                type: 'memory-used',
+                runId: RUN,
+                ids: [],
+                degraded: [{ path: 'vector', reason: 'auth' }],
+                omitted: 2,
+            }),
+        );
+        expect(turn).toMatchObject({
+            memoryIds: [],
+            memoryDegraded: [{ path: 'vector', reason: 'auth' }],
+            memoryOmitted: 2,
+        });
+    });
+
     it('重复的 tool-call(续看补发)不会产生两张卡片;run-failed 记录错误', () => {
         const call: AgentEvent = { type: 'tool-call', runId: RUN, callId: 'c1', name: 'x', input: {} };
         let turn = applyEvent(applyEvent(newTurn(null, RUN), env(call)), env(call));

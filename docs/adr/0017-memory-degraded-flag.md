@@ -1,6 +1,6 @@
 # ADR 0017 · `memory-used` 降级标记:召回少了哪一路要让客户端知道
 
-- 状态:提议(开发计划 M5a 开头,先于实现;业主 2026-11-10 决定)
+- 状态:已采纳(开发计划 M5a 开头,先于实现;业主 2026-11-10 决定);实现见 M5a PR 2 `feat/memory-degraded`
 - 日期:2026-11-10
 - 相关:开发计划第 8 节 M5a;ADR 0004(API v1 约定,客户端忽略未知字段与事件)、ADR 0007 第 5.4、5.6 节(`memory-used` 事件、三路召回)、ADR 0014(嵌入与向量索引)
 - 修订:ADR 0007 第 5.4 节的 `memory-used { runId, ids }` 增加两个可选字段(见第 2 节)
@@ -67,6 +67,8 @@ degraded: z.array(MemoryDegradation).max(3).optional(),
 按 `packages/providers` 已有的 `ProviderError.code` 归类(`classifyStatus`),不另解析响应。429 虽是 4xx,但等一会儿就能恢复,所以归 `error`,不归 `rejected`。`auth` 与 `rejected` 是用户要去设置里处理的问题,不会自己好。
 
 实现上,`searchWithin`(`packages/memory/src/retrieve.ts`)从「返回 id 列表」改为「返回 id 列表 + 可选的降级原因」;`retrieve` 汇总后放进结果;`RunManager.memoryFor` 把它和 `omitted` 一起带进事件。
+
+实现补充(M5a PR 2):`packages/memory` 不依赖 `packages/providers`,所以按错误对象上的 `code` / `status` 字段归类(`classifyVectorError`),与 `ProviderError` 的字段一致。向量查询被时限中止后抛出的错误也按 `timeout` 算。日志由检索器的 `onDegraded` 回调写出,`runId` 经 `memoryContext` 的输入传入。
 
 ## 4. 日志
 

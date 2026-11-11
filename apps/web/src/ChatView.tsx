@@ -5,6 +5,7 @@ import type { RunStream } from '@fatcat-ai/client';
 import {
     MAX_ATTACHMENTS_PER_MESSAGE,
     MAX_RECORDING_SECONDS,
+    type MemoryDegradation,
     type Message,
     type ModelProfile,
     type Settings,
@@ -113,7 +114,12 @@ export function ChatView({
     });
     const [error, setError] = useState<string | null>(null);
     /** 最近一轮用到的记忆;下一轮开始时清空。 */
-    const [used, setUsed] = useState<{ runId: string | null; ids: string[] } | null>(null);
+    const [used, setUsed] = useState<{
+        runId: string | null;
+        ids: string[];
+        degraded: MemoryDegradation[];
+        omitted: number;
+    } | null>(null);
     const abort = useRef<AbortController | null>(null);
     const bottom = useRef<HTMLDivElement>(null);
     const fileInput = useRef<HTMLInputElement>(null);
@@ -196,7 +202,14 @@ export function ChatView({
             if (signal.aborted) return;
             if (current.error) setError(current.error.detail ?? current.error.title);
             await loadMessages(id, null).catch(() => undefined);
-            if (current.memoryIds.length > 0) setUsed({ runId: current.runId, ids: current.memoryIds });
+            if (current.memoryIds.length > 0 || current.memoryDegraded.length > 0) {
+                setUsed({
+                    runId: current.runId,
+                    ids: current.memoryIds,
+                    degraded: current.memoryDegraded,
+                    omitted: current.memoryOmitted,
+                });
+            }
             setLive(null);
             const voice = voiceConfigRef.current;
             if (voice?.tts && voice.settings.autoSpeak && current.text && !current.error) {
@@ -588,7 +601,15 @@ export function ChatView({
                         ) : null}
                     </div>
                 ) : null}
-                {used && !live ? <UsedMemories key={used.runId ?? ''} runId={used.runId} ids={used.ids} /> : null}
+                {used && !live ? (
+                    <UsedMemories
+                        key={used.runId ?? ''}
+                        runId={used.runId}
+                        ids={used.ids}
+                        degraded={used.degraded}
+                        omitted={used.omitted}
+                    />
+                ) : null}
                 {error ? <p className="error">{t('chat.failed', { msg: error })}</p> : null}
                 {voiceNotice ? (
                     <p className="small warning" role="status">

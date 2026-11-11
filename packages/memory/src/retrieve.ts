@@ -5,6 +5,7 @@
 // 按固定公式重排 → 按渠道过滤 → 可信度说明 → 按 token 预算装进记忆块。渲染格式由 core 固定,不交给模型。
 // 规则由本项目自行编写。
 import {
+    type MemoryDegradation,
     type MemoryRetrieveInput,
     MemoryRetrieveInput as MemoryRetrieveInputSchema,
     type MemoryRetrieveResult,
@@ -48,28 +49,69 @@ export type VectorSearch = (
     signal: AbortSignal,
 ) => Promise<{ itemId: string }[] | null>;
 
-/** 在时限内等待向量召回;超时、出错或不可用时返回空列表(FTS 与图兜底)。 */
+/** 一次降级的详情:path / reason 进事件与检索结果,其余字段只写本地日志(ADR 0017 第 4 节)。 */
+export interface DegradationDetail extends MemoryDegradation {
+    elapsedMs: number;
+    /** 嵌入接口出错时的 HTTP 状态码(只有状态码,不带响应原文)。 */
+    httpStatus?: number;
+}
+
+/**
+ * 按嵌入接口的错误归类(ADR 0017 第 3 节)。按 ProviderError 的 code 判断(不依赖 providers 包,只看字段):
+ * 401 / 403 → auth;其他不可重试的 4xx → rejected;408 → timeout;429、5xx、网络与其他错误 → error。
+ */
+export function classifyVectorError(error: unknown): Pick<DegradationDetail, 'reason' | 'httpStatus'> {
+    const { code, status } = (typeof error === 'object' && error !== null ? error : {}) as {
+        code?: unknown;
+        status?: unknown;
+    };
+    const httpStatus = typeof status === 'number' && Number.isInteger(status) ? { httpStatus: status } : {};
+    switch (code) {
+        case 'auth_failed':
+            return { reason: 'auth', ...httpStatus };
+        case 'bad_request':
+        case 'not_found':
+            return { reason: 'rejected', ...httpStatus };
+        case 'timeout':
+            return { reason: 'timeout', ...httpStatus };
+        default:
+            return { reason: 'error', ...httpStatus };
+    }
+}
+
+/**
+ * 在时限内等待向量召回;超时、出错时返回空列表(FTS 与图兜底)并给出降级原因。
+ * 返回 null(配置状态,如维度不符)不算降级。
+ */
 async function searchWithin(
     vectors: VectorSearch,
     ownerId: string,
     query: string,
     k: number,
     timeoutMs: number,
-): Promise<string[]> {
+): Promise<{ ids: string[]; degraded?: DegradationDetail }> {
+    const startedAt = performance.now();
+    const elapsedMs = () => Math.round(performance.now() - startedAt);
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<null>((resolve) => {
+    const TIMED_OUT = Symbol('timeout');
+    const timeout = new Promise<typeof TIMED_OUT>((resolve) => {
         timer = setTimeout(() => {
             controller.abort();
-            resolve(null);
+            resolve(TIMED_OUT);
         }, timeoutMs);
     });
     try {
         // 实现不理会 signal 时也不再等它:先到的结果为准
         const matches = await Promise.race([vectors(ownerId, query, k, controller.signal), timeout]);
-        return (matches ?? []).map((m) => m.itemId);
-    } catch {
-        return []; // 嵌入接口不可用时跳过这一路
+        if (matches === TIMED_OUT) {
+            return { ids: [], degraded: { path: 'vector', reason: 'timeout', elapsedMs: elapsedMs() } };
+        }
+        return { ids: (matches ?? []).map((m) => m.itemId) };
+    } catch (error) {
+        // 嵌入接口不可用时跳过这一路;被时限中止而抛出的错误也按超时算
+        const detail = controller.signal.aborted ? { reason: 'timeout' as const } : classifyVectorError(error);
+        return { ids: [], degraded: { path: 'vector', ...detail, elapsedMs: elapsedMs() } };
     } finally {
         clearTimeout(timer);
     }
@@ -85,6 +127,8 @@ export interface RetrieveOptions {
     excludeIds?: readonly string[];
     /** 模型的上下文窗口;记忆块不超过它的 10%。 */
     contextWindow?: number;
+    /** 所属运行,只用于降级日志。 */
+    runId?: string;
 }
 
 export const QUALIFIER_LABEL: Record<TrustQualifier, string> = {
@@ -159,6 +203,8 @@ export interface RetrieverOptions {
     onReactivated?: (ownerId: string, id: string, text: string) => void;
     /** 向量召回的时限(毫秒),默认 {@link VECTOR_TIMEOUT_MS}。 */
     vectorTimeoutMs?: number;
+    /** 召回有一路没跑完时调用(写本地日志;ADR 0017 第 4 节)。不要记查询文本。 */
+    onDegraded?: (detail: DegradationDetail, context: { ownerId: string; runId?: string }) => void;
 }
 
 export function createRetriever(options: RetrieverOptions) {
@@ -199,11 +245,14 @@ export function createRetriever(options: RetrieverOptions) {
                 PER_CHANNEL,
             ),
         };
+        const degraded: DegradationDetail[] = [];
         if (options.vectors) {
             // 向量表里还有知识库的分块:多取一些,再只留下记忆
-            ranked.vec = await searchWithin(options.vectors, ownerId, input.query, PER_CHANNEL * 3, vectorTimeoutMs);
+            const vec = await searchWithin(options.vectors, ownerId, input.query, PER_CHANNEL * 3, vectorTimeoutMs);
+            ranked.vec = vec.ids;
+            if (vec.degraded) degraded.push(vec.degraded);
         }
-        return ranked;
+        return { ranked, degraded };
     }
 
     return {
@@ -216,7 +265,13 @@ export function createRetriever(options: RetrieverOptions) {
             const at = now();
             const statuses = ['active', 'conflicted'];
             if (input.includeSuperseded || ASKS_HISTORY.test(input.query)) statuses.push('superseded');
-            const ranked = await recall(ownerId, input, statuses);
+            const { ranked, degraded } = await recall(ownerId, input, statuses);
+            for (const detail of degraded) {
+                options.onDegraded?.(detail, {
+                    ownerId,
+                    ...(retrieveOptions.runId ? { runId: retrieveOptions.runId } : {}),
+                });
+            }
 
             // RRF:同一条记忆在各路中的排名倒数加权求和
             const fused = new Map<string, { rrf: number; channels: Channel[] }>();
@@ -307,7 +362,13 @@ export function createRetriever(options: RetrieverOptions) {
             const omitted = scored.length - items.length;
             if (omitted > 0) lines.push(`(另有 ${omitted} 条相关记忆未展示)`);
             markUsed(items.map((i) => i.id));
-            return { items, block: items.length > 0 ? [BLOCK_HEADER, ...lines].join('\n\n') : '', omitted };
+            return {
+                items,
+                block: items.length > 0 ? [BLOCK_HEADER, ...lines].join('\n\n') : '',
+                omitted,
+                // 降级只是旁路信息,不影响上面的召回、排序与预算(ADR 0017 第 1 节)
+                ...(degraded.length > 0 ? { degraded: degraded.map(({ path, reason }) => ({ path, reason })) } : {}),
+            };
         },
         /** 立即写入累积的访问计数(关闭时与测试中调用)。 */
         flush,

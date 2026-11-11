@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 进行中的一轮对话:把一次运行的事件归并成可渲染的状态(ADR 0009 第 3 节)。纯函数,便于单测。
-import type { ApprovalWarning, EventEnvelope, ProblemDetails, ToolRisk } from '@fatcat-ai/shared';
+import type { ApprovalWarning, EventEnvelope, MemoryDegradation, ProblemDetails, ToolRisk } from '@fatcat-ai/shared';
 
 export interface LiveTool {
     callId: string;
@@ -28,13 +28,17 @@ export interface LiveTurn {
     tools: LiveTool[];
     /** 本轮用到的记忆(memory-used 事件,ADR 0007 第 5.6 节)。 */
     memoryIds: string[];
+    /** 召回没有跑完的路径(memory-used 的 degraded,ADR 0017);旧服务器不发送,为空。 */
+    memoryDegraded: MemoryDegradation[];
+    /** 因预算没有展示给模型的相关记忆条数(memory-used 的 omitted)。 */
+    memoryOmitted: number;
     done: boolean;
     finishReason?: 'stop' | 'length' | 'cancelled';
     error?: ProblemDetails;
 }
 
 export function newTurn(userText: string | null, runId: string | null = null): LiveTurn {
-    return { runId, userText, text: '', tools: [], memoryIds: [], done: false };
+    return { runId, userText, text: '', tools: [], memoryIds: [], memoryDegraded: [], memoryOmitted: 0, done: false };
 }
 
 function updateTool(turn: LiveTurn, callId: string, fn: (t: LiveTool) => LiveTool): LiveTurn {
@@ -77,7 +81,12 @@ export function applyEvent(turn: LiveTurn, envelope: EventEnvelope): LiveTurn {
                 result: { output: e.output, ...(e.error ? { error: e.error } : {}) },
             }));
         case 'memory-used':
-            return { ...turn, memoryIds: [...new Set([...turn.memoryIds, ...e.ids])] };
+            return {
+                ...turn,
+                memoryIds: [...new Set([...turn.memoryIds, ...e.ids])],
+                memoryDegraded: e.degraded ?? turn.memoryDegraded,
+                memoryOmitted: e.omitted ?? turn.memoryOmitted,
+            };
         case 'run-finished':
             return { ...turn, done: true, finishReason: e.reason };
         case 'run-failed':

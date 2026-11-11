@@ -153,12 +153,26 @@ export const RetrievedMemory = z.object({
 });
 export type RetrievedMemory = z.infer<typeof RetrievedMemory>;
 
+/** 召回中没有跑完的一路(ADR 0017 第 2 节)。客户端遇到不认识的值时按「有降级、原因未知」处理。 */
+export const MemoryDegradation = z.object({
+    /** 召回路径;目前只有 vector 会降级,fts 与 graph 先占位。 */
+    path: z.enum(['fts', 'vector', 'graph']),
+    /**
+     * timeout:超过时限被中止(含 408);auth:嵌入接口返回 401 / 403;
+     * rejected:嵌入接口返回其他不可重试的 4xx;error:其余出错(5xx、429、网络、本地查询)。
+     */
+    reason: z.enum(['timeout', 'auth', 'rejected', 'error']),
+});
+export type MemoryDegradation = z.infer<typeof MemoryDegradation>;
+
 export const MemoryRetrieveResult = z.object({
     items: z.array(RetrievedMemory),
     /** 已渲染的记忆块(带可信度说明),交给模型时是数据而不是指令。 */
     block: z.string(),
     /** 因预算装不下而没有展示的条数。 */
     omitted: z.number().int().nonnegative(),
+    /** 自 M5a 起提供(ADR 0017):没有跑完的召回路径;没有降级时省略。 */
+    degraded: z.array(MemoryDegradation).max(3).optional(),
 });
 export type MemoryRetrieveResult = z.infer<typeof MemoryRetrieveResult>;
 

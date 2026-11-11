@@ -3,6 +3,7 @@
 
 // 每轮交给模型的记忆上下文(《记忆模块补充设计》第 4.4–4.6 节):会话的第一轮注入一次 digest;
 // 每轮按用户消息检索,结果装进记忆块,并去掉 digest 里已有的条目。
+import type { MemoryDegradation } from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
 import type { DigestBuilder } from './digest.js';
 import type { Retriever, RetrieveOptions } from './retrieve.js';
@@ -15,6 +16,8 @@ export interface MemoryContextInput {
     firstTurn: boolean;
     contextWindow?: number | undefined;
     channel?: RetrieveOptions['channel'];
+    /** 所属运行,只用于降级日志。 */
+    runId?: string | undefined;
 }
 
 export interface MemoryContext {
@@ -22,6 +25,10 @@ export interface MemoryContext {
     messages: string[];
     /** 本轮用到的记忆(digest 中的与记忆块中的),用于 memory-used 事件。 */
     ids: string[];
+    /** 召回没有跑完的路径(ADR 0017);没有降级时省略。 */
+    degraded?: MemoryDegradation[];
+    /** 本轮检索因预算没有展示的相关记忆条数;为 0 时省略(digest 不计入)。 */
+    omitted?: number;
 }
 
 /** 查询太长时只取开头,检索输入上限 500 字符。 */
@@ -32,6 +39,7 @@ export function createMemoryContext(options: { repos: Repositories; retriever: R
     return async (input: MemoryContextInput): Promise<MemoryContext> => {
         const messages: string[] = [];
         const ids: string[] = [];
+        const extra: Pick<MemoryContext, 'degraded' | 'omitted'> = {};
         if (input.firstTurn) {
             const d = digest.get(input.ownerId);
             if (d.body) {
@@ -48,13 +56,16 @@ export function createMemoryContext(options: { repos: Repositories; retriever: R
                     excludeIds: ids,
                     ...(input.contextWindow ? { contextWindow: input.contextWindow } : {}),
                     ...(input.channel ? { channel: input.channel } : {}),
+                    ...(input.runId ? { runId: input.runId } : {}),
                 },
             );
+            if (result.degraded) extra.degraded = result.degraded;
+            if (result.omitted > 0) extra.omitted = result.omitted;
             if (result.block) {
                 messages.push(result.block);
                 ids.push(...result.items.map((i) => i.id));
             }
         }
-        return { messages, ids };
+        return { messages, ids, ...extra };
     };
 }
