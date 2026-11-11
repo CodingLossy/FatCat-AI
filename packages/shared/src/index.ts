@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
+export * from './attachments.js';
 export * from './auth.js';
 export * from './common.js';
 export * from './embeddings.js';
@@ -18,5 +19,6 @@ export * from './pagination.js';
 export * from './sessions.js';
 export * from './settings.js';
 export * from './tools.js';
+export * from './voice.js';
 export * from './ws.js';
 export * from './rename.js';
