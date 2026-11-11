@@ -56,6 +56,8 @@ export interface ChannelHubOptions {
 export const PAIRING_TTL_MS = 10 * 60 * 1000;
 export const MAX_PAIRING_FAILURES = 5;
 export const OWNER_MESSAGES_PER_MINUTE = 20;
+/** 会被忽略的消息(陌生人、群聊)每分钟最多写这么多条去重记录,超出只计数。 */
+export const IGNORED_MESSAGES_PER_MINUTE = 120;
 export const MAX_QUEUE = 5;
 export const INBOX_RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
 export const STOP_TIMEOUT_MS = 5000;
@@ -154,6 +156,8 @@ interface Runtime {
     attempt: number;
     retryTimer: NodeJS.Timeout | null;
     limiter: SlidingWindow;
+    /** 被忽略的消息的渠道级上限;超出时只计数,不写去重表。 */
+    ignoredLimiter: SlidingWindow;
     /** 本分钟内已经回复过「太快了」。 */
     tooFastSentAt: number | null;
     queue: { message: InboundMessage; target: ChannelTarget }[];
@@ -194,6 +198,7 @@ export class ChannelHub {
                 attempt: 0,
                 retryTimer: null,
                 limiter: new SlidingWindow(OWNER_MESSAGES_PER_MINUTE, 60_000, () => this.now().getTime()),
+                ignoredLimiter: new SlidingWindow(IGNORED_MESSAGES_PER_MINUTE, 60_000, () => this.now().getTime()),
                 tooFastSentAt: null,
                 queue: [],
                 draining: null,
@@ -413,25 +418,39 @@ export class ChannelHub {
     private async receive(rt: Runtime, message: InboundMessage): Promise<void> {
         const { channels } = this.options.repos;
         if (!rt.adapter) return;
+        const channel = channels.byId(rt.channelId);
+        if (!channel) return;
+        const command = parseCommand(message.text);
+        // 一定会被忽略的消息(群聊、未绑定时的非绑定指令、非主人)超过渠道级上限时只计数,不写去重表
+        const ignoreReason =
+            message.chat !== 'direct'
+                ? 'group'
+                : !channel.binding
+                  ? command?.type === 'bind'
+                      ? null
+                      : 'unbound'
+                  : channel.binding.externalUserId !== message.externalUserId
+                    ? 'not-owner'
+                    : null;
+        if (ignoreReason && !rt.ignoredLimiter.take()) {
+            rt.ignoredCount += 1;
+            return;
+        }
         // 去重在过滤之前:被忽略的消息也会去重
         if (!channels.recordInbound(rt.channelId, message.externalMessageId)) {
             this.log.info({ channelId: rt.channelId, reason: 'duplicate' }, 'channel message dropped');
             return;
         }
         rt.lastInboundAt = this.now().toISOString();
-        if (message.chat !== 'direct') return this.ignore(rt, 'group');
-        const channel = channels.byId(rt.channelId);
-        if (!channel) return;
-        const command = parseCommand(message.text);
+        if (ignoreReason) return this.ignore(rt, ignoreReason);
         const target: ChannelTarget = {
             externalUserId: message.externalUserId,
             ...(message.replyContext ? { replyContext: message.replyContext } : {}),
         };
         if (!channel.binding) {
             if (command?.type === 'bind') return this.bind(rt, channel, message.externalUserId, command.code, target);
-            return this.ignore(rt, 'unbound');
+            return;
         }
-        if (channel.binding.externalUserId !== message.externalUserId) return this.ignore(rt, 'not-owner');
 
         // 主人的私聊消息(指令也计入限流)
         if (!rt.limiter.take()) {
@@ -492,7 +511,8 @@ export class ChannelHub {
             this.log.info({ channelId: channel.id }, 'channel bound');
             return this.send(rt, target, REPLIES.bound);
         }
-        if (pairing) {
+        // 没有配对码或已过期时不计数(ADR 0022 第 14 节)
+        if (pairing && Date.parse(pairing.expiresAt) > this.now().getTime()) {
             channels.failPairing(channel.id);
             // 累计失败 5 次后作废,需要在 Web 重新生成
             if (pairing.failedAttempts + 1 >= MAX_PAIRING_FAILURES) channels.deletePairing(channel.id);
@@ -563,6 +583,8 @@ export class ChannelHub {
         }
         const status = await this.waitForRun(channel.ownerId, started.runId);
         if (!rt.adapter) return;
+        // 这一轮进行中在 Web 解除或更换了绑定:回答不发给旧主人
+        if (repos.channels.byId(rt.channelId)?.binding?.externalUserId !== target.externalUserId) return;
         if (status !== 'succeeded') return this.send(rt, target, REPLIES.failed);
         const reply = repos.messages.get(channel.ownerId, started.assistantMessageId);
         const answer = (reply?.parts ?? [])

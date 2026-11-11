@@ -6,7 +6,7 @@ import { FakeChannelAdapter, type FakeAdapterOptions } from '@fatcat-ai/channels
 import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
 import { Channel, ChannelPairing, ChannelStatus, MetaResponseSchema, pageOf } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { composeUserText, MAX_QUEUE, REPLIES } from './channels/hub.js';
+import { composeUserText, IGNORED_MESSAGES_PER_MINUTE, MAX_QUEUE, REPLIES } from './channels/hub.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 let s: TestServer;
@@ -290,6 +290,37 @@ describe('渠道运行器', () => {
         finished('r5'); // 一轮没有降级:恢复正常
         for (const id of ['r6', 'r7', 'r8']) degraded(id);
         await vi.waitFor(() => expect(notices()).toBe(2));
+    });
+
+    it('被忽略的消息超过每分钟上限后只计数不落库;过期的配对码不计失败;一轮中解除绑定则不发回答', async () => {
+        const t = await setup();
+        const channel = await t.create();
+        await t.patch(`/api/v1/channels/${channel.id}`, { enabled: true });
+        const fake = t.fakes.get(channel.id)!;
+        for (let i = 0; i < IGNORED_MESSAGES_PER_MINUTE + 5; i++) {
+            await fake.deliver({ externalUserId: 'stranger', text: `hi ${i}` });
+        }
+        const rows = s.conn.sqlite.prepare('SELECT COUNT(*) AS n FROM channel_inbox').get() as { n: number };
+        expect(rows.n).toBe(IGNORED_MESSAGES_PER_MINUTE);
+        expect((await t.status(channel.id)).ignoredCount).toBe(IGNORED_MESSAGES_PER_MINUTE + 5);
+
+        await t.post(`/api/v1/channels/${channel.id}/pairing`);
+        s.conn.sqlite.prepare('UPDATE channel_pairings SET expires_at = ?').run('2000-01-01T00:00:00.000Z');
+        await fake.deliver({ externalUserId: OWNER, text: '绑定 123456' });
+        expect(fake.textsTo(OWNER)).toEqual([REPLIES.badCode]);
+        expect(s.repos.channels.getPairing(channel.id)?.failedAttempts).toBe(0);
+
+        const { code } = ChannelPairing.parse(await (await t.post(`/api/v1/channels/${channel.id}/pairing`)).json());
+        await fake.deliver({ externalUserId: OWNER, text: `绑定 ${code}` });
+        t.steps.push(write('我妈妈的生日是 5 月 3 日'), say('不该发出的回答'));
+        await fake.deliver({ externalUserId: OWNER, text: '记住我妈妈的生日' });
+        await vi.waitFor(() => expect(fake.textsTo(OWNER).at(-1)).toMatch(/^需要确认/));
+        const callId = s.repos.approvals.list(t.ownerId, { status: 'pending', limit: 5 }).items[0]!.callId;
+        await t.req(`/api/v1/channels/${channel.id}/binding`, { method: 'DELETE' });
+        await t.post(`/api/v1/approvals/${callId}`, { decision: 'reject' });
+        await s.channels.idle(channel.id);
+        await s.runs.idle();
+        expect(fake.textsTo(OWNER)).not.toContain('不该发出的回答');
     });
 
     it('不可信内容的组装;每日清理 3 天前的去重记录;日志不含正文与外部账号', async () => {
