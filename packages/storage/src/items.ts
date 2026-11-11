@@ -187,13 +187,14 @@ export function createItemRepository(conn: Connection, now: () => Date) {
         return q.contentOf.get({ root: id })?.n ?? 0;
     }
 
-    function present(row: Row): Item {
-        return toItem(row, contentCount(row.id));
+    /** counts 只在知识地图要显示数字的读路径上打开。同步和属性测试会大量按 source 取条目,每次都递归数一遍会超时。 */
+    function present(row: Row, counts = false): Item {
+        return toItem(row, counts ? contentCount(row.id) : 0);
     }
 
     function get(ownerId: string, id: string): Item | null {
         const row = q.get.get(ownerId, id);
-        return row ? present(row) : null;
+        return row ? present(row, true) : null;
     }
 
     /** 沿祖先链调整计数:父项 child_count 加 child,父项及所有祖先 descendant_count 加 desc。 */
@@ -311,7 +312,7 @@ export function createItemRepository(conn: Connection, now: () => Date) {
         const items = rows.slice(0, page.limit);
         const last = items.at(-1);
         return {
-            items: items.map(present),
+            items: items.map((row) => present(row, true)),
             nextCursor: rows.length > page.limit && last ? encodeCursor({ k: last.k, id: last.id }) : null,
         };
     }
@@ -378,7 +379,7 @@ export function createItemRepository(conn: Connection, now: () => Date) {
             return removed;
         },
         roots(ownerId: string): Item[] {
-            return q.roots.all(ownerId).map(present);
+            return q.roots.all(ownerId).map((row) => present(row, true));
         },
         parentId(id: string): string | null {
             return q.parentOf.get(id)?.parentId ?? null;

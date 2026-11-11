@@ -171,7 +171,11 @@ describe('v1 → v2 数据迁移', () => {
         expect(titles(dec)).toEqual(['记忆', '工作', '决策']);
         expect(titles(ep)).toEqual(['记忆', '通用', '经历']);
         const root = repos.items.bySource(ownerId, 'memory', 'memory')!;
-        expect(root).toMatchObject({ childCount: 3, descendantCount: 4 + 3 + 3 + 1, contentCount: 3 });
+        expect(repos.items.get(ownerId, root.id)).toMatchObject({
+            childCount: 3,
+            descendantCount: 4 + 3 + 3 + 1,
+            contentCount: 3,
+        });
         expect(repos.items.bySource(ownerId, 'memory', 'memory:life:semantic:history')!.meta).toEqual({ hidden: true });
         const edge = conn.sqlite
             .prepare(
@@ -292,8 +296,9 @@ describe('任务类记忆出现在知识地图', () => {
             expect(titles(task.id)).toEqual(['记忆', '工作', '经历']);
             expect(titles(fact.id)).toEqual(['记忆', '生活', '事实']);
             const root = repos.items.bySource(ownerId, 'memory', 'memory')!;
-            expect(root.contentCount).toBe(2);
-            expect(repos.items.bySource(ownerId, 'memory', 'memory:work:episodic')!.contentCount).toBe(1);
+            expect(repos.items.get(ownerId, root.id)!.contentCount).toBe(2);
+            const episodic = repos.items.bySource(ownerId, 'memory', 'memory:work:episodic')!;
+            expect(repos.items.get(ownerId, episodic.id)!.contentCount).toBe(1);
 
             repos.items.attach(ownerId, task.id, null);
             expect(repos.items.parentId(task.id)).toBeNull();
@@ -306,7 +311,9 @@ describe('任务类记忆出现在知识地图', () => {
                 summary: '项目代号改成了 Cat',
             });
             expect(repos.items.recount(ownerId)).toBe(0);
-            expect(repos.items.bySource(ownerId, 'memory', 'memory')!.contentCount).toBe(2);
+            expect(repos.items.get(ownerId, repos.items.bySource(ownerId, 'memory', 'memory')!.id)!.contentCount).toBe(
+                2,
+            );
             conn.close();
         });
     });
