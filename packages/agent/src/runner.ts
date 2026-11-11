@@ -153,7 +153,11 @@ export class RunConflictError extends Error {
 const TITLE_LENGTH = 40;
 
 type Decision = 'approve' | 'reject';
-type Resolution = { decision: Decision; reason: 'user' | 'expired' | 'cancelled' };
+/** 在哪里做的审批;IM 渠道里的审批在审计摘要里注明渠道(ADR 0022 第 6 节)。 */
+export interface ApprovalVia {
+    channelId: string;
+}
+type Resolution = { decision: Decision; reason: 'user' | 'expired' | 'cancelled'; via?: ApprovalVia };
 
 export const DEFAULT_APPROVAL_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -257,8 +261,15 @@ export class RunManager {
     /**
      * 处理审批。只有 pending 的请求能被决定,多端同时审批时只有第一个生效(条件更新,ADR 0010 第 5 节)。
      * remember 只能在批准时使用,external / dangerous 工具不允许预授权。
+     * via:IM 渠道的审批(ADR 0022 第 6 节)走同一个函数,审计摘要末尾注明「via channel <id>」。
      */
-    resolveApproval(ownerId: string, callId: string, decision: Decision, remember?: PreauthRemember): ApprovalOutcome {
+    resolveApproval(
+        ownerId: string,
+        callId: string,
+        decision: Decision,
+        remember?: PreauthRemember,
+        via?: ApprovalVia,
+    ): ApprovalOutcome {
         const { repos } = this.options;
         const pending = this.approvals.get(callId);
         const request = repos.approvals.get(ownerId, callId);
@@ -298,7 +309,7 @@ export class RunManager {
             });
         }
         this.approvals.delete(callId);
-        pending.resolve({ decision, reason: 'user' });
+        pending.resolve({ decision, reason: 'user', ...(via ? { via } : {}) });
         return 'resolved';
     }
 
@@ -409,6 +420,7 @@ export class RunManager {
         decision: NonNullable<AuditEntry['decision']>,
         outcome: AuditEntry['outcome'],
         error?: string,
+        via?: ApprovalVia,
     ): void {
         let summary = call.name;
         if (tool) {
@@ -427,7 +439,7 @@ export class RunManager {
             sessionId,
             decision,
             outcome,
-            summary: summary.slice(0, 500),
+            summary: (via ? `${summary.slice(0, 400)} (via channel ${via.channelId})` : summary).slice(0, 500),
             inputDigest: inputDigest(call.input, this.redact),
             error: error ? this.redact(error).slice(0, 2000) : null,
         });
@@ -660,6 +672,7 @@ export class RunManager {
                         const verdict = this.decideCall(tool, call.input, toolContext());
                         let auditDecision: NonNullable<AuditEntry['decision']>;
                         let approvalRequestedAt: string | undefined;
+                        let approvalVia: ApprovalVia | undefined;
                         let approved = verdict.action === 'run';
                         if (verdict.action === 'deny') {
                             error = verdict.reason;
@@ -720,6 +733,7 @@ export class RunManager {
                                 reason: resolution.reason,
                             });
                             repos.runs.setStatus(run.runId, 'running');
+                            approvalVia = resolution.via;
                             approved = resolution.decision === 'approve';
                             auditDecision = approved
                                 ? 'approved'
@@ -771,6 +785,7 @@ export class RunManager {
                                 auditDecision,
                                 outcome,
                                 error,
+                                approvalVia,
                             );
                         }
                     }

@@ -22,6 +22,8 @@ import type { MailJobRunner } from '@fatcat-ai/mail';
 import { createEmbeddingService, type EmbeddingService } from './embeddings.js';
 import { FailureLimiter } from './auth/rate-limit.js';
 import { createLogger } from './log.js';
+import { type AdapterFactory, ChannelHub } from './channels/hub.js';
+import type { ChannelKind } from '@fatcat-ai/shared';
 
 export const TEST_PASSWORD = 'correct horse battery staple';
 export const TEST_SETUP_CODE = 'setup-code-123456';
@@ -31,6 +33,7 @@ export interface TestServer {
     mail: MailService;
     bus: EventBus;
     runs: RunManager;
+    channels: ChannelHub;
     embeddings: EmbeddingService;
     kb: KnowledgeBase;
     attachmentFiles: AttachmentFiles;
@@ -65,6 +68,10 @@ export interface TestServerOptions {
     voice?: AppDeps['voice'];
     /** 保存新时区后的回调(ADR 0023)。 */
     onTimeZoneChanged?: AppDeps['onTimeZoneChanged'];
+    /** 渠道适配器(测试中用 @fatcat-ai/channels/testing 的假渠道)。 */
+    channelAdapters?: Partial<Record<ChannelKind, AdapterFactory>>;
+    /** 渠道运行器的时钟(限流、配对码过期测试用)。 */
+    now?: () => Date;
 }
 
 export async function createTestServer(
@@ -133,7 +140,19 @@ export async function createTestServer(
         redact: (text) => redactor.redact(text),
         runner: mailRunner,
     });
+    const logger = createLogger({ level: 'debug', destination, redactLine: (l) => redactor.redact(l) });
+    const channels = new ChannelHub({
+        repos,
+        runs,
+        bus,
+        secrets,
+        logger,
+        sourceUrl: overrides.sourceUrl ?? 'https://github.com/CodingLossy/FatCat-AI',
+        ...(options.channelAdapters ? { adapters: options.channelAdapters } : {}),
+        ...(options.now ? { now: options.now } : {}),
+    });
     const app = createApp({
+        channels,
         mcp,
         mail,
         kb,
@@ -146,7 +165,7 @@ export async function createTestServer(
             ...overrides,
         },
         repos,
-        logger: createLogger({ level: 'debug', destination, redactLine: (l) => redactor.redact(l) }),
+        logger,
         secrets,
         providerDeps,
         bus,
@@ -165,6 +184,7 @@ export async function createTestServer(
         mail,
         bus,
         runs,
+        channels,
         embeddings,
         kb,
         attachmentFiles,
@@ -173,6 +193,7 @@ export async function createTestServer(
         conn,
         logs,
         async cleanup() {
+            await channels.stopAll();
             mcp.closeAll();
             await kb.idle();
             embeddings.stop();

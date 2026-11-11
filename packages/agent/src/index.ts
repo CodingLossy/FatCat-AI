@@ -5,6 +5,7 @@ export { EventBus, type EventListener } from './bus.js';
 export { assistantLabel } from './labels.js';
 export { estimateTokens, planContext, SUMMARY_PREFIX, transcript } from './context.js';
 export {
+    type ApprovalVia,
     DEFAULT_APPROVAL_TIMEOUT_MS,
     type FinishedTurn,
     MAX_TOOL_STEPS,

@@ -26,6 +26,7 @@ import { loadConfig, SERVER_ENV_NAMES } from './config.js';
 import { LEGACY_DATA_DIR_NAME, LegacyDataDirBusyError, migrateLegacyDataDir } from './data-dir.js';
 import { createLogger } from './log.js';
 import { attachWebSocket } from './ws.js';
+import { ChannelHub } from './channels/hub.js';
 
 // 改名前的 AIP_* 环境变量暂时兼容读取(ADR 0019)
 const legacyEnv = applyLegacyEnv(process.env, SERVER_ENV_NAMES);
@@ -166,6 +167,12 @@ const sweepJob = scheduleDaily(() => {
         })
         .catch((err: unknown) => logger.warn({ err }, 'attachment cleanup failed'));
 }, ownerTimeZone());
+// IM 渠道(ADR 0022):1.0 的微信适配器随 M5a PR 7 注册;这里先启动框架,清理 3 天前的去重记录
+const channels = new ChannelHub({ repos, runs, bus, secrets, logger, sourceUrl: config.sourceUrl });
+const inboxJob = scheduleDaily(() => {
+    const removed = channels.pruneInbox();
+    if (removed > 0) logger.info({ removed }, 'pruned channel inbox');
+}, ownerTimeZone());
 const interrupted = runs.recoverInterrupted();
 if (interrupted > 0) logger.warn({ count: interrupted }, 'marked runs interrupted by the previous shutdown as failed');
 
@@ -178,6 +185,7 @@ for (const server of repos.mcpServers.allEnabled()) {
 }
 
 embeddings.start(repos.owners.ids());
+channels.startAll();
 
 // 邮件:每分钟检查到期的账户;同步在 worker 中进行,没有账户时不加载任何邮件库(ADR 0016 第 2 节)
 const mail = createMailService({
@@ -189,6 +197,7 @@ const mail = createMailService({
 mail.start();
 
 const app = createApp({
+    channels,
     embeddings,
     config: { ...config, setupCode },
     repos,
@@ -208,6 +217,7 @@ const app = createApp({
     onTimeZoneChanged: (_ownerId, timeZone) => {
         maintenance.reschedule(timeZone);
         sweepJob.reschedule(timeZone);
+        inboxJob.reschedule(timeZone);
         embeddings.kick();
         logger.info({ timeZone }, 'rescheduled daily jobs for the new time zone');
     },
@@ -226,6 +236,8 @@ function shutdown(signal: string): void {
     memoryStack.stop();
     maintenance.stop();
     sweepJob.stop();
+    inboxJob.stop();
+    void channels.stopAll();
     mail.stop();
     server.close(() => {
         conn.close();

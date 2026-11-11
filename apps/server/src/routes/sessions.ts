@@ -53,7 +53,7 @@ export const runResponses = {
 
 /** 选择运行用的模型配置档:请求指定 > 会话设置 > 设置中的默认 chat 配置档 > 第一个 chat 配置档(ADR 0006)。 */
 export function resolveProfile(
-    deps: SessionRouteDeps,
+    deps: Pick<SessionRouteDeps, 'repos' | 'secrets'>,
     ownerId: string,
     requested: string | null | undefined,
     sessionProfileId: string | null,
