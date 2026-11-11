@@ -7,6 +7,7 @@ import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import {
     type HealthResponse,
     MAX_ATTACHMENT_BYTES,
+    MAX_TRANSCRIPTION_BYTES,
     MetaResponseSchema,
     PROTOCOL_VERSION,
     SERVER_LICENSE,
@@ -46,6 +47,8 @@ import { sessionRoutes } from './routes/sessions.js';
 import { attachmentRoutes, UPLOAD_OVERHEAD_BYTES } from './routes/attachments.js';
 import { type AttachmentFiles, createMemoryAttachmentFiles } from './attachment-files.js';
 import { tokenRoutes } from './routes/tokens.js';
+import { TRANSCRIPTION_OVERHEAD_BYTES, type VoiceRouteDeps, voiceRoutes } from './routes/voice.js';
+import { WindowLimiter } from './voice-limit.js';
 import { SERVER_VERSION } from './version.js';
 
 export interface AppDeps {
@@ -79,7 +82,12 @@ export interface AppDeps {
     loginLimiter?: FailureLimiter;
     /** 图片附件的文件(ADR 0020);不给时用内存实现,只适合测试与导出 OpenAPI 文档。 */
     attachmentFiles?: AttachmentFiles;
+    /** 语音接口的限流与超时(ADR 0021 第 5 节);不给时每分钟各 20 次、默认超时。 */
+    voice?: Partial<Pick<VoiceRouteDeps, 'limits' | 'timeouts'>>;
 }
+
+/** 每个用户每分钟的转写与朗读次数(ADR 0021 第 5 节)。 */
+export const VOICE_REQUESTS_PER_MINUTE = 20;
 
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 const REQUEST_ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -157,9 +165,21 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
                 new ApiError(413, 'payload_too_large', 'Payload Too Large', 'Images must be at most 5 MiB.'),
             ),
     });
-    app.use('/api/*', (c, next) =>
-        c.req.method === 'POST' && c.req.path === '/api/v1/attachments' ? uploadLimit(c, next) : defaultLimit(c, next),
-    );
+    const transcriptionLimit = bodyLimit({
+        maxSize: MAX_TRANSCRIPTION_BYTES + TRANSCRIPTION_OVERHEAD_BYTES,
+        onError: (c) =>
+            problemResponse(
+                c,
+                new ApiError(413, 'payload_too_large', 'Payload Too Large', 'Recordings must be at most 10 MiB.'),
+            ),
+    });
+    app.use('/api/*', (c, next) => {
+        if (c.req.method === 'POST' && c.req.path === '/api/v1/attachments') return uploadLimit(c, next);
+        if (c.req.method === 'POST' && c.req.path === '/api/v1/voice/transcriptions') {
+            return transcriptionLimit(c, next);
+        }
+        return defaultLimit(c, next);
+    });
     app.use('/api/v1/*', authMiddleware({ repos, now }));
 
     app.get('/healthz', (c) => c.json<HealthResponse>({ status: 'ok' }));
@@ -203,6 +223,18 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         .route('/', settingsRoutes({ repos }))
         .route('/', sessionRoutes(runDeps))
         .route('/', attachmentRoutes({ repos, files }))
+        .route(
+            '/',
+            voiceRoutes({
+                repos,
+                providerDeps: deps.providerDeps,
+                limits: deps.voice?.limits ?? {
+                    transcribe: new WindowLimiter(VOICE_REQUESTS_PER_MINUTE, 60_000),
+                    speak: new WindowLimiter(VOICE_REQUESTS_PER_MINUTE, 60_000),
+                },
+                ...(deps.voice?.timeouts ? { timeouts: deps.voice.timeouts } : {}),
+            }),
+        )
         .route('/', runRoutes(runDeps))
         .route('/', memoryRoutes({ repos, memory: deps.memory, detectCredential }))
         .route('/', toolRoutes({ repos, runs: deps.runs, redact: deps.redact ?? ((text) => text) }))

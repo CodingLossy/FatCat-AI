@@ -23,6 +23,8 @@ export type ApiKeyRef = z.infer<typeof ApiKeyRef>;
 export const ModelParams = z.object({
     temperature: z.number().min(0).max(2).optional(),
     maxOutputTokens: z.number().int().positive().max(1_000_000).optional(),
+    /** TTS 的音色;省略时服务器发 alloy(ADR 0021 第 2 节)。自 M4 起提供。 */
+    voice: z.string().trim().min(1).max(64).optional(),
 });
 
 /** 未知字段一律拒绝,避免客户端误把明文密钥放进其他字段后被静默丢弃(ADR 0006)。 */
@@ -42,8 +44,15 @@ const ModelProfileFields = z.strictObject({
 const requireBaseUrl = (p: { kind?: ModelKind; baseURL?: string | undefined }) =>
     p.kind !== 'openai-compatible' || p.baseURL !== undefined;
 const baseUrlIssue = { message: 'baseURL is required for openai-compatible profiles', path: ['baseURL'] };
+/** 语音只走 OpenAI 兼容的 /audio 接口(ADR 0021 第 1 节)。 */
+const voiceNeedsOpenAI = (p: { kind?: ModelKind; purpose?: readonly ModelPurpose[] | undefined }) =>
+    p.kind === 'openai-compatible' || !(p.purpose ?? []).some((x) => x === 'stt' || x === 'tts');
+const voiceIssue = { message: 'stt and tts profiles must be openai-compatible', path: ['purpose'] };
 
-export const ModelProfileInput = ModelProfileFields.refine(requireBaseUrl, baseUrlIssue);
+export const ModelProfileInput = ModelProfileFields.refine(requireBaseUrl, baseUrlIssue).refine(
+    voiceNeedsOpenAI,
+    voiceIssue,
+);
 export type ModelProfileInput = z.infer<typeof ModelProfileInput>;
 
 /** PATCH:字段均可选;改 kind 为 openai-compatible 时仍须给出 baseURL(服务端合并后再校验)。 */

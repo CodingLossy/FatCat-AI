@@ -1,6 +1,6 @@
 # ADR 0021 · 语音:服务器转发的 STT / TTS、语音状态的来源
 
-- 状态:提议(M4 PR 2,先于实现;接口在 M4 PR 4 `feat/voice-api`,Web 与状态在 M4 PR 5 `feat/voice-web`)
+- 状态:第 1–5 节已实施(M4 PR 4 `feat/voice-api`);第 6、7 节在 M4 PR 5 `feat/voice-web`
 - 日期:2026-11-11
 - 相关:开发计划第 4.1 节(语音状态指示器)、第 6.1 节(`assistant-state`)、第 8 节 M4、第 12 节(资源预算);`docs/milestones/M4-plan.md`;ADR 0004(API v1 约定)、ADR 0006(模型网关)、ADR 0010(工具与审批、审计)、ADR 0018(内存预算)、ADR 0020(附件的魔数检查与错误码)
 
@@ -17,7 +17,7 @@ M4 要让用户在浏览器里说话、听回复。计划要求「前端不自�
 
 ## 2. 配置
 
-- 使用 `purpose` 含 `stt` / `tts` 的配置档(`ModelPurpose` 里已有这两个值)。
+- 使用 `purpose` 含 `stt` / `tts` 的配置档(`ModelPurpose` 里已有这两个值)。创建或修改配置档时,含 `stt` / `tts` 的必须是 `openai-compatible`(`ModelProfileInput` 校验);设置 `voice.default*ProfileId` 时同样检查类型与用途。默认配置档被删除或不再可用时,回退到第一个可用的。
 - 设置增加 `voice` 一组(PR 4 起提供):
 
   ```ts
@@ -60,7 +60,7 @@ M4 要让用户在浏览器里说话、听回复。计划要求「前端不自�
 
 ## 4. 朗读:`POST /api/v1/voice/speech`
 
-- 请求:JSON `{ text, profileId?, format? }`,`text` 1–4,000 个字符(`MAX_SPEECH_CHARS`),`format` 为 `mp3`(默认)/ `opus` / `wav`。未知字段拒绝。
+- 请求:JSON `{ text, profileId?, format? }`,`text` 去掉首尾空白后 1–4,000 个字符(`MAX_SPEECH_CHARS`),`format` 为 `mp3`(默认)/ `opus` / `wav`。未知字段拒绝。
 - 服务器发给端点:`POST {baseURL}/audio/speech`,`{ model, input: text, voice, response_format: format }`。
 - 响应 `200`:把上游的音频流**逐块转发**,`Content-Type` 按 `format`(`audio/mpeg` / `audio/ogg` / `audio/wav`),`Cache-Control: no-store`;不在内存里攒整段音频,客户端断开时中止上游请求。
 - 文字由客户端准备:Web 把回复的 Markdown 转成纯文本(代码块换成「(代码已省略)」/ "(code omitted)",链接只读文字),超过 4,000 字时按句子边界切成几段依次请求。服务器不解析 Markdown。
@@ -68,12 +68,12 @@ M4 要让用户在浏览器里说话、听回复。计划要求「前端不自�
 ## 5. 公共规则(两个接口相同)
 
 - 都需要登录与 CSRF(与其他写接口相同),按 `ownerId` 取配置档;用别人的或不存在的 `profileId` 返回 `404`。
-- 没有可用的语音配置档:`400 model_profile_missing`;配置档没有密钥:`400 model_key_missing`(都是已有错误码)。
+- 没有可用的语音配置档:`409 model_profile_missing`;配置档没有密钥:`409 model_key_missing`(都是已有错误码,状态码与发消息时相同)。请求里给的 `profileId` 不是 OpenAI 兼容或没有对应用途:`400 validation_failed`。
 - 上游错误按 ADR 0006 归类,返回 `502 provider_error` 与 `providerCode`;错误信息脱敏。
 - 限流:每个用户每分钟转写与朗读各 20 次,超过 `429 rate_limited`(带 `Retry-After`)。内存里计数,重启清零。
 - 超时:转写整体 60 秒;朗读首字节 15 秒,之后两块之间超过 30 秒中止。都归为 `providerCode: 'timeout'`。
-- 审计(ADR 0010 第 6 节):动作 `voice.transcribe` / `voice.speak`,只记配置档 id、字节数、字符数、耗时、状态码;**不记音频、不记转写文字、不记朗读文字**。
-- 日志同样不写音频与文字;请求体日志对这两个路径关闭。
+- **不写审计**(M4 PR 4 修订):审计记录的是工具调用与审批(ADR 0010 第 6 节),语音和聊天的模型调用、图片上传(ADR 0020 第 3 节)一样是用户自己的操作;而且审计表的 `action` 有 CHECK 约束,加新动作要重建表(一次数据迁移)。改为在本地日志里写一行元数据:配置档 id、字节数、字符数、耗时与上游错误类别;**不记音频、不记转写文字、不记朗读文字**。
+- 访问日志本来就不记请求体与查询串(`app.ts`),这两个路径也一样。
 - 新错误码沿用 ADR 0020 的 `payload_too_large` 与 `unsupported_media_type`。
 
 ## 6. 语音状态:`listening` 与 `speaking` 由浏览器上报

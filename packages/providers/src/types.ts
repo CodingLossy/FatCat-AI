@@ -11,7 +11,9 @@ export interface ProviderProfile {
     apiKeyRef: string | null;
     model: string;
     purpose: ModelPurpose[];
-    params?: { temperature?: number | undefined; maxOutputTokens?: number | undefined } | undefined;
+    params?:
+        | { temperature?: number | undefined; maxOutputTokens?: number | undefined; voice?: string | undefined }
+        | undefined;
 }
 
 export interface ToolCall {

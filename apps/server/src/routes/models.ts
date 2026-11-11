@@ -117,6 +117,7 @@ export function modelRoutes(deps: ModelRouteDeps) {
                 purpose: existing.purpose,
                 contextWindow: existing.contextWindow,
                 params: existing.params,
+                vision: existing.vision,
             };
             // 合并后按完整输入重新校验(例如改为 openai-compatible 时必须有 baseURL)
             const merged = ModelProfileInput.safeParse(

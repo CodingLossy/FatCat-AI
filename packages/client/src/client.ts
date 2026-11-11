@@ -4,6 +4,8 @@
 import type {
     AccessToken,
     Attachment,
+    SpeechRequest,
+    TranscriptionResult,
     ApprovalDecision,
     ApprovalRequest,
     ApprovalStatus,
@@ -191,6 +193,26 @@ export function createClient(options: ClientOptions) {
             /** 浏览器同源 Cookie 会话可直接用作 <img src>;令牌鉴权的客户端用 read()。 */
             url: (id: string) => t.url(`/attachments/${enc(id)}`),
             read: async (id: string) => (await t.raw(`/attachments/${enc(id)}`)).blob(),
+        },
+        /** 语音(ADR 0021):录音转文字、文字转语音;密钥只在服务器。 */
+        voice: {
+            transcribe: (
+                audio: Blob,
+                options: { language?: string; profileId?: string; signal?: AbortSignal } = {},
+            ) => {
+                const form = new FormData();
+                form.append('file', audio, 'audio');
+                if (options.language) form.append('language', options.language);
+                if (options.profileId) form.append('profileId', options.profileId);
+                return t.json<TranscriptionResult>('/voice/transcriptions', {
+                    method: 'POST',
+                    body: form,
+                    signal: options.signal,
+                });
+            },
+            /** 返回原始响应,body 是逐块到达的音频流(Content-Type 按 format)。 */
+            speak: (body: SpeechRequest, options: { signal?: AbortSignal } = {}) =>
+                t.raw('/voice/speech', { method: 'POST', body, signal: options.signal }),
         },
         sessions: {
             list: (page: PageParams = {}) => t.json<Page<Session>>('/sessions', { query: { ...page } }),

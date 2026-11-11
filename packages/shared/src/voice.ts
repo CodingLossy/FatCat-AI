@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// 语音的契约(ADR 0021)。M4 PR 2 只加入独立的 schema 与常量;
-// 接入 Settings、ModelParams、ErrorCode 在 PR 4,接入 ClientFrame 与 ToolInfo 在 PR 5。
+// 语音的契约(ADR 0021)。Settings.voice 与 params.voice 自 M4 PR 4 起提供;
+// ClientFrame 的 voice-state 与 ToolInfo.activityLabel 在 PR 5 接入。
 import { z } from 'zod';
 import { Id } from './common.js';
 import { isRiff, matchesAt } from './magic.js';
@@ -18,7 +18,7 @@ export const MAX_RECORDING_SECONDS = 120;
 /** 每次朗读请求的字符上限;更长的回复由客户端按句子切段。 */
 export const MAX_SPEECH_CHARS = 4000;
 
-/** POST /api/v1/voice/transcriptions 的响应(PR 4 起提供)。 */
+/** POST /api/v1/voice/transcriptions 的响应(M4 PR 4 起提供)。 */
 export const TranscriptionResult = z.object({
     /** 去掉首尾空白;没听清时为空字符串。 */
     text: z.string(),
@@ -36,7 +36,7 @@ export const SPEECH_CONTENT_TYPES: Record<SpeechFormat, string> = {
     wav: 'audio/wav',
 };
 
-/** POST /api/v1/voice/speech 的请求体(PR 4 起提供);响应为音频流。 */
+/** POST /api/v1/voice/speech 的请求体(M4 PR 4 起提供);响应为音频流。 */
 export const SpeechRequest = z.strictObject({
     text: z.string().trim().min(1).max(MAX_SPEECH_CHARS),
     profileId: Id.optional(),
@@ -45,7 +45,7 @@ export const SpeechRequest = z.strictObject({
 });
 export type SpeechRequest = z.infer<typeof SpeechRequest>;
 
-/** Settings.voice(PR 4 起提供)。 */
+/** Settings.voice(M4 PR 4 起提供)。 */
 export const VoiceSettings = z.object({
     /** 为 null 时取第一个 purpose 含 stt 的配置档。 */
     defaultSttProfileId: Id.nullable(),

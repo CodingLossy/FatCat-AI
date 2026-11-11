@@ -62,6 +62,13 @@ describe('/api/v1/models', () => {
         expect((await call(`/api/v1/models/${profile.id}`)).status).toBe(404);
     });
 
+    it('PATCH 没带 vision 时保留原值', async () => {
+        const { post } = await setup();
+        const created = ModelProfile.parse(await (await post('/api/v1/models', { ...base, vision: true })).json());
+        const patched = await post(`/api/v1/models/${created.id}`, { label: 'Renamed' }, 'PATCH');
+        expect(ModelProfile.parse(await patched.json())).toMatchObject({ label: 'Renamed', vision: true });
+    });
+
     it('拒绝明文密钥、非法引用与缺少 baseURL 的配置档', async () => {
         const { post } = await setup();
         const cases = [
