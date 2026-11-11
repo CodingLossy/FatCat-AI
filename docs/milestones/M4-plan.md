@@ -1,0 +1,116 @@
+# M4 实施方案:语音与图片
+
+- 状态:草案,待业主审阅(第 5 节的问题)
+- 日期:2026-11-11
+- 基线:`main` @ `8382cb8`(M3 与 M3.x 已完成,真机补测除外,见 `docs/milestones/M3x-self-check.md`)
+- 依据:开发计划第 4.1 节(语音状态指示器)、第 6.1 节(`assistant-state` 事件)、第 8 节 M4、第 12 节(资源预算);ADR 0006(模型网关)、ADR 0009(Web)、ADR 0010(工具与审批)、ADR 0018(内存预算)
+- 范围控制:沿用前几个里程碑的做法,先把功能做通、界面保持最简,不做的内容列在第 6 节
+
+## 0. 范围
+
+M4 让用户可以在浏览器里说话、听回复,并把图片交给支持图片的模型。
+
+在 M4:用户配置的语音端点(STT `/audio/transcriptions`、TTS `/audio/speech`);Web 按住说话、语音消息、朗读回复;语音状态指示器 `VoiceOrb`;`assistant-state` 的状态文字与工具的 `activityLabel`;模型网关的多段内容(文本 + 图片),三种适配器都支持;Web 聊天上传图片。
+不在 M4:IM 渠道的语音收发(渠道在 M5a 才有,届时复用本里程碑的接口);本地语音组件(sherpa-onnx / whisper.cpp,见第 5 节问题 2);模型读图以外的图片处理(OCR、`fs.read` 读图片文件);音频交给多模态模型(只做 STT → 文本)。
+
+### 当前代码状态(决定了从哪里起步)
+
+- `ChatMessage.content` 只能是字符串(`packages/providers/src/types.ts`),三种适配器都按字符串处理;这是 M2 推迟图片的原因(M2 方案问题 10)。
+- `ModelPurpose` 已经有 `stt` 与 `tts`,但没有任何代码使用它们;配置档没有「支持图片」的标记。
+- `AgentEvent` 已有 `assistant-state`(`state`、`label?`、`toolName?`、`level?`),runner 会发 `thinking` / `executing` / `idle`,但从不带 `label`;Web 只在 `live-turn` 里记录它,没有显示。
+- `packages/ui` 只有空的 `index.ts`。
+- 服务器没有上传文件的接口;消息只存文本。
+- 容器空闲 RSS 111 MiB(基线 111,上限 250,ADR 0018)。
+
+## 1. PR 顺序
+
+| #   | 分支                | 范围(摘要)                                                                       | 依赖 |
+| --- | ------------------- | -------------------------------------------------------------------------------- | ---- |
+| 1   | `docs/m4-plan`      | 本方案                                                                           | —    |
+| 2   | `docs/m4-contracts` | ADR 0020(多段内容与图片附件)、ADR 0021(语音);shared 中的 schema 与 OpenAPI 增量  | 1    |
+| 3   | `feat/image-input`  | 附件存储与上传接口、三种适配器的多段内容、配置档的「支持图片」、Web 聊天上传图片 | 2    |
+| 4   | `feat/voice-api`    | STT / TTS 接口(经用户配置的端点)、大小与时长上限、限流、不落盘不进日志           | 2    |
+| 5   | `feat/voice-web`    | 按住说话、语音消息、朗读回复、`VoiceOrb`、状态文字与 `activityLabel`             | 4    |
+| 6   | `docs/m4-wrapup`    | 延迟与内存测量、文档、CHANGELOG、M4 自检报告                                     | 全部 |
+
+3 和 4 都只依赖 2,按 3 → 4 的顺序做:图片改的是模型网关契约,先做完能让后面的 PR 少改一次 `ChatMessage`。
+
+## 2. 各 PR 的范围与验收
+
+### PR 2 · `docs/m4-contracts`
+
+- **ADR 0020 多段内容与图片**:
+  - `ChatMessage.content` 改为 `string | ContentPart[]`,`ContentPart` 为 `{ type: 'text', text }` 或 `{ type: 'image', mediaType, data }`(base64,只在网关内部使用);字符串仍然合法,现有代码不用全改。
+  - 适配器映射:OpenAI 兼容 → `image_url`(data URL);Anthropic → `image` 块(`source.type: 'base64'`);Gemini → `inlineData`。不支持图片的配置档收到图片时,网关报错 `model_no_vision`,而不是悄悄丢掉图片。
+  - 配置档增加可选的 `vision: boolean`(默认 `false`,用户自己勾选;端点不提供可靠的能力查询)。
+  - 附件:只接受用户在 Web 上传的图片;PNG / JPEG / WebP / GIF,单张 ≤ 5 MiB,每条消息 ≤ 4 张;按魔数校验类型,不信任文件名与 `Content-Type`;存到数据目录 `attachments/`,数据库只存元数据与 SHA-256;删除会话时一并删除。
+  - 图片是用户自己的输入,不标记为不可信内容;以后来自工具的图片(网页、邮件附件)另行定义,M4 不做。
+  - 历史消息中的图片照常随上下文发给模型,上下文压缩时用「[图片:文件名]」代替。
+- **ADR 0021 语音**:
+  - STT / TTS 都经服务器转发:浏览器把录音发给 FatCat-AI,服务器用配置档里的密钥调用端点,密钥不出服务器。
+  - 端点:`POST /api/v1/voice/transcriptions`(multipart,音频 ≤ 10 MiB、≤ 120 秒)返回文本;`POST /api/v1/voice/speech`(文本 ≤ 4,000 字)返回音频流。使用 `stt` / `tts` 用途的配置档,设置中可选默认档。
+  - 音频不落盘、不写日志、不进审计正文;审计只记录时长、字节数、配置档与状态码。
+  - `assistant-state` 的来源见第 5 节问题 4。
+- **shared**:`ContentPart`、`MessageAttachment`、上传接口的请求 / 响应、`ModelProfile.vision`、语音接口的响应、设置中的默认语音配置档。均为向后兼容的增量修改。
+- 验收:schema 单测;OpenAPI 只有增量变化(oasdiff 通过);业主审阅两份 ADR。
+
+### PR 3 · `feat/image-input`
+
+- 迁移:`message_attachments`(`id`、`owner_id`、`message_id`、`media_type`、`bytes`、`sha256`、`file_name`、`created_at`)。
+- `POST /api/v1/attachments`(multipart)上传,返回附件 id;发送消息时带附件 id 列表;`GET /api/v1/attachments/{id}` 只给本人。
+- 三种适配器的多段内容;录制回放测试各一条(用合成的小图片,不用真实照片)。
+- Web:输入框旁的「图片」按钮与粘贴图片,发送前预览、可移除;所选配置档没勾「支持图片」时提示并禁止发送。
+- 验收:上传类型 / 大小 / 数量的越界用例;不支持图片的配置档报 `model_no_vision`;跨用户读取附件被拒(按 `ownerId`,虽然 1.0 只有单用户);浏览器截图。
+
+### PR 4 · `feat/voice-api`
+
+- 用自己的 `fetch` 客户端调用 `/audio/transcriptions` 与 `/audio/speech`(与 ADR 0006 一致,不引入 SDK);TTS 流式转发,不在内存里攒整段音频。
+- 上限与限流:大小、时长、每分钟次数;超时(STT 60 秒、TTS 首字节 15 秒)。
+- 验收:用假端点测成功、超时、上游 4xx / 5xx、超限;确认日志与审计里没有音频与转写正文;空闲 RSS 不变(没有新的常驻依赖)。
+
+### PR 5 · `feat/voice-web`
+
+- 按住说话(按钮与空格键),松开后上传转写,文本填进输入框后自动发送(设置中可改为只填入、不发送);语音消息(点按开始 / 再点结束);回复旁的「朗读」按钮与「自动朗读回复」开关。
+- `packages/ui` 的 `VoiceOrb`:颜色映射、随电平脉动、状态文字行(`aria-live="polite"`)、`prefers-reduced-motion` 与无 WebGL 回退、页面不可见时暂停;按需懒加载。渲染方式见第 5 节问题 3。
+- 状态文字:runner 发 `assistant-state` 时带 `label`(按会话语言);工具可声明 `activityLabel`(i18n 键),`executing` 时使用;状态变化去抖 ≥ 150 ms。
+- 验收:状态机单测(事件序列 → 渲染状态);Playwright 用假麦克风(Chromium 的假音频设备)走完「按住说话 → 转写 → 回复 → 朗读」;五种状态各一张截图(深浅色);无 WebGL 回退截图。
+
+### PR 6 · `docs/m4-wrapup`
+
+- 延迟:在 CI 用假端点测「端点延迟 + FatCat-AI 额外开销」,验收线为额外开销 < 1 秒;真实端点的数字由业主侧补。
+- 内存:按 ADR 0018 测空闲与一次语音往返后的 RSS。
+- 文档、CHANGELOG(中英文)、M4 自检报告;需要真机验证的项列成清单。
+
+## 3. 安全检查清单(每个 PR 都要过)
+
+- 密钥只在服务器;浏览器只拿到转写文本与音频流。
+- 上传按魔数校验类型,限制大小与数量;文件名只作显示,存储用随机 id。
+- 音频与图片内容不进日志;审计只记元数据。
+- 新接口都需要登录,并按 `ownerId` 取数据;越权用例必须有。
+- 不引入遥测、不引入 copyleft 依赖;新增依赖先测内存(ADR 0018)。
+
+## 4. 验收对照(开发计划 M4)
+
+| 开发计划验收项                                                  | 对应                 |
+| --------------------------------------------------------------- | -------------------- |
+| 浏览器中按住说话 → 转写 → 回复 → 朗读,额外开销 < 1 秒           | PR 4、5;PR 6 测量    |
+| 指示器在五种状态下颜色与文字正确,随音量脉动,无 WebGL 时正常回退 | PR 5                 |
+| 无本地组件时自动回退到 API                                      | 本地组件推迟(问题 2) |
+| 图片交给多模态模型(先写网关契约 ADR)                            | PR 2、3              |
+| IM 渠道接收语音消息转写、可回语音                               | 推迟到 M5a(第 6 节)  |
+
+## 5. 待业主决定
+
+1. **真机测试用哪个语音与图片端点?** 业主现在测试用的 DeepSeek 没有语音和图片接口。**建议**:用一个 OpenAI 兼容、同时有 STT / TTS / 视觉模型的服务(例如 OpenAI 或国内的兼容服务),密钥仍用 `env:` 引用;CI 只用假端点。需要业主告诉我用哪家,我按它的接口细节写录制回放测试。
+2. **本地语音组件(sherpa-onnx / whisper.cpp)这次做不做?** **建议:不做,推迟到 M4.x 或桌面版**。它们要单独下载模型、另起进程,内存与打包都要另算;M4 先只用 API 端点,验收里的「回退到 API」就自然满足。
+3. **`VoiceOrb` 用 Three.js 还是先用 Canvas 2D?** 计划写的是优先 Three.js(约 600 KB,懒加载)。**建议:M4 先用 Canvas 2D 画粒子球**(不加依赖,也是计划里的回退方案),M10 做知识地图粒子球时再引入 Three.js,两者一起换。不回复就按建议做。
+4. **`listening` 与 `speaking` 由谁发出?** 麦克风和播放都在浏览器里,服务器自己看不到。**建议**:浏览器通过 WebSocket 告诉服务器「开始收音 / 开始朗读 / 结束」,服务器再作为 `assistant-state` 推给所有在线的端;`thinking` / `executing` 仍由服务器发。这样多端看到的状态一致,也符合「前端不自行推断」。不回复就按建议做。
+5. **按住说话松开后是否自动发送?** **建议:默认自动发送**,设置里可以改成「只填入输入框」。不回复就按建议做。
+
+## 6. 推迟项
+
+- IM 渠道的语音收发 → M5a(复用 PR 4 的接口)。
+- 本地 STT / TTS → 视问题 2 的决定。
+- 工具返回的图片(网页截图、邮件图片附件)与 `fs.read` 读图片 → 以后单独设计,需要不可信内容的图片规则。
+- 音频直接交给多模态模型 → 不在 1.0 范围。
+- Three.js 粒子球 → 视问题 3 的决定。
