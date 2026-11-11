@@ -26,6 +26,14 @@ export {
     type SecretStoreOptions,
 } from './secrets.js';
 export {
+    createVoiceClient,
+    DEFAULT_TTS_VOICE,
+    type SpeakRequest,
+    type TranscribeRequest,
+    type VoiceClient,
+    type VoiceClientOptions,
+} from './voice.js';
+export {
     type ChatChunk,
     type ChatMessage,
     type ChatRequest,

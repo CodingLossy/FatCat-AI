@@ -3,6 +3,7 @@
 
 import { z } from 'zod';
 import { Id } from './common.js';
+import { DEFAULT_VOICE_SETTINGS, VoiceSettings } from './voice.js';
 
 export const Locale = z.enum(['zh-CN', 'en']);
 export const Theme = z.enum(['system', 'light', 'dark']);
@@ -31,12 +32,15 @@ export const Settings = z.object({
         /** 每块的目标字符数;修改后文件在下一次索引时重新分块。 */
         chunkChars: z.number().int().min(200).max(4000),
     }),
+    /** 语音输入与朗读(ADR 0021 第 2 节)。自 M4 PR 4 起提供。 */
+    voice: VoiceSettings,
 });
 export type Settings = z.infer<typeof Settings>;
 
 export const SettingsPatch = Settings.partial().extend({
     memory: Settings.shape.memory.partial().optional(),
     knowledgeBase: Settings.shape.knowledgeBase.partial().optional(),
+    voice: Settings.shape.voice.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof SettingsPatch>;
 
@@ -47,4 +51,5 @@ export const DEFAULT_SETTINGS: Settings = {
     theme: 'system',
     memory: { autoExtract: false, extractDailyLimit: 200, alwaysApprove: false, digestTokens: 400, blockTokens: 1200 },
     knowledgeBase: { chunkChars: 1000 },
+    voice: DEFAULT_VOICE_SETTINGS,
 };

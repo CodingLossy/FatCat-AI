@@ -8,7 +8,7 @@ import type { Connection } from './db.js';
 type Key = keyof Settings;
 const KEYS = Object.keys(DEFAULT_SETTINGS) as Key[];
 /** 值为对象的键:读取与写入时与默认值 / 现有值浅合并。 */
-const NESTED: readonly Key[] = ['memory', 'knowledgeBase'];
+const NESTED: readonly Key[] = ['memory', 'knowledgeBase', 'voice'];
 
 export function createSettingsRepository(conn: Connection, now: () => Date) {
     const { sqlite } = conn;
@@ -37,7 +37,7 @@ export function createSettingsRepository(conn: Connection, now: () => Date) {
 
     return {
         get,
-        /** 部分更新:只写入给出的键;memory、knowledgeBase 与现有值浅合并。 */
+        /** 部分更新:只写入给出的键;memory、knowledgeBase、voice 与现有值浅合并。 */
         update(ownerId: string, patch: SettingsPatch): Settings {
             const current = get(ownerId);
             const at = now().toISOString();

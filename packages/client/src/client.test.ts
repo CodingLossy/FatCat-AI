@@ -111,6 +111,23 @@ describe('请求与鉴权', () => {
         expect((await client.attachments.read('a1')).size).toBe(2);
     });
 
+    it('语音:转写用 multipart 带可选字段,朗读返回原始音频响应', async () => {
+        const f = fakeFetch([
+            Response.json({ text: '你好', profileId: 'p1' }),
+            new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'audio/mpeg' } }),
+        ]);
+        const client = createClient({ baseUrl: 'http://h', csrfToken: () => 'csrf1', fetch: f.fn });
+        const result = await client.voice.transcribe(new Blob([new Uint8Array([0x1a])]), { language: 'zh' });
+        expect(result).toEqual({ text: '你好', profileId: 'p1' });
+        const form = f.calls[0]!.init.body as FormData;
+        expect(form.get('language')).toBe('zh');
+        expect(form.get('profileId')).toBeNull();
+        expect(header(f.calls[0]!, 'content-type')).toBeUndefined();
+        const res = await client.voice.speak({ text: 'hi', format: 'mp3' });
+        expect(f.calls[1]!.url).toBe('http://h/api/v1/voice/speech');
+        expect((await res.arrayBuffer()).byteLength).toBe(3);
+    });
+
     it('非 2xx 转为 FatCatApiError(保留 problem 字段),无正文时合成', async () => {
         const problem = { title: 'Conflict', status: 409, code: 'conflict', requestId: 'r1', detail: 'busy' };
         const f = fakeFetch([

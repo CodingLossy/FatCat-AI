@@ -17,7 +17,7 @@ export interface ModelProfileRecord {
     model: string;
     purpose: ModelPurpose[];
     contextWindow?: number;
-    params?: { temperature?: number; maxOutputTokens?: number };
+    params?: { temperature?: number; maxOutputTokens?: number; voice?: string };
     /** 支持图片输入(ADR 0020 第 1.2 节);false 时 API 中省略。 */
     vision?: boolean;
     createdAt: string;

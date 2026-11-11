@@ -40,6 +40,25 @@ export function settingsRoutes(deps: { repos: Repositories }) {
                     });
                 }
             }
+            // 语音默认配置档必须是 OpenAI 兼容且声明了对应用途(ADR 0021 第 1、2 节)
+            for (const [key, purpose] of [
+                ['defaultSttProfileId', 'stt'],
+                ['defaultTtsProfileId', 'tts'],
+            ] as const) {
+                const id = patch.voice?.[key];
+                if (!id) continue;
+                const p = repos.modelProfiles.get(ownerId, id);
+                const message = !p
+                    ? 'Model profile does not exist'
+                    : p.kind !== 'openai-compatible' || !p.purpose.includes(purpose)
+                      ? `Model profile must be openai-compatible with purpose ${purpose}`
+                      : null;
+                if (message) {
+                    throw new ApiError(400, 'validation_failed', 'Bad Request', 'The request is invalid.', {
+                        issues: [{ path: ['voice', key], message }],
+                    });
+                }
+            }
             return c.json(repos.settings.update(ownerId, patch), 200);
         });
 }

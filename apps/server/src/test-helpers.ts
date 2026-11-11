@@ -61,6 +61,8 @@ export interface TestServerOptions {
     conditionalApprovals?: boolean;
     /** 邮件任务的执行方式(测试中用内存实现代替 worker 与真实服务器)。 */
     mailRunner?: MailJobRunner;
+    /** 语音接口的限流与超时(ADR 0021)。 */
+    voice?: AppDeps['voice'];
 }
 
 export async function createTestServer(
@@ -153,6 +155,7 @@ export async function createTestServer(
         clientIp: (c) => c.req.header('x-test-ip') ?? '127.0.0.1',
         loginLimiter: new FailureLimiter(5, 60_000),
         attachmentFiles,
+        ...(options.voice ? { voice: options.voice } : {}),
     });
     return {
         app,

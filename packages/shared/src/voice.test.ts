@@ -2,6 +2,8 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { describe, expect, it } from 'vitest';
+import { ModelProfileInput } from './models.js';
+import { DEFAULT_SETTINGS, SettingsPatch } from './settings.js';
 import { DEFAULT_VOICE_SETTINGS, SpeechRequest, VoiceSettings, VoiceStateReport, sniffAudioType } from './voice.js';
 
 const bytes = (...values: number[]) => new Uint8Array(values);
@@ -52,5 +54,19 @@ describe('schema', () => {
         expect(VoiceStateReport.safeParse({ state: 'listening', sessionId: null }).success).toBe(true);
         expect(VoiceStateReport.safeParse({ state: 'thinking', sessionId: null }).success).toBe(false);
         expect(VoiceStateReport.parse({ state: 'speaking', sessionId: null, level: 0.5 })).not.toHaveProperty('level');
+    });
+
+    it('语音配置档只能是 OpenAI 兼容;音色 1–64 字;设置里有 voice 组', () => {
+        const base = { label: 'v', apiKeyRef: null, model: 'whisper-1', purpose: ['stt'] };
+        expect(
+            ModelProfileInput.safeParse({ ...base, kind: 'openai-compatible', baseURL: 'http://x/v1' }).success,
+        ).toBe(true);
+        expect(ModelProfileInput.safeParse({ ...base, kind: 'gemini' }).success).toBe(false);
+        expect(ModelProfileInput.safeParse({ ...base, kind: 'anthropic', purpose: ['chat'] }).success).toBe(true);
+        const tts = { ...base, kind: 'openai-compatible', baseURL: 'http://x/v1', purpose: ['tts'] };
+        expect(ModelProfileInput.safeParse({ ...tts, params: { voice: 'nova' } }).success).toBe(true);
+        expect(ModelProfileInput.safeParse({ ...tts, params: { voice: 'x'.repeat(65) } }).success).toBe(false);
+        expect(DEFAULT_SETTINGS.voice).toEqual(DEFAULT_VOICE_SETTINGS);
+        expect(SettingsPatch.parse({ voice: { autoSpeak: true } })).toEqual({ voice: { autoSpeak: true } });
     });
 });
