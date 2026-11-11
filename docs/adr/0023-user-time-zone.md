@@ -1,6 +1,6 @@
 # ADR 0023 · 用户时区:「今天」与定时任务按用户设置的时区
 
-- 状态:提议(M5a PR 3 `docs/m5a-contracts`);实现见 M5a PR 4 `feat/user-timezone`
+- 状态:已实现(契约 M5a PR 3 `docs/m5a-contracts`;实现 M5a PR 4 `feat/user-timezone`)
 - 日期:2026-11-10(America/Los_Angeles)
 - 相关:开发计划第 8 节 M5a(「用户时区设置与 ADR,默认按用户时区」);ADR 0007 第 5.7 节(记忆维护 03:30)、ADR 0014(嵌入每日上限)、ADR 0016(邮件工具的 `today`)、ADR 0022(渠道)
 
@@ -69,6 +69,14 @@ timeZone: TimeZoneName.nullable().optional(),
 - 维护:改时区后排期的下一次运行时间等于新时区的 03:30;同一天不跑两次。
 - 校验:`UTC`、别名(`Asia/Calcutta`)接受;`+08:00`、`CST`、不存在的名字拒绝(本 PR 的 shared 单测已覆盖 schema 部分)。
 - 界面:设置页「通用」的时区选择截图(跟随服务器 / 已选择两种状态)。
+
+## 7. 实现记录(PR 4)
+
+- 换算工具在 `packages/shared/src/time-zone.ts`:`effectiveTimeZone`、`localDate`、`startOfLocalDay`、`startOfNextLocalDay`、`formatPromptTime`、`supportedTimeZones`。
+- 1.0 单用户:定时任务(记忆维护、附件清理)按第一个 owner 的生效时区排期;保存设置后若生效时区变化,服务器调用 `reschedule`,同时让嵌入队列按新的「今天」重新判断每日上限。
+- 系统提示只在有工具时发送(ADR 0010),当前时间附在它的最后一行;没有工具的运行仍然不带系统提示。
+- 第 5 节的夏令时:croner 11 在 03:30 被跳过的那天(例如 `Pacific/Chatham` 9 月 02:45 → 03:45)于第一个有效时刻 03:45 运行,03:30 出现两次的那天只运行一次;`America/Los_Angeles` 的两个切换日 03:30 照常。不需要额外补跑,单测见 `apps/server/src/maintenance-setup.test.ts`。
+- 设置页用带 `datalist` 的输入框做搜索;输入必须与列表中的名字一致(大小写不敏感),清空并离开输入框或点「跟随服务器」恢复跟随服务器。
 
 ## 后果
 

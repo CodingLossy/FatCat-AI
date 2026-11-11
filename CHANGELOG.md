@@ -24,6 +24,9 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - Chat: when memory recall was incomplete, the "Memories used this turn" panel now says so, even if no memory was used. For example: "Vector search timed out; this turn used only full-text and linked search, so relevant memories may be missing." If the embedding key looks invalid or the endpoint rejected the request, the note links to Settings. When some relevant memories didn't fit the memory budget, the panel shows how many (ADR 0017).
 - API: the `memory-used` event has optional `degraded` (`[{ path, reason }]`, reason `timeout`, `auth`, `rejected` or `error`) and `omitted` fields, and `POST /api/v1/memory/retrieve` returns `degraded`. When recall was incomplete, `memory-used` is sent even with an empty `ids`. Not having an embedding profile is not counted as incomplete. All changes are additive.
 - The server writes a local `memory.retrieve.degraded` log line with the path, reason, time taken, run id and (for embedding errors) the HTTP status code only; no query text, memory content or error text.
+- Settings → General: a searchable time zone setting (ADR 0023). Left empty, FatCat-AI follows the server's time zone, which the page shows. "Today" in the mail tools, the default time zone of the `time` tool, the daily 03:30 memory maintenance and attachment cleanup, and the daily embedding and auto-extraction limits now use your time zone instead of the server's (Docker usually runs in UTC). Changing it reschedules the daily jobs right away; a job already done today is not run again.
+- The system prompt now ends with the current time in your time zone, to the minute, for example "Current time: 2026-11-11 15:30 (Asia/Shanghai, Wednesday)."
+- API: `Settings.timeZone` (an IANA name such as `Asia/Shanghai`, or `UTC`; `null` follows the server), and `GET /api/v1/settings/time-zones` (login required) returns `serverTimeZone` and the `supported` list. Fixed offsets such as `+08:00` and abbreviations such as `CST` are rejected with 400. All changes are additive.
 
 #### Fixed
 
@@ -239,6 +242,9 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 - **新增**:记忆召回不完整时,「本次用到的记忆」面板会说明,即使这一轮没有用到记忆,例如「向量检索超时,本轮只用了全文与关联检索,相关记忆可能不全」;嵌入密钥可能失效或嵌入接口拒绝请求时,说明里带设置页的链接。有相关记忆因预算没有展示时,显示未展示的条数(ADR 0017)。
 - **新增**:API:`memory-used` 事件增加可选的 `degraded`(`[{ path, reason }]`,reason 为 `timeout`、`auth`、`rejected` 或 `error`)与 `omitted`;`POST /api/v1/memory/retrieve` 的结果增加 `degraded`。召回不完整时即使 `ids` 为空也发送 `memory-used`。没有嵌入配置档不算不完整。都是向后兼容的增量。
 - **新增**:服务器写一行本地日志 `memory.retrieve.degraded`,只记路径、原因、耗时、运行 id,嵌入接口出错时另记 HTTP 状态码;不记查询文本、记忆内容或错误原文。
+- **新增**:设置页「通用」里可以搜索选择时区(ADR 0023);留空时跟随服务器,页面上显示服务器时区。邮件工具的「今天」、`time` 工具的默认时区、每天 03:30 的记忆维护与附件清理、嵌入与自动抽取的每日上限都改为按你的时区(Docker 里服务器通常是 UTC)。改时区后定时任务立即重新排期,当天已完成的任务不会再跑一次。
+- **新增**:系统提示最后一行是你所在时区的当前时间,精确到分钟,例如「当前时间:2026-11-11 15:30(Asia/Shanghai,星期三)。」
+- **新增**:API:`Settings.timeZone`(IANA 名如 `Asia/Shanghai`,或 `UTC`;`null` 表示跟随服务器);`GET /api/v1/settings/time-zones`(需要登录)返回 `serverTimeZone` 与 `supported` 列表。`+08:00` 这类固定偏移和 `CST` 这类缩写返回 400。都是向后兼容的增量。
 - **修复**:按住说话时,如果录音中途标签页切到过后台(那段时间采不到电平),即使前半段是在前台录的,也不再被当成静音丢掉。
 
 ### M4 · 语音与图片(2026-11-10)
