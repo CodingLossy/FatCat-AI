@@ -1,7 +1,7 @@
 # ADR 0020 · 多段内容与图片附件:模型网关契约、上传、存储
 
 - 状态:已实施(M4 PR 3 `feat/image-input`;契约在 M4 PR 2 合并)
-- 日期:2026-11-11
+- 日期:2026-11-10(America/Los_Angeles)
 - 相关:开发计划第 8 节 M4;`docs/milestones/M4-plan.md`;ADR 0004(API v1 约定)、ADR 0005(存储)、ADR 0006(模型网关)、ADR 0010 第 7 节(不可信内容)、ADR 0018(内存预算)
 - 修订:ADR 0006 的 `ChatMessage.content` 从只能是字符串改为「字符串或多段内容」(第 1 节)
 

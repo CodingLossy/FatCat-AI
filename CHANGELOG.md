@@ -17,7 +17,9 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - Environment variables now start with `FATCAT_AI_` instead of `AIP_` (for example `FATCAT_AI_PORT`, `FATCAT_AI_DATA_DIR`, `FATCAT_AI_TOKEN`). The old names still work for now and print a deprecation warning.
 - Unchanged on purpose: the `aip_pat_` token prefix, the `aip_session` / `aip_csrf` cookies and the `X-AIP-Server-Version` header, so existing tokens and API v1 clients keep working.
 
-### M4 · Voice and images (in progress)
+### M4 · Voice and images (2026-11-10)
+
+The development items are done; tests with real voice and image endpoints and on Windows are still pending (`docs/milestones/M4-self-check.md`). In CI, with a fake endpoint, FatCat-AI adds about 15 ms to a voice round trip (recording → reply → first audio), well under the 1-second target, and idle memory is unchanged at about 110 MiB.
 
 #### Added
 
@@ -25,7 +27,7 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - Settings → Model profiles: a "Supports images" checkbox. Tick it only if you know the model can read images; FatCat-AI does not guess. If the current profile is not ticked, the chat explains why images can't be sent, and the server refuses them with `model_no_vision` instead of dropping them.
 - Images work with all three providers (OpenAI-compatible, Anthropic and Gemini). Only the 8 most recent images in a conversation are sent to the model again; older ones, and images in automatically summarised history, are replaced by a short "[图片:name]" note.
 - API: `POST /api/v1/attachments` (multipart upload) and `GET /api/v1/attachments/{id}`; `attachmentIds` when sending a message; an `image` message part; `vision` on model profiles; new error codes `model_no_vision`, `payload_too_large` and `unsupported_media_type`. The file type is checked from the file's first bytes, not from its name. All changes are additive.
-- Voice API (ADR 0021; the browser controls follow in the next update): `POST /api/v1/voice/transcriptions` turns a recording (WebM, Ogg, MP4/M4A, WAV or MP3, at most 10 MiB) into text, and `POST /api/v1/voice/speech` reads up to 4,000 characters aloud as streamed MP3, Opus or WAV. Both use a model profile with the `stt` or `tts` purpose, which must be OpenAI-compatible; the key stays on the server. Each user can make 20 of each per minute. Recordings, transcripts and spoken text are not saved or logged; the log only records the profile, sizes and timing.
+- Voice API (ADR 0021): `POST /api/v1/voice/transcriptions` turns a recording (WebM, Ogg, MP4/M4A, WAV or MP3, at most 10 MiB) into text, and `POST /api/v1/voice/speech` reads up to 4,000 characters aloud as streamed MP3, Opus or WAV. Both use a model profile with the `stt` or `tts` purpose, which must be OpenAI-compatible; the key stays on the server. Each user can make 20 of each per minute. Recordings, transcripts and spoken text are not saved or logged; the log only records the profile, sizes and timing.
 - Settings: a `voice` group (`defaultSttProfileId`, `defaultTtsProfileId`, `autoSend`, `autoSpeak`) and a `params.voice` field on model profiles for the TTS voice name (defaults to `alloy`). The client SDK has `voice.transcribe()` and `voice.speak()`.
 - Chat: a "Hold to talk" button. Hold it (or hold Space outside the message box) and release to transcribe; a quick tap starts a voice message and a second tap ends it. Recordings stop at 120 seconds. By default the text is sent right away; turn off "Send automatically" in Settings → Voice to only fill the message box. Replies have a "Read aloud" button, and "Read replies aloud when they finish" reads every reply. Code blocks are skipped ("(code omitted)") and links are read as their text.
 - Chat: a voice status indicator: a small particle sphere with a status line (idle, listening, thinking, speaking, or the tool in use, for example "Reading a web page…"). It pulses with the volume while you talk or it reads aloud, shows the same state on every open tab and device, uses a still circle when the system asks for reduced motion, and falls back to the text alone when the browser can't draw it.
@@ -209,13 +211,15 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - 环境变量前缀由 `AIP_` 改为 `FATCAT_AI_`(如 `FATCAT_AI_PORT`、`FATCAT_AI_DATA_DIR`、`FATCAT_AI_TOKEN`);旧名暂时仍可用,并打印弃用警告。
 - 有意不改:令牌前缀 `aip_pat_`、Cookie `aip_session` / `aip_csrf` 与响应头 `X-AIP-Server-Version`,现有令牌与 API v1 客户端不受影响。
 
-### M4 · 语音与图片(进行中)
+### M4 · 语音与图片(2026-11-10)
+
+开发项已完成;用真实语音 / 图片端点与在 Windows 上的测试还没做(见 `docs/milestones/M4-self-check.md`)。CI 中用假端点测得,一次语音往返(录音 → 回复 → 开始朗读)FatCat-AI 自身只多约 15 ms,远低于 1 秒的目标;空闲内存不变,约 110 MiB。
 
 - **新增**:聊天中可以用「图片」按钮、粘贴或拖放给一条消息附上最多 4 张图片(PNG、JPEG、WebP、GIF,每张 ≤ 5 MiB;ADR 0020),发送前有预览、可移除。上传前浏览器会把长边缩到 2048 px 以内,顺带去掉 EXIF(含 GPS 位置);GIF 原样上传。发出的图片显示在对话里,只有你自己能看到。
 - **新增**:设置 → 模型配置档中加入「支持图片」勾选框,只有确认模型能读图时才勾选,FatCat-AI 不会自己猜。当前配置档没勾时,聊天里会说明不能发图片的原因;服务器也会返回 `model_no_vision` 拒绝,而不是悄悄丢掉图片。
 - **新增**:三种模型接口(OpenAI 兼容、Anthropic、Gemini)都支持图片。每个会话只把最近 8 张图片重新发给模型,更早的以及被自动压缩的历史中的图片换成「[图片:文件名]」。
 - **新增**:API 增加 `POST /api/v1/attachments`(multipart 上传)与 `GET /api/v1/attachments/{id}`;发送消息时可带 `attachmentIds`;消息多了 `image` 段;配置档多了 `vision`;新错误码 `model_no_vision`、`payload_too_large`、`unsupported_media_type`。类型按文件开头的字节判断,不看文件名。都是向后兼容的增量。
-- **新增**:语音接口(ADR 0021;浏览器里的按钮在下一次更新中加入):`POST /api/v1/voice/transcriptions` 把录音(WebM、Ogg、MP4/M4A、WAV、MP3,≤ 10 MiB)转成文字,`POST /api/v1/voice/speech` 把最多 4,000 字朗读成 MP3、Opus 或 WAV 音频流。两者都用 purpose 含 `stt` / `tts` 的配置档,且必须是 OpenAI 兼容;密钥只在服务器。每个用户每分钟各 20 次。录音、转写文字与朗读文字都不保存、不写日志,日志只记配置档、大小与耗时。
+- **新增**:语音接口(ADR 0021):`POST /api/v1/voice/transcriptions` 把录音(WebM、Ogg、MP4/M4A、WAV、MP3,≤ 10 MiB)转成文字,`POST /api/v1/voice/speech` 把最多 4,000 字朗读成 MP3、Opus 或 WAV 音频流。两者都用 purpose 含 `stt` / `tts` 的配置档,且必须是 OpenAI 兼容;密钥只在服务器。每个用户每分钟各 20 次。录音、转写文字与朗读文字都不保存、不写日志,日志只记配置档、大小与耗时。
 - **新增**:设置中加入 `voice` 一组(`defaultSttProfileId`、`defaultTtsProfileId`、`autoSend`、`autoSpeak`),配置档的 `params.voice` 填 TTS 音色(默认 `alloy`)。客户端 SDK 增加 `voice.transcribe()` 与 `voice.speak()`。
 - **新增**:聊天中的「按住说话」按钮:按住(或在输入框外按住空格键)说话,松开后转写;轻点一下开始语音消息,再点一下结束。录音最长 120 秒。默认转写后直接发送,在设置 → 语音中关掉「自动发送」则只填进输入框。回复旁有「朗读」按钮,打开「回复结束后自动朗读」则每条回复都会读出来;代码块读成「(代码已省略)」,链接只读文字。
 - **新增**:语音状态指示器:一个小的粒子球加一行状态文字(空闲、正在听、正在思考、正在朗读,或正在使用的工具,例如「正在读取网页…」)。说话或朗读时随音量脉动;所有打开的页面与设备显示同一个状态;系统要求减少动态效果时显示静止的圆,浏览器画不出来时只显示文字。

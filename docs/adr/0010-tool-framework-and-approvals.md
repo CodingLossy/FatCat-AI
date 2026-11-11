@@ -135,7 +135,7 @@ M1 的 `memory.save` 在 M2 中成为 `memory.write` 的别名,遵循同一策�
 
 ### 10. OpenAPI 破坏性变更检测
 
-从本 PR 起,CI 对每个 PR 用 oasdiff(Apache-2.0,只在 CI 中以容器运行,不是项目依赖)比较基线分支与本分支的 `apps/server/openapi/v1.json`,发现破坏性变更(删除端点或字段、收紧参数等)时失败。确实需要破坏性修改时,按 AGENTS.md 第 6 条走 `/api/v2` 并写 ADR。例外:事件联合类型 `AgentEvent` 中新增或修改变体(oasdiff 规则 `response-property-one-of-added` / `response-body-one-of-added`)降为提示,因为 ADR 0004 要求客户端忽略未知事件类型、事件只做增量修改;配置在 `.github/oasdiff-severity.txt`。M4 PR 3 起(业主 2026-11-11 决定),响应中枚举新增取值(规则 `response-property-enum-value-added`)降为警告:新增错误码(如 `model_no_vision`)会让所有引用 `ProblemDetails` 的响应都报这一条,而 ADR 0004 第 3 节已规定错误码只增不改、客户端须把未知值当作通用错误。警告仍显示在 CI 日志里;删除或修改已有取值仍是错误。代价是其他响应枚举新增取值也只报警告,审查时需要留意 PR 描述里写明的影响。覆盖率门禁按 M2 方案放在 PR 2。
+从本 PR 起,CI 对每个 PR 用 oasdiff(Apache-2.0,只在 CI 中以容器运行,不是项目依赖)比较基线分支与本分支的 `apps/server/openapi/v1.json`,发现破坏性变更(删除端点或字段、收紧参数等)时失败。确实需要破坏性修改时,按 AGENTS.md 第 6 条走 `/api/v2` 并写 ADR。例外:事件联合类型 `AgentEvent` 中新增或修改变体(oasdiff 规则 `response-property-one-of-added` / `response-body-one-of-added`)降为提示,因为 ADR 0004 要求客户端忽略未知事件类型、事件只做增量修改;配置在 `.github/oasdiff-severity.txt`。M4 PR 3 起(业主 2026-11-10 决定),响应中枚举新增取值(规则 `response-property-enum-value-added`)降为警告:新增错误码(如 `model_no_vision`)会让所有引用 `ProblemDetails` 的响应都报这一条,而 ADR 0004 第 3 节已规定错误码只增不改、客户端须把未知值当作通用错误。警告仍显示在 CI 日志里;删除或修改已有取值仍是错误。代价是其他响应枚举新增取值也只报警告,审查时需要留意 PR 描述里写明的影响。覆盖率门禁按 M2 方案放在 PR 2。
 
 ## 后果
 

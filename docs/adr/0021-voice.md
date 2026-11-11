@@ -1,7 +1,7 @@
 # ADR 0021 · 语音:服务器转发的 STT / TTS、语音状态的来源
 
 - 状态:已实施(第 1–5 节在 M4 PR 4 `feat/voice-api`,第 6、7 节与 Web 在 M4 PR 5 `feat/voice-web`)
-- 日期:2026-11-11
+- 日期:2026-11-10(America/Los_Angeles)
 - 相关:开发计划第 4.1 节(语音状态指示器)、第 6.1 节(`assistant-state`)、第 8 节 M4、第 12 节(资源预算);`docs/milestones/M4-plan.md`;ADR 0004(API v1 约定)、ADR 0006(模型网关)、ADR 0010(工具与审批、审计)、ADR 0018(内存预算)、ADR 0020(附件的魔数检查与错误码)
 
 ## 背景
