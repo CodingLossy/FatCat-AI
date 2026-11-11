@@ -80,7 +80,8 @@ export class WechatAdapter implements ChannelAdapter {
     start(ctx: ChannelContext): Promise<void> {
         const token = this.options.tokenRef ? ctx.secrets.resolve(this.options.tokenRef) : null;
         if (!token) {
-            ctx.report('needs-login', { code: 'login_required', message: 'Scan the QR code in Settings to log in.' });
+            // 还没扫码不算错误:只显示「需要扫码登录」
+            ctx.report('needs-login');
             return Promise.resolve();
         }
         this.client = new IlinkClient({

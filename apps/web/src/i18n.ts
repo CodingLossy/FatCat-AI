@@ -209,6 +209,13 @@ const zh = {
     'channels.state.needs-login': '需要扫码登录',
     'channels.state.backoff': '出错,稍后重试',
     'channels.state.error': '出错',
+    'channels.wechatLogin': '扫码登录',
+    'channels.wechatQr': '微信登录二维码',
+    'channels.login.pending': '用要当作机器人的微信账号扫码,并在手机上确认。二维码 5 分钟内有效。',
+    'channels.login.scanned': '已扫码,请在手机上确认。',
+    'channels.login.confirmed': '登录成功。令牌已写入数据目录的 secrets.yaml(写入前已备份到 backups/)。',
+    'channels.login.expired': '二维码已过期,请重新扫码登录。',
+    'channels.login.failed': '登录失败,请重试',
     'mcp.title': 'MCP 服务器',
     'mcp.hint':
         '本机启动的 MCP 服务器(stdio)。命令不经过 shell 运行,只拿到最少的环境变量;它的工具名为 mcp.<名字>.<工具>,默认每次调用都需要你批准,输出视为不可信内容。',
@@ -571,6 +578,15 @@ const en: Record<Key, string> = {
     'channels.state.needs-login': 'Needs QR login',
     'channels.state.backoff': 'Failed, retrying soon',
     'channels.state.error': 'Failed',
+    'channels.wechatLogin': 'Log in with QR code',
+    'channels.wechatQr': 'WeChat login QR code',
+    'channels.login.pending':
+        'Scan with the WeChat account the assistant should use, then confirm on the phone. The code is valid for 5 minutes.',
+    'channels.login.scanned': 'Scanned. Confirm on the phone.',
+    'channels.login.confirmed':
+        'Logged in. The token was saved to secrets.yaml in the data directory (backed up to backups/ first).',
+    'channels.login.expired': 'The QR code expired. Start the login again.',
+    'channels.login.failed': 'Login failed. Try again',
     'mcp.title': 'MCP servers',
     'mcp.hint':
         'Local MCP servers (stdio). The command runs without a shell and gets a minimal environment; its tools are named mcp.<name>.<tool>, every call needs your approval by default, and their output is treated as untrusted.',

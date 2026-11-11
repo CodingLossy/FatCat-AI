@@ -135,7 +135,7 @@ describe('WechatAdapter against a fake iLink server', () => {
     it('reports needs-login without polling when there is no token', async () => {
         const { ctx, reports } = makeCtx(null);
         await adapter().start(ctx);
-        expect(reports).toEqual([{ state: 'needs-login', error: expect.objectContaining({ code: 'login_required' }) }]);
+        expect(reports).toEqual([{ state: 'needs-login', error: undefined }]);
         expect(fake.requests).toHaveLength(0);
     });
 
