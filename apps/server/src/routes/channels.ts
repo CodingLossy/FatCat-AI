@@ -4,11 +4,22 @@
 // IM 渠道的 REST(ADR 0022 第 11 节):都需要登录并按 ownerId 取数据,别人的渠道一律 404。
 // 响应里不含任何密钥或密钥引用;外部账号只返回打码后的形式。
 import { createRoute, z } from '@hono/zod-openapi';
-import { Channel, ChannelCreate, ChannelPairing, ChannelPatch, ChannelStatus, Id, pageOf } from '@fatcat-ai/shared';
+import {
+    Channel,
+    ChannelCreate,
+    ChannelPairing,
+    ChannelPatch,
+    ChannelStatus,
+    Id,
+    pageOf,
+    WechatLoginStart,
+    WechatLoginState,
+} from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
 import type { ChannelHub } from '../channels/hub.js';
 import { toChannel } from '../channels/hub.js';
+import type { WechatChannels } from '../channels/wechat.js';
 import { ApiError, notFound } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
 
@@ -89,11 +100,46 @@ const statusRoute = createRoute({
     responses: { 200: json(ChannelStatus, 'Status'), 404: problem('Not found'), ...authErrors },
 });
 
-export function channelRoutes(deps: { repos: Repositories; hub: ChannelHub }) {
-    const { repos, hub } = deps;
+const wechatLoginRoute = createRoute({
+    method: 'post',
+    path: '/channels/{id}/wechat/login',
+    tags,
+    summary: 'Start WeChat QR-code login; render qrContent as a QR code and poll the GET route',
+    request: { params: idParam },
+    responses: {
+        201: json(WechatLoginStart, 'QR code to scan'),
+        404: problem('Not found'),
+        409: problem('Not a WeChat channel'),
+        502: problem('The WeChat service did not return a QR code'),
+        ...authErrors,
+    },
+});
+const wechatLoginStateRoute = createRoute({
+    method: 'get',
+    path: '/channels/{id}/wechat/login',
+    tags,
+    summary: 'Scan state of the current WeChat login; after confirmed the token is in secrets.yaml',
+    request: { params: idParam },
+    responses: {
+        200: json(WechatLoginState, 'Login state'),
+        404: problem('Not found, or no login was started'),
+        409: problem('Not a WeChat channel'),
+        ...authErrors,
+    },
+});
+
+export function channelRoutes(deps: { repos: Repositories; hub: ChannelHub; wechat: WechatChannels }) {
+    const { repos, hub, wechat } = deps;
     const channelOr404 = (ownerId: string, id: string) => {
         const channel = repos.channels.get(ownerId, id);
         if (!channel) throw notFound('Channel');
+        return channel;
+    };
+    const wechatOr409 = (ownerId: string, id: string) => {
+        const channel = channelOr404(ownerId, id);
+        if (channel.kind !== 'wechat') {
+            throw new ApiError(409, 'conflict', 'Conflict', 'This channel does not use WeChat login.');
+        }
         return channel;
     };
 
@@ -118,6 +164,7 @@ export function channelRoutes(deps: { repos: Repositories; hub: ChannelHub }) {
             const ownerId = requireOwner(c);
             const channel = channelOr404(ownerId, c.req.valid('param').id);
             await hub.remove(channel.id);
+            if (channel.kind === 'wechat') wechat.forget(channel.id);
             repos.channels.delete(ownerId, channel.id);
             return c.body(null, 204);
         })
@@ -134,5 +181,15 @@ export function channelRoutes(deps: { repos: Repositories; hub: ChannelHub }) {
             hub.unbound(channel.id);
             return c.body(null, 204);
         })
-        .openapi(statusRoute, (c) => c.json(hub.status(channelOr404(requireOwner(c), c.req.valid('param').id)), 200));
+        .openapi(statusRoute, (c) => c.json(hub.status(channelOr404(requireOwner(c), c.req.valid('param').id)), 200))
+        .openapi(wechatLoginRoute, async (c) => {
+            const channel = wechatOr409(requireOwner(c), c.req.valid('param').id);
+            return c.json(await wechat.startLogin(channel), 201);
+        })
+        .openapi(wechatLoginStateRoute, (c) => {
+            const channel = wechatOr409(requireOwner(c), c.req.valid('param').id);
+            const state = wechat.loginState(channel.id);
+            if (!state) throw notFound('WeChat login');
+            return c.json(state, 200);
+        });
 }

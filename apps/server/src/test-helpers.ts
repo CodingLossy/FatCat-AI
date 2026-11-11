@@ -23,6 +23,7 @@ import { createEmbeddingService, type EmbeddingService } from './embeddings.js';
 import { FailureLimiter } from './auth/rate-limit.js';
 import { createLogger } from './log.js';
 import { type AdapterFactory, ChannelHub } from './channels/hub.js';
+import { WechatChannels } from './channels/wechat.js';
 import type { ChannelKind } from '@fatcat-ai/shared';
 
 export const TEST_PASSWORD = 'correct horse battery staple';
@@ -70,6 +71,8 @@ export interface TestServerOptions {
     onTimeZoneChanged?: AppDeps['onTimeZoneChanged'];
     /** 渠道适配器(测试中用 @fatcat-ai/channels/testing 的假渠道)。 */
     channelAdapters?: Partial<Record<ChannelKind, AdapterFactory>>;
+    /** 微信 iLink 指向假服务器(ADR 0024);设置后注册真实的微信适配器,地址校验放开为本机。 */
+    wechatBaseUrl?: string;
     /** 渠道运行器的时钟(限流、配对码过期测试用)。 */
     now?: () => Date;
 }
@@ -141,6 +144,13 @@ export async function createTestServer(
         runner: mailRunner,
     });
     const logger = createLogger({ level: 'debug', destination, redactLine: (l) => redactor.redact(l) });
+    const wechat = new WechatChannels({
+        repos,
+        secrets,
+        logger,
+        ...(options.wechatBaseUrl ? { baseUrl: options.wechatBaseUrl, allowUrl: () => true } : {}),
+    });
+    const adapters = options.channelAdapters ?? (options.wechatBaseUrl ? { wechat: wechat.factory } : undefined);
     const channels = new ChannelHub({
         repos,
         runs,
@@ -148,11 +158,12 @@ export async function createTestServer(
         secrets,
         logger,
         sourceUrl: overrides.sourceUrl ?? 'https://github.com/CodingLossy/FatCat-AI',
-        ...(options.channelAdapters ? { adapters: options.channelAdapters } : {}),
+        ...(adapters ? { adapters } : {}),
         ...(options.now ? { now: options.now } : {}),
     });
     const app = createApp({
         channels,
+        wechat,
         mcp,
         mail,
         kb,

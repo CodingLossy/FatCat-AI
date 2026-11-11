@@ -27,6 +27,7 @@ import { LEGACY_DATA_DIR_NAME, LegacyDataDirBusyError, migrateLegacyDataDir } fr
 import { createLogger } from './log.js';
 import { attachWebSocket } from './ws.js';
 import { ChannelHub } from './channels/hub.js';
+import { WechatChannels } from './channels/wechat.js';
 
 // 改名前的 AIP_* 环境变量暂时兼容读取(ADR 0019)
 const legacyEnv = applyLegacyEnv(process.env, SERVER_ENV_NAMES);
@@ -167,8 +168,17 @@ const sweepJob = scheduleDaily(() => {
         })
         .catch((err: unknown) => logger.warn({ err }, 'attachment cleanup failed'));
 }, ownerTimeZone());
-// IM 渠道(ADR 0022):1.0 的微信适配器随 M5a PR 7 注册;这里先启动框架,清理 3 天前的去重记录
-const channels = new ChannelHub({ repos, runs, bus, secrets, logger, sourceUrl: config.sourceUrl });
+// IM 渠道(ADR 0022):1.0 只有微信 iLink(ADR 0024);每天清理 3 天前的去重记录
+const wechat = new WechatChannels({ repos, secrets, logger });
+const channels = new ChannelHub({
+    repos,
+    runs,
+    bus,
+    secrets,
+    logger,
+    sourceUrl: config.sourceUrl,
+    adapters: { wechat: wechat.factory },
+});
 const inboxJob = scheduleDaily(() => {
     const removed = channels.pruneInbox();
     if (removed > 0) logger.info({ removed }, 'pruned channel inbox');
@@ -198,6 +208,7 @@ mail.start();
 
 const app = createApp({
     channels,
+    wechat,
     embeddings,
     config: { ...config, setupCode },
     repos,

@@ -49,6 +49,7 @@ import { type AttachmentFiles, createMemoryAttachmentFiles } from './attachment-
 import { tokenRoutes } from './routes/tokens.js';
 import { channelRoutes } from './routes/channels.js';
 import { ChannelHub } from './channels/hub.js';
+import { WechatChannels } from './channels/wechat.js';
 import { TRANSCRIPTION_OVERHEAD_BYTES, type VoiceRouteDeps, voiceRoutes } from './routes/voice.js';
 import { WindowLimiter } from './voice-limit.js';
 import { SERVER_VERSION } from './version.js';
@@ -90,6 +91,8 @@ export interface AppDeps {
     onTimeZoneChanged?: (ownerId: string, timeZone: string) => void;
     /** IM 渠道的运行器(ADR 0022);不给时按需创建(没有注册任何适配器,只适合测试与导出 OpenAPI 文档)。 */
     channels?: ChannelHub;
+    /** 微信 iLink 的扫码授权与适配器工厂;测试时可指向假的 iLink 服务器。 */
+    wechat?: WechatChannels;
 }
 
 /** 每个用户每分钟的转写与朗读次数(ADR 0021 第 5 节)。 */
@@ -132,10 +135,12 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
     const mail =
         deps.mail ?? createMailService({ repos, secrets: deps.secrets, redact: deps.redact ?? ((text) => text), now });
 
+    const wechat = deps.wechat ?? new WechatChannels({ repos, secrets: deps.secrets, logger });
     const channels =
         deps.channels ??
         new ChannelHub({
             repos,
+            adapters: { wechat: wechat.factory },
             runs: deps.runs,
             bus: deps.bus,
             secrets: deps.secrets,
@@ -143,6 +148,8 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             sourceUrl: config.sourceUrl,
             now,
         });
+
+    wechat.attach(channels);
 
     app.onError(handleError);
 
@@ -254,7 +261,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             }),
         )
         .route('/', runRoutes(runDeps))
-        .route('/', channelRoutes({ repos, hub: channels }))
+        .route('/', channelRoutes({ repos, hub: channels, wechat }))
         .route('/', memoryRoutes({ repos, memory: deps.memory, detectCredential }))
         .route('/', toolRoutes({ repos, runs: deps.runs, redact: deps.redact ?? ((text) => text) }))
         .route('/', fsRoutes({ repos, items: deps.items, redact: deps.redact ?? ((text) => text) }))
