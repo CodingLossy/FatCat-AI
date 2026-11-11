@@ -9,7 +9,7 @@ import { serve } from '@hono/node-server';
 import { EventBus, RunManager } from '@fatcat-ai/agent';
 import { createItemService, createKnowledgeBase } from '@fatcat-ai/items';
 import { createProvider, Redactor, SecretStore } from '@fatcat-ai/providers';
-import { applyLegacyEnv, legacyEnvWarning } from '@fatcat-ai/shared';
+import { applyLegacyEnv, effectiveTimeZone, legacyEnvWarning } from '@fatcat-ai/shared';
 import { createRepositories, openStorage } from '@fatcat-ai/storage';
 import { createMailComplete, createSummarizer, createToolRegistry, createTurnExtractor } from './agent-setup.js';
 import { runInWorker } from '@fatcat-ai/mail';
@@ -17,9 +17,8 @@ import { createApp } from './app.js';
 import { createMcpControl } from './mcp-setup.js';
 import { createMailService } from './mail-setup.js';
 import { createMemoryStack } from './memory-setup.js';
-import { MAINTENANCE_CRON, startMaintenance } from './maintenance-setup.js';
+import { scheduleDaily, startMaintenance } from './maintenance-setup.js';
 import { createAttachmentFiles, createImageLoader, sweepAttachments } from './attachment-files.js';
-import { Cron } from 'croner';
 import { itemProviders } from './memory-provider.js';
 import { createEmbeddingService } from './embeddings.js';
 import { randomToken } from './auth/crypto.js';
@@ -145,8 +144,14 @@ const runs = new RunManager({
     ),
     onError: (err, { runId }) => logger.error({ err, runId }, 'run failed unexpectedly'),
 });
-// 记忆维护任务:每天 03:30 运行 decay / tier / expire,有对话进行中时推迟(ADR 0007 第 5.7 节)
+// 1.0 单用户:定时任务按主人的生效时区排期(ADR 0023);还没有主人时跟随服务器
+const ownerTimeZone = () => {
+    const ownerId = repos.owners.ids()[0];
+    return effectiveTimeZone(ownerId ? repos.settings.get(ownerId).timeZone : null);
+};
+// 记忆维护任务:每天 03:30(用户时区)运行 decay / tier / expire,有对话进行中时推迟(ADR 0007 第 5.7 节)
 const maintenance = startMaintenance({
+    timeZone: ownerTimeZone(),
     repos,
     removeVectors: (itemId) => repos.embeddings.removeItem(itemId),
     isBusy: () => runs.activeRuns > 0,
@@ -154,13 +159,13 @@ const maintenance = startMaintenance({
     onError: (err) => logger.warn({ err }, 'memory maintenance failed'),
 });
 // 图片附件的清理:每天与记忆维护同一时间,删除 24 小时内未被引用的附件与孤立文件(ADR 0020 第 3 节)
-const sweepJob = new Cron(MAINTENANCE_CRON, { unref: true }, () => {
+const sweepJob = scheduleDaily(() => {
     sweepAttachments(repos, attachmentFiles, new Date())
         .then((removed) => {
             if (removed > 0) logger.info({ removed }, 'removed unused attachments');
         })
         .catch((err: unknown) => logger.warn({ err }, 'attachment cleanup failed'));
-});
+}, ownerTimeZone());
 const interrupted = runs.recoverInterrupted();
 if (interrupted > 0) logger.warn({ count: interrupted }, 'marked runs interrupted by the previous shutdown as failed');
 
@@ -199,6 +204,13 @@ const app = createApp({
     kb,
     redact: (text) => redactor.redact(text),
     attachmentFiles,
+    // 改时区后:定时任务按新时区重新排期,嵌入队列按新的「今天」重新判断每日上限(ADR 0023 第 5 节)
+    onTimeZoneChanged: (_ownerId, timeZone) => {
+        maintenance.reschedule(timeZone);
+        sweepJob.reschedule(timeZone);
+        embeddings.kick();
+        logger.info({ timeZone }, 'rescheduled daily jobs for the new time zone');
+    },
 });
 
 const server = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {

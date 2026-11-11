@@ -3,12 +3,12 @@
 
 // 嵌入队列 worker(ADR 0014):并发 1、批量、失败退避重试、每日上限。嵌入是网络请求,不占 CPU,
 // 所以在主线程中异步运行,不用 worker_threads。没有 embed 配置档时不加载 sqlite-vec,也不运行。
-import type { EmbeddingStatus } from '@fatcat-ai/shared';
+import { effectiveTimeZone, type EmbeddingStatus, localDate, startOfNextLocalDay } from '@fatcat-ai/shared';
 import { type ModelProvider, ProviderError } from '@fatcat-ai/providers';
 import type { ModelProfileRecord, Repositories, VectorMatch } from '@fatcat-ai/storage';
 
 export const DEFAULT_EMBED_BATCH = 32;
-/** 每个 owner 每天(UTC)最多嵌入的文本条数。 */
+/** 每个 owner 每天(用户时区,ADR 0023)最多嵌入的文本条数。 */
 export const DEFAULT_DAILY_EMBED_LIMIT = 5000;
 
 export interface EmbeddingServiceOptions {
@@ -26,8 +26,6 @@ export function selectEmbedProfile(profiles: readonly ModelProfileRecord[]): Mod
     return profiles.find((p) => p.purpose.includes('embed') && p.kind === 'openai-compatible') ?? null;
 }
 
-const day = (d: Date) => d.toISOString().slice(0, 10);
-
 export function createEmbeddingService(options: EmbeddingServiceOptions) {
     const { repos } = options;
     const store = repos.embeddings;
@@ -43,6 +41,9 @@ export function createEmbeddingService(options: EmbeddingServiceOptions) {
     /** 上一次嵌入返回的维度与向量表不一致(模型名没变但维度变了,例如改了 dimensions 参数)。 */
     let dimensionMismatch = false;
 
+    /** 每日上限的日期键按用户时区(ADR 0023 第 4 节)。 */
+    const timeZoneOf = (ownerId: string) => effectiveTimeZone(repos.settings.get(ownerId).timeZone);
+    const day = (ownerId: string, at: Date) => localDate(at, timeZoneOf(ownerId));
     const profileFor = (ownerId: string) => selectEmbedProfile(repos.modelProfiles.list(ownerId));
 
     /** 配置档的模型与现有向量表不一致(维度要等第一次嵌入才知道,在 drain 中检查)。 */
@@ -68,12 +69,10 @@ export function createEmbeddingService(options: EmbeddingServiceOptions) {
             const batch = jobs.filter((j) => j.ownerId === ownerId);
             const profile = profileFor(ownerId);
             if (!profile || mismatch(profile)) return;
-            const used = store.usage(ownerId, day(now()));
+            const used = store.usage(ownerId, day(ownerId, now()));
             if (used >= dailyLimit) {
-                // 到达每日上限:明天(UTC 0 点)再继续
-                const tomorrow = new Date(`${day(now())}T00:00:00.000Z`);
-                tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-                return schedule(tomorrow);
+                // 到达每日上限:用户时区的明天 0 点再继续
+                return schedule(startOfNextLocalDay(now(), timeZoneOf(ownerId)));
             }
             const slice = batch.slice(0, dailyLimit - used);
             const provider = options.providerFor(profile);
@@ -87,7 +86,7 @@ export function createEmbeddingService(options: EmbeddingServiceOptions) {
                     return;
                 }
                 store.complete(slice, result.vectors, profile.model);
-                store.addUsage(ownerId, day(now()), slice.length);
+                store.addUsage(ownerId, day(ownerId, now()), slice.length);
             } catch (error) {
                 options.onError?.(error);
                 const message = error instanceof Error ? redact(error.message) : 'embedding failed';
@@ -150,7 +149,7 @@ export function createEmbeddingService(options: EmbeddingServiceOptions) {
                 indexModel: state?.model ?? null,
                 dimensions: state?.dimensions ?? null,
                 ...counts,
-                today: store.usage(ownerId, day(now())),
+                today: store.usage(ownerId, day(ownerId, now())),
                 dailyLimit,
                 lastError: store.lastError(ownerId),
             };

@@ -2,7 +2,14 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { createRoute } from '@hono/zod-openapi';
-import { Settings, SettingsPatch } from '@fatcat-ai/shared';
+import {
+    effectiveTimeZone,
+    serverTimeZone,
+    Settings,
+    SettingsPatch,
+    supportedTimeZones,
+    TimeZoneInfo,
+} from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError } from '../errors.js';
@@ -25,10 +32,26 @@ const putRoute = createRoute({
     responses: { 200: json(Settings, 'Updated settings'), 400: problem('Invalid request'), ...authErrors },
 });
 
-export function settingsRoutes(deps: { repos: Repositories }) {
+const timeZonesRoute = createRoute({
+    method: 'get',
+    path: '/settings/time-zones',
+    tags: ['settings'],
+    summary: "Time zones the server recognizes, and the server's own time zone (used when timeZone is null)",
+    responses: { 200: json(TimeZoneInfo, 'Time zones'), ...authErrors },
+});
+
+export function settingsRoutes(deps: {
+    repos: Repositories;
+    /** 生效时区变化后调用(ADR 0023 第 5 节)。 */
+    onTimeZoneChanged?: ((ownerId: string, timeZone: string) => void) | undefined;
+}) {
     const { repos } = deps;
     return router()
         .openapi(getRoute, (c) => c.json(repos.settings.get(requireOwner(c)), 200))
+        .openapi(timeZonesRoute, (c) => {
+            requireOwner(c); // 服务器时区会透露部署位置,需要登录
+            return c.json({ serverTimeZone: serverTimeZone(), supported: supportedTimeZones() }, 200);
+        })
         .openapi(putRoute, (c) => {
             const ownerId = requireOwner(c);
             const patch = c.req.valid('json');
@@ -59,6 +82,10 @@ export function settingsRoutes(deps: { repos: Repositories }) {
                     });
                 }
             }
-            return c.json(repos.settings.update(ownerId, patch), 200);
+            const before = effectiveTimeZone(repos.settings.get(ownerId).timeZone);
+            const updated = repos.settings.update(ownerId, patch);
+            const after = effectiveTimeZone(updated.timeZone);
+            if (after !== before) deps.onTimeZoneChanged?.(ownerId, after);
+            return c.json(updated, 200);
         });
 }

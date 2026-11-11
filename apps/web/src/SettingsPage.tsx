@@ -11,6 +11,7 @@ import { McpServers } from './McpServers.js';
 import { MailAccounts } from './MailAccounts.js';
 import { EmbeddingIndex } from './EmbeddingIndex.js';
 import { Preauthorizations } from './Preauthorizations.js';
+import { TimeZoneSetting } from './TimeZoneSetting.js';
 
 const PURPOSES: ModelPurpose[] = ['chat', 'cheap', 'stt', 'tts'];
 
@@ -369,6 +370,7 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                         <option value="dark">{t('settings.themeDark')}</option>
                     </select>
                 </label>
+                <TimeZoneSetting value={settings.timeZone} onChange={update} />
                 <label>
                     {t('settings.defaultChat')}
                     {profileSelect('defaultChatProfileId', 'chat')}

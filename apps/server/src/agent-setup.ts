@@ -12,7 +12,7 @@ import {
     redactSensitive,
 } from '@fatcat-ai/memory';
 import { type ModelProvider, selectProfile } from '@fatcat-ai/providers';
-import { MemorySearchInput } from '@fatcat-ai/shared';
+import { effectiveTimeZone, MemorySearchInput } from '@fatcat-ai/shared';
 import type { MemoryStack } from './memory-setup.js';
 import { createMailTools, type MailToolOptions } from '@fatcat-ai/mail';
 import { z } from 'zod';
@@ -324,7 +324,11 @@ export function createToolRegistry(
     const roots = (ownerId: string) => repos.fsRoots.list(ownerId).map((r) => r.path);
     return new ToolRegistry().register(
         ...createMemoryTools(memory),
-        ...createBuiltinTools(builtin),
+        // time 工具不传 timezone 时用用户时区(ADR 0023)
+        ...createBuiltinTools({
+            timeZoneOf: (ownerId) => effectiveTimeZone(repos.settings.get(ownerId).timeZone),
+            ...builtin,
+        }),
         ...createFsTools({ roots }),
         ...createItemTools(repos, items),
         // 检索前按需同步条目(超过 60 秒才同步),新文件在后台进入知识库

@@ -3,6 +3,7 @@
 
 import { z } from 'zod';
 import { Id } from './common.js';
+import { TimeZoneName } from './time-zone.js';
 import { DEFAULT_VOICE_SETTINGS, VoiceSettings } from './voice.js';
 
 export const Locale = z.enum(['zh-CN', 'en']);
@@ -35,6 +36,8 @@ export const Settings = z.object({
     }),
     /** 语音输入与朗读(ADR 0021 第 2 节)。自 M4 PR 4 起提供。 */
     voice: VoiceSettings,
+    /** 用户时区;null 表示跟随服务器(ADR 0023)。自 M5a PR 4 起提供,旧服务器不返回。 */
+    timeZone: TimeZoneName.nullable().optional(),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -53,4 +56,5 @@ export const DEFAULT_SETTINGS: Settings = {
     memory: { autoExtract: false, extractDailyLimit: 200, alwaysApprove: false, digestTokens: 400, blockTokens: 1200 },
     knowledgeBase: { chunkChars: 1000 },
     voice: DEFAULT_VOICE_SETTINGS,
+    timeZone: null,
 };

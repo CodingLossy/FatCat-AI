@@ -5,6 +5,7 @@
 // 最终回答交给 cheap 模型,不含工具输出;每轮最多 3 条;每天的调用次数有上限;默认关闭。
 // 本模块不依赖模型网关:调用方传入 complete 函数。提示词由本项目自行编写。
 import { createHash } from 'node:crypto';
+import { effectiveTimeZone } from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
 import type { MemoryService } from './service.js';
 
@@ -112,13 +113,21 @@ export function createExtractor(options: ExtractorOptions) {
     return {
         /** 对一轮对话做一次抽取。出错时抛出,由调用方记录;不会影响这一轮的结果。 */
         async extract(turn: TurnInfo): Promise<ExtractOutcome> {
-            const settings = repos.settings.get(turn.ownerId).memory;
+            const all = repos.settings.get(turn.ownerId);
+            const settings = all.memory;
             if (!settings.autoExtract) return { status: 'disabled' };
             const user = repos.messages.get(turn.ownerId, turn.userMessageId);
             const answer = repos.messages.get(turn.ownerId, turn.assistantMessageId);
             const userText = user ? textOf(user.parts, false) : '';
             if (!userText) return { status: 'empty' };
-            if (!repos.memories.takeDailySlot(turn.ownerId, EXTRACT_JOB, settings.extractDailyLimit)) {
+            if (
+                !repos.memories.takeDailySlot(
+                    turn.ownerId,
+                    EXTRACT_JOB,
+                    settings.extractDailyLimit,
+                    effectiveTimeZone(all.timeZone),
+                )
+            ) {
                 return { status: 'over_budget' };
             }
 

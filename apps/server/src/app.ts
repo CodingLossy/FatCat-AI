@@ -84,6 +84,8 @@ export interface AppDeps {
     attachmentFiles?: AttachmentFiles;
     /** 语音接口的限流与超时(ADR 0021 第 5 节);不给时每分钟各 20 次、默认超时。 */
     voice?: Partial<Pick<VoiceRouteDeps, 'limits' | 'timeouts'>>;
+    /** 保存了新的用户时区后调用(维护任务重新排期,ADR 0023 第 5 节);参数是新的生效时区。 */
+    onTimeZoneChanged?: (ownerId: string, timeZone: string) => void;
 }
 
 /** 每个用户每分钟的转写与朗读次数(ADR 0021 第 5 节)。 */
@@ -220,7 +222,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             }),
         )
         .route('/', embeddingRoutes({ embeddings }))
-        .route('/', settingsRoutes({ repos }))
+        .route('/', settingsRoutes({ repos, onTimeZoneChanged: deps.onTimeZoneChanged }))
         .route('/', sessionRoutes(runDeps))
         .route('/', attachmentRoutes({ repos, files }))
         .route(

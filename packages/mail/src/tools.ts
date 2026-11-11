@@ -7,10 +7,12 @@ import { basename } from 'node:path';
 import {
     type ApprovalWarning,
     ApprovalWarningCode,
+    effectiveTimeZone,
     MailAddressString,
     MailDraftAttachment,
     type MailDraftAttachmentInfo,
     MailSendInput,
+    startOfLocalDay,
     type UntrustedContent,
 } from '@fatcat-ai/shared';
 import type { MailMessageRecord, Repositories } from '@fatcat-ai/storage';
@@ -35,7 +37,7 @@ export interface MailToolOptions {
     roots: (ownerId: string) => string[];
     /** 用 cheap 配置档做一次补全(mail.summarize)。 */
     complete: (ownerId: string, system: string, text: string, signal?: AbortSignal) => Promise<string>;
-    /** 「今天」按哪个时区计算;默认取服务器的时区。 */
+    /** 「今天」固定按这个时区计算(测试用);不给时按用户设置的时区,没设置时跟随服务器(ADR 0023)。 */
     timeZone?: string;
     now?: () => Date;
 }
@@ -49,23 +51,7 @@ const untrusted = (ref: string, content: string, truncated = false): UntrustedCo
 
 /** 某个时区中「今天 00:00」对应的 UTC 时间。 */
 export function startOfToday(now: Date, timeZone: string): Date {
-    const parts = Object.fromEntries(
-        new Intl.DateTimeFormat('en-US', {
-            timeZone,
-            hourCycle: 'h23',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-        })
-            .formatToParts(now)
-            .map((p) => [p.type, p.value]),
-    ) as Record<string, string>;
-    const asUtc = Date.UTC(+parts.year!, +parts.month! - 1, +parts.day!, +parts.hour!, +parts.minute!, +parts.second!);
-    const offset = asUtc - Math.floor(now.getTime() / 1000) * 1000;
-    return new Date(Date.UTC(+parts.year!, +parts.month! - 1, +parts.day!) - offset);
+    return startOfLocalDay(now, timeZone);
 }
 
 function addr(a: { name: string | null; address: string } | null): string {
@@ -142,7 +128,7 @@ const ADDRESS = /[^\s@<>()",;:[\]]+@[^\s@<>()",;:[\]]+\.[^\s@<>()",;:[\]]+/g;
 export function createMailTools(options: MailToolOptions): ToolDefinition[] {
     const { repos } = options;
     const now = options.now ?? (() => new Date());
-    const timeZone = options.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const timeZoneOf = (ownerId: string) => options.timeZone ?? effectiveTimeZone(repos.settings.get(ownerId).timeZone);
 
     function account(ownerId: string, id: string | undefined) {
         const accounts = repos.mail.list(ownerId).filter((a) => a.enabled);
@@ -223,7 +209,7 @@ export function createMailTools(options: MailToolOptions): ToolDefinition[] {
                 accountId: input.accountId,
                 folder: input.folder,
                 unreadOnly: input.unreadOnly,
-                since: input.today ? startOfToday(now(), timeZone).toISOString() : undefined,
+                since: input.today ? startOfToday(now(), timeZoneOf(ctx.ownerId)).toISOString() : undefined,
                 limit: input.limit,
             });
             const body = rows.length ? rows.map(line).join('\n') : '(no matching e-mail)';
@@ -294,7 +280,7 @@ export function createMailTools(options: MailToolOptions): ToolDefinition[] {
             const input = SummarizeInput.parse(raw ?? {});
             let messages: MailMessageRecord[];
             if (input.unreadToday) {
-                const since = startOfToday(now(), timeZone).toISOString();
+                const since = startOfToday(now(), timeZoneOf(ctx.ownerId)).toISOString();
                 messages = repos.mailCache
                     .list(ctx.ownerId, { folder: 'inbox', unreadOnly: true, since, limit: 50 })
                     .map((m) => message(ctx.ownerId, m.id));

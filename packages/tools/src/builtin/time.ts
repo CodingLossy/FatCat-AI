@@ -17,13 +17,19 @@ function isValidTimeZone(tz: string): boolean {
     }
 }
 
-/** time(read):当前时间,可指定 IANA 时区;不指定时用服务器时区。 */
-export function createTimeTool(now: () => Date = () => new Date()): ToolDefinition {
+/**
+ * time(read):当前时间,可指定 IANA 时区;不指定时用 defaultTimeZone(服务器传入用户设置的时区,ADR 0023),
+ * 没有给 defaultTimeZone 时用服务器时区。
+ */
+export function createTimeTool(
+    now: () => Date = () => new Date(),
+    defaultTimeZone?: (ownerId: string) => string,
+): ToolDefinition {
     return {
         name: 'time',
         description:
             'Get the current date and time. Optionally pass an IANA time zone such as "Asia/Shanghai"; ' +
-            "the default is the server's time zone.",
+            "the default is the user's time zone.",
         parameters: {
             type: 'object',
             properties: { timezone: { type: 'string', description: 'IANA time zone, e.g. Asia/Shanghai' } },
@@ -31,9 +37,10 @@ export function createTimeTool(now: () => Date = () => new Date()): ToolDefiniti
         },
         risk: 'read',
         summarize: () => 'Get the current time',
-        execute: async (raw) => {
+        execute: async (raw, ctx) => {
             const input = Input.parse(raw ?? {});
-            const timezone = input.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const timezone =
+                input.timezone ?? defaultTimeZone?.(ctx.ownerId) ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
             if (!isValidTimeZone(timezone)) throw new Error(`unknown time zone: ${timezone}`);
             const date = now();
             const parts = new Intl.DateTimeFormat('en-CA', {
