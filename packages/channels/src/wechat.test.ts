@@ -172,6 +172,16 @@ describe('WechatAdapter against a fake iLink server', () => {
         expect(reports).toEqual([]);
     });
 
+    it('waits about a second between polls when the platform answers at once', async () => {
+        for (let i = 0; i < 10; i++) fake.updates.push({ body: { ret: 0, msgs: [], get_updates_buf: `B${i}` } });
+        const { ctx } = makeCtx('tok');
+        const a = adapter();
+        await a.start(ctx);
+        await new Promise((r) => setTimeout(r, 1500));
+        await a.stop();
+        expect(fake.requests.filter((r) => r.path.includes('getupdates')).length).toBeLessThanOrEqual(3);
+    });
+
     it('sends plain text with the inbound context token', async () => {
         const { ctx } = makeCtx('tok');
         const a = adapter();

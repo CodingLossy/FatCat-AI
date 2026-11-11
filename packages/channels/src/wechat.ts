@@ -19,6 +19,20 @@ import type {
 const DEFAULT_POLL_MS = 35_000;
 const POLL_MARGIN_MS = 10_000;
 const SEND_TIMEOUT_MS = 15_000;
+export const MIN_POLL_GAP_MS = 1000;
+
+function pause(ms: number, signal: AbortSignal): Promise<void> {
+    if (ms <= 0 || signal.aborted) return Promise.resolve();
+    return new Promise((resolve) => {
+        const timer = setTimeout(done, ms);
+        function done() {
+            clearTimeout(timer);
+            signal.removeEventListener('abort', done);
+            resolve();
+        }
+        signal.addEventListener('abort', done, { once: true });
+    });
+}
 
 export interface WechatAdapterOptions {
     /** 令牌的密钥引用(file:ILINK_TOKEN_<channelId>);未设置时为 null。 */
@@ -97,6 +111,7 @@ export class WechatAdapter implements ChannelAdapter {
     private async poll(ctx: ChannelContext, client: IlinkClient, signal: AbortSignal): Promise<void> {
         let waitMs = DEFAULT_POLL_MS;
         while (!signal.aborted) {
+            const started = Date.now();
             let batch;
             const timeout = AbortSignal.timeout(waitMs + POLL_MARGIN_MS);
             try {
@@ -133,6 +148,8 @@ export class WechatAdapter implements ChannelAdapter {
             }
             // 一批处理完才前移游标:中途重启时平台会重投,框架按消息 id 去重
             this.options.cursor.set(batch.cursor);
+            // 平台没有挂起就立刻返回时,两次请求之间至少隔 1 秒,不空转
+            await pause(MIN_POLL_GAP_MS - (Date.now() - started), signal);
         }
     }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -37,6 +37,15 @@ describe('writeSecretsKey', () => {
         const store = new SecretStore({ dataDir: dir, env: {}, redactor: new Redactor() });
         expect(store.resolve('file:ILINK_TOKEN_A')).toBe('tok:1#2');
         expect(store.resolve('file:DEEPSEEK_API_KEY')).toBe('sk-1');
+    });
+
+    it.skipIf(process.platform === 'win32')('keeps backups at 600 even when the original is 644', () => {
+        mkdirSync(join(dir, 'backups'), { mode: 0o755 }); // 数据库备份已经建好了这个目录
+        writeFileSync(file(), 'A: 1\n');
+        chmodSync(file(), 0o644);
+        writeSecretsKey(dir, 'B', '2', at(0));
+        expect(statSync(join(dir, 'backups', backups()[0]!)).mode & 0o777).toBe(0o600);
+        expect(statSync(file()).mode & 0o777).toBe(0o600);
     });
 
     it('updates only the target line and keeps CRLF and a missing final newline', () => {

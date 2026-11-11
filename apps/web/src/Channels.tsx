@@ -62,7 +62,13 @@ export function Channels() {
                     setLogin((prev) => (prev?.channelId === loginChannel ? { ...prev, state } : prev));
                     if (state.state === 'confirmed') void reload();
                 })
-                .catch((e: unknown) => setError(errorText(e)));
+                .catch((e: unknown) => {
+                    // 例如服务器重启后扫码记录没了(404):停止轮询,提示重新扫码
+                    setError(errorText(e));
+                    setLogin((prev) =>
+                        prev?.channelId === loginChannel ? { ...prev, state: { state: 'failed', code: 'lost' } } : prev,
+                    );
+                });
         }, 2000);
         return () => clearInterval(timer);
     }, [loginChannel, reload]);

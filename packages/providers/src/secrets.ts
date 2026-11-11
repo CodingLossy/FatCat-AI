@@ -1,17 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import {
-    copyFileSync,
-    existsSync,
-    mkdirSync,
-    readdirSync,
-    readFileSync,
-    renameSync,
-    rmSync,
-    statSync,
-    writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import type { Redactor } from './redact.js';
@@ -137,9 +127,8 @@ function backupSecrets(dataDir: string, path: string, now: Date): void {
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     let target = join(dir, `secrets-${backupStamp(now)}.yaml`);
     for (let n = 2; existsSync(target); n++) target = join(dir, `secrets-${backupStamp(now)}-${n}.yaml`);
-    // 先建 600 的空文件再复制,避免复制出来的文件短暂带上宽松权限
-    writeFileSync(target, '', { mode: 0o600, flag: 'wx' });
-    copyFileSync(path, target);
+    // 读出内容后以 600 新建备份;copyFile 会把权限改成和源文件一样(源文件可能是 644),所以不用它
+    writeFileSync(target, readFileSync(path), { mode: 0o600, flag: 'wx' });
     const old = readdirSync(dir)
         .filter((f) => /^secrets-\d{8}T\d{6}Z(-\d+)?\.yaml$/.test(f))
         .sort();

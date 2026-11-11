@@ -131,6 +131,7 @@ export class WechatChannels {
         let client = this.client();
         while (!signal.aborted) {
             if (this.now().getTime() >= deadline) return finish({ state: 'expired' });
+            const started = Date.now();
             let status;
             try {
                 status = await client.getQrStatus(
@@ -144,6 +145,12 @@ export class WechatChannels {
                 continue;
             }
             if (signal.aborted) return;
+            // 平台没有挂起就立刻返回时,两次查询之间至少隔 1 秒
+            const gap = 1000 - (Date.now() - started);
+            if (gap > 0 && (status.status === 'wait' || status.status === 'scaned')) {
+                await new Promise((r) => setTimeout(r, gap).unref());
+                if (signal.aborted) return;
+            }
             switch (status.status) {
                 case 'wait':
                     break;
