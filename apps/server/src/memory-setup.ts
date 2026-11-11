@@ -7,6 +7,7 @@ import {
     createMemoryContext,
     createMemoryService,
     createRetriever,
+    type DegradationDetail,
     type DigestBuilder,
     type MemoryService,
     type Retriever,
@@ -27,7 +28,12 @@ export interface MemoryStack {
 export function createMemoryStack(
     repos: Repositories,
     embeddings: Pick<EmbeddingService, 'enqueue' | 'search'>,
-    options: { onError?: (error: unknown, ownerId: string) => void; digestDebounceMs?: number } = {},
+    options: {
+        onError?: (error: unknown, ownerId: string) => void;
+        digestDebounceMs?: number;
+        /** 召回有一路没跑完时调用(本地日志,ADR 0017 第 4 节)。 */
+        onDegraded?: (detail: DegradationDetail, context: { ownerId: string; runId?: string }) => void;
+    } = {},
 ): MemoryStack {
     const digest = createDigestBuilder({
         repos,
@@ -44,6 +50,7 @@ export function createMemoryStack(
         vectors: async (ownerId, query, k, signal) => await embeddings.search(ownerId, query, k, signal),
         // 归档时删掉了向量;被访问回到 active 后重新嵌入
         onReactivated: (ownerId, id, text) => embeddings.enqueue(ownerId, id, 0, text),
+        ...(options.onDegraded ? { onDegraded: options.onDegraded } : {}),
     });
     return {
         memory,

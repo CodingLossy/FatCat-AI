@@ -9,7 +9,7 @@ import type { EventEnvelope } from '@fatcat-ai/shared';
 import { createRepositories, type ModelProfileRecord, openStorage, type Repositories } from '@fatcat-ai/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EventBus } from './bus.js';
-import { RunConflictError, RunManager } from './runner.js';
+import { type MemoryTurnContext, RunConflictError, RunManager } from './runner.js';
 
 type Script = (request: ChatRequest) => AsyncGenerator<ChatChunk>;
 
@@ -92,6 +92,43 @@ describe('RunManager', () => {
         });
         expect(repos.sessions.get(ownerId, session.id)?.title).toBe('请问好');
         expect(requests[0]!.messages).toEqual([{ role: 'user', content: '请问好' }]);
+    });
+
+    it('memory-used:有降级时即使没用到记忆也发出,带上 omitted;无降级且无记忆时不发(ADR 0017)', async () => {
+        const contexts: MemoryTurnContext[] = [
+            { messages: [], ids: [], degraded: [{ path: 'vector', reason: 'timeout' }] },
+            { messages: [], ids: [] },
+            { messages: ['记忆块'], ids: ['m1'], omitted: 3 },
+        ];
+        const seen: string[] = [];
+        manager = new RunManager({
+            repos,
+            bus,
+            providerFor: () => fakeProvider,
+            persistIntervalMs: 0,
+            memoryContext: (input) => {
+                seen.push(input.runId);
+                return Promise.resolve(contexts.shift()!);
+            },
+        });
+        const session = repos.sessions.create(ownerId);
+        const runs: string[] = [];
+        for (const text of ['一', '二', '三']) {
+            runs.push(manager.start({ ownerId, sessionId: session.id, profile, text }).runId);
+            await manager.idle();
+        }
+        expect(seen).toEqual(runs);
+        const used = runs.map((runId) =>
+            repos.events
+                .listRunAfter(ownerId, runId, 0, 100)
+                .map((e) => e.event)
+                .filter((e) => e.type === 'memory-used'),
+        );
+        expect(used).toEqual([
+            [{ type: 'memory-used', runId: runs[0], ids: [], degraded: [{ path: 'vector', reason: 'timeout' }] }],
+            [],
+            [{ type: 'memory-used', runId: runs[2], ids: ['m1'], omitted: 3 }],
+        ]);
     });
 
     it('上下文包含之前的问答,跳过被重新生成替代的回复', async () => {

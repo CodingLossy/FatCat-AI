@@ -51,7 +51,10 @@ export const MIN_RECORDING_MS = 500;
  */
 export const SILENCE_LEVEL = 0.04;
 
-/** 电平采样少于这么多帧时不判断静音:标签页在后台时 requestAnimationFrame 不运行,电平一直是 0。 */
+/**
+ * 电平采样少于这么多帧时不判断静音:标签页在后台时 requestAnimationFrame 不运行,电平一直是 0。
+ * 录音中途切到后台的情况由 startRecording 监听 visibilitychange 处理(那时 peakLevel 传 null)。
+ */
 export const MIN_LEVEL_SAMPLES = 5;
 
 /**
@@ -81,6 +84,12 @@ export async function startRecording(onLevel: LevelListener, onLimit: () => void
     const ctx = audioContext();
     let peak: number | null = ctx ? 0 : null;
     let samples = 0;
+    // 录音期间标签页进入过后台:requestAnimationFrame 停了,那段时间的电平没采到,不按静音判断(#17 X 审查)
+    let missedLevels = document.visibilityState === 'hidden';
+    const onVisibility = () => {
+        if (document.visibilityState === 'hidden') missedLevels = true;
+    };
+    document.addEventListener('visibilitychange', onVisibility);
     const stopMeter = ctx
         ? meter(ctx.createMediaStreamSource(stream), ctx, (level) => {
               peak = Math.max(peak ?? 0, level);
@@ -92,6 +101,7 @@ export async function startRecording(onLevel: LevelListener, onLimit: () => void
     const limit = setTimeout(onLimit, MAX_RECORDING_SECONDS * 1000);
     const release = () => {
         clearTimeout(limit);
+        document.removeEventListener('visibilitychange', onVisibility);
         stopMeter();
         for (const track of stream.getTracks()) track.stop();
     };
@@ -101,7 +111,9 @@ export async function startRecording(onLevel: LevelListener, onLimit: () => void
             new Promise((resolve) => {
                 recorder.onstop = () => {
                     release();
-                    const usable = chunks.length > 0 && isUsableRecording(performance.now() - startedAt, peak, samples);
+                    const usable =
+                        chunks.length > 0 &&
+                        isUsableRecording(performance.now() - startedAt, missedLevels ? null : peak, samples);
                     resolve(usable ? new Blob(chunks, { type: recorder.mimeType }) : null);
                 };
                 if (recorder.state === 'inactive') recorder.onstop(new Event('stop'));

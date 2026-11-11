@@ -24,7 +24,9 @@ export { createMemoryContext, type MemoryContext, type MemoryContextInput } from
 export { createDigestBuilder, DIGEST_DEBOUNCE_MS, DIGEST_MAX_ITEMS, type DigestBuilder } from './digest.js';
 export {
     BLOCK_HEADER,
+    classifyVectorError,
     createRetriever,
+    type DegradationDetail,
     qualify,
     renderMemory,
     rerank,

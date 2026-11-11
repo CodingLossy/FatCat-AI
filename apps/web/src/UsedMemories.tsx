@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// 「本次用到的记忆」面板,带反馈按钮(《记忆模块补充设计》第 6 节;ADR 0007 第 5.8 节)。
+// 「本次用到的记忆」面板,带反馈按钮(《记忆模块补充设计》第 6 节;ADR 0007 第 5.8 节);
+// 召回不完整时显示说明(ADR 0017 第 5 节)。
 // 记忆正文按纯文本显示。
-import type { FeedbackSignal, Memory } from '@fatcat-ai/shared';
+import type { FeedbackSignal, Memory, MemoryDegradation } from '@fatcat-ai/shared';
 import { useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { RecallNotes } from './RecallNotes.js';
 
 function UsedMemory({ memory, runId }: { memory: Memory; runId: string | null }) {
     const { t } = useI18n();
@@ -81,7 +83,17 @@ function UsedMemory({ memory, runId }: { memory: Memory; runId: string | null })
     );
 }
 
-export function UsedMemories({ runId, ids }: { runId: string | null; ids: string[] }) {
+export function UsedMemories({
+    runId,
+    ids,
+    degraded = [],
+    omitted = 0,
+}: {
+    runId: string | null;
+    ids: string[];
+    degraded?: readonly MemoryDegradation[];
+    omitted?: number;
+}) {
     const { t } = useI18n();
     const [memories, setMemories] = useState<Memory[]>([]);
 
@@ -95,15 +107,21 @@ export function UsedMemories({ runId, ids }: { runId: string | null; ids: string
         };
     }, [ids]);
 
-    if (memories.length === 0) return null;
+    // 召回降级时即使没有用到记忆也显示说明,区分「没有相关记忆」与「召回不完整」
+    if (memories.length === 0 && degraded.length === 0) return null;
     return (
-        <details className="card used-memories" data-testid="used-memories">
-            <summary className="small">{t('feedback.title', { n: memories.length })}</summary>
-            <ul className="list">
-                {memories.map((m) => (
-                    <UsedMemory key={m.id} memory={m} runId={runId} />
-                ))}
-            </ul>
-        </details>
+        <div className="card used-memories" data-testid="used-memories">
+            {memories.length > 0 ? (
+                <details>
+                    <summary className="small">{t('feedback.title', { n: memories.length })}</summary>
+                    <ul className="list">
+                        {memories.map((m) => (
+                            <UsedMemory key={m.id} memory={m} runId={runId} />
+                        ))}
+                    </ul>
+                </details>
+            ) : null}
+            <RecallNotes degraded={degraded} omitted={omitted} />
+        </div>
     );
 }

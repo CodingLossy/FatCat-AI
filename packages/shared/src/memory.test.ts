@@ -5,8 +5,10 @@ import { describe, expect, it } from 'vitest';
 import { AgentEvent } from './events.js';
 import { ItemRel } from './items.js';
 import {
+    MemoryDegradation,
     MemoryFeedbackInput,
     MemoryRetrieveInput,
+    MemoryRetrieveResult,
     MemorySaveInput,
     MemoryWriteInput,
     MemoryWriteResult,
@@ -69,5 +71,32 @@ describe('记忆 v2 契约(ADR 0007 第 5.4 节)', () => {
             runId: ID,
             ids: [ID],
         });
+    });
+
+    it('memory-used 与检索结果的降级标记(ADR 0017)', () => {
+        const event = {
+            type: 'memory-used',
+            runId: ID,
+            ids: [],
+            degraded: [{ path: 'vector', reason: 'timeout' }],
+            omitted: 2,
+        };
+        expect(AgentEvent.parse(event)).toEqual(event);
+        for (const reason of ['timeout', 'auth', 'rejected', 'error']) {
+            expect(MemoryDegradation.parse({ path: 'vector', reason })).toEqual({ path: 'vector', reason });
+        }
+        for (const path of ['fts', 'graph'])
+            expect(MemoryDegradation.safeParse({ path, reason: 'error' }).success).toBe(true);
+        expect(MemoryDegradation.safeParse({ path: 'vector', reason: 'slow' }).success).toBe(false);
+        expect(AgentEvent.safeParse({ ...event, omitted: 0 }).success).toBe(false);
+        expect(MemoryRetrieveResult.parse({ items: [], block: '', omitted: 0 })).not.toHaveProperty('degraded');
+        expect(
+            MemoryRetrieveResult.parse({
+                items: [],
+                block: '',
+                omitted: 0,
+                degraded: [{ path: 'vector', reason: 'auth' }],
+            }).degraded,
+        ).toEqual([{ path: 'vector', reason: 'auth' }]);
     });
 });

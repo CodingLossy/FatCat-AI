@@ -17,6 +17,18 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - Environment variables now start with `FATCAT_AI_` instead of `AIP_` (for example `FATCAT_AI_PORT`, `FATCAT_AI_DATA_DIR`, `FATCAT_AI_TOKEN`). The old names still work for now and print a deprecation warning.
 - Unchanged on purpose: the `aip_pat_` token prefix, the `aip_session` / `aip_csrf` cookies and the `X-AIP-Server-Version` header, so existing tokens and API v1 clients keep working.
 
+### M5a · Channels (in progress)
+
+#### Added
+
+- Chat: when memory recall was incomplete, the "Memories used this turn" panel now says so, even if no memory was used. For example: "Vector search timed out; this turn used only full-text and linked search, so relevant memories may be missing." If the embedding key looks invalid or the endpoint rejected the request, the note links to Settings. When some relevant memories didn't fit the memory budget, the panel shows how many (ADR 0017).
+- API: the `memory-used` event has optional `degraded` (`[{ path, reason }]`, reason `timeout`, `auth`, `rejected` or `error`) and `omitted` fields, and `POST /api/v1/memory/retrieve` returns `degraded`. When recall was incomplete, `memory-used` is sent even with an empty `ids`. Not having an embedding profile is not counted as incomplete. All changes are additive.
+- The server writes a local `memory.retrieve.degraded` log line with the path, reason, time taken, run id and (for embedding errors) the HTTP status code only; no query text, memory content or error text.
+
+#### Fixed
+
+- Hold to talk: a recording is no longer dropped as silent when the tab was in the background for part of it (the level meter doesn't run there), even if the first part was recorded in the foreground.
+
 ### M4 · Voice and images (2026-11-10)
 
 Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`) for chat and images and SiliconFlow for voice (`Qwen/Qwen3-ASR-1.7B`, `FunAudioLLM/CosyVoice2-0.5B`): transcription of MP3, WebM, Ogg and WAV, reading aloud and images all worked. With a real microphone the transcripts came out wrong (in another language) although the same formats transcribe correctly from synthetic audio; this points to the microphone input on that machine, and the owner decided to accept it. Firefox wasn't tested. See `docs/milestones/M4-self-check.md`. In CI, with a fake endpoint, FatCat-AI adds about 15 ms to a voice round trip (recording → reply → first audio), well under the 1-second target, and idle memory is unchanged at about 110 MiB.
@@ -221,6 +233,13 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 - Windows 上旧服务器仍在运行时,数据目录无法迁移(`EPERM` / `EBUSY`)。服务器会重试几秒,仍失败就提示先停止旧的 AI-Personal 服务器并退出,不移动也不删除任何文件。
 - 环境变量前缀由 `AIP_` 改为 `FATCAT_AI_`(如 `FATCAT_AI_PORT`、`FATCAT_AI_DATA_DIR`、`FATCAT_AI_TOKEN`);旧名暂时仍可用,并打印弃用警告。
 - 有意不改:令牌前缀 `aip_pat_`、Cookie `aip_session` / `aip_csrf` 与响应头 `X-AIP-Server-Version`,现有令牌与 API v1 客户端不受影响。
+
+### M5a · 渠道(进行中)
+
+- **新增**:记忆召回不完整时,「本次用到的记忆」面板会说明,即使这一轮没有用到记忆,例如「向量检索超时,本轮只用了全文与关联检索,相关记忆可能不全」;嵌入密钥可能失效或嵌入接口拒绝请求时,说明里带设置页的链接。有相关记忆因预算没有展示时,显示未展示的条数(ADR 0017)。
+- **新增**:API:`memory-used` 事件增加可选的 `degraded`(`[{ path, reason }]`,reason 为 `timeout`、`auth`、`rejected` 或 `error`)与 `omitted`;`POST /api/v1/memory/retrieve` 的结果增加 `degraded`。召回不完整时即使 `ids` 为空也发送 `memory-used`。没有嵌入配置档不算不完整。都是向后兼容的增量。
+- **新增**:服务器写一行本地日志 `memory.retrieve.degraded`,只记路径、原因、耗时、运行 id,嵌入接口出错时另记 HTTP 状态码;不记查询文本、记忆内容或错误原文。
+- **修复**:按住说话时,如果录音中途标签页切到过后台(那段时间采不到电平),即使前半段是在前台录的,也不再被当成静音丢掉。
 
 ### M4 · 语音与图片(2026-11-10)
 

@@ -5,6 +5,7 @@ import type {
     AgentEvent,
     AuditEntry,
     ImageMessagePart,
+    MemoryDegradation,
     Message,
     MessagePart,
     PreauthRemember,
@@ -36,6 +37,14 @@ import {
 } from '@fatcat-ai/tools';
 import type { ApprovalOutcome } from './tools.js';
 import { assistantLabel } from './labels.js';
+
+/** 每轮的记忆上下文:系统消息、用到的记忆,以及召回是否完整(ADR 0017)。 */
+export interface MemoryTurnContext {
+    messages: string[];
+    ids: string[];
+    degraded?: MemoryDegradation[] | undefined;
+    omitted?: number | undefined;
+}
 
 export interface RunManagerOptions {
     repos: Repositories;
@@ -74,9 +83,11 @@ export interface RunManagerOptions {
             query: string;
             firstTurn: boolean;
             contextWindow: number;
+            /** 所属运行,只用于日志。 */
+            runId: string;
         },
         signal: AbortSignal,
-    ) => Promise<{ messages: string[]; ids: string[] }>;
+    ) => Promise<MemoryTurnContext>;
 }
 
 export interface FinishedTurn {
@@ -423,7 +434,7 @@ export class RunManager {
         input: StartRunInput,
         run: StartedRun & { assistantSeq: number },
         signal: AbortSignal,
-    ): Promise<{ messages: string[]; ids: string[] }> {
+    ): Promise<MemoryTurnContext> {
         const none = { messages: [], ids: [] };
         if (!this.options.memoryContext) return none;
         const { repos } = this.options;
@@ -439,6 +450,7 @@ export class RunManager {
                     query: user ? textOf(user) : '',
                     firstTurn: earlier.length === 0,
                     contextWindow: input.profile.contextWindow ?? DEFAULT_CONTEXT_WINDOW,
+                    runId: run.runId,
                 },
                 signal,
             );
@@ -574,7 +586,16 @@ export class RunManager {
         try {
             const provider = this.options.providerFor(input.profile);
             const memory = await this.memoryFor(input, run, signal);
-            if (memory.ids.length > 0) emit({ type: 'memory-used', runId: run.runId, ids: memory.ids });
+            // 有降级时即使没用到记忆也发,让客户端能说明「召回可能不完整」(ADR 0017 第 1 节)
+            if (memory.ids.length > 0 || memory.degraded?.length) {
+                emit({
+                    type: 'memory-used',
+                    runId: run.runId,
+                    ids: memory.ids,
+                    ...(memory.degraded?.length ? { degraded: memory.degraded } : {}),
+                    ...(memory.omitted ? { omitted: memory.omitted } : {}),
+                });
+            }
             const messages = await this.context(
                 ownerId,
                 sessionId,

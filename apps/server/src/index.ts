@@ -100,6 +100,9 @@ const embeddings = createEmbeddingService({
 // 记忆:写入后排队嵌入并防抖重建 digest;每轮注入 digest 与记忆块(ADR 0007 第 5.6 节)
 const memoryStack = createMemoryStack(repos, embeddings, {
     onError: (err) => logger.warn({ err }, 'memory digest rebuild failed'),
+    // 只记路径、原因、耗时、运行 id 与状态码;不记查询文本、记忆内容或嵌入接口的错误原文(ADR 0017 第 4 节)
+    onDegraded: ({ path, reason, elapsedMs, httpStatus }, { runId }) =>
+        logger.info({ path, reason, elapsedMs, runId, httpStatus }, 'memory.retrieve.degraded'),
 });
 const { memory } = memoryStack;
 const kb = createKnowledgeBase({

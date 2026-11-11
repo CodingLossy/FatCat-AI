@@ -8,6 +8,7 @@ export {
     DEFAULT_APPROVAL_TIMEOUT_MS,
     type FinishedTurn,
     MAX_TOOL_STEPS,
+    type MemoryTurnContext,
     RunConflictError,
     RunManager,
     type RunManagerOptions,
