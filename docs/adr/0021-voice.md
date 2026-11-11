@@ -49,9 +49,11 @@ M4 要让用户在浏览器里说话、听回复。计划要求「前端不自�
   | ------------ | ------------------------------------------------ | ----------------------- |
   | `audio/webm` | `1A 45 DF A3`(EBML)                              | Chrome / Edge / Firefox |
   | `audio/ogg`  | `4F 67 67 53`(`OggS`)                            | Firefox                 |
-  | `audio/mp4`  | 第 4–7 字节为 `66 74 79 70`(`ftyp`)              | Safari                  |
+  | `audio/mp4`  | `ftyp`(第 4–7 字节),且 major brand 在白名单中¹   | Safari                  |
   | `audio/wav`  | `52 49 46 46 ?? ?? ?? ?? 57 41 56 45`(RIFF…WAVE) | 测试与 IM 渠道          |
   | `audio/mpeg` | `49 44 33`(`ID3`)或 `FF Ex` / `FF Fx` 帧同步     | IM 渠道                 |
+
+  ¹ `ftyp` 也出现在 HEIC 图片与 MP4 / QuickTime 视频中,只看 `ftyp` 会把它们当成录音。白名单:`M4A `、`M4B `、`mp41`、`mp42`、`isom`、`iso2`、`iso5`、`iso6`、`dash`、`3gp4`、`3gp5`(浏览器录音与常见音频);其余(如 `heic`、`qt  `)返回 null。M4 PR 3 起生效。
 
 - 上限:≤ 10 MiB(`MAX_TRANSCRIPTION_BYTES`,超过 `413`);类型不对 `415`。录音时长 ≤ 120 秒(`MAX_RECORDING_SECONDS`)由客户端在录音时卡住;**M4 的服务器只检查字节数,不解析容器时长**(不为此引入解析库)。10 MiB 对 120 秒的 Opus / AAC 绰绰有余,对 16 kHz 单声道 WAV 约 5 分钟,所以服务器侧仍有一个大致的上界。
 - 请求体按读到的字节数流式检查,超过上限立即中止,不先读完再判断;整个音频在内存中最多保留一份(`FormData` 转发需要),请求结束即释放。

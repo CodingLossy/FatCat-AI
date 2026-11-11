@@ -29,6 +29,7 @@ interface Draft {
     model: string;
     apiKeyRef: string;
     purpose: ModelPurpose[];
+    vision: boolean;
 }
 
 const emptyDraft: Draft = {
@@ -38,6 +39,7 @@ const emptyDraft: Draft = {
     model: '',
     apiKeyRef: '',
     purpose: ['chat'],
+    vision: false,
 };
 
 function ProfileForm({
@@ -121,6 +123,16 @@ function ProfileForm({
                     </label>
                 ))}
             </fieldset>
+            <label className="inline">
+                <input
+                    type="checkbox"
+                    name="vision"
+                    checked={d.vision}
+                    onChange={(e) => setD({ ...d, vision: e.target.checked })}
+                />{' '}
+                {t('models.vision')}
+            </label>
+            <span className="small muted">{t('models.visionHint')}</span>
             {error ? <p className="error">{error}</p> : null}
             <div className="row">
                 <button type="submit" className="primary" disabled={!keyRefOk || d.purpose.length === 0}>
@@ -163,6 +175,7 @@ function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) =>
             model: d.model,
             apiKeyRef: d.apiKeyRef === '' ? null : d.apiKeyRef,
             purpose: d.purpose,
+            vision: d.vision,
         };
         if (id) await api.models.update(id, body);
         else await api.models.create(body);
@@ -207,6 +220,7 @@ function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) =>
                                     model: p.model,
                                     apiKeyRef: p.apiKeyRef ?? '',
                                     purpose: p.purpose,
+                                    vision: p.vision === true,
                                 }}
                                 onSave={(d) => save(p.id, d)}
                                 onCancel={() => setEditing(null)}
@@ -223,6 +237,7 @@ function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) =>
                             <div className="small muted">
                                 {p.kind} · {p.model} · {p.baseURL ?? DEFAULT_BASE_URLS[p.kind] ?? ''} ·{' '}
                                 {p.apiKeyRef ?? '—'} · {p.purpose.join(', ')}
+                                {p.vision ? ` · ${t('models.visionBadge')}` : ''}
                             </div>
                             <div className="row">
                                 <button type="button" onClick={() => void test(p)}>

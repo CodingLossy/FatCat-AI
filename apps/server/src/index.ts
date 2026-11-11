@@ -17,7 +17,9 @@ import { createApp } from './app.js';
 import { createMcpControl } from './mcp-setup.js';
 import { createMailService } from './mail-setup.js';
 import { createMemoryStack } from './memory-setup.js';
-import { startMaintenance } from './maintenance-setup.js';
+import { MAINTENANCE_CRON, startMaintenance } from './maintenance-setup.js';
+import { createAttachmentFiles, createImageLoader, sweepAttachments } from './attachment-files.js';
+import { Cron } from 'croner';
 import { itemProviders } from './memory-provider.js';
 import { createEmbeddingService } from './embeddings.js';
 import { randomToken } from './auth/crypto.js';
@@ -112,10 +114,12 @@ const items = createItemService({
     onSynced: (ownerId) => void kb.index(ownerId),
 });
 const bus = new EventBus();
+const attachmentFiles = createAttachmentFiles(config.dataDir);
 const runs = new RunManager({
     repos,
     bus,
     providerFor,
+    loadImage: createImageLoader(repos, attachmentFiles),
     tools: createToolRegistry(
         memoryStack,
         repos,
@@ -145,6 +149,14 @@ const maintenance = startMaintenance({
     isBusy: () => runs.activeRuns > 0,
     onChanged: (ownerId) => memoryStack.digest.schedule(ownerId),
     onError: (err) => logger.warn({ err }, 'memory maintenance failed'),
+});
+// 图片附件的清理:每天与记忆维护同一时间,删除 24 小时内未被引用的附件与孤立文件(ADR 0020 第 3 节)
+const sweepJob = new Cron(MAINTENANCE_CRON, { unref: true }, () => {
+    sweepAttachments(repos, attachmentFiles, new Date())
+        .then((removed) => {
+            if (removed > 0) logger.info({ removed }, 'removed unused attachments');
+        })
+        .catch((err: unknown) => logger.warn({ err }, 'attachment cleanup failed'));
 });
 const interrupted = runs.recoverInterrupted();
 if (interrupted > 0) logger.warn({ count: interrupted }, 'marked runs interrupted by the previous shutdown as failed');
@@ -183,6 +195,7 @@ const app = createApp({
     mail,
     kb,
     redact: (text) => redactor.redact(text),
+    attachmentFiles,
 });
 
 const server = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
@@ -197,6 +210,7 @@ function shutdown(signal: string): void {
     embeddings.stop();
     memoryStack.stop();
     maintenance.stop();
+    sweepJob.stop();
     mail.stop();
     server.close(() => {
         conn.close();

@@ -4,6 +4,7 @@
 import type {
     AgentEvent,
     AuditEntry,
+    ImageMessagePart,
     Message,
     MessagePart,
     PreauthRemember,
@@ -13,7 +14,15 @@ import type {
 import { type ChatMessage, type ModelProvider, ProviderError, type ToolCall } from '@fatcat-ai/providers';
 import { type ModelProfileRecord, newId, type Repositories } from '@fatcat-ai/storage';
 import type { EventBus } from './bus.js';
-import { DEFAULT_CONTEXT_WINDOW, planContext, SUMMARY_PREFIX, textOf, toChatMessage, transcript } from './context.js';
+import {
+    DEFAULT_CONTEXT_WINDOW,
+    type ImageLoader,
+    planContext,
+    SUMMARY_PREFIX,
+    textOf,
+    toChatMessages,
+    transcript,
+} from './context.js';
 import {
     decide,
     inputDigest,
@@ -36,6 +45,8 @@ export interface RunManagerOptions {
     persistIntervalMs?: number;
     now?: () => number;
     onError?: (error: unknown, context: { runId: string }) => void;
+    /** 读取图片附件(ADR 0020);未提供时上下文里的图片一律换成占位文本。 */
+    loadImage?: (ownerId: string, attachmentId: string) => ReturnType<ImageLoader>;
     /** 交给模型的工具;为空时不发送 tools,也不加系统提示(ADR 0010)。 */
     tools?: ToolRegistry;
     /** 审批请求的有效期,默认 30 分钟;过期按拒绝处理。 */
@@ -97,6 +108,8 @@ export interface StartRunInput {
     /** 新的用户消息;与 inputMessageId 二选一。 */
     text?: string;
     clientMessageId?: string | undefined;
+    /** 随新用户消息发送的图片;附件在同一事务中挂到这条消息上(ADR 0020 第 4 节)。 */
+    images?: ImageMessagePart[] | undefined;
     /** 重试 / 重新生成:沿用已有的用户消息。 */
     inputMessageId?: string;
     /** 重新生成时被替代的助手消息。 */
@@ -161,11 +174,18 @@ export class RunManager {
             if (!userMessageId) {
                 const user = repos.messages.append(input.ownerId, input.sessionId, {
                     role: 'user',
-                    parts: [{ type: 'text', text: input.text ?? '' }],
+                    parts: [{ type: 'text', text: input.text ?? '' }, ...(input.images ?? [])],
                     status: 'complete',
                     clientMessageId: input.clientMessageId,
                 });
                 userMessageId = user.id;
+                if (input.images?.length) {
+                    repos.attachments.link(
+                        input.ownerId,
+                        input.images.map((i) => i.attachmentId),
+                        user.id,
+                    );
+                }
                 const session = repos.sessions.get(input.ownerId, input.sessionId);
                 if (session && session.title === '' && input.text) {
                     repos.sessions.update(input.ownerId, input.sessionId, {
@@ -471,7 +491,13 @@ export class RunManager {
                 content: `${SUMMARY_PREFIX}\n\n${summaries.map((x) => x.summary).join('\n\n')}`,
             });
         }
-        out.push(...plan.recent.map(toChatMessage));
+        const loadImage = this.options.loadImage;
+        out.push(
+            ...(await toChatMessages(plan.recent, {
+                vision: profile.vision === true,
+                load: loadImage && ((id: string) => loadImage(ownerId, id)),
+            })),
+        );
         return out;
     }
 

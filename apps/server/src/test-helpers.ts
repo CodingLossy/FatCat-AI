@@ -12,6 +12,7 @@ import { type Connection, createRepositories, openStorage, type Repositories } f
 import type { WebFetchOptions } from '@fatcat-ai/tools';
 import { createItemService, createKnowledgeBase, type KnowledgeBase } from '@fatcat-ai/items';
 import { createMailComplete, createSummarizer, createToolRegistry } from './agent-setup.js';
+import { type AttachmentFiles, createAttachmentFiles, createImageLoader } from './attachment-files.js';
 import { createApp, type AppDeps } from './app.js';
 import { createMemoryStack } from './memory-setup.js';
 import { itemProviders } from './memory-provider.js';
@@ -32,6 +33,7 @@ export interface TestServer {
     runs: RunManager;
     embeddings: EmbeddingService;
     kb: KnowledgeBase;
+    attachmentFiles: AttachmentFiles;
     dir: string;
     repos: Repositories;
     /** 测试中直接读写数据库(模拟其他客户端的修改)。 */
@@ -98,11 +100,13 @@ export async function createTestServer(
         onSynced: (ownerId) => void kb.index(ownerId),
     });
     const bus = new EventBus();
+    const attachmentFiles = createAttachmentFiles(dir);
     const runs = new RunManager({
         repos,
         bus,
         persistIntervalMs: 0,
         providerFor,
+        loadImage: createImageLoader(repos, attachmentFiles),
         tools: createToolRegistry(memory, repos, items, kb, options.webFetch ? { webFetch: options.webFetch } : {}, {
             runner: mailRunner,
             secret: (ref) => secrets.resolve(ref),
@@ -148,6 +152,7 @@ export async function createTestServer(
         memory,
         clientIp: (c) => c.req.header('x-test-ip') ?? '127.0.0.1',
         loginLimiter: new FailureLimiter(5, 60_000),
+        attachmentFiles,
     });
     return {
         app,
@@ -156,6 +161,7 @@ export async function createTestServer(
         runs,
         embeddings,
         kb,
+        attachmentFiles,
         dir,
         repos,
         conn,

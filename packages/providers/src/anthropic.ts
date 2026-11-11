@@ -19,6 +19,7 @@ import {
     type ChatChunk,
     type ChatMessage,
     type ChatRequest,
+    contentParts,
     type FinishReason,
     type ModelProvider,
     ProviderError,
@@ -44,6 +45,7 @@ export interface NativeProviderOptions {
 
 type Block =
     | { type: 'text'; text: string }
+    | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
     | { type: 'tool_use'; id: string; name: string; input: unknown }
     | { type: 'tool_result'; tool_use_id: string; content: string };
 
@@ -68,7 +70,14 @@ export function toAnthropicMessages(messages: ChatMessage[]): { system: string; 
                 system.push(m.content);
                 break;
             case 'user':
-                push('user', [{ type: 'text', text: m.content }]);
+                push(
+                    'user',
+                    contentParts(m.content).map((p): Block =>
+                        p.type === 'text'
+                            ? { type: 'text', text: p.text }
+                            : { type: 'image', source: { type: 'base64', media_type: p.mediaType, data: p.data } },
+                    ),
+                );
                 break;
             case 'assistant': {
                 const blocks: Block[] = m.content ? [{ type: 'text', text: m.content }] : [];

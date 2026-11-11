@@ -71,11 +71,31 @@ export const VoiceStateReport = z.object({
 });
 export type VoiceStateReport = z.infer<typeof VoiceStateReport>;
 
+/**
+ * ISO-BMFF 的 major brand 白名单:浏览器录音(Safari)与常见音频。`ftyp` 本身也出现在 HEIC 图片与 MP4 视频中,
+ * 只看 `ftyp` 会把它们当成录音(ADR 0021 第 3 节)。
+ */
+const MP4_AUDIO_BRANDS = new Set([
+    'M4A ',
+    'M4B ',
+    'mp41',
+    'mp42',
+    'isom',
+    'iso2',
+    'iso5',
+    'iso6',
+    'dash',
+    '3gp4',
+    '3gp5',
+]);
+
+const brandOf = (bytes: Uint8Array) => String.fromCharCode(...bytes.subarray(8, 12));
+
 /** 按魔数判断录音类型;不信任文件名与 Content-Type(ADR 0021 第 3 节)。 */
 export function sniffAudioType(bytes: Uint8Array): AudioMediaType | null {
     if (matchesAt(bytes, [0x1a, 0x45, 0xdf, 0xa3])) return 'audio/webm';
     if (matchesAt(bytes, [0x4f, 0x67, 0x67, 0x53])) return 'audio/ogg';
-    if (matchesAt(bytes, [0x66, 0x74, 0x79, 0x70], 4)) return 'audio/mp4';
+    if (matchesAt(bytes, [0x66, 0x74, 0x79, 0x70], 4) && MP4_AUDIO_BRANDS.has(brandOf(bytes))) return 'audio/mp4';
     if (isRiff(bytes, 'WAVE')) return 'audio/wav';
     if (matchesAt(bytes, [0x49, 0x44, 0x33])) return 'audio/mpeg';
     // MPEG 帧同步:11 个 1,且版本与层不是保留值。

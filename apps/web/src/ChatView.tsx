@@ -2,10 +2,19 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import type { RunStream } from '@fatcat-ai/client';
-import type { Message } from '@fatcat-ai/shared';
-import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { MAX_ATTACHMENTS_PER_MESSAGE, type Message, type ModelProfile } from '@fatcat-ai/shared';
+import {
+    type ClipboardEvent,
+    type DragEvent,
+    type KeyboardEvent,
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { effectiveProfile, prepareImage, precheck } from './images.js';
 import { applyEvent, newTurn, type LiveTool, type LiveTurn } from './live-turn.js';
 import { Markdown } from './Markdown.js';
 import { navigate } from './router.js';
@@ -13,7 +22,16 @@ import { ToolCard } from './ToolCard.js';
 import { UsedMemories } from './UsedMemories.js';
 
 /** 新对话:先建会话再跳转,跳转后的 ChatView 负责发送这条消息。 */
-let pendingSend: { sessionId: string; text: string } | null = null;
+let pendingSend: { sessionId: string; text: string; attachmentIds: string[]; previews: string[] } | null = null;
+
+/** 输入框里待发送的图片(本地预览用 object URL)。 */
+interface PendingImage {
+    key: string;
+    file: File;
+    url: string;
+}
+
+let imageKey = 0;
 
 /** 把保存的消息拆成工具卡片;工具结果可能在同一条或后面的消息里。 */
 function toolsOf(message: Message, results: Map<string, LiveTool['result']>): LiveTool[] {
@@ -26,6 +44,25 @@ function toolsOf(message: Message, results: Map<string, LiveTool['result']>): Li
 
 function textOf(message: Message): string {
     return message.parts.map((p) => (p.type === 'text' ? p.text : '')).join('');
+}
+
+function MessageImages({ message }: { message: Message }) {
+    const { t } = useI18n();
+    const images = message.parts.filter((p) => p.type === 'image');
+    if (images.length === 0) return null;
+    return (
+        <div className="message-images">
+            {images.map((p) => (
+                <a key={p.attachmentId} href={api.attachments.url(p.attachmentId)} target="_blank" rel="noreferrer">
+                    <img
+                        src={api.attachments.url(p.attachmentId)}
+                        alt={t('chat.imageAlt', { name: p.fileName })}
+                        loading="lazy"
+                    />
+                </a>
+            ))}
+        </div>
+    );
 }
 
 export function ChatView({
@@ -55,6 +92,33 @@ export function ChatView({
     const [used, setUsed] = useState<{ runId: string | null; ids: string[] } | null>(null);
     const abort = useRef<AbortController | null>(null);
     const bottom = useRef<HTMLDivElement>(null);
+    const fileInput = useRef<HTMLInputElement>(null);
+    const [images, setImages] = useState<PendingImage[]>([]);
+    /** 已发送、服务器消息还没刷新前显示的预览。 */
+    const [livePreviews, setLivePreviews] = useState<string[]>([]);
+    const [uploading, setUploading] = useState(false);
+    const [imageNotice, setImageNotice] = useState<string | null>(null);
+    const [profile, setProfile] = useState<ModelProfile | null>(null);
+
+    // 当前会话实际会用的配置档:决定能不能发图片(服务器的 model_no_vision 是最后一道检查)
+    useEffect(() => {
+        let cancelled = false;
+        void (async () => {
+            try {
+                const [profiles, settings, session] = await Promise.all([
+                    api.models.list(),
+                    api.settings.get(),
+                    sessionId ? api.sessions.get(sessionId) : Promise.resolve(null),
+                ]);
+                if (!cancelled) setProfile(effectiveProfile(profiles.items, settings, session));
+            } catch {
+                if (!cancelled) setProfile(null);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [sessionId]);
 
     const loadMessages = useCallback(async (id: string, hideRunId: string | null) => {
         const page = await api.sessions.messages(id, { limit: 200 });
@@ -87,9 +151,22 @@ export function ChatView({
     );
 
     const send = useCallback(
-        async (id: string, text: string, signal: AbortSignal) => {
+        async (
+            id: string,
+            text: string,
+            signal: AbortSignal,
+            attachmentIds: string[] = [],
+            previews: string[] = [],
+        ) => {
             setError(null);
-            await consume(id, api.sessions.send(id, { text }, { signal }), newTurn(text), signal);
+            setLivePreviews(previews);
+            try {
+                const body = attachmentIds.length > 0 ? { text, attachmentIds } : { text };
+                await consume(id, api.sessions.send(id, body, { signal }), newTurn(text), signal);
+            } finally {
+                for (const url of previews) URL.revokeObjectURL(url);
+                setLivePreviews([]);
+            }
         },
         [consume],
     );
@@ -105,9 +182,9 @@ export function ChatView({
                 if (signal.aborted) return;
                 await loadMessages(sessionId, session.activeRunId);
                 if (pendingSend?.sessionId === sessionId) {
-                    const { text } = pendingSend;
+                    const { text, attachmentIds, previews } = pendingSend;
                     pendingSend = null;
-                    await send(sessionId, text, signal);
+                    await send(sessionId, text, signal, attachmentIds, previews);
                 } else if (session.activeRunId) {
                     // 刷新或换页回来:从头补发这次运行的事件,重建进行中的一轮(ADR 0009 第 3 节)
                     const runId = session.activeRunId;
@@ -124,17 +201,86 @@ export function ChatView({
         bottom.current?.scrollIntoView?.({ block: 'end' });
     }, [messages, live]);
 
+    const noVision = images.length > 0 && profile !== null && profile.vision !== true;
+
+    const addFiles = (files: readonly File[]) => {
+        const picked = files.filter((f) => f.type === '' || f.type.startsWith('image/'));
+        if (picked.length === 0) return;
+        setImageNotice(null);
+        const next = [...images];
+        for (const file of picked) {
+            const check = precheck(file);
+            if (check !== 'ok') {
+                setImageNotice(
+                    t(check === 'type' ? 'chat.imageNotSupported' : 'chat.imageTooLarge', { name: file.name }),
+                );
+                continue;
+            }
+            if (next.length >= MAX_ATTACHMENTS_PER_MESSAGE) {
+                setImageNotice(t('chat.imageTooMany', { n: MAX_ATTACHMENTS_PER_MESSAGE }));
+                break;
+            }
+            next.push({ key: String(++imageKey), file, url: URL.createObjectURL(file) });
+        }
+        setImages(next);
+    };
+
+    const removeImage = (key: string) => {
+        const image = images.find((i) => i.key === key);
+        if (image) URL.revokeObjectURL(image.url);
+        setImages(images.filter((i) => i.key !== key));
+        setImageNotice(null);
+    };
+
+    const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+        const files = [...e.clipboardData.files];
+        if (files.some((f) => f.type.startsWith('image/'))) {
+            e.preventDefault();
+            addFiles(files);
+        }
+    };
+
+    const onDrop = (e: DragEvent<HTMLDivElement>) => {
+        if (e.dataTransfer.files.length === 0) return;
+        e.preventDefault();
+        addFiles([...e.dataTransfer.files]);
+    };
+
+    /** 先上传图片再发消息;上传失败时图片留在输入框里,可以重试。 */
+    const uploadImages = async (): Promise<{ ids: string[]; previews: string[] } | null> => {
+        if (images.length === 0) return { ids: [], previews: [] };
+        setUploading(true);
+        try {
+            const ids: string[] = [];
+            for (const image of images) {
+                const blob = await prepareImage(image.file);
+                ids.push((await api.attachments.upload(blob, image.file.name || 'image')).id);
+            }
+            const previews = images.map((i) => i.url);
+            setImages([]);
+            return { ids, previews };
+        } catch (e) {
+            setError(errorText(e));
+            return null;
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const submit = async () => {
-        const text = input.trim();
-        if (!text || live) return;
+        const text = input.trim() || (images.length > 0 ? t('chat.imageDefaultText') : '');
+        if (!text || live || uploading || noVision) return;
+        setError(null);
+        const uploaded = await uploadImages();
+        if (!uploaded) return;
         setInput('');
         if (sessionId && abort.current) {
-            await send(sessionId, text, abort.current.signal);
+            await send(sessionId, text, abort.current.signal, uploaded.ids, uploaded.previews);
             return;
         }
         try {
             const session = await api.sessions.create();
-            pendingSend = { sessionId: session.id, text };
+            pendingSend = { sessionId: session.id, text, attachmentIds: uploaded.ids, previews: uploaded.previews };
             await onSessionsChanged();
             navigate({ name: 'session', id: session.id }, true);
         } catch (e) {
@@ -182,6 +328,7 @@ export function ChatView({
                 {messages.map((m) => (
                     <div key={m.id} className={`message ${m.role}`} data-status={m.status}>
                         {m.role === 'user' ? <p className="user-text">{textOf(m)}</p> : <Markdown text={textOf(m)} />}
+                        {m.role === 'user' ? <MessageImages message={m} /> : null}
                         {toolsOf(m, results).map((tool) => (
                             <ToolCard key={tool.callId} tool={tool} />
                         ))}
@@ -191,6 +338,13 @@ export function ChatView({
                 {live?.userText ? (
                     <div className="message user">
                         <p className="user-text">{live.userText}</p>
+                        {livePreviews.length > 0 ? (
+                            <div className="message-images">
+                                {livePreviews.map((url) => (
+                                    <img key={url} src={url} alt="" />
+                                ))}
+                            </div>
+                        ) : null}
                     </div>
                 ) : null}
                 {live ? (
@@ -208,21 +362,80 @@ export function ChatView({
                 {error ? <p className="error">{t('chat.failed', { msg: error })}</p> : null}
                 <div ref={bottom} />
             </div>
-            <div className="composer">
+            {images.length > 0 || imageNotice || noVision || uploading ? (
+                <div className="composer-images" data-testid="composer-images">
+                    {images.length > 0 ? (
+                        <ul className="image-previews">
+                            {images.map((image) => (
+                                <li key={image.key}>
+                                    <img src={image.url} alt={t('chat.imageAlt', { name: image.file.name })} />
+                                    <button
+                                        type="button"
+                                        className="remove-image"
+                                        aria-label={t('chat.removeImage', { name: image.file.name })}
+                                        onClick={() => removeImage(image.key)}
+                                        disabled={uploading}
+                                    >
+                                        ×
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : null}
+                    {noVision && profile ? (
+                        <p className="small warning" role="status" data-testid="no-vision">
+                            {t('chat.noVision', { label: profile.label })}
+                        </p>
+                    ) : null}
+                    {imageNotice ? (
+                        <p className="small warning" role="status">
+                            {imageNotice}
+                        </p>
+                    ) : null}
+                    {uploading ? <p className="small muted">{t('chat.uploading')}</p> : null}
+                </div>
+            ) : null}
+            <div className="composer" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
                 <textarea
                     aria-label={t('chat.placeholder')}
                     placeholder={t('chat.placeholder')}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={onKeyDown}
+                    onPaste={onPaste}
                     rows={3}
                 />
+                <input
+                    ref={fileInput}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    multiple
+                    hidden
+                    data-testid="image-input"
+                    onChange={(e) => {
+                        addFiles([...(e.target.files ?? [])]);
+                        e.target.value = '';
+                    }}
+                />
+                <button
+                    type="button"
+                    title={t('chat.attachHint')}
+                    onClick={() => fileInput.current?.click()}
+                    disabled={uploading || images.length >= MAX_ATTACHMENTS_PER_MESSAGE}
+                >
+                    {t('chat.attachImage')}
+                </button>
                 {live ? (
                     <button type="button" onClick={() => void stop()} disabled={!live.runId}>
                         {t('chat.stop')}
                     </button>
                 ) : (
-                    <button type="button" className="primary" onClick={() => void submit()} disabled={!input.trim()}>
+                    <button
+                        type="button"
+                        className="primary"
+                        onClick={() => void submit()}
+                        disabled={(!input.trim() && images.length === 0) || uploading || noVision}
+                    >
                         {t('chat.send')}
                     </button>
                 )}

@@ -99,6 +99,18 @@ describe('请求与鉴权', () => {
         expect(f.calls[1]!.init.credentials).toBe('include');
     });
 
+    it('上传附件用 multipart:不设 content-type,带 CSRF;url 指向附件', async () => {
+        const f = fakeFetch([Response.json({ id: 'a1' }), new Response(new Uint8Array([1, 2]))]);
+        const client = createClient({ baseUrl: 'http://h', csrfToken: () => 'csrf1', fetch: f.fn });
+        await client.attachments.upload(new Blob([new Uint8Array([0x89])], { type: 'image/png' }), 'cat.png');
+        const body = f.calls[0]!.init.body as FormData;
+        expect((body.get('file') as File).name).toBe('cat.png');
+        expect(header(f.calls[0]!, 'content-type')).toBeUndefined();
+        expect(header(f.calls[0]!, 'x-csrf-token')).toBe('csrf1');
+        expect(client.attachments.url('a1')).toBe('http://h/api/v1/attachments/a1');
+        expect((await client.attachments.read('a1')).size).toBe(2);
+    });
+
     it('非 2xx 转为 FatCatApiError(保留 problem 字段),无正文时合成', async () => {
         const problem = { title: 'Conflict', status: 409, code: 'conflict', requestId: 'r1', detail: 'busy' };
         const f = fakeFetch([

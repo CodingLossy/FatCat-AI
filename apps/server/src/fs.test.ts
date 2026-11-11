@@ -215,7 +215,7 @@ describe('验收:总结 PDF 并另存为 md 只需一次审批', () => {
         steps.push(
             callTool('fs.read', { path: path.join(base, 'Docs', 'paper.pdf') }),
             async function* (request) {
-                pdfText = request.messages.at(-1)!.content;
+                pdfText = request.messages.at(-1)!.content as string;
                 yield {
                     type: 'tool-call',
                     callId: 'c2',

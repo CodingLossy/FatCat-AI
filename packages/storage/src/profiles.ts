@@ -18,6 +18,8 @@ export interface ModelProfileRecord {
     purpose: ModelPurpose[];
     contextWindow?: number;
     params?: { temperature?: number; maxOutputTokens?: number };
+    /** 支持图片输入(ADR 0020 第 1.2 节);false 时 API 中省略。 */
+    vision?: boolean;
     createdAt: string;
     updatedAt: string;
 }
@@ -33,6 +35,7 @@ interface Row {
     purposeJson: string;
     contextWindow: number | null;
     paramsJson: string | null;
+    vision: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -48,6 +51,7 @@ function toRecord(row: Row): ModelProfileRecord {
         purpose: JSON.parse(row.purposeJson) as ModelPurpose[],
         ...(row.contextWindow === null ? {} : { contextWindow: row.contextWindow }),
         ...(row.paramsJson === null ? {} : { params: JSON.parse(row.paramsJson) as ModelProfileRecord['params'] }),
+        ...(row.vision === 1 ? { vision: true } : {}),
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
     };
@@ -65,6 +69,7 @@ function toParams(input: ModelProfileInput, ownerId: string, id: string, created
         purposeJson: JSON.stringify(input.purpose),
         contextWindow: input.contextWindow ?? null,
         paramsJson: input.params === undefined ? null : JSON.stringify(input.params),
+        vision: input.vision === true ? 1 : 0,
         createdAt,
         updatedAt,
     };
@@ -76,14 +81,14 @@ export function createProfileRepository(conn: Connection, now: () => Date) {
     const q = {
         insert: sqlite.prepare(
             `INSERT INTO model_profiles (id, owner_id, label, kind, base_url, api_key_ref, model, purpose_json,
-                                         context_window, params_json, created_at, updated_at)
+                                         context_window, params_json, vision, created_at, updated_at)
              VALUES (@id, @ownerId, @label, @kind, @baseUrl, @apiKeyRef, @model, @purposeJson,
-                     @contextWindow, @paramsJson, @createdAt, @updatedAt)`,
+                     @contextWindow, @paramsJson, @vision, @createdAt, @updatedAt)`,
         ),
         replace: sqlite.prepare(
             `UPDATE model_profiles SET label = @label, kind = @kind, base_url = @baseUrl, api_key_ref = @apiKeyRef,
                 model = @model, purpose_json = @purposeJson, context_window = @contextWindow,
-                params_json = @paramsJson, updated_at = @updatedAt
+                params_json = @paramsJson, vision = @vision, updated_at = @updatedAt
              WHERE owner_id = @ownerId AND id = @id`,
         ),
         get: sqlite.prepare<[string, string], Row>(`${select} WHERE owner_id = ? AND id = ?`),

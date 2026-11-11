@@ -19,6 +19,7 @@ import {
     type ChatChunk,
     type ChatMessage,
     type ChatRequest,
+    contentParts,
     type FinishReason,
     type ModelProvider,
     ProviderError,
@@ -28,6 +29,7 @@ export const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta
 
 type Part =
     | { text: string }
+    | { inlineData: { mimeType: string; data: string } }
     | { functionCall: { name: string; args: unknown } }
     | { functionResponse: { name: string; response: Record<string, unknown> } };
 
@@ -61,7 +63,12 @@ export function toGeminiContents(messages: ChatMessage[]): { system: string; con
                 system.push(m.content);
                 break;
             case 'user':
-                push('user', [{ text: m.content }]);
+                push(
+                    'user',
+                    contentParts(m.content).map((p): Part =>
+                        p.type === 'text' ? { text: p.text } : { inlineData: { mimeType: p.mediaType, data: p.data } },
+                    ),
+                );
                 break;
             case 'assistant': {
                 const parts: Part[] = m.content ? [{ text: m.content }] : [];
