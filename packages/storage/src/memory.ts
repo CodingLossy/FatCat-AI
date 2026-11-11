@@ -3,7 +3,7 @@
 
 // 记忆 v1(ADR 0007 的 M1 子集):每条记忆是一个 items 行(source='memory')加一个 memory_facts 行。
 // 检索用 items_fts(trigram);少于 3 个字符的查询 trigram 无法命中,回退为 LIKE。
-import type { DecisionState, Memory } from '@fatcat-ai/shared';
+import { type DecisionState, localDate, type Memory } from '@fatcat-ai/shared';
 import type { Connection } from './db.js';
 import { newId } from './ids.js';
 import type { ItemRepository } from './items.js';
@@ -566,13 +566,13 @@ export function createMemoryRepository(conn: Connection, now: () => Date, items:
             }));
         },
         /**
-         * 每日配额:当天(UTC)已用次数小于 limit 时占用一次并返回 true,否则返回 false。
-         * 计数存在 jobs_state 中(例如自动抽取的每日 cheap 模型调用上限)。
+         * 每日配额:当天已用次数小于 limit 时占用一次并返回 true,否则返回 false。「当天」按 timeZone
+         * (用户时区,ADR 0023)计算,不给时按 UTC。计数存在 jobs_state 中(例如自动抽取的每日 cheap 模型调用上限)。
          */
-        takeDailySlot(ownerId: string, job: string, limit: number): boolean {
+        takeDailySlot(ownerId: string, job: string, limit: number, timeZone = 'UTC'): boolean {
             return sqlite.transaction(() => {
                 const at = iso();
-                const day = at.slice(0, 10);
+                const day = localDate(new Date(at), timeZone);
                 const row = q.jobState.get(ownerId, job);
                 const state = row?.stateJson ? (JSON.parse(row.stateJson) as { day?: string; count?: number }) : {};
                 const count = state.day === day ? (state.count ?? 0) : 0;

@@ -10,7 +10,7 @@ import { createRepositories, type ModelProfileRecord, openStorage, type Reposito
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EventBus } from './bus.js';
 import { estimateTokens, planContext, SUMMARY_PREFIX } from './context.js';
-import { RunManager, SYSTEM_PROMPT } from './runner.js';
+import { currentTimeLine, RunManager, SYSTEM_PROMPT } from './runner.js';
 import { ToolRegistry, type ToolDefinition } from '@fatcat-ai/tools';
 
 let dir: string;
@@ -148,7 +148,12 @@ describe('工具与审批', () => {
             'assistant-state',
         ]);
         // 第一次请求带系统提示与工具;第二次带上工具调用与结果
-        expect(requests[0]!.messages[0]).toEqual({ role: 'system', content: SYSTEM_PROMPT });
+        // 系统提示的最后一行是用户时区的当前时间(ADR 0023)
+        expect(requests[0]!.messages[0]).toEqual({
+            role: 'system',
+            content: expect.stringMatching(/^[\s\S]+\n当前时间:\d{4}-\d{2}-\d{2} \d{2}:\d{2}\(/),
+        });
+        expect(String(requests[0]!.messages[0]!.content).startsWith(`${SYSTEM_PROMPT}\n`)).toBe(true);
         expect(requests[0]!.tools?.map((t) => t.name)).toEqual(['memory.save', 'memory.search']);
         // 审批请求持久化,决定后状态为 approved;write 调用写一行审计
         expect(repos.approvals.get(ownerId, event.callId)).toMatchObject({
@@ -462,5 +467,19 @@ describe('预算估算', () => {
         const plan = planContext([msg(1, '长'.repeat(500)), msg(2, '长'.repeat(500)), msg(3, '短')], 100);
         expect(plan.toCompress.map((m) => m.seq)).toEqual([1]);
         expect(plan.recent.map((m) => m.seq)).toEqual([2, 3]);
+    });
+});
+
+describe('系统提示中的当前时间(ADR 0023)', () => {
+    const at = Date.parse('2026-11-10T17:00:00Z');
+    it('按用户时区,只到分钟;没设置时跟随服务器', () => {
+        expect(currentTimeLine({ locale: 'zh-CN', timeZone: 'Asia/Shanghai' }, at)).toBe(
+            '当前时间:2026-11-11 01:00(Asia/Shanghai,星期三)。',
+        );
+        expect(currentTimeLine({ locale: 'en', timeZone: 'UTC' }, at)).toBe(
+            'Current time: 2026-11-10 17:00 (UTC, Tuesday).',
+        );
+        const server = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        expect(currentTimeLine({ locale: 'en', timeZone: null }, at)).toContain(`(${server},`);
     });
 });

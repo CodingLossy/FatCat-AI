@@ -5,6 +5,7 @@
 // 单线程分批执行:每批 500 行一个事务,批之间让出事件循环;有对话进行中或 RSS 超过上限时推迟。
 // 状态存进 jobs_state(当天的游标与是否完成),中断后从游标继续,同一天重复运行不会重复处理。
 // 不调用模型、不启动额外服务。sleep(整理)推迟到 M6,hygiene / optimize 推迟(M2 方案第 7 节)。
+import { effectiveTimeZone, localDate } from '@fatcat-ai/shared';
 import type { MaintenanceRow, Repositories } from '@fatcat-ai/storage';
 import { isProfileKey } from './entity-keys.js';
 
@@ -127,7 +128,8 @@ export function createMaintenanceRunner(options: MaintenanceOptions) {
 
     async function run(job: MaintenanceJob, ownerId: string): Promise<JobOutcome> {
         const at = now();
-        const day = at.toISOString().slice(0, 10);
+        // 「今天已跑过」的日期键按用户时区(ADR 0023 第 4 节)
+        const day = localDate(at, effectiveTimeZone(repos.settings.get(ownerId).timeZone));
         const saved = store.jobState(ownerId, job);
         const prior = (saved?.state ?? {}) as DailyState;
         if (prior.day === day && prior.done) return 'already_done';

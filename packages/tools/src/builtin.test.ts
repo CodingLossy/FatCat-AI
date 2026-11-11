@@ -105,6 +105,19 @@ describe('time', () => {
             /unknown time zone/,
         );
     });
+
+    it('time:不传 timezone 时用用户时区(ADR 0023),显式传的照旧', async () => {
+        const fixed = () => new Date('2026-11-10T17:00:00Z');
+        const tool = createTimeTool(fixed, (ownerId) => (ownerId === ctx.ownerId ? 'Asia/Shanghai' : 'UTC'));
+        expect(await tool.execute(undefined, ctx)).toMatchObject({
+            timezone: 'Asia/Shanghai',
+            local: '2026-11-11 01:00:00',
+        });
+        expect(await tool.execute({ timezone: 'UTC' }, ctx)).toMatchObject({
+            timezone: 'UTC',
+            local: '2026-11-10 17:00:00',
+        });
+    });
 });
 
 describe('SSRF:地址与 URL 校验', () => {

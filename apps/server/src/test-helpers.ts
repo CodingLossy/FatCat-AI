@@ -63,6 +63,8 @@ export interface TestServerOptions {
     mailRunner?: MailJobRunner;
     /** 语音接口的限流与超时(ADR 0021)。 */
     voice?: AppDeps['voice'];
+    /** 保存新时区后的回调(ADR 0023)。 */
+    onTimeZoneChanged?: AppDeps['onTimeZoneChanged'];
 }
 
 export async function createTestServer(
@@ -156,6 +158,7 @@ export async function createTestServer(
         loginLimiter: new FailureLimiter(5, 60_000),
         attachmentFiles,
         ...(options.voice ? { voice: options.voice } : {}),
+        ...(options.onTimeZoneChanged ? { onTimeZoneChanged: options.onTimeZoneChanged } : {}),
     });
     return {
         app,

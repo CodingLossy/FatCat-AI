@@ -62,6 +62,7 @@ import type {
     SetupRequest,
     Settings,
     SettingsPatch,
+    TimeZoneInfo,
     ToolInfo,
     ToolRisk,
     UpdateSessionRequest,
@@ -181,6 +182,8 @@ export function createClient(options: ClientOptions) {
         settings: {
             get: () => t.json<Settings>('/settings'),
             update: (body: SettingsPatch) => t.json<Settings>('/settings', { method: 'PUT', body }),
+            /** 可选时区与服务器时区(ADR 0023);老服务器返回 404。 */
+            timeZones: () => t.json<TimeZoneInfo>('/settings/time-zones'),
         },
 
         /** 图片附件(ADR 0020):先上传,再在发送消息时带上 attachmentIds。 */
