@@ -285,6 +285,21 @@ export const TABLE_COLUMNS = {
         'created_at',
         'updated_at',
     ],
+    channels: [
+        'id',
+        'owner_id',
+        'kind',
+        'label',
+        'enabled',
+        'session_id',
+        'notify_degraded',
+        'config_json',
+        'created_at',
+        'updated_at',
+    ],
+    channel_bindings: ['channel_id', 'external_user_id', 'bound_at'],
+    channel_pairings: ['channel_id', 'code_hash', 'expires_at', 'failed_attempts'],
+    channel_inbox: ['channel_id', 'external_message_id', 'received_at'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type TableName = keyof typeof TABLE_COLUMNS;

@@ -2,7 +2,7 @@
   "name": "@fatcat-ai/channels",
   "version": "0.0.0",
   "private": true,
-  "description": "Channel adapters (1.0: WeCom, WeChat)",
+  "description": "Channel framework and adapters (1.0: WeChat)",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
   "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/channels",
@@ -19,6 +19,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
     }
   },
   "files": [
@@ -27,6 +31,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fatcat-ai/shared": "workspace:*"
   }
 }

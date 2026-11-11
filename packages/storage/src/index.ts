@@ -35,6 +35,7 @@ export type {
     SaveOutcome,
     SessionSummary,
 } from './memory.js';
+export type { ChannelPairingRecord, ChannelRecord, ChannelRepository } from './channels.js';
 export type { ModelProfileRecord } from './profiles.js';
 export type { NewApprovalRequest, NewAuditEntry } from './tools.js';
 export {
