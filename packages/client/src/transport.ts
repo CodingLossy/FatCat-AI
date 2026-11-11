@@ -58,8 +58,11 @@ export class Transport {
     async raw(path: string, options: RequestOptions = {}): Promise<Response> {
         const method = options.method ?? 'GET';
         const extra: Record<string, string> = { ...options.headers };
-        let body: string | undefined;
-        if (options.body !== undefined) {
+        let body: string | FormData | undefined;
+        if (options.body instanceof FormData) {
+            // multipart:由 fetch 自己加带 boundary 的 content-type
+            body = options.body;
+        } else if (options.body !== undefined) {
             extra['content-type'] = 'application/json';
             body = JSON.stringify(options.body);
         }

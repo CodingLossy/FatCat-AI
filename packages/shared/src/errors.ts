@@ -20,6 +20,10 @@ export const ErrorCode = z.enum([
     'run_not_active',
     'approval_not_pending',
     'internal',
+    /** 以下自 M4 起提供(ADR 0020 第 4 节)。 */
+    'model_no_vision',
+    'payload_too_large',
+    'unsupported_media_type',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 

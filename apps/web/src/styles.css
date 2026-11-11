@@ -417,6 +417,65 @@ fieldset {
     resize: vertical;
 }
 
+/* 图片附件(ADR 0020 第 5 节) */
+.message-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+}
+
+.message-images img {
+    display: block;
+    max-width: 240px;
+    max-height: 240px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    object-fit: contain;
+    background: var(--bg);
+}
+
+.composer-images {
+    padding: 0.4rem 1rem 0;
+}
+
+.composer-images p {
+    margin: 0.3rem 0 0;
+}
+
+.image-previews {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.image-previews li {
+    position: relative;
+}
+
+.image-previews img {
+    display: block;
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+
+.remove-image {
+    position: absolute;
+    top: -0.4rem;
+    right: -0.4rem;
+    width: 1.4rem;
+    height: 1.4rem;
+    padding: 0;
+    border-radius: 50%;
+    line-height: 1;
+}
+
 .memory-text {
     margin: 0 0 0.3rem;
 }

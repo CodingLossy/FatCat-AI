@@ -3,6 +3,7 @@
 
 import type {
     AccessToken,
+    Attachment,
     ApprovalDecision,
     ApprovalRequest,
     ApprovalStatus,
@@ -180,6 +181,17 @@ export function createClient(options: ClientOptions) {
             update: (body: SettingsPatch) => t.json<Settings>('/settings', { method: 'PUT', body }),
         },
 
+        /** 图片附件(ADR 0020):先上传,再在发送消息时带上 attachmentIds。 */
+        attachments: {
+            upload: (file: Blob, fileName = 'image') => {
+                const form = new FormData();
+                form.append('file', file, fileName);
+                return t.json<Attachment>('/attachments', { method: 'POST', body: form });
+            },
+            /** 浏览器同源 Cookie 会话可直接用作 <img src>;令牌鉴权的客户端用 read()。 */
+            url: (id: string) => t.url(`/attachments/${enc(id)}`),
+            read: async (id: string) => (await t.raw(`/attachments/${enc(id)}`)).blob(),
+        },
         sessions: {
             list: (page: PageParams = {}) => t.json<Page<Session>>('/sessions', { query: { ...page } }),
             create: (body: CreateSessionRequest = {}) => t.json<Session>('/sessions', { method: 'POST', body }),

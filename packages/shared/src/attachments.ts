@@ -68,14 +68,17 @@ const EXTENSIONS: Record<AttachmentMediaType, string> = {
     'image/gif': 'gif',
 };
 
+/** C0 / C1 控制字符与双向控制字符(后者可用 RLO 等把「gpj.exe」显示成「exe.jpg」)。 */
+// eslint-disable-next-line no-control-regex
+const UNSAFE_CHARS = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+
 /**
- * 显示用文件名:去掉路径部分与控制字符,截到 255 个字符;为空时用 image.<扩展名>。
+ * 显示用文件名:去掉路径部分、控制字符与双向控制字符,截到 255 个字符;为空时用 image.<扩展名>。
  * 结果从不用于拼接存储路径。
  */
 export function sanitizeFileName(name: string, mediaType: AttachmentMediaType): string {
     const base = name.split(/[/\\]/).pop() ?? '';
-    // eslint-disable-next-line no-control-regex
-    const cleaned = base.replace(/[\u0000-\u001f\u007f]/g, '').trim();
+    const cleaned = base.replace(UNSAFE_CHARS, '').trim();
     const chars = [...cleaned].slice(0, MAX_FILE_NAME_CHARS).join('');
     return chars === '' || chars === '.' || chars === '..' ? `image.${EXTENSIONS[mediaType]}` : chars;
 }

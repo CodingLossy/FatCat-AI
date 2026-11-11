@@ -4,7 +4,13 @@
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { type HealthResponse, MetaResponseSchema, PROTOCOL_VERSION, SERVER_LICENSE } from '@fatcat-ai/shared';
+import {
+    type HealthResponse,
+    MAX_ATTACHMENT_BYTES,
+    MetaResponseSchema,
+    PROTOCOL_VERSION,
+    SERVER_LICENSE,
+} from '@fatcat-ai/shared';
 import type { EventBus, RunManager } from '@fatcat-ai/agent';
 import { detectCredential } from '@fatcat-ai/memory';
 import type { MemoryStack } from './memory-setup.js';
@@ -37,6 +43,8 @@ import { mailRoutes } from './routes/mail.js';
 import { mailMessageRoutes } from './routes/mail-messages.js';
 import { toolRoutes } from './routes/tools.js';
 import { sessionRoutes } from './routes/sessions.js';
+import { attachmentRoutes, UPLOAD_OVERHEAD_BYTES } from './routes/attachments.js';
+import { type AttachmentFiles, createMemoryAttachmentFiles } from './attachment-files.js';
 import { tokenRoutes } from './routes/tokens.js';
 import { SERVER_VERSION } from './version.js';
 
@@ -69,6 +77,8 @@ export interface AppDeps {
     /** 请求来源地址;默认取 TCP 对端地址(不信任 X-Forwarded-For)。 */
     clientIp?: (c: Context<AppEnv>) => string;
     loginLimiter?: FailureLimiter;
+    /** 图片附件的文件(ADR 0020);不给时用内存实现,只适合测试与导出 OpenAPI 文档。 */
+    attachmentFiles?: AttachmentFiles;
 }
 
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
@@ -95,7 +105,8 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
     const now = deps.now ?? (() => new Date());
     const clientIp = deps.clientIp ?? tcpPeer;
     const app = new OpenAPIHono<AppEnv>();
-    const runDeps = { repos, bus: deps.bus, runs: deps.runs, secrets: deps.secrets };
+    const files = deps.attachmentFiles ?? createMemoryAttachmentFiles();
+    const runDeps = { repos, bus: deps.bus, runs: deps.runs, secrets: deps.secrets, files };
     const embeddings =
         deps.embeddings ??
         createEmbeddingService({
@@ -132,13 +143,22 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         );
     });
     app.use('*', secureHeaders({ crossOriginEmbedderPolicy: false }));
-    app.use(
-        '/api/*',
-        bodyLimit({
-            maxSize: MAX_BODY_BYTES,
-            onError: (c) =>
-                problemResponse(c, new ApiError(413, 'validation_failed', 'Payload Too Large', 'Body exceeds 2 MB.')),
-        }),
+    const defaultLimit = bodyLimit({
+        maxSize: MAX_BODY_BYTES,
+        onError: (c) =>
+            problemResponse(c, new ApiError(413, 'validation_failed', 'Payload Too Large', 'Body exceeds 2 MB.')),
+    });
+    // 图片上传单独放宽到 5 MiB + 表单开销;按 Content-Length 与已读字节数判断,不先读完整个请求体
+    const uploadLimit = bodyLimit({
+        maxSize: MAX_ATTACHMENT_BYTES + UPLOAD_OVERHEAD_BYTES,
+        onError: (c) =>
+            problemResponse(
+                c,
+                new ApiError(413, 'payload_too_large', 'Payload Too Large', 'Images must be at most 5 MiB.'),
+            ),
+    });
+    app.use('/api/*', (c, next) =>
+        c.req.method === 'POST' && c.req.path === '/api/v1/attachments' ? uploadLimit(c, next) : defaultLimit(c, next),
     );
     app.use('/api/v1/*', authMiddleware({ repos, now }));
 
@@ -182,6 +202,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         .route('/', embeddingRoutes({ embeddings }))
         .route('/', settingsRoutes({ repos }))
         .route('/', sessionRoutes(runDeps))
+        .route('/', attachmentRoutes({ repos, files }))
         .route('/', runRoutes(runDeps))
         .route('/', memoryRoutes({ repos, memory: deps.memory, detectCredential }))
         .route('/', toolRoutes({ repos, runs: deps.runs, redact: deps.redact ?? ((text) => text) }))

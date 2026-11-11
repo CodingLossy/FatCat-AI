@@ -20,8 +20,16 @@ export interface ToolCall {
     input: unknown;
 }
 
+/** 图片附件的类型(ADR 0020 第 2 节)。 */
+export type ImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+
+/** 多段内容(ADR 0020 第 1 节);data 为 base64(不含 data: 前缀),只在网关内部使用。 */
+export type ContentPart = { type: 'text'; text: string } | { type: 'image'; mediaType: ImageMediaType; data: string };
+
+/** 只有 user 消息可以带图片;字符串仍然合法。 */
 export type ChatMessage =
-    | { role: 'system' | 'user'; content: string }
+    | { role: 'system'; content: string }
+    | { role: 'user'; content: string | ContentPart[] }
     | { role: 'assistant'; content: string; toolCalls?: ToolCall[] }
     | { role: 'tool'; content: string; toolCallId: string };
 
@@ -76,4 +84,21 @@ export class ProviderError extends Error {
     ) {
         super(message);
     }
+}
+
+/** 把 user 消息的内容规范成多段内容;三种适配器共用。 */
+export function contentParts(content: string | ContentPart[]): ContentPart[] {
+    return typeof content === 'string' ? [{ type: 'text', text: content }] : content;
+}
+
+/** 内容里是否有图片;没有图片时适配器照旧发字符串,请求体与 M3 相同。 */
+export function hasImage(content: string | ContentPart[]): content is ContentPart[] {
+    return typeof content !== 'string' && content.some((p) => p.type === 'image');
+}
+
+/** 只取文本段并拼接(没有图片时使用)。 */
+export function plainText(content: string | ContentPart[]): string {
+    return contentParts(content)
+        .map((p) => (p.type === 'text' ? p.text : ''))
+        .join('');
 }

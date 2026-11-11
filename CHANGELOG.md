@@ -17,6 +17,19 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - Environment variables now start with `FATCAT_AI_` instead of `AIP_` (for example `FATCAT_AI_PORT`, `FATCAT_AI_DATA_DIR`, `FATCAT_AI_TOKEN`). The old names still work for now and print a deprecation warning.
 - Unchanged on purpose: the `aip_pat_` token prefix, the `aip_session` / `aip_csrf` cookies and the `X-AIP-Server-Version` header, so existing tokens and API v1 clients keep working.
 
+### M4 · Voice and images (in progress)
+
+#### Added
+
+- Chat: you can attach up to 4 images to a message with the "Image" button, by pasting, or by dragging them onto the message box (PNG, JPEG, WebP or GIF, at most 5 MiB each; ADR 0020). Previews appear before sending and can be removed. Before uploading, the browser scales large images down to 2048 px on the long side, which also removes EXIF data such as GPS location. GIFs are uploaded as they are. Sent images are shown in the conversation and are visible only to you.
+- Settings → Model profiles: a "Supports images" checkbox. Tick it only if you know the model can read images; FatCat-AI does not guess. If the current profile is not ticked, the chat explains why images can't be sent, and the server refuses them with `model_no_vision` instead of dropping them.
+- Images work with all three providers (OpenAI-compatible, Anthropic and Gemini). Only the 8 most recent images in a conversation are sent to the model again; older ones, and images in automatically summarised history, are replaced by a short "[图片:name]" note.
+- API: `POST /api/v1/attachments` (multipart upload) and `GET /api/v1/attachments/{id}`; `attachmentIds` when sending a message; an `image` message part; `vision` on model profiles; new error codes `model_no_vision`, `payload_too_large` and `unsupported_media_type`. The file type is checked from the file's first bytes, not from its name. All changes are additive.
+
+#### Changed
+
+- The data directory has a new `attachments/` folder. Files there are deleted with their conversation; images uploaded but never sent are removed after 24 hours. Include this folder if you back up the data directory yourself. A database migration (0013) runs on the first start.
+
 ### M3.x · Cleanup
 
 #### Added
@@ -185,6 +198,14 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - Windows 上旧服务器仍在运行时,数据目录无法迁移(`EPERM` / `EBUSY`)。服务器会重试几秒,仍失败就提示先停止旧的 AI-Personal 服务器并退出,不移动也不删除任何文件。
 - 环境变量前缀由 `AIP_` 改为 `FATCAT_AI_`(如 `FATCAT_AI_PORT`、`FATCAT_AI_DATA_DIR`、`FATCAT_AI_TOKEN`);旧名暂时仍可用,并打印弃用警告。
 - 有意不改:令牌前缀 `aip_pat_`、Cookie `aip_session` / `aip_csrf` 与响应头 `X-AIP-Server-Version`,现有令牌与 API v1 客户端不受影响。
+
+### M4 · 语音与图片(进行中)
+
+- **新增**:聊天中可以用「图片」按钮、粘贴或拖放给一条消息附上最多 4 张图片(PNG、JPEG、WebP、GIF,每张 ≤ 5 MiB;ADR 0020),发送前有预览、可移除。上传前浏览器会把长边缩到 2048 px 以内,顺带去掉 EXIF(含 GPS 位置);GIF 原样上传。发出的图片显示在对话里,只有你自己能看到。
+- **新增**:设置 → 模型配置档中加入「支持图片」勾选框,只有确认模型能读图时才勾选,FatCat-AI 不会自己猜。当前配置档没勾时,聊天里会说明不能发图片的原因;服务器也会返回 `model_no_vision` 拒绝,而不是悄悄丢掉图片。
+- **新增**:三种模型接口(OpenAI 兼容、Anthropic、Gemini)都支持图片。每个会话只把最近 8 张图片重新发给模型,更早的以及被自动压缩的历史中的图片换成「[图片:文件名]」。
+- **新增**:API 增加 `POST /api/v1/attachments`(multipart 上传)与 `GET /api/v1/attachments/{id}`;发送消息时可带 `attachmentIds`;消息多了 `image` 段;配置档多了 `vision`;新错误码 `model_no_vision`、`payload_too_large`、`unsupported_media_type`。类型按文件开头的字节判断,不看文件名。都是向后兼容的增量。
+- **变更**:数据目录多了 `attachments/` 文件夹,删除会话时一并删除其中的图片;上传后从未发送的图片 24 小时后清理。自己备份数据目录时请连同这个文件夹一起备份。首次启动会执行数据库迁移 0013。
 
 ### M3.x · 清理
 

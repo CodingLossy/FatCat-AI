@@ -253,7 +253,7 @@ describe('web.fetch(评测:网页中的注入指令)', () => {
             callTool('web.fetch', { url }),
             async function* (request) {
                 // 模型「被诱导」:读了网页后尝试写入记忆
-                toolOutput = JSON.parse(request.messages.at(-1)!.content);
+                toolOutput = JSON.parse(request.messages.at(-1)!.content as string);
                 yield {
                     type: 'tool-call',
                     callId: 'c2',

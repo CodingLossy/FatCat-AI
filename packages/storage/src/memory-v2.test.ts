@@ -151,7 +151,7 @@ describe('v1 → v2 数据迁移', () => {
             .all();
 
         const result = await migrate(conn.sqlite, migrations, { backupDir: join(dir, 'backups') });
-        expect(result.applied).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+        expect(result.applied).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
         expect(result.backupPath && existsSync(result.backupPath)).toBe(true);
         expect(conn.sqlite.pragma('foreign_keys', { simple: true })).toBe(1);
 

@@ -32,6 +32,10 @@ describe('sanitizeFileName', () => {
         expect(sanitizeFileName('C:\\Users\\me\\猫.png', 'image/png')).toBe('猫.png');
         expect(sanitizeFileName('../../etc/passwd', 'image/png')).toBe('passwd');
         expect(sanitizeFileName('a\u0000b\nc.jpg', 'image/jpeg')).toBe('abc.jpg');
+        expect(sanitizeFileName('a\u0085b\u009f.png', 'image/png')).toBe('ab.png');
+        // 去掉 RLO 后按存储顺序显示,不再伪装成 .jpg
+        expect(sanitizeFileName('photo\u202egpj.exe', 'image/png')).toBe('photogpj.exe');
+        expect(sanitizeFileName('\u2066x\u2069\u200f.png', 'image/png')).toBe('x.png');
     });
 
     it('为空或只剩点时用默认名,过长时按字符截断', () => {

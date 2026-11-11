@@ -12,6 +12,7 @@ describe('sniffAudioType', () => {
         expect(sniffAudioType(bytes(0x1a, 0x45, 0xdf, 0xa3, 0x9f))).toBe('audio/webm');
         expect(sniffAudioType(bytes(...ascii('OggS'), 0))).toBe('audio/ogg');
         expect(sniffAudioType(bytes(0, 0, 0, 0x20, ...ascii('ftypM4A ')))).toBe('audio/mp4');
+        expect(sniffAudioType(bytes(0, 0, 0, 0x20, ...ascii('ftypiso5')))).toBe('audio/mp4');
         expect(sniffAudioType(bytes(...ascii('RIFF'), 1, 2, 3, 4, ...ascii('WAVEfmt ')))).toBe('audio/wav');
         expect(sniffAudioType(bytes(...ascii('ID3'), 4, 0))).toBe('audio/mpeg');
         expect(sniffAudioType(bytes(0xff, 0xfb, 0x90, 0x00))).toBe('audio/mpeg');
@@ -24,6 +25,8 @@ describe('sniffAudioType', () => {
         expect(sniffAudioType(bytes(0xff, 0xf0))).toBeNull(); // 保留层
         expect(sniffAudioType(bytes(...ascii('RIFF'), 1, 2, 3, 4, ...ascii('WEBP')))).toBeNull();
         expect(sniffAudioType(bytes(0, 0, 0, 0x20, ...ascii('fty')))).toBeNull();
+        expect(sniffAudioType(bytes(0, 0, 0, 0x18, ...ascii('ftypheic')))).toBeNull(); // HEIC 图片
+        expect(sniffAudioType(bytes(0, 0, 0, 0x18, ...ascii('ftypqt  ')))).toBeNull(); // QuickTime 视频
     });
 });
 

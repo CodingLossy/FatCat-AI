@@ -35,6 +35,8 @@ const ModelProfileFields = z.strictObject({
     purpose: z.array(ModelPurpose).min(1),
     contextWindow: z.number().int().min(1024).max(2_000_000).optional(),
     params: ModelParams.optional(),
+    /** 支持图片输入;省略即 false,由用户自己勾选(ADR 0020 第 1.2 节)。自 M4 起提供。 */
+    vision: z.boolean().optional(),
 });
 
 const requireBaseUrl = (p: { kind?: ModelKind; baseURL?: string | undefined }) =>

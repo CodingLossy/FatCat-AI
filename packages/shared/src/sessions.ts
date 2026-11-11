@@ -2,6 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { z } from 'zod';
+import { ImageMessagePart, AttachmentIds } from './attachments.js';
 import { Id, IsoDateTime, Usage } from './common.js';
 import { PreauthRemember } from './tools.js';
 
@@ -20,6 +21,8 @@ export const MessagePart = z.discriminatedUnion('type', [
         output: z.unknown(),
         error: z.string().optional(),
     }),
+    /** 用户上传的图片(ADR 0020 第 4 节),自 M4 起提供;客户端须忽略不认识的 part 类型。 */
+    ImageMessagePart,
 ]);
 export type MessagePart = z.infer<typeof MessagePart>;
 
@@ -70,6 +73,8 @@ export const SendMessageRequest = z.object({
     text: z.string().min(1).max(100_000),
     /** 覆盖会话默认的模型配置档。 */
     modelProfileId: Id.optional(),
+    /** 随消息发送的图片附件,先经 POST /api/v1/attachments 上传(ADR 0020 第 4 节)。自 M4 起提供。 */
+    attachmentIds: AttachmentIds.optional(),
     /** 幂等键:同一会话内重复提交相同值时返回已有运行(ADR 0004)。 */
     clientMessageId: z
         .string()

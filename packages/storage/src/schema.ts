@@ -22,6 +22,7 @@ export const TABLE_COLUMNS = {
         'params_json',
         'created_at',
         'updated_at',
+        'vision',
     ],
     settings: ['owner_id', 'key', 'value_json', 'updated_at'],
     approval_requests: [
@@ -92,6 +93,7 @@ export const TABLE_COLUMNS = {
         'updated_at',
         'untrusted_at',
     ],
+    message_attachments: ['id', 'owner_id', 'message_id', 'media_type', 'bytes', 'sha256', 'file_name', 'created_at'],
     messages: [
         'id',
         'session_id',

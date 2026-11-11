@@ -237,7 +237,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -333,7 +336,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -429,7 +435,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -601,7 +610,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -697,7 +709,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -793,7 +808,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -902,7 +920,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -998,7 +1019,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -1133,7 +1157,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -1229,7 +1256,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -1397,7 +1427,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -1493,7 +1526,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -1671,7 +1707,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -1767,7 +1806,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -1863,7 +1905,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -1983,7 +2028,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -2079,7 +2127,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -2175,7 +2226,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -2320,6 +2374,9 @@
                               }
                             }
                           },
+                          "vision": {
+                            "type": "boolean"
+                          },
                           "id": {
                             "type": "string",
                             "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
@@ -2406,7 +2463,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -2502,7 +2562,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -2638,6 +2701,9 @@
                         "maximum": 1000000
                       }
                     }
+                  },
+                  "vision": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -2723,6 +2789,9 @@
                         }
                       }
                     },
+                    "vision": {
+                      "type": "boolean"
+                    },
                     "id": {
                       "type": "string",
                       "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
@@ -2796,7 +2865,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -2892,7 +2964,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -2988,7 +3063,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -3139,6 +3217,9 @@
                         }
                       }
                     },
+                    "vision": {
+                      "type": "boolean"
+                    },
                     "id": {
                       "type": "string",
                       "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
@@ -3212,7 +3293,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -3308,7 +3392,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -3404,7 +3491,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -3551,6 +3641,9 @@
                         "maximum": 1000000
                       }
                     }
+                  },
+                  "vision": {
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false
@@ -3629,6 +3722,9 @@
                         }
                       }
                     },
+                    "vision": {
+                      "type": "boolean"
+                    },
                     "id": {
                       "type": "string",
                       "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
@@ -3702,7 +3798,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -3798,7 +3897,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -3894,7 +3996,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -3990,7 +4095,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -4108,7 +4216,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -4204,7 +4315,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -4300,7 +4414,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -4485,7 +4602,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -4581,7 +4701,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -4677,7 +4800,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -4868,7 +4994,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -4964,7 +5093,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -5089,7 +5221,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -5185,7 +5320,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -5386,7 +5524,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -5482,7 +5623,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -5758,7 +5902,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -5854,7 +6001,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -5950,7 +6100,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -6171,7 +6324,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -6267,7 +6423,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -6363,7 +6522,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -6561,7 +6723,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -6657,7 +6822,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -6753,7 +6921,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -6944,7 +7115,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -7040,7 +7214,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -7136,7 +7313,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -7349,7 +7529,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -7445,7 +7628,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -7541,7 +7727,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -7637,7 +7826,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -7755,7 +7947,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -7851,7 +8046,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -7947,7 +8145,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -8147,6 +8348,41 @@
                                     "type",
                                     "callId"
                                   ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "image"
+                                      ]
+                                    },
+                                    "attachmentId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                    },
+                                    "mediaType": {
+                                      "type": "string",
+                                      "enum": [
+                                        "image/png",
+                                        "image/jpeg",
+                                        "image/webp",
+                                        "image/gif"
+                                      ]
+                                    },
+                                    "fileName": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 255
+                                    }
+                                  },
+                                  "required": [
+                                    "type",
+                                    "attachmentId",
+                                    "mediaType",
+                                    "fileName"
+                                  ]
                                 }
                               ]
                             }
@@ -8277,7 +8513,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -8373,7 +8612,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -8469,7 +8711,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -8576,6 +8821,15 @@
                   "modelProfileId": {
                     "type": "string",
                     "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                  },
+                  "attachmentIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                    },
+                    "minItems": 1,
+                    "maxItems": 4
                   },
                   "clientMessageId": {
                     "type": "string",
@@ -8947,7 +9201,10 @@
                                     "provider_error",
                                     "run_not_active",
                                     "approval_not_pending",
-                                    "internal"
+                                    "internal",
+                                    "model_no_vision",
+                                    "payload_too_large",
+                                    "unsupported_media_type"
                                   ]
                                 },
                                 "detail": {
@@ -9090,7 +9347,7 @@
             }
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Invalid request, an unusable attachment, or images sent to a profile without vision",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -9125,7 +9382,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -9221,7 +9481,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -9317,7 +9580,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -9413,7 +9679,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -9509,7 +9778,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -9970,7 +10242,10 @@
                                     "provider_error",
                                     "run_not_active",
                                     "approval_not_pending",
-                                    "internal"
+                                    "internal",
+                                    "model_no_vision",
+                                    "payload_too_large",
+                                    "unsupported_media_type"
                                   ]
                                 },
                                 "detail": {
@@ -10148,7 +10423,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -10244,7 +10522,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -10340,7 +10621,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -10436,7 +10720,923 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attachments": {
+      "post": {
+        "tags": [
+          "attachments"
+        ],
+        "summary": "Upload an image to attach to a message",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "PNG, JPEG, WebP or GIF, at most 5 MiB"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Uploaded; not yet attached to a message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                    },
+                    "messageId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                    },
+                    "mediaType": {
+                      "type": "string",
+                      "enum": [
+                        "image/png",
+                        "image/jpeg",
+                        "image/webp",
+                        "image/gif"
+                      ]
+                    },
+                    "bytes": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 5242880
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "fileName": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 255
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "messageId",
+                    "mediaType",
+                    "bytes",
+                    "sha256",
+                    "fileName",
+                    "createdAt"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No file in the form",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF token missing or invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The image is larger than 5 MiB",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Not a PNG, JPEG, WebP or GIF image",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attachments/{id}": {
+      "get": {
+        "tags": [
+          "attachments"
+        ],
+        "summary": "Read an image attachment (owner only)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The image bytes",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF token missing or invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -10615,7 +11815,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -10711,7 +11914,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -10807,7 +12013,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -11262,7 +12471,10 @@
                                     "provider_error",
                                     "run_not_active",
                                     "approval_not_pending",
-                                    "internal"
+                                    "internal",
+                                    "model_no_vision",
+                                    "payload_too_large",
+                                    "unsupported_media_type"
                                   ]
                                 },
                                 "detail": {
@@ -11411,7 +12623,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -11507,7 +12722,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -11603,7 +12821,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -11741,7 +12962,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -11837,7 +13061,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -11933,7 +13160,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -12029,7 +13259,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -12479,7 +13712,10 @@
                                     "provider_error",
                                     "run_not_active",
                                     "approval_not_pending",
-                                    "internal"
+                                    "internal",
+                                    "model_no_vision",
+                                    "payload_too_large",
+                                    "unsupported_media_type"
                                   ]
                                 },
                                 "detail": {
@@ -12657,7 +13893,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -12753,7 +13992,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -12849,7 +14091,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -12945,7 +14190,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -13238,7 +14486,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -13334,7 +14585,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -13564,7 +14818,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -13660,7 +14917,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -13756,7 +15016,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -14070,7 +15333,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -14166,7 +15432,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -14262,7 +15531,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -14579,7 +15851,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -14675,7 +15950,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -14771,7 +16049,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -14918,7 +16199,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -15014,7 +16298,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -15481,7 +16768,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -15577,7 +16867,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -15721,7 +17014,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -15817,7 +17113,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -15913,7 +17212,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -16009,7 +17311,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -16182,7 +17487,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -16278,7 +17586,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -16442,7 +17753,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -16538,7 +17852,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -16634,7 +17951,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -16812,7 +18132,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -16908,7 +18231,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -17004,7 +18330,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -17100,7 +18429,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -17359,7 +18691,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -17455,7 +18790,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -17551,7 +18889,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -17842,7 +19183,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -17938,7 +19282,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -18034,7 +19381,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -18307,7 +19657,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -18403,7 +19756,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -18499,7 +19855,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -18801,7 +20160,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -18897,7 +20259,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -18993,7 +20358,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -19089,7 +20457,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -19220,7 +20591,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -19316,7 +20690,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -19412,7 +20789,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -19620,7 +21000,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -19716,7 +21099,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -19980,7 +21366,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -20076,7 +21465,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -20172,7 +21564,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -20371,7 +21766,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -20467,7 +21865,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -20563,7 +21964,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -20659,7 +22063,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -20856,7 +22263,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -20952,7 +22362,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -21072,7 +22485,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -21168,7 +22584,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -21264,7 +22683,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -21568,7 +22990,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -21664,7 +23089,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -21760,7 +23188,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -21920,7 +23351,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -22016,7 +23450,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -22184,7 +23621,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -22280,7 +23720,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -22376,7 +23819,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -22472,7 +23918,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -22644,7 +24093,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -22740,7 +24192,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -22836,7 +24291,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -22932,7 +24390,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -23050,7 +24511,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -23146,7 +24610,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -23242,7 +24709,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -23469,7 +24939,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -23565,7 +25038,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -23834,7 +25310,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -23930,7 +25409,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -24026,7 +25508,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -24276,7 +25761,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -24372,7 +25860,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -24468,7 +25959,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -24577,7 +26071,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -24673,7 +26170,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -24893,7 +26393,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -24989,7 +26492,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -25085,7 +26591,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -25393,7 +26902,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -25489,7 +27001,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -25585,7 +27100,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -25681,7 +27199,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -25919,7 +27440,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -26015,7 +27539,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -26111,7 +27638,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -26260,7 +27790,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -26356,7 +27889,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -26452,7 +27988,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -26724,7 +28263,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -26820,7 +28362,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -26916,7 +28461,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -27012,7 +28560,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -27158,7 +28709,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -27254,7 +28808,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -27350,7 +28907,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -27446,7 +29006,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -27673,7 +29236,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -27769,7 +29335,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -28042,7 +29611,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -28138,7 +29710,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -28234,7 +29809,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -28330,7 +29908,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -28578,7 +30159,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -28674,7 +30258,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -28770,7 +30357,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -28866,7 +30456,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -28984,7 +30577,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -29080,7 +30676,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -29176,7 +30775,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -29332,7 +30934,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -29428,7 +31033,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -29524,7 +31132,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -29732,7 +31343,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -29828,7 +31442,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -30121,7 +31738,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -30217,7 +31837,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -30618,7 +32241,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -30714,7 +32340,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -30810,7 +32439,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -31096,7 +32728,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -31192,7 +32827,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -31288,7 +32926,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -31689,7 +33330,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -31785,7 +33429,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -31881,7 +33528,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -31977,7 +33627,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -32095,7 +33748,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -32191,7 +33847,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -32287,7 +33946,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -32506,7 +34168,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -32602,7 +34267,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -32698,7 +34366,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -32869,7 +34540,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -32965,7 +34639,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -33061,7 +34738,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -33223,7 +34903,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -33319,7 +35002,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -33415,7 +35101,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -33787,7 +35476,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -33883,7 +35575,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -34200,7 +35895,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -34296,7 +35994,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -34392,7 +36093,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -34532,7 +36236,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -34628,7 +36335,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -34724,7 +36434,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -34873,7 +36586,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -34969,7 +36685,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -35065,7 +36784,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -35161,7 +36883,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -35415,7 +37140,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -35511,7 +37239,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -35765,7 +37496,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -35861,7 +37595,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -35957,7 +37694,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -36251,7 +37991,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -36347,7 +38090,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -36443,7 +38189,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -36539,7 +38288,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -36657,7 +38409,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -36753,7 +38508,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {
@@ -36849,7 +38607,10 @@
                         "provider_error",
                         "run_not_active",
                         "approval_not_pending",
-                        "internal"
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
                       ]
                     },
                     "detail": {

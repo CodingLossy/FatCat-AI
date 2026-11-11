@@ -14,6 +14,7 @@ import type {
     Usage,
 } from '@fatcat-ai/shared';
 import { z } from 'zod';
+import { createAttachmentRepository } from './attachments.js';
 import { createAuthRepositories } from './auth.js';
 import { createMemoryRepository, createSummaryRepository } from './memory.js';
 import { createMemoryReadRepository } from './memory-read.js';
@@ -525,6 +526,7 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
         runs,
         events,
         modelProfiles: createProfileRepository(conn, now),
+        attachments: createAttachmentRepository(conn, now),
         memories: createMemoryRepository(conn, now, itemRepo),
         memoryRead: createMemoryReadRepository(conn, now),
         memoryMaintenance: createMemoryMaintenanceRepository(conn),

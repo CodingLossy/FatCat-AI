@@ -18,10 +18,12 @@ import {
     type ChatChunk,
     type ChatMessage,
     type ChatRequest,
+    hasImage,
     type EmbedResult,
     type FinishReason,
     MAX_EMBED_BATCH,
     type ModelProvider,
+    plainText,
     ProviderError,
     type ProviderProfile,
 } from './types.js';
@@ -58,6 +60,16 @@ function toWireMessage(m: ChatMessage): Record<string, unknown> {
                 : { role: 'assistant', content: m.content };
         case 'tool':
             return { role: 'tool', content: m.content, tool_call_id: m.toolCallId };
+        case 'user':
+            if (!hasImage(m.content)) return { role: 'user', content: plainText(m.content) };
+            return {
+                role: 'user',
+                content: m.content.map((p) =>
+                    p.type === 'text'
+                        ? { type: 'text', text: p.text }
+                        : { type: 'image_url', image_url: { url: `data:${p.mediaType};base64,${p.data}` } },
+                ),
+            };
         default:
             return { role: m.role, content: m.content };
     }

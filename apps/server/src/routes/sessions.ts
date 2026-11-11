@@ -5,6 +5,7 @@ import { createRoute, z } from '@hono/zod-openapi';
 import { RunConflictError, type RunManager } from '@fatcat-ai/agent';
 import { type SecretStore, selectProfile } from '@fatcat-ai/providers';
 import {
+    type ImageMessagePart,
     CreateSessionRequest,
     EventEnvelope,
     Id,
@@ -16,7 +17,8 @@ import {
     Session,
     UpdateSessionRequest,
 } from '@fatcat-ai/shared';
-import type { ModelProfileRecord, Repositories } from '@fatcat-ai/storage';
+import { AttachmentLinkError, type ModelProfileRecord, type Repositories } from '@fatcat-ai/storage';
+import type { AttachmentFiles } from '../attachment-files.js';
 import type { Context } from 'hono';
 import { requireOwner } from '../auth/middleware.js';
 import type { AppEnv } from '../env.js';
@@ -28,6 +30,8 @@ export interface SessionRouteDeps extends RunStreamDeps {
     repos: Repositories;
     runs: RunManager;
     secrets: SecretStore;
+    /** 图片附件的文件;删除会话时一并删除(ADR 0020 第 3 节)。 */
+    files: AttachmentFiles;
 }
 
 const sessionParam = z.object({ id: Id });
@@ -79,6 +83,12 @@ export function resolveProfile(
     return profile;
 }
 
+function attachmentIssue(id: string): ApiError {
+    return new ApiError(400, 'validation_failed', 'Bad Request', 'An attachment is missing or already used.', {
+        issues: [{ path: ['attachmentIds'], message: `attachment ${id} is missing or already used` }],
+    });
+}
+
 /** 启动运行并按 stream 参数返回 SSE 或 202;同一会话已有运行时返回 409。 */
 export function startAndRespond(
     c: Context<AppEnv>,
@@ -90,6 +100,7 @@ export function startAndRespond(
     try {
         started = start();
     } catch (error) {
+        if (error instanceof AttachmentLinkError) throw attachmentIssue(error.attachmentId);
         if (error instanceof RunConflictError) {
             throw new ApiError(
                 409,
@@ -176,7 +187,10 @@ const sendRoute = createRoute({
         query: streamQuery,
         body: { content: { 'application/json': { schema: SendMessageRequest } }, required: true },
     },
-    responses: { ...runResponses, 400: problem('Invalid request') },
+    responses: {
+        ...runResponses,
+        400: problem('Invalid request, an unusable attachment, or images sent to a profile without vision'),
+    },
 });
 
 const regenerateRoute = createRoute({
@@ -225,7 +239,14 @@ export function sessionRoutes(deps: SessionRouteDeps) {
             const ownerId = requireOwner(c);
             const session = sessionOr404(ownerId, c.req.valid('param').id);
             if (session.activeRunId) await runs.stop(session.activeRunId);
+            const attachmentIds = repos.attachments.idsForSession(ownerId, session.id);
             repos.sessions.delete(ownerId, session.id);
+            // 行已随外键删除;文件删除失败只写警告,每天的清理任务会再删(ADR 0020 第 3 节)
+            for (const id of attachmentIds) {
+                await deps.files
+                    .remove(id)
+                    .catch((err: unknown) => c.get('logger').warn({ err }, 'attachment cleanup failed'));
+            }
             return c.body(null, 204);
         })
         .openapi(messagesRoute, (c) => {
@@ -254,7 +275,21 @@ export function sessionRoutes(deps: SessionRouteDeps) {
                 }
             }
 
+            const images: ImageMessagePart[] = (body.attachmentIds ?? []).map((attachmentId) => {
+                const a = repos.attachments.get(ownerId, attachmentId);
+                if (!a || a.messageId !== null) throw attachmentIssue(attachmentId);
+                return { type: 'image', attachmentId: a.id, mediaType: a.mediaType, fileName: a.fileName };
+            });
             const profile = resolveProfile(deps, ownerId, body.modelProfileId, session.modelProfileId);
+            // 不悄悄丢掉图片,也不先发给模型再看它是否报错(ADR 0020 第 1.2 节)
+            if (images.length > 0 && profile.vision !== true) {
+                throw new ApiError(
+                    400,
+                    'model_no_vision',
+                    'Bad Request',
+                    `The model profile "${profile.label}" is not marked as supporting images.`,
+                );
+            }
             return startAndRespond(
                 c,
                 deps,
@@ -265,6 +300,7 @@ export function sessionRoutes(deps: SessionRouteDeps) {
                         profile,
                         text: body.text,
                         clientMessageId: body.clientMessageId,
+                        images,
                     }),
                 stream,
             );
