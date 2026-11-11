@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 模型配置档。只保存 env: / file: 形式的密钥引用,从不保存明文(ADR 0006)。
-import type { ModelKind, ModelProfileInput, ModelPurpose } from '@fatcat-ai/shared';
+import type { ModelKind, ModelProfileInput, ModelPurpose, VoiceProtocol } from '@fatcat-ai/shared';
 import type { Connection } from './db.js';
 import { newId } from './ids.js';
 import { selectList } from './schema.js';
@@ -17,7 +17,7 @@ export interface ModelProfileRecord {
     model: string;
     purpose: ModelPurpose[];
     contextWindow?: number;
-    params?: { temperature?: number; maxOutputTokens?: number; voice?: string };
+    params?: { temperature?: number; maxOutputTokens?: number; voice?: string; voiceProtocol?: VoiceProtocol };
     /** 支持图片输入(ADR 0020 第 1.2 节);false 时 API 中省略。 */
     vision?: boolean;
     createdAt: string;

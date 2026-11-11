@@ -1,6 +1,6 @@
 # ADR 0021 · 语音:服务器转发的 STT / TTS、语音状态的来源
 
-- 状态:已实施(第 1–5 节在 M4 PR 4 `feat/voice-api`,第 6、7 节与 Web 在 M4 PR 5 `feat/voice-web`)
+- 状态:已实施(第 1–5 节在 M4 PR 4 `feat/voice-api`,第 6、7 节与 Web 在 M4 PR 5 `feat/voice-web`;第 2 节的 `params.voiceProtocol` 与第 6 节断开时的补发规则在 M4 收尾 PR 更新)
 - 日期:2026-11-10(America/Los_Angeles)
 - 相关:开发计划第 4.1 节(语音状态指示器)、第 6.1 节(`assistant-state`)、第 8 节 M4、第 12 节(资源预算);`docs/milestones/M4-plan.md`;ADR 0004(API v1 约定)、ADR 0006(模型网关)、ADR 0010(工具与审批、审计)、ADR 0018(内存预算)、ADR 0020(附件的魔数检查与错误码)
 
@@ -11,7 +11,7 @@ M4 要让用户在浏览器里说话、听回复。计划要求「前端不自�
 ## 1. 决定
 
 1. **服务器转发**:浏览器把录音发给 FatCat-AI,服务器用配置档里的密钥调用用户配置的端点;浏览器只拿到转写文本或音频流,密钥不出服务器。
-2. **只支持 OpenAI 兼容的语音接口**(`/audio/transcriptions`、`/audio/speech`):这是大多数服务(包括国内兼容服务与自托管的 whisper / TTS 服务)共同的格式。Anthropic 没有语音接口;Gemini 的语音走多模态生成,不在 M4。语音配置档必须是 `openai-compatible`,否则设置时报 `validation_failed`。
+2. **先只实现 OpenAI 兼容的语音接口**(`/audio/transcriptions`、`/audio/speech`):这是大多数服务(包括国内兼容服务与自托管的 whisper / TTS 服务)共同的格式。其他厂商的调用方式由配置档的 `params.voiceProtocol` 选择(第 2 节,M4 收尾时加入),目前只实现 `openai`。Anthropic 没有语音接口;Gemini 的语音走多模态生成,不在 M4。语音配置档必须是 `openai-compatible`,否则设置时报 `validation_failed`。
 3. **不引入 SDK、不加常驻依赖**:与 ADR 0006 一样用 `fetch` 与 `FormData`;本地语音组件(sherpa-onnx / whisper.cpp)推迟(M4 方案问题 2)。
 4. **音频不落盘、不进日志、不进审计正文**。转写出来的文字作为用户消息正常保存(那是用户的输入);朗读用的音频只经过服务器,不保存。
 
@@ -32,7 +32,22 @@ M4 要让用户在浏览器里说话、听回复。计划要求「前端不自�
   }
   ```
 
-- TTS 的音色写在配置档的 `params.voice`(`ModelParams` 增加的可选字段,1–64 个字符,PR 4 起提供);省略时由服务器发 `alloy`(OpenAI 的默认音色名;其他服务的音色名不同,用户需要自己填)。真机端点确定后(M4 方案问题 1)再核对。
+- TTS 的音色写在配置档的 `params.voice`(`ModelParams` 增加的可选字段,1–64 个字符,PR 4 起提供);省略时由服务器发 `alloy`(OpenAI 的默认音色名;其他服务的音色名不同,用户需要自己填)。真机核对(2026-11-10,硅基流动):音色写成「模型名:音色」,例如 `FunAudioLLM/CosyVoice2-0.5B:alex`,64 个字符够用。
+- **调用方式 `params.voiceProtocol`**(M4 收尾时加入,2026-11-10):用户定下语音先用硅基流动,并要求适配层能兼容小米、豆包、OpenAI 等厂商的调用方式。各家的差别在请求格式,而不在配置档的其他字段,所以在 `ModelParams` 加一个可选枚举,而不是新增 `ModelKind`:
+
+  ```ts
+  export const VoiceProtocol = z.enum(['openai', 'openai-chat', 'volcengine']);
+  // ModelParams
+  voiceProtocol: VoiceProtocol.optional(), // 省略即 'openai'
+  ```
+
+  - `openai`:`/audio/transcriptions`(multipart)与 `/audio/speech`(JSON,流式音频)。OpenAI、硅基流动与多数兼容服务用这种。**目前只实现这一种。**
+  - `openai-chat`:经 `/chat/completions` 传音频(有些服务用这种方式传音频)。预留。
+  - `volcengine`:火山引擎(豆包)自有的语音接口。预留。
+  - 取值先在契约里定下,创建或修改配置档时,未实现的取值返回 `validation_failed`(`path` 为 `params.voiceProtocol`),不会被静默当成 `openai` 调用;实现一种就从拒绝列表里去掉一种(`IMPLEMENTED_VOICE_PROTOCOLS`)。
+  - 网关里 `createVoiceClient` 改成工厂函数:按 `voiceProtocol` 选择实现,各实现都满足同一个 `VoiceClient` 接口(`transcribe` / `speak`),服务器的两个接口与浏览器不用改。遇到未实现的取值时抛错兜底。
+  - 每种调用方式实现时,按该厂商的真实接口录一份回放测试(M4 方案问题 1)。
+
 - 设置页的配置档列表里,`stt` / `tts` 配置档的「测试连接」仍调用 `GET /models`(ADR 0006),不实际转写或合成。
 
 ## 3. 转写:`POST /api/v1/voice/transcriptions`
@@ -96,7 +111,7 @@ M4 要让用户在浏览器里说话、听回复。计划要求「前端不自�
 
 - 服务器收到后发一个 `assistant-state` 事件(信封的 `sessionId` 为上报的值),和其他事件一样写入事件表、推给本人所有在线的端;`thinking` / `executing` 仍由 runner 发。
 - **电平 `level` 不上报**:随音量脉动只在本地有意义,每秒几十次的电平不应该经过服务器。本地录音 / 播放的那个端自己用电平驱动指示器;其他端收到的 `assistant-state` 没有 `level`,指示器用默认的呼吸动画。
-- 状态以最后一个事件为准,不做优先级合并。上报 `listening` 或 `speaking` 的连接断开时,服务器替它发一次 `idle`,避免其他端一直停在「正在听」。
+- 状态以最后一个事件为准,不做优先级合并。上报 `listening` 或 `speaking` 的连接断开时,服务器替它补发一次状态,避免其他端一直停在「正在听」:同一用户的其他连接都没有在听 / 朗读时补发 `idle`;还有连接在听或朗读时(例如关掉了两个标签页中的一个),补发那个连接最后上报的状态,而不是把它也置为 `idle`(M4 收尾时更正)。
 - 客户端补发(`lastSeq`)收到的旧 `assistant-state` 只用于恢复「最后一个状态」;如果它早于 30 秒前,按 `idle` 显示。
 - 同一用户每秒最多接受 5 个 `voice-state` 帧,多余的丢弃(不报错)。
 
@@ -137,6 +152,6 @@ export function sniffAudioType(bytes: Uint8Array): AudioMediaType | null;
 ## 后果
 
 - 每次语音往返多经过一次服务器,额外开销由 M4 PR 6 在 CI 中用假端点测量(验收线 < 1 秒)。
-- 只支持 OpenAI 兼容的语音接口;使用其他格式的服务需要一个兼容层或以后的适配器。
+- 目前只实现 OpenAI 兼容的语音接口;其他厂商的调用方式已在 `params.voiceProtocol` 中预留取值,实现前配置档会拒绝这些取值。
 - 服务器不检查录音时长,只检查字节数;如果以后 IM 渠道需要精确的时长上限,再考虑解析容器头。
 - 多端看到的语音状态一致,代价是每次开始 / 结束录音或朗读多一个事件写入事件表。
