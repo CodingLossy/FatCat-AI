@@ -155,6 +155,23 @@ describe('retrieve 与 digest', () => {
         expect(result.degraded).toEqual([{ path: 'vector', reason: 'timeout' }]);
     });
 
+    it('向量召回超时:实现理会 signal、中止后抛出 AbortError 时也按 timeout 算,不按 error', async () => {
+        const a = write('用户的猫叫 Mochi');
+        const honoring = createRetriever({
+            repos,
+            vectorTimeoutMs: 20,
+            vectors: (_owner, _query, _k, signal) =>
+                new Promise((_resolve, reject) => {
+                    signal.addEventListener('abort', () =>
+                        reject(new DOMException('The operation was aborted.', 'AbortError')),
+                    );
+                }),
+        });
+        const result = await honoring.retrieve(ownerId, { query: 'Mochi' });
+        expect(result.items.map((i) => [i.id, i.channels])).toEqual([[a, ['fts']]]);
+        expect(result.degraded).toEqual([{ path: 'vector', reason: 'timeout' }]);
+    });
+
     it('降级标记(ADR 0017):按嵌入接口的错误归类,配置状态不算降级,FTS 结果不受影响', async () => {
         const a = write('用户的猫叫 Mochi');
         const providerError = (code: string, status?: number) =>

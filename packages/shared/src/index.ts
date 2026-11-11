@@ -3,6 +3,7 @@
 
 export * from './attachments.js';
 export * from './auth.js';
+export * from './channels.js';
 export * from './common.js';
 export * from './embeddings.js';
 export * from './errors.js';
@@ -18,6 +19,7 @@ export * from './models.js';
 export * from './pagination.js';
 export * from './sessions.js';
 export * from './settings.js';
+export * from './time-zone.js';
 export * from './tools.js';
 export * from './voice.js';
 export * from './ws.js';
