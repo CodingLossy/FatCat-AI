@@ -1,2 +1,4 @@
 response-property-one-of-added info
 response-body-one-of-added info
+# ADR 0004 第 3 节:错误码只增不改,客户端须把未知 code 当作通用错误;删改已有取值仍是错误(业主 2026-11-11 决定)
+response-property-enum-value-added warn
