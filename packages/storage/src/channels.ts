@@ -81,6 +81,9 @@ export function createChannelRepository(conn: Connection, now: () => Date) {
             `UPDATE channels SET label = @label, enabled = @enabled, notify_degraded = @notifyDegraded,
                updated_at = @at WHERE id = @id`,
         ),
+        setConfig: sqlite.prepare<[string, string, string]>(
+            'UPDATE channels SET config_json = ?, updated_at = ? WHERE id = ?',
+        ),
         setSession: sqlite.prepare<[string | null, string, string]>(
             'UPDATE channels SET session_id = ?, updated_at = ? WHERE id = ?',
         ),
@@ -156,6 +159,10 @@ export function createChannelRepository(conn: Connection, now: () => Date) {
                 at: iso(),
             });
             return this.get(ownerId, id);
+        },
+        /** 渠道配置只含密钥引用与非机密设置(ADR 0022 第 9 节);整份替换。 */
+        setConfig(id: string, config: Record<string, string>): void {
+            q.setConfig.run(JSON.stringify(config), iso(), id);
         },
         setSession(id: string, sessionId: string | null): void {
             q.setSession.run(sessionId, iso(), id);

@@ -7,3 +7,5 @@ export * from './types.js';
 export * from './commands.js';
 export * from './format.js';
 export * from './limits.js';
+export * from './ilink.js';
+export * from './wechat.js';
