@@ -27,6 +27,11 @@ import type {
     LoginRequest,
     McpServerInput,
     McpServerPatch,
+    Channel,
+    ChannelCreate,
+    ChannelPairing,
+    ChannelPatch,
+    ChannelStatus,
     McpServerStatus,
     McpServerView,
     LoginResponse,
@@ -396,6 +401,19 @@ export function createClient(options: ClientOptions) {
                 t.json<McpServerView>(`/mcp/servers/${enc(id)}`, { method: 'PATCH', body }),
             remove: (id: string) => t.json<void>(`/mcp/servers/${enc(id)}`, { method: 'DELETE' }),
             status: (id: string) => t.json<McpServerStatus>(`/mcp/servers/${enc(id)}/status`),
+        },
+
+        channels: {
+            /** IM 渠道(ADR 0022);响应里没有密钥,外部账号只有末 4 位。 */
+            list: () => t.json<Page<Channel>>('/channels'),
+            add: (body: ChannelCreate) => t.json<Channel>('/channels', { method: 'POST', body }),
+            update: (id: string, body: ChannelPatch) =>
+                t.json<Channel>(`/channels/${enc(id)}`, { method: 'PATCH', body }),
+            remove: (id: string) => t.json<void>(`/channels/${enc(id)}`, { method: 'DELETE' }),
+            /** 6 位配对码,10 分钟内一次有效;明文只出现在这个响应里。 */
+            pair: (id: string) => t.json<ChannelPairing>(`/channels/${enc(id)}/pairing`, { method: 'POST' }),
+            unbind: (id: string) => t.json<void>(`/channels/${enc(id)}/binding`, { method: 'DELETE' }),
+            status: (id: string) => t.json<ChannelStatus>(`/channels/${enc(id)}/status`),
         },
 
         preauthorizations: {
