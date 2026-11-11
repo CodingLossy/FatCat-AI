@@ -140,7 +140,7 @@ const zh = {
     'recall.degraded.timeout': '向量检索超时,本轮只用了全文与关联检索,相关记忆可能不全。',
     'recall.degraded.error': '向量检索出错,本轮只用了全文与关联检索,相关记忆可能不全。',
     'recall.degraded.auth': '嵌入密钥可能失效,请检查设置 → 模型配置档。',
-    'recall.degraded.rejected': '嵌入接口拒绝了请求,请检查嵌入配置档。',
+    'recall.degraded.rejected': '嵌入接口拒绝了请求,请检查设置 → 模型配置档。',
     'recall.degraded.unknown': '记忆召回不完整,相关记忆可能不全。',
     'recall.openSettings': '打开设置',
     'recall.omitted': '另有 {n} 条相关记忆未展示。',
@@ -463,7 +463,7 @@ const en: Record<Key, string> = {
     'recall.degraded.error':
         'Vector search failed; this turn used only full-text and linked search, so relevant memories may be missing.',
     'recall.degraded.auth': 'The embedding key may be invalid; check Settings → Model profiles.',
-    'recall.degraded.rejected': 'The embedding endpoint rejected the request; check the embedding profile.',
+    'recall.degraded.rejected': 'The embedding endpoint rejected the request; check Settings → Model profiles.',
     'recall.degraded.unknown': 'Memory recall was incomplete, so relevant memories may be missing.',
     'recall.openSettings': 'Open settings',
     'recall.omitted': '{n} more relevant memories were not shown.',
