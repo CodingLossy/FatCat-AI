@@ -41,5 +41,8 @@ describe('isUsableRecording', () => {
         // 标签页在后台时几乎没有电平采样,不按静音丢掉
         expect(isUsableRecording(2000, 0, 0)).toBe(true);
         expect(isUsableRecording(2000, 0, MIN_LEVEL_SAMPLES)).toBe(false);
+        // 采样帧数差一帧才够时仍只看时长
+        expect(isUsableRecording(2000, 0, MIN_LEVEL_SAMPLES - 1)).toBe(true);
+        expect(isUsableRecording(MIN_RECORDING_MS - 1, 0, MIN_LEVEL_SAMPLES - 1)).toBe(false);
     });
 });
