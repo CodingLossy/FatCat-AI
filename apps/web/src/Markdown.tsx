@@ -7,14 +7,25 @@ import type { RehypePlugins } from './highlight.js';
 import { useI18n } from './i18n.js';
 
 /** 写明了语言的代码块(```ts 等)。没有这样的代码块时不加载高亮代码。 */
-export const FENCE_WITH_LANG = /^\s{0,3}(`{3,}|~{3,})[ \t]*[A-Za-z]/m;
+export const FENCE_WITH_LANG = /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*[A-Za-z]/m;
 
 let highlightPlugins: RehypePlugins | null = null;
 let loading: Promise<RehypePlugins> | null = null;
 
-/** 高亮代码(highlight.js 的语法)单独打包,第一次遇到带语言的代码块时才加载(ADR 0009 第 7 节)。 */
-function loadHighlight(): Promise<RehypePlugins> {
-    loading ??= import('./highlight.js').then((m) => (highlightPlugins = m.highlightPlugins));
+/**
+ * 高亮代码(highlight.js 的语法)单独打包,第一次遇到带语言的代码块时才加载(ADR 0009 第 7 节)。
+ * 加载失败(例如网络中断)时清掉缓存的 Promise,下一个带语言的代码块会重新加载。
+ */
+export function loadHighlight(
+    load: () => Promise<{ highlightPlugins: RehypePlugins }> = () => import('./highlight.js'),
+): Promise<RehypePlugins> {
+    loading ??= load().then(
+        (m) => (highlightPlugins = m.highlightPlugins),
+        (error: unknown) => {
+            loading = null;
+            throw error;
+        },
+    );
     return loading;
 }
 

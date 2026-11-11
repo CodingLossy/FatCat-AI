@@ -226,6 +226,34 @@ describe('WebSocket /api/v1/ws', () => {
         expect(states().length - before).toBe(5);
     });
 
+    it('一个端断开时,其他端仍在听就保持那一端的状态,不置为 idle', async () => {
+        const { port, token, session } = await start();
+        const auth = { authorization: `Bearer ${token}` };
+        const [a, b, watcher] = [connect(port, auth), connect(port, auth), connect(port, auth)];
+        await Promise.all([a.opened, b.opened, watcher.opened]);
+        for (const c of [a, b, watcher]) {
+            c.hello();
+            await c.until(() => c.frames.some((f) => f.type === 'welcome'));
+        }
+        const report = (c: typeof a, state: string) =>
+            c.ws.send(JSON.stringify({ v: 1, type: 'voice-state', id: 'v', payload: { state, sessionId: session } }));
+        const states = () =>
+            watcher.frames.flatMap((f) =>
+                f.type === 'event' && f.payload.event.type === 'assistant-state' ? [f.payload.event.state] : [],
+            );
+
+        report(b, 'speaking');
+        await watcher.until(() => states().length >= 1);
+        report(a, 'listening');
+        await watcher.until(() => states().length >= 2);
+        a.ws.close();
+        await watcher.until(() => states().length >= 3);
+        expect(states()[2]).toBe('speaking');
+        b.ws.close();
+        await watcher.until(() => states().length >= 4);
+        expect(states()).toEqual(['speaking', 'listening', 'speaking', 'idle']);
+    });
+
     it('voice-state 必须在 hello 之后', async () => {
         const { port, token } = await start();
         const c = connect(port, { authorization: `Bearer ${token}` });
