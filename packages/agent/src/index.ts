@@ -2,6 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 export { EventBus, type EventListener } from './bus.js';
+export { assistantLabel } from './labels.js';
 export { estimateTokens, planContext, SUMMARY_PREFIX, transcript } from './context.js';
 export {
     DEFAULT_APPROVAL_TIMEOUT_MS,

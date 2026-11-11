@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { EventEnvelope } from './events.js';
 import { ProblemDetails } from './errors.js';
 import { PROTOCOL_VERSION } from './meta.js';
+import { VoiceStateReport } from './voice.js';
 
 /** WebSocket 心跳间隔(毫秒)。 */
 export const WS_PING_INTERVAL_MS = 30_000;
@@ -29,6 +30,8 @@ export const ClientFrame = z.discriminatedUnion('type', [
         }),
     ),
     frame('ping', z.object({})),
+    /** 浏览器上报正在收音 / 朗读(ADR 0021 第 6 节);服务器转成 assistant-state 推给本人所有在线的端。自 M4 起提供。 */
+    frame('voice-state', VoiceStateReport),
 ]);
 export type ClientFrame = z.infer<typeof ClientFrame>;
 

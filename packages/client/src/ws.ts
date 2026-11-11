@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ClientFrame, EventEnvelope, ProblemDetails, ServerFrame } from '@fatcat-ai/shared';
+import type { ClientFrame, EventEnvelope, ProblemDetails, ServerFrame, VoiceStateReport } from '@fatcat-ai/shared';
 
 /** 与 shared 的 PROTOCOL_VERSION 一致(这里不在运行时加载 shared)。 */
 export const CLIENT_PROTOCOL_VERSION = 1;
@@ -40,6 +40,11 @@ export interface ConnectEventsOptions {
 export interface EventConnection {
     /** 已收到的最大 seq(重连时作为 lastSeq)。 */
     readonly lastSeq: number | undefined;
+    /**
+     * 上报本端正在收音 / 朗读 / 已结束(ADR 0021 第 6 节)。握手完成前只记下最后一次,握手后发出;
+     * 重连后如果还在听或朗读,会再发一次。
+     */
+    reportVoiceState(report: VoiceStateReport): void;
     close(): void;
 }
 
@@ -58,9 +63,14 @@ export function connectEvents(
     let socket: WebSocketLike | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let frameId = 0;
+    let ready: WebSocketLike | null = null;
+    let voice: VoiceStateReport | null = null;
     const backoff = options.backoffMs ?? defaultBackoff;
 
     const send = (ws: WebSocketLike, frame: ClientFrame) => ws.send(JSON.stringify(frame));
+
+    const sendVoice = (ws: WebSocketLike, report: VoiceStateReport) =>
+        send(ws, { v: CLIENT_PROTOCOL_VERSION, type: 'voice-state', id: `c${++frameId}`, payload: report });
 
     const open = () => {
         const ws = factory(wsUrl, authHeaders);
@@ -87,6 +97,8 @@ export function connectEvents(
             }
             if (frame.type === 'welcome') {
                 attempt = 0;
+                ready = ws;
+                if (voice && voice.state !== 'idle') sendVoice(ws, voice);
                 options.onWelcome?.({
                     serverVersion: frame.payload.serverVersion,
                     replayComplete: frame.payload.replayComplete,
@@ -104,6 +116,7 @@ export function connectEvents(
         ws.onerror = () => undefined;
         ws.onclose = (ev) => {
             if (socket === ws) socket = null;
+            if (ready === ws) ready = null;
             if (closed) return;
             options.onError?.({ code: ev.code, reason: ev.reason });
             if (options.reconnect === false || FATAL_CLOSE_CODES.has(ev.code)) {
@@ -119,6 +132,10 @@ export function connectEvents(
     return {
         get lastSeq() {
             return lastSeq;
+        },
+        reportVoiceState(report) {
+            voice = report;
+            if (ready && ready.readyState === 1) sendVoice(ready, report);
         },
         close() {
             closed = true;

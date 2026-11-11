@@ -22767,6 +22767,25 @@
                               "domain",
                               null
                             ]
+                          },
+                          "activityLabel": {
+                            "type": "object",
+                            "properties": {
+                              "zh-CN": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 60
+                              },
+                              "en": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 60
+                              }
+                            },
+                            "required": [
+                              "zh-CN",
+                              "en"
+                            ]
                           }
                         },
                         "required": [

@@ -19,6 +19,9 @@ export const PreauthConstraintKind = z.enum(['pathPrefix', 'domain']);
 export type PreauthConstraintKind = z.infer<typeof PreauthConstraintKind>;
 
 /** GET /api/v1/tools 的列表项。 */
+export const ActivityLabel = z.object({ 'zh-CN': z.string().min(1).max(60), en: z.string().min(1).max(60) });
+export type ActivityLabel = z.infer<typeof ActivityLabel>;
+
 export const ToolInfo = z.object({
     /** 内置工具如 fs.read;MCP 工具为 mcp.<server>.<tool>。 */
     name: z.string().min(1).max(200),
@@ -34,6 +37,8 @@ export const ToolInfo = z.object({
     constraints: z.array(PreauthConstraintKind),
     /** 预授权时必须带的约束(例如 web.fetch 只能按域名预授权);null 表示不要求。自 M2 PR 3 起提供。 */
     requiredConstraint: PreauthConstraintKind.nullable().optional(),
+    /** 执行时语音指示器下的状态文字,中英文各一句(ADR 0021 第 7 节);MCP 工具没有。自 M4 起提供。 */
+    activityLabel: ActivityLabel.optional(),
 });
 export type ToolInfo = z.infer<typeof ToolInfo>;
 

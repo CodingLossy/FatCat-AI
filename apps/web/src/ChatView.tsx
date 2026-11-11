@@ -2,7 +2,13 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import type { RunStream } from '@fatcat-ai/client';
-import { MAX_ATTACHMENTS_PER_MESSAGE, type Message, type ModelProfile } from '@fatcat-ai/shared';
+import {
+    MAX_ATTACHMENTS_PER_MESSAGE,
+    MAX_RECORDING_SECONDS,
+    type Message,
+    type ModelProfile,
+    type Settings,
+} from '@fatcat-ai/shared';
 import {
     type ClipboardEvent,
     type DragEvent,
@@ -20,6 +26,24 @@ import { Markdown } from './Markdown.js';
 import { navigate } from './router.js';
 import { ToolCard } from './ToolCard.js';
 import { UsedMemories } from './UsedMemories.js';
+import { canRecord, type Playback, playSegments, type Recording, startRecording } from './audio.js';
+import { markdownToSpeech, splitForSpeech } from './speech-text.js';
+import { useAssistantState } from './use-voice.js';
+import { VoiceIndicator } from './VoiceIndicator.js';
+
+/** 按下不到这么久就松开,视为「点按开始、再点结束」的语音消息。 */
+const TAP_MS = 300;
+
+type VoiceMode = 'idle' | 'starting' | 'hold' | 'tap' | 'transcribing';
+
+const usableFor = (p: ModelProfile, purpose: 'stt' | 'tts') =>
+    p.kind === 'openai-compatible' && p.purpose.includes(purpose);
+
+/** 空格键按住说话只在焦点不在输入控件上时生效。 */
+function typingTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(target.tagName);
+}
 
 /** 新对话:先建会话再跳转,跳转后的 ChatView 负责发送这条消息。 */
 let pendingSend: { sessionId: string; text: string; attachmentIds: string[]; previews: string[] } | null = null;
@@ -99,6 +123,29 @@ export function ChatView({
     const [uploading, setUploading] = useState(false);
     const [imageNotice, setImageNotice] = useState<string | null>(null);
     const [profile, setProfile] = useState<ModelProfile | null>(null);
+    const [voiceConfig, setVoiceConfig] = useState<{ settings: Settings['voice']; stt: boolean; tts: boolean } | null>(
+        null,
+    );
+    const voiceConfigRef = useRef(voiceConfig);
+    useEffect(() => {
+        voiceConfigRef.current = voiceConfig;
+    }, [voiceConfig]);
+    const { shown, report } = useAssistantState();
+    /** 本端正在收音 / 朗读;优先于服务器推来的状态,并带本地电平。 */
+    const [localVoice, setLocalVoice] = useState<'listening' | 'speaking' | null>(null);
+    const level = useRef<number | null>(null);
+    const [voiceMode, setVoiceModeState] = useState<VoiceMode>('idle');
+    const mode = useRef<VoiceMode>('idle');
+    const setVoiceMode = (next: VoiceMode) => {
+        mode.current = next;
+        setVoiceModeState(next);
+    };
+    const recording = useRef<Recording | null>(null);
+    const pressedAt = useRef(0);
+    const playback = useRef<Playback | null>(null);
+    const [speakingId, setSpeakingId] = useState<string | null>(null);
+    const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+    const speakRef = useRef<(id: string, markdown: string) => void>(() => undefined);
 
     // 当前会话实际会用的配置档:决定能不能发图片(服务器的 model_no_vision 是最后一道检查)
     useEffect(() => {
@@ -110,7 +157,13 @@ export function ChatView({
                     api.settings.get(),
                     sessionId ? api.sessions.get(sessionId) : Promise.resolve(null),
                 ]);
-                if (!cancelled) setProfile(effectiveProfile(profiles.items, settings, session));
+                if (cancelled) return;
+                setProfile(effectiveProfile(profiles.items, settings, session));
+                setVoiceConfig({
+                    settings: settings.voice,
+                    stt: canRecord() && profiles.items.some((p) => usableFor(p, 'stt')),
+                    tts: profiles.items.some((p) => usableFor(p, 'tts')),
+                });
             } catch {
                 if (!cancelled) setProfile(null);
             }
@@ -145,6 +198,10 @@ export function ChatView({
             await loadMessages(id, null).catch(() => undefined);
             if (current.memoryIds.length > 0) setUsed({ runId: current.runId, ids: current.memoryIds });
             setLive(null);
+            const voice = voiceConfigRef.current;
+            if (voice?.tts && voice.settings.autoSpeak && current.text && !current.error) {
+                speakRef.current(current.runId ?? 'live', current.text);
+            }
             void onSessionsChanged();
         },
         [loadMessages, onSessionsChanged],
@@ -267,13 +324,14 @@ export function ChatView({
         }
     };
 
-    const submit = async () => {
-        const text = input.trim() || (images.length > 0 ? t('chat.imageDefaultText') : '');
+    /** spoken 为转写结果时直接发送它,输入框里已有的文字保留。 */
+    const submit = async (spoken?: string) => {
+        const text = (spoken ?? input).trim() || (images.length > 0 ? t('chat.imageDefaultText') : '');
         if (!text || live || uploading || noVision) return;
         setError(null);
         const uploaded = await uploadImages();
         if (!uploaded) return;
-        setInput('');
+        if (spoken === undefined) setInput('');
         if (sessionId && abort.current) {
             await send(sessionId, text, abort.current.signal, uploaded.ids, uploaded.previews);
             return;
@@ -287,6 +345,168 @@ export function ChatView({
             setError(errorText(e));
         }
     };
+
+    // ---- 语音:按住说话 / 点按录音、转写、朗读(ADR 0021) ----
+
+    const stopSpeaking = () => playback.current?.stop();
+
+    const speak = (id: string, markdown: string) => {
+        stopSpeaking();
+        const segments = splitForSpeech(markdownToSpeech(markdown, t('voice.codeOmitted')));
+        if (segments.length === 0) return;
+        setSpeakingId(id);
+        const current = playSegments(
+            segments,
+            async (text, signal) => (await api.voice.speak({ text }, { signal })).blob(),
+            {
+                onLevel: (l) => {
+                    level.current = l;
+                },
+                onStart: () => {
+                    setLocalVoice('speaking');
+                    report({ state: 'speaking', sessionId });
+                },
+                onError: (e) => setError(t('voice.failed', { msg: errorText(e) })),
+            },
+        );
+        playback.current = current;
+        void current.done.then(() => {
+            if (playback.current !== current) return;
+            playback.current = null;
+            setSpeakingId(null);
+            setLocalVoice(null);
+            level.current = null;
+            report({ state: 'idle', sessionId });
+        });
+    };
+
+    const finishRecording = async () => {
+        const rec = recording.current;
+        if (!rec) {
+            // 麦克风还在启动(例如权限弹窗):启动完成后立即结束
+            if (mode.current === 'starting') setVoiceMode('idle');
+            return;
+        }
+        recording.current = null;
+        setVoiceMode('transcribing');
+        setLocalVoice(null);
+        level.current = null;
+        report({ state: 'idle', sessionId });
+        try {
+            const blob = await rec.stop();
+            const text = blob ? (await api.voice.transcribe(blob)).text : '';
+            if (!text) {
+                setVoiceNotice(t('voice.notHeard'));
+            } else if (voiceConfigRef.current?.settings.autoSend && !live) {
+                await submit(text);
+            } else {
+                setInput((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text));
+            }
+        } catch (e) {
+            setError(t('voice.failed', { msg: errorText(e) }));
+        } finally {
+            setVoiceMode('idle');
+        }
+    };
+
+    const beginRecording = async () => {
+        stopSpeaking();
+        setVoiceNotice(null);
+        setError(null);
+        setVoiceMode('starting');
+        let rec: Recording;
+        try {
+            rec = await startRecording(
+                (l) => {
+                    level.current = l;
+                },
+                () => {
+                    setVoiceNotice(t('voice.limit', { n: MAX_RECORDING_SECONDS }));
+                    void finishRecording();
+                },
+            );
+        } catch (e) {
+            setVoiceMode('idle');
+            setError(t('voice.micDenied', { msg: errorText(e) }));
+            return;
+        }
+        recording.current = rec;
+        setLocalVoice('listening');
+        report({ state: 'listening', sessionId });
+        if (mode.current === 'idle') {
+            // 启动期间已经松开
+            await finishRecording();
+        } else if (mode.current === 'starting') {
+            setVoiceMode('hold');
+        }
+    };
+
+    const pressVoice = () => {
+        if (mode.current === 'tap') return void finishRecording();
+        if (mode.current !== 'idle' || live) return;
+        pressedAt.current = performance.now();
+        void beginRecording();
+    };
+
+    const releaseVoice = () => {
+        if (mode.current !== 'hold' && mode.current !== 'starting') return;
+        if (performance.now() - pressedAt.current < TAP_MS) {
+            if (mode.current === 'hold') setVoiceMode('tap');
+            else mode.current = 'tap';
+            return;
+        }
+        void finishRecording();
+    };
+
+    const pressRef = useRef(pressVoice);
+    const releaseRef = useRef(releaseVoice);
+    // 事件监听与 consume 通过 ref 调用最新的函数
+    useEffect(() => {
+        speakRef.current = speak;
+        pressRef.current = pressVoice;
+        releaseRef.current = releaseVoice;
+    });
+    const voiceEnabled = voiceConfig?.stt === true;
+
+    // 空格键按住说话(焦点不在输入控件上时)
+    useEffect(() => {
+        if (!voiceEnabled) return;
+        const down = (e: globalThis.KeyboardEvent) => {
+            if (e.code !== 'Space' || e.repeat || typingTarget(e.target)) return;
+            e.preventDefault();
+            pressRef.current();
+        };
+        const up = (e: globalThis.KeyboardEvent) => {
+            if (e.code !== 'Space' || typingTarget(e.target)) return;
+            e.preventDefault();
+            // 键盘没有「点按」:松开即结束
+            pressedAt.current = 0;
+            releaseRef.current();
+        };
+        window.addEventListener('keydown', down);
+        window.addEventListener('keyup', up);
+        return () => {
+            window.removeEventListener('keydown', down);
+            window.removeEventListener('keyup', up);
+        };
+    }, [voiceEnabled]);
+
+    // 离开会话时停止录音与朗读,并告诉其他端
+    useEffect(
+        () => () => {
+            recording.current?.cancel();
+            recording.current = null;
+            playback.current?.stop();
+            playback.current = null;
+            mode.current = 'idle';
+        },
+        [sessionId],
+    );
+
+    const indicatorState = localVoice ?? shown.state;
+    const indicatorLabel = localVoice
+        ? t(`voice.state.${localVoice}`)
+        : (shown.label ?? t(`voice.state.${shown.state}`));
 
     const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -316,13 +536,14 @@ export function ChatView({
 
     return (
         <div className="chat">
-            {sessionId ? (
-                <div className="chat-head">
+            <div className="chat-head">
+                <VoiceIndicator state={indicatorState} label={indicatorLabel} level={level} />
+                {sessionId ? (
                     <button type="button" className="link small" onClick={() => void deleteSession()}>
                         {t('chat.delete')}
                     </button>
-                </div>
-            ) : null}
+                ) : null}
+            </div>
             <div className="messages" data-testid="messages">
                 {messages.length === 0 && !live ? <p className="muted empty">{t('chat.empty')}</p> : null}
                 {messages.map((m) => (
@@ -333,6 +554,15 @@ export function ChatView({
                             <ToolCard key={tool.callId} tool={tool} />
                         ))}
                         {m.status === 'cancelled' ? <p className="small muted">{t('chat.cancelled')}</p> : null}
+                        {m.role === 'assistant' && voiceConfig?.tts && textOf(m).trim() ? (
+                            <button
+                                type="button"
+                                className="link small speak"
+                                onClick={() => (speakingId === m.id ? stopSpeaking() : speak(m.id, textOf(m)))}
+                            >
+                                {speakingId === m.id ? t('voice.stopSpeaking') : t('voice.speak')}
+                            </button>
+                        ) : null}
                     </div>
                 ))}
                 {live?.userText ? (
@@ -360,6 +590,11 @@ export function ChatView({
                 ) : null}
                 {used && !live ? <UsedMemories key={used.runId ?? ''} runId={used.runId} ids={used.ids} /> : null}
                 {error ? <p className="error">{t('chat.failed', { msg: error })}</p> : null}
+                {voiceNotice ? (
+                    <p className="small warning" role="status">
+                        {voiceNotice}
+                    </p>
+                ) : null}
                 <div ref={bottom} />
             </div>
             {images.length > 0 || imageNotice || noVision || uploading ? (
@@ -417,6 +652,45 @@ export function ChatView({
                         e.target.value = '';
                     }}
                 />
+                {voiceEnabled ? (
+                    <button
+                        type="button"
+                        className={`voice-button${voiceMode === 'hold' || voiceMode === 'tap' ? ' recording' : ''}`}
+                        title={t('voice.holdHint')}
+                        aria-pressed={voiceMode === 'hold' || voiceMode === 'tap'}
+                        data-testid="voice-button"
+                        disabled={voiceMode === 'transcribing' || (!!live && voiceMode === 'idle')}
+                        onPointerDown={(e) => {
+                            e.preventDefault();
+                            pressVoice();
+                        }}
+                        onPointerUp={releaseVoice}
+                        onPointerLeave={() => {
+                            if (mode.current === 'hold') void finishRecording();
+                        }}
+                        onKeyDown={(e) => {
+                            if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
+                                e.preventDefault();
+                                pressVoice();
+                            }
+                        }}
+                        onKeyUp={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                pressedAt.current = 0;
+                                releaseVoice();
+                            }
+                        }}
+                    >
+                        {voiceMode === 'transcribing'
+                            ? t('voice.transcribing')
+                            : voiceMode === 'tap'
+                              ? t('voice.tapRecording')
+                              : voiceMode === 'hold'
+                                ? t('voice.recording')
+                                : t('voice.hold')}
+                    </button>
+                ) : null}
                 <button
                     type="button"
                     title={t('chat.attachHint')}

@@ -75,6 +75,7 @@ M4 让用户可以在浏览器里说话、听回复,并把图片交给支持图�
 - `packages/ui` 的 `VoiceOrb`:颜色映射、随电平脉动、状态文字行(`aria-live="polite"`)、`prefers-reduced-motion` 与无 WebGL 回退、页面不可见时暂停;按需懒加载。渲染方式见第 5 节问题 3。
 - 状态文字:runner 发 `assistant-state` 时带 `label`(按会话语言);工具可声明 `activityLabel`(i18n 键),`executing` 时使用;状态变化去抖 ≥ 150 ms。
 - 验收:状态机单测(事件序列 → 渲染状态);Playwright 用假麦克风(Chromium 的假音频设备)走完「按住说话 → 转写 → 回复 → 朗读」;五种状态各一张截图(深浅色);回退截图:`prefers-reduced-motion` 下的静态指示与 Canvas 不可用时的纯文字状态(问题 3 按建议用 Canvas 2D,不涉及 WebGL)。
+- 实施时的说明:电平只在本端驱动指示器,不经过服务器;朗读先整段下载再播放(下一段并行请求),服务器端的流式转发留给以后的边下边播;按住说话在指针按下不到 300 ms 就松开时视为「点按开始、再点结束」。配置档表单的用途补上了 stt / tts。
 
 ### PR 6 · `docs/m4-wrapup`
 

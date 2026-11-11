@@ -35,6 +35,7 @@ import {
     type ToolRegistry,
 } from '@fatcat-ai/tools';
 import type { ApprovalOutcome } from './tools.js';
+import { assistantLabel } from './labels.js';
 
 export interface RunManagerOptions {
     repos: Repositories;
@@ -509,6 +510,13 @@ export class RunManager {
         const { repos } = this.options;
         const { ownerId, sessionId } = input;
         const emit = (event: AgentEvent) => this.emit(ownerId, sessionId, run.runId, event);
+        // 状态文字按界面语言生成(ADR 0021 第 7 节)
+        const locale = repos.settings.get(ownerId).locale;
+        const stateEvent = (state: 'thinking' | 'idle'): AgentEvent => ({
+            type: 'assistant-state',
+            state,
+            label: assistantLabel(state, locale),
+        });
         const tools = this.options.tools;
         // 按会话判断(ADR 0016 第 7 节):之前的轮次读过的外部内容仍在上下文里,同样算数
         let untrustedContentSeen = repos.sessions.untrustedAt(sessionId) !== null;
@@ -528,7 +536,7 @@ export class RunManager {
             userMessageId: run.userMessageId,
             assistantMessageId: run.assistantMessageId,
         });
-        emit({ type: 'assistant-state', state: 'thinking' });
+        emit(stateEvent('thinking'));
 
         // 助手消息的各部分:文本段、工具调用、工具结果,按发生顺序排列
         const parts: MessagePart[] = [];
@@ -692,7 +700,12 @@ export class RunManager {
                             }
                         }
                         if (approved) {
-                            emit({ type: 'assistant-state', state: 'executing', toolName: tool.name });
+                            emit({
+                                type: 'assistant-state',
+                                state: 'executing',
+                                toolName: tool.name,
+                                label: assistantLabel('executing', locale, tool),
+                            });
                             try {
                                 output = await tool.execute(call.input, {
                                     ...toolContext(),
@@ -737,7 +750,7 @@ export class RunManager {
                     });
                 }
                 persist('streaming');
-                emit({ type: 'assistant-state', state: 'thinking' });
+                emit(stateEvent('thinking'));
             }
         } catch (error) {
             if (signal.aborted && !(error instanceof ProviderError)) return finish('cancelled', undefined);
@@ -750,7 +763,7 @@ export class RunManager {
             emit({ type: 'run-failed', runId: run.runId, error: problem });
             if (!(error instanceof ProviderError)) throw error;
         } finally {
-            emit({ type: 'assistant-state', state: 'idle' });
+            emit(stateEvent('idle'));
         }
     }
 }

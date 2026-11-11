@@ -324,8 +324,48 @@ fieldset {
 
 .chat-head {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
     padding: 0.5rem 1rem 0;
+}
+
+/* 语音状态指示器(ADR 0021 第 7 节) */
+.voice-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 40px;
+}
+
+.voice-orb {
+    width: 40px;
+    height: 40px;
+    flex: none;
+}
+
+.voice-label {
+    font-size: 0.875rem;
+    color: var(--muted);
+}
+
+.voice-indicator:not([data-state='idle']) .voice-label {
+    color: inherit;
+}
+
+.voice-button {
+    touch-action: none;
+    user-select: none;
+}
+
+.voice-button.recording {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #ffffff;
+}
+
+.message .speak {
+    margin-top: 0.25rem;
 }
 
 .messages {

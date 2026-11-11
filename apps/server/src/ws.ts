@@ -3,12 +3,14 @@
 
 import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
-import type { EventBus } from '@fatcat-ai/agent';
+import { assistantLabel, type EventBus } from '@fatcat-ai/agent';
 import {
     ClientFrame,
     type EventEnvelope,
+    MAX_VOICE_STATE_FRAMES_PER_SECOND,
     PROTOCOL_VERSION,
     type ServerFrame,
+    type VoiceStateReport,
     WS_PING_INTERVAL_MS,
 } from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
@@ -17,6 +19,7 @@ import { PAT_PREFIX, safeEqual, sha256 } from './auth/crypto.js';
 import { SESSION_COOKIE } from './auth/middleware.js';
 import type { Logger } from './log.js';
 import { SERVER_VERSION } from './version.js';
+import { WindowLimiter } from './voice-limit.js';
 
 export const WS_PATH = '/api/v1/ws';
 const HELLO_TIMEOUT_MS = 10_000;
@@ -29,6 +32,23 @@ export interface WsDeps {
     repos: Repositories;
     bus: EventBus;
     logger: Logger;
+    /** voice-state 帧的限流;不给时每个用户每秒 5 个(ADR 0021 第 6 节)。 */
+    voiceLimiter?: WindowLimiter;
+}
+
+/**
+ * 浏览器上报的 listening / speaking / idle 转成 assistant-state 事件,写入事件表并推给本人所有在线的端
+ * (ADR 0021 第 6 节)。sessionId 不属于本人时按 null 处理。
+ */
+export function publishVoiceState(deps: Pick<WsDeps, 'repos' | 'bus'>, ownerId: string, report: VoiceStateReport) {
+    const sessionId = report.sessionId && deps.repos.sessions.get(ownerId, report.sessionId) ? report.sessionId : null;
+    const locale = deps.repos.settings.get(ownerId).locale;
+    const envelope = deps.repos.events.append(ownerId, {
+        sessionId,
+        runId: null,
+        event: { type: 'assistant-state', state: report.state, label: assistantLabel(report.state, locale) },
+    });
+    deps.bus.publish(ownerId, envelope);
 }
 
 type UpgradeAuth = { ok: true; ownerId: string } | { ok: false; status: 401 | 403 };
@@ -78,8 +98,12 @@ function reject(socket: Duplex, status: 401 | 403 | 404): void {
  * 在 HTTP 服务器上挂载 /api/v1/ws(计划 6.1、ADR 0004 第 5 节)。
  * ws 库在第一次握手时才加载,不连接 WebSocket 的部署不占这部分内存。
  */
-export function attachWebSocket(server: Server, deps: WsDeps): { close(): void } {
+export function attachWebSocket(server: Server, input: WsDeps): { close(): void } {
     let wss: WebSocketServer | null = null;
+    const deps: WsDeps = {
+        ...input,
+        voiceLimiter: input.voiceLimiter ?? new WindowLimiter(MAX_VOICE_STATE_FRAMES_PER_SECOND, 1000),
+    };
 
     server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
         const path = new URL(req.url ?? '/', 'http://localhost').pathname;
@@ -108,6 +132,8 @@ function handleConnection(ws: WebSocket, ownerId: string, deps: WsDeps): void {
     let alive = true;
     const pending: EventEnvelope[] = [];
     let unsubscribe: (() => void) | null = null;
+    /** 本连接最后上报的语音状态;断开时如果还在听 / 朗读,替它发一次 idle。 */
+    let voice: VoiceStateReport | null = null;
 
     const send = (frame: ServerFrame) => {
         if (ws.readyState !== ws.OPEN) return;
@@ -169,6 +195,14 @@ function handleConnection(ws: WebSocket, ownerId: string, deps: WsDeps): void {
             send({ v: PROTOCOL_VERSION, type: 'pong', id: nextId(), payload: {} });
             return;
         }
+        if (frame.type === 'voice-state') {
+            if (!helloDone) return fail(4400, 'hello first');
+            // 超过每秒上限的帧直接丢弃,不报错
+            if (deps.voiceLimiter && deps.voiceLimiter.take(ownerId) > 0) return;
+            voice = frame.payload;
+            publishVoiceState(deps, ownerId, frame.payload);
+            return;
+        }
         if (helloDone) return fail(4400, 'duplicate hello');
         helloDone = true;
         clearTimeout(helloTimer);
@@ -209,6 +243,13 @@ function handleConnection(ws: WebSocket, ownerId: string, deps: WsDeps): void {
         clearTimeout(helloTimer);
         clearInterval(pingTimer);
         unsubscribe?.();
+        if (voice && voice.state !== 'idle') {
+            try {
+                publishVoiceState(deps, ownerId, { state: 'idle', sessionId: voice.sessionId });
+            } catch (error) {
+                deps.logger.debug({ err: (error as Error).message }, 'voice idle on close failed');
+            }
+        }
     });
     ws.on('error', (error) => deps.logger.debug({ err: error.message }, 'websocket error'));
 }

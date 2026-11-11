@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ApprovalWarning, PreauthConstraintKind, ToolRisk } from '@fatcat-ai/shared';
+import type { ActivityLabel, ApprovalWarning, PreauthConstraintKind, ToolRisk } from '@fatcat-ai/shared';
 
 /**
  * 工具在执行中发现请求越权(例如路径在授权目录之外)时抛出的错误:core 把这次调用按「拒绝」审计,
@@ -43,6 +43,8 @@ export interface ToolDefinition {
     /** 为 false 时不允许预授权,每次都要审批(例如 memory.forget)。 */
     preauthorizable?: false;
     source?: 'builtin' | 'mcp';
+    /** 执行时语音指示器下的状态文字(ADR 0021 第 7 节);不给时内置工具按名称取默认值,MCP 工具没有。 */
+    activityLabel?: ActivityLabel;
     /** MCP 工具所属的服务器名。 */
     server?: string;
     /** 输出可能包含外部内容(网页、文件、MCP 输出);执行后本次运行的条件预授权失效。 */

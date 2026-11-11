@@ -63,7 +63,7 @@ async function start() {
         await post(`/api/v1/sessions/${session}/messages?stream=false`, { text: 'hi' });
         await s.runs.idle();
     };
-    return { port, token, cookie, chat };
+    return { port, token, cookie, chat, session };
 }
 
 /** 连接并收集服务器帧。 */
@@ -162,6 +162,76 @@ describe('WebSocket /api/v1/ws', () => {
 
         const closed = new Promise<number>((r) => c.ws.once('close', (code) => r(code)));
         c.ws.send('not json');
+        expect(await closed).toBe(4400);
+    });
+
+    it('voice-state 转成带文字的 assistant-state 推给所有端;断开时补发 idle;超出每秒上限的丢弃', async () => {
+        const { port, token, chat, session } = await start();
+        const auth = { authorization: `Bearer ${token}` };
+        const speaker = connect(port, auth);
+        const watcher = connect(port, auth);
+        await Promise.all([speaker.opened, watcher.opened]);
+        speaker.hello();
+        watcher.hello();
+        await speaker.until(() => speaker.frames.some((f) => f.type === 'welcome'));
+        await watcher.until(() => watcher.frames.some((f) => f.type === 'welcome'));
+        const report = (state: string, sessionId: string | null = session) =>
+            speaker.ws.send(JSON.stringify({ v: 1, type: 'voice-state', id: 'v', payload: { state, sessionId } }));
+        const states = () =>
+            watcher.frames.flatMap((f) =>
+                f.type === 'event' && f.payload.event.type === 'assistant-state'
+                    ? [{ ...f.payload.event, sessionId: f.payload.sessionId }]
+                    : [],
+            );
+
+        report('listening');
+        await watcher.until(() => states().length >= 1);
+        expect(states()[0]).toEqual({
+            type: 'assistant-state',
+            state: 'listening',
+            label: '正在听…',
+            sessionId: session,
+        });
+        // 不属于本人的会话按 null 处理
+        report('speaking', '01J00000000000000000000000');
+        await watcher.until(() => states().length >= 2);
+        expect(states()[1]).toMatchObject({ state: 'speaking', label: '正在朗读…', sessionId: null });
+
+        // 断开时还在朗读:服务器替它发 idle
+        speaker.ws.close();
+        await watcher.until(() => states().length >= 3);
+        expect(states()[2]).toMatchObject({ state: 'idle' });
+
+        // runner 发出的状态也带文字
+        await chat();
+        await watcher.until(() => states().some((e) => e.state === 'thinking'));
+        expect(states().find((e) => e.state === 'thinking')).toMatchObject({ label: '正在思考…' });
+
+        // 每秒最多 5 个(按用户计,前面已用掉 2 个),等进入下一个窗口;多余的丢弃且不断开
+        await new Promise((r) => setTimeout(r, 1100));
+        const burst = connect(port, auth);
+        await burst.opened;
+        burst.hello();
+        await burst.until(() => burst.frames.some((f) => f.type === 'welcome'));
+        const before = states().length;
+        for (let i = 0; i < 8; i++) {
+            burst.ws.send(
+                JSON.stringify({ v: 1, type: 'voice-state', id: `b${i}`, payload: { state: 'idle', sessionId: null } }),
+            );
+        }
+        burst.ws.send(JSON.stringify({ v: 1, type: 'ping', id: 'p', payload: {} }));
+        await burst.until(() => burst.frames.some((f) => f.type === 'pong'));
+        await watcher.until(() => states().length >= before + 5);
+        await new Promise((r) => setTimeout(r, 100));
+        expect(states().length - before).toBe(5);
+    });
+
+    it('voice-state 必须在 hello 之后', async () => {
+        const { port, token } = await start();
+        const c = connect(port, { authorization: `Bearer ${token}` });
+        await c.opened;
+        const closed = new Promise<number>((r) => c.ws.once('close', (code) => r(code)));
+        c.ws.send(JSON.stringify({ v: 1, type: 'voice-state', id: 'v', payload: { state: 'idle', sessionId: null } }));
         expect(await closed).toBe(4400);
     });
 });
