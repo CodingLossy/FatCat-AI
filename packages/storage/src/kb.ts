@@ -68,6 +68,8 @@ export function createKbRepository(conn: Connection, now: () => Date) {
                chunk_chars = excluded.chunk_chars, chunks = excluded.chunks, error = excluded.error,
                indexed_at = excluded.indexed_at`,
         ),
+        moveSource: sqlite.prepare<[string, string]>('UPDATE kb_sources SET item_id = ? WHERE item_id = ?'),
+        moveChunks: sqlite.prepare<[string, string]>('UPDATE kb_chunks SET item_id = ? WHERE item_id = ?'),
         deleteSource: sqlite.prepare<[string]>('DELETE FROM kb_sources WHERE item_id = ?'),
         deleteChunks: sqlite.prepare<[string]>('DELETE FROM kb_chunks WHERE item_id = ?'),
         insertChunk: sqlite.prepare(
@@ -92,6 +94,15 @@ export function createKbRepository(conn: Connection, now: () => Date) {
         /** 已经被软删除、但还有分块的文件条目(文件被删除或授权被撤销)。 */
         staleItems(ownerId: string): string[] {
             return q.stale.all(ownerId).map((r) => r.itemId);
+        },
+        /** 把知识库数据从旧条目迁到新条目(条目 id 变了但内容没变);目标已有数据时不动。 */
+        reassign(fromItemId: string, toItemId: string): void {
+            if (fromItemId === toItemId) return;
+            sqlite.transaction(() => {
+                if (q.source.get(toItemId)) return;
+                q.moveSource.run(toItemId, fromItemId);
+                q.moveChunks.run(toItemId, fromItemId);
+            })();
         },
         source(itemId: string): KbSource | null {
             return q.source.get(itemId) ?? null;

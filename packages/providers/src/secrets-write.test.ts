@@ -114,6 +114,7 @@ describe('restrictToCurrentUser', () => {
         restrictToCurrentUser('C:\\Users\\me\\.fatcat-ai\\secrets.yaml', {
             platform: 'win32',
             username: 'theodore',
+            domain: '',
             execFile: (file, args, options) => {
                 calls.push([file, args, options]);
             },
@@ -125,6 +126,19 @@ describe('restrictToCurrentUser', () => {
                 { shell: false, windowsHide: true },
             ],
         ]);
+    });
+
+    it('grants DOMAIN\\user when a domain is known, so a same-named local account is not picked', () => {
+        const calls: string[][] = [];
+        restrictToCurrentUser('C:\\secrets.yaml', {
+            platform: 'win32',
+            username: 'theodore',
+            domain: 'CORP',
+            execFile: (_file, args) => {
+                calls.push([...args]);
+            },
+        });
+        expect(calls[0]?.[3]).toBe('CORP\\theodore:F');
     });
 
     it('warns and does not throw when icacls fails or USERNAME is missing', () => {

@@ -75,6 +75,8 @@ export interface RestrictAclOptions {
     platform?: NodeJS.Platform;
     /** Windows 上默认读 USERNAME。不经过 shell,所以不会展开 %USERNAME%。 */
     username?: string;
+    /** 默认读 USERDOMAIN;授权给 DOMAIN\\user,避免同名本地账号被误授权。 */
+    domain?: string;
     execFile?: AclExec;
     onWarning?: (message: string) => void;
 }
@@ -91,8 +93,10 @@ export function restrictToCurrentUser(path: string, options: RestrictAclOptions 
         options.onWarning?.(`could not restrict ${fileName} to the current user: USERNAME is not set`);
         return;
     }
+    const domain = options.domain ?? process.env.USERDOMAIN;
+    const principal = domain ? `${domain}\\${username}` : username;
     try {
-        (options.execFile ?? execFileSync)('icacls', [path, '/inheritance:r', '/grant:r', `${username}:F`], {
+        (options.execFile ?? execFileSync)('icacls', [path, '/inheritance:r', '/grant:r', `${principal}:F`], {
             shell: false,
             windowsHide: true,
         });

@@ -114,7 +114,8 @@ export const mailProvider: ItemProvider = {
                         for (const a of m.attachments) {
                             const attRef = `attachment:${folder.id}:${a.id}`;
                             keepAttachments.add(attRef);
-                            ctx.upsert({
+                            const legacy = repos.items.bySource(ownerId, 'mail', `attachment:${a.id}`);
+                            const attItem = ctx.upsert({
                                 sourceRef: attRef,
                                 kind: 'content',
                                 type: 'mail.attachment',
@@ -123,6 +124,10 @@ export const mailProvider: ItemProvider = {
                                 meta: { attachmentId: a.id, messageId: m.id, size: a.size },
                                 parentId: messageItem.id,
                             });
+                            // 旧条目上的知识库数据先迁到新条目,否则 removeMissing 之后会被清掉
+                            if (legacy && legacy.id !== attItem.id && repos.kb.source(legacy.id)) {
+                                repos.kb.reassign(legacy.id, attItem.id);
+                            }
                         }
                         ctx.removeMissing(messageItem.id, keepAttachments);
                     });

@@ -225,3 +225,29 @@ describe('items:查询', () => {
         expect(items.counts(t.ownerId, 'missing')).toBeNull();
     });
 });
+
+describe('kb.reassign', () => {
+    it('moves kb_sources and kb_chunks to the new item and leaves nothing on the old one', () => {
+        const { repos, ownerId } = t;
+        const from = repos.items.upsert(ownerId, input('old', null));
+        const to = repos.items.upsert(ownerId, input('new', null));
+        repos.kb.replace(ownerId, { itemId: from.id, mtime: null, size: 3, chunkChars: 100 }, [
+            { page: null, heading: null, text: 'hello' },
+        ]);
+        repos.kb.reassign(from.id, to.id);
+        expect(repos.kb.source(from.id)).toBeNull();
+        expect(repos.kb.source(to.id)?.chunks).toBe(1);
+        expect(repos.kb.get(ownerId, to.id, 0)?.text).toBe('hello');
+    });
+
+    it('does not overwrite data already indexed on the target', () => {
+        const { repos, ownerId } = t;
+        const from = repos.items.upsert(ownerId, input('old', null));
+        const to = repos.items.upsert(ownerId, input('new', null));
+        const file = (itemId: string) => ({ itemId, mtime: null, size: 1, chunkChars: 100 });
+        repos.kb.replace(ownerId, file(from.id), [{ page: null, heading: null, text: 'old' }]);
+        repos.kb.replace(ownerId, file(to.id), [{ page: null, heading: null, text: 'new' }]);
+        repos.kb.reassign(from.id, to.id);
+        expect(repos.kb.get(ownerId, to.id, 0)?.text).toBe('new');
+    });
+});

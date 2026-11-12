@@ -387,7 +387,7 @@ export function createItemRepository(conn: Connection, now: () => Date) {
         /** 祖先链,根在前,不含自身。 */
         ancestors(ownerId: string, id: string): Item[] {
             if (!q.get.get(ownerId, id)) return [];
-            return q.ancestors.all({ id }).map(present);
+            return q.ancestors.all({ id }).map((row) => present(row));
         },
         children,
         counts(ownerId: string, id: string): ItemCounts | null {
@@ -437,14 +437,17 @@ export function createItemRepository(conn: Connection, now: () => Date) {
                    WHERE items_fts MATCH @match AND ${base} ORDER BY bm25(items_fts) LIMIT @limit`
                 : `${scope}SELECT ${COLUMNS} FROM items i WHERE (i.title LIKE @like ESCAPE '\\' OR i.summary LIKE @like ESCAPE '\\')
                    AND ${base} ORDER BY i.updated_at DESC LIMIT @limit`;
-            return sqlite.prepare<Record<string, unknown>, Row>(sql).all(params).map(present);
+            return sqlite
+                .prepare<Record<string, unknown>, Row>(sql)
+                .all(params)
+                .map((row) => present(row));
         },
         changes(ownerId: string, page: { cursor?: string | undefined; limit: number }): Page<Item> {
             const after = page.cursor ? decodeCursor(page.cursor, changeCursor) : null;
             const rows = after
                 ? q.changesAfter.all(ownerId, after.t, after.t, after.id, page.limit + 1)
                 : q.changesFirst.all(ownerId, page.limit + 1);
-            const items = rows.slice(0, page.limit).map(present);
+            const items = rows.slice(0, page.limit).map((row) => present(row));
             const last = items.at(-1);
             return {
                 items,
