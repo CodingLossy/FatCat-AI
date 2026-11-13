@@ -1,6 +1,6 @@
 # ADR 0024 · 微信 iLink 适配器
 
-- 状态:提议(M5a PR 7 `feat/channel-wechat`)
+- 状态:已采纳(M5a PR 7 `feat/channel-wechat`,#22 合并;真实微信真机未验证,见 `docs/milestones/M5a-self-check.md`)
 - 日期:2026-11-11(America/Los_Angeles)
 - 相关:ADR 0022(渠道框架,第 9 节密钥写入、第 13 节资料来源)、ADR 0006 第 2 节(`secrets.yaml`)、ADR 0018 第 5 节(渠道内存增量,PR 8)
 

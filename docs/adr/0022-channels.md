@@ -1,6 +1,6 @@
 # ADR 0022 · 渠道框架:IM 适配器、主人绑定、IM 审批与不可信内容
 
-- 状态:提议(M5a PR 3 `docs/m5a-contracts`);框架已在 M5a PR 5 `feat/channel-core` 实现(第 14 节),微信 iLink 见 PR 7 `feat/channel-wechat`
+- 状态:已采纳(M5a PR 3 `docs/m5a-contracts` 提议,#19 合并;M5a 自检 `docs/milestones/M5a-self-check.md` 对照第 5、6 节的偏离见该报告第三节);框架已在 M5a PR 5 `feat/channel-core` 实现(第 14 节),微信 iLink 见 PR 7 `feat/channel-wechat`
 - 日期:2026-11-10(America/Los_Angeles)
 - 相关:开发计划第 6 节(`ChannelAdapter`)、第 7 节(安全模型)、第 8 节 M5a、第 15.4 节(`/source`);ADR 0004(API v1 约定)、ADR 0006 第 2 节(密钥引用与 `secrets.yaml`)、ADR 0007(记忆的 `sensitivity` 与渠道过滤)、ADR 0010(工具与审批)、ADR 0016(不可信内容与注入评测)、ADR 0017(降级提醒)、ADR 0018 第 5 节(渠道内存增量)
 - 业主决定(2026-11-11,#17 评论):企业微信推迟,M5a 只做框架与微信 iLink;所有密钥统一放在数据目录的 `secrets.yaml`;iLink 令牌写入 `secrets.yaml`(写入规则见第 9 节)
