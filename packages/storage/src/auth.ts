@@ -26,20 +26,29 @@ export function createAuthRepositories(conn: Connection, now: () => Date) {
 
     const sessionQ = {
         insert: sqlite.prepare(
-            `INSERT INTO auth_sessions (id, owner_id, csrf_hash, created_at, expires_at, last_seen_at)
-             VALUES (@id, @ownerId, @csrfHash, @createdAt, @expiresAt, @lastSeenAt)`,
+            `INSERT INTO auth_sessions (id, owner_id, csrf_hash, created_at, expires_at, last_seen_at, second_factor_at)
+             VALUES (@id, @ownerId, @csrfHash, @createdAt, @expiresAt, @lastSeenAt, @secondFactorAt)`,
         ),
         valid: sqlite.prepare<[string, string], AuthSessionRow>(
             `SELECT ${selectList('auth_sessions')} FROM auth_sessions WHERE id = ? AND expires_at > ?`,
         ),
         touch: sqlite.prepare('UPDATE auth_sessions SET last_seen_at = ?, expires_at = ? WHERE id = ?'),
         delete: sqlite.prepare('DELETE FROM auth_sessions WHERE id = ?'),
+        deleteOthers: sqlite.prepare('DELETE FROM auth_sessions WHERE owner_id = ? AND id <> ?'),
+        deleteAll: sqlite.prepare('DELETE FROM auth_sessions WHERE owner_id = ?'),
         deleteExpired: sqlite.prepare('DELETE FROM auth_sessions WHERE expires_at <= ?'),
     };
 
     const authSessions = {
         /** idHash 为会话令牌的 SHA-256。 */
-        create(input: { idHash: string; ownerId: string; csrfHash: string; expiresAt: Date }): AuthSessionRecord {
+        create(input: {
+            idHash: string;
+            ownerId: string;
+            csrfHash: string;
+            expiresAt: Date;
+            /** 已通过第二因素(TOTP 登录成功)的会话。 */
+            secondFactor?: boolean;
+        }): AuthSessionRecord {
             const at = iso();
             const row = {
                 id: input.idHash,
@@ -48,6 +57,7 @@ export function createAuthRepositories(conn: Connection, now: () => Date) {
                 createdAt: at,
                 expiresAt: input.expiresAt.toISOString(),
                 lastSeenAt: at,
+                secondFactorAt: input.secondFactor ? at : null,
             };
             sessionQ.insert.run(row);
             return row;
@@ -64,6 +74,13 @@ export function createAuthRepositories(conn: Connection, now: () => Date) {
         },
         deleteExpired(): number {
             return sessionQ.deleteExpired.run(iso()).changes;
+        },
+        /** 撤销除 keepIdHash 之外的该用户全部会话(启用或关闭 TOTP 时)。 */
+        deleteOthers(ownerId: string, keepIdHash: string): number {
+            return sessionQ.deleteOthers.run(ownerId, keepIdHash).changes;
+        },
+        deleteAll(ownerId: string): number {
+            return sessionQ.deleteAll.run(ownerId).changes;
         },
     };
 

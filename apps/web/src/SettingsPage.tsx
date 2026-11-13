@@ -14,6 +14,7 @@ import { EmbeddingIndex } from './EmbeddingIndex.js';
 import { Preauthorizations } from './Preauthorizations.js';
 import { EgressSection } from './EgressSection.js';
 import { SecretsSection } from './SecretsSection.js';
+import { TotpSection } from './TotpSection.js';
 import { TimeZoneSetting } from './TimeZoneSetting.js';
 
 const PURPOSES: ModelPurpose[] = ['chat', 'cheap', 'stt', 'tts'];
@@ -445,6 +446,7 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                 </label>
                 <span className="small muted">{t('settings.voiceHint')}</span>
             </section>
+            <TotpSection />
             <SecretsSection />
             <EgressSection />
             <ModelProfiles onChanged={setProfiles} />

@@ -3,29 +3,34 @@
 
 // 离线命令(ADR 0026):secrets migrate / rekey / cleanup。`apps/cli` 目前只是占位,所以命令放在服务器入口。
 // 输出里只有键数、指纹与文件名,没有任何密钥值;不接受命令行形式的密钥。
-import { closeSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from 'node:fs';
+import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 import {
     cleanupMigrated,
+    decryptSecrets,
     encodeMasterKey,
+    encryptSecrets,
     MasterKeyFormatError,
     migrateSecrets,
     parseMasterKey,
     rekeySecrets,
     restrictToCurrentUser,
+    secretsLayout,
     SECRETS_BACKUP_DIR,
     SECRETS_ENC_FILE,
     writeFileAtomic,
     SecretsMigrateError,
 } from '@fatcat-ai/providers';
 import { PlaintextBackupAction } from '@fatcat-ai/shared';
+import { openDatabase, rekeyTotpSecrets } from '@fatcat-ai/storage';
 import { dataDirMasterKey, MASTER_KEY_FILE } from './data-dir.js';
 
 export const SECRETS_USAGE = `Usage (stop the server first for migrate and rekey; neither checks whether it is running):
   secrets migrate [--plaintext-backups keep|encrypt|delete]
       Encrypt secrets.yaml into secrets.yaml.enc. The plaintext file is kept as secrets.yaml.migrated.
   secrets rekey --new-key-file <path>
-      Re-encrypt secrets.yaml.enc under a new master key (64 hex characters or base64, in a file).
+      Re-encrypt secrets.yaml.enc and the TOTP secret stored in the database under a new master key
+      (64 hex characters or base64, in a file); the database part is one transaction with the file swap.
   secrets cleanup
       Delete secrets.yaml.migrated once you have confirmed the encrypted file works.
 Keys are never accepted on the command line.`;
@@ -91,37 +96,82 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
                     return 1;
                 }
             }
-            // 2. 换密文(失败时 rekeySecrets 保留原文件;这里清掉暂存的新密钥)
-            let r;
-            try {
-                r = rekeySecrets({ dataDir: io.dataDir, oldKey: current.key, newKey });
-            } catch (error) {
-                rmSync(staged, { force: true });
-                throw error;
-            }
-            io.out(`Re-encrypted ${r.keys} key(s). New master key fingerprint: ${r.fingerprint}. Backup: ${r.backup}.`);
-            // 3. 最后改名;失败时用刚做的备份把密文恢复成旧密钥的那份
-            if (fromDataDir) {
+            // 2. 库内 TOTP 共享密钥与密钥文件同一个数据库事务:换密文、改名 master.key 任何一步失败(且已恢复旧密文)时,
+            //    库里的信封一并回滚;只有「恢复备份也失败」时文件已是新密钥,库里随之提交新信封,保持一致
+            const dbPath = join(io.dataDir, 'db.sqlite');
+            const conn = existsSync(dbPath) ? openDatabase(dbPath) : null;
+            const noFile = secretsLayout(io.dataDir) === 'none';
+            let rekeyed: ReturnType<typeof rekeySecrets> | null = null;
+            let renamed = !fromDataDir;
+            let restoreFailed = false;
+            const move = (): void => {
+                // 3. 最后改名;失败时用刚做的备份把密文恢复成旧密钥的那份
+                if (!fromDataDir) return;
                 try {
                     (io.replaceMasterKey ?? renameSync)(staged, keyPath);
+                    renamed = true;
                 } catch (error) {
-                    const code = (error as NodeJS.ErrnoException).code ?? 'error';
-                    const backup = join(io.dataDir, SECRETS_BACKUP_DIR, r.backup);
+                    const errCode = (error as NodeJS.ErrnoException).code ?? 'error';
+                    if (!rekeyed) {
+                        // 没有密钥文件要恢复:库里的信封随事务回滚即回到旧密钥
+                        io.err(
+                            `Error: could not replace ${MASTER_KEY_FILE} (${errCode}). The TOTP secrets in the database were rolled back and still use the old key; nothing else changed.`,
+                        );
+                        throw new RekeyAborted();
+                    }
+                    const backup = join(io.dataDir, SECRETS_BACKUP_DIR, rekeyed.backup);
                     try {
                         writeFileAtomic(io.dataDir, join(io.dataDir, SECRETS_ENC_FILE), readFileSync(backup, 'utf8'));
                         rmSync(staged, { force: true });
                         io.err(
-                            `Error: could not replace ${MASTER_KEY_FILE} (${code}). ${SECRETS_ENC_FILE} was restored from the backup and still uses the old key; nothing else changed.`,
+                            `Error: could not replace ${MASTER_KEY_FILE} (${errCode}). ${SECRETS_ENC_FILE} was restored from the backup and still uses the old key; nothing else changed.`,
                         );
                     } catch {
+                        restoreFailed = true;
                         io.err(
-                            `Error: could not replace ${MASTER_KEY_FILE} (${code}), and restoring the backup failed too. ` +
+                            `Error: could not replace ${MASTER_KEY_FILE} (${errCode}), and restoring the backup failed too. ` +
                                 `${SECRETS_ENC_FILE} now uses the NEW key. Move ${staged} to ${keyPath} (or point FATCAT_MASTER_KEY_FILE at ${file}), ` +
-                                `or restore ${join(SECRETS_BACKUP_DIR, r.backup)} over ${SECRETS_ENC_FILE} to go back to the old key.`,
+                                `or restore ${join(SECRETS_BACKUP_DIR, rekeyed.backup)} over ${SECRETS_ENC_FILE} to go back to the old key.`,
                         );
                     }
-                    return 1;
+                    if (!restoreFailed) throw new RekeyAborted();
                 }
+            };
+            let rewrapped = 0;
+            try {
+                const rewrap = (envelope: string) => {
+                    rewrapped++;
+                    return encryptSecrets(decryptSecrets(envelope, current.key!), newKey);
+                };
+                const during = () => {
+                    // 失败时 rekeySecrets 保留原文件;外层清掉暂存的新密钥
+                    if (!noFile) rekeyed = rekeySecrets({ dataDir: io.dataDir, oldKey: current.key!, newKey });
+                    else if (rewrapped === 0) {
+                        throw new SecretsMigrateError(
+                            'not_encrypted',
+                            'there is no encrypted secrets file to re-encrypt',
+                        );
+                    }
+                    move();
+                };
+                if (conn) rekeyTotpSecrets(conn, rewrap, during);
+                else during();
+            } catch (error) {
+                if (!restoreFailed) rmSync(staged, { force: true });
+                if (error instanceof RekeyAborted) return 1;
+                throw error;
+            } finally {
+                conn?.close();
+            }
+            if (rekeyed) {
+                const r = rekeyed as ReturnType<typeof rekeySecrets>;
+                io.out(
+                    `Re-encrypted ${r.keys} key(s). New master key fingerprint: ${r.fingerprint}. Backup: ${r.backup}.`,
+                );
+            }
+            io.out(`Re-encrypted ${rewrapped} TOTP secret(s) in the database.`);
+            if (restoreFailed) return 1;
+            if (fromDataDir && renamed) {
                 restrictToCurrentUser(keyPath, { onWarning: (m) => io.err(`warning: ${m}`) });
                 io.out(`${MASTER_KEY_FILE} was replaced with the new key.`);
             } else {
@@ -129,7 +179,6 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
                     'The old key came from the environment: point FATCAT_MASTER_KEY or FATCAT_MASTER_KEY_FILE at the new key before starting the server.',
                 );
             }
-            io.out('Keys stored in the database (TOTP) are not re-encrypted by this command.');
             return 0;
         }
         if (command === 'cleanup') {
@@ -153,6 +202,9 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
 }
 
 class UsageError extends Error {}
+
+/** 改名失败且已恢复旧密文:让数据库事务回滚;错误信息已经输出。 */
+class RekeyAborted extends Error {}
 
 function usage(io: SecretsCommandIo, problem: string): number {
     io.err(`${problem}\n${SECRETS_USAGE}`);

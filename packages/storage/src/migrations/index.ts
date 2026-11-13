@@ -16,6 +16,7 @@ import { migration0011 } from './0011_mail_sent_copy.js';
 import { migration0012 } from './0012_memory_generation_log.js';
 import { migration0013 } from './0013_message_attachments.js';
 import { migration0014 } from './0014_channels.js';
+import { migration0015 } from './0015_totp.js';
 
 /** 按 id 顺序排列的全部迁移;新增迁移追加在末尾,已发布的迁移不得修改。 */
 export const migrations: readonly Migration[] = [
@@ -33,4 +34,5 @@ export const migrations: readonly Migration[] = [
     migration0012,
     migration0013,
     migration0014,
+    migration0015,
 ];

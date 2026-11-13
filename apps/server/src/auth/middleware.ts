@@ -20,6 +20,7 @@ export const PUBLIC_ENDPOINTS: ReadonlySet<string> = new Set([
     'GET /api/v1/meta',
     'GET /api/v1/auth/status',
     'POST /api/v1/auth/login',
+    'POST /api/v1/auth/login/totp',
     'POST /api/v1/auth/setup',
 ]);
 

@@ -24,6 +24,7 @@ import { createEmbeddingService } from './embeddings.js';
 import { randomToken } from './auth/crypto.js';
 import { loadConfig, SERVER_ENV_NAMES } from './config.js';
 import { dataDirMasterKey, LEGACY_DATA_DIR_NAME, LegacyDataDirBusyError, migrateLegacyDataDir } from './data-dir.js';
+import { runAuthCommand } from './auth-cli.js';
 import { runSecretsCommand } from './secrets-cli.js';
 import { createLogger } from './log.js';
 import { attachWebSocket } from './ws.js';
@@ -37,6 +38,18 @@ if (process.argv[2] === 'secrets') {
         runSecretsCommand(process.argv.slice(3), {
             dataDir: loadConfig().dataDir,
             env: process.env,
+            out: (line) => console.log(line),
+            err: (line) => console.error(line),
+        }),
+    );
+}
+
+// 离线子命令:`node dist/index.js auth reset-totp`(ADR 0027 第 7 节);不启动服务器
+if (process.argv[2] === 'auth') {
+    applyLegacyEnv(process.env, SERVER_ENV_NAMES);
+    process.exit(
+        runAuthCommand(process.argv.slice(3), {
+            dataDir: loadConfig().dataDir,
             out: (line) => console.log(line),
             err: (line) => console.error(line),
         }),
