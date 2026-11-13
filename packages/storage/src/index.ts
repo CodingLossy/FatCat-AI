@@ -8,6 +8,14 @@ import { migrations } from './migrations/index.js';
 
 export { AttachmentLinkError, type AttachmentRepository, type NewAttachment } from './attachments.js';
 export type { AccessTokenRecord, AuthSessionRecord } from './auth.js';
+export {
+    rekeyTotpSecrets,
+    resetTotpOffline,
+    type RecoveryCodeHash,
+    type RecoveryCodeRecord,
+    type TotpCredentialRecord,
+    type TotpRepository,
+} from './totp.js';
 export { encodeCursor, decodeCursor, InvalidCursorError, type Page } from './cursor.js';
 export { applyPragmas, assertForeignKeysOn, openDatabase, StorageError, type Connection, type Sqlite } from './db.js';
 export { newId } from './ids.js';

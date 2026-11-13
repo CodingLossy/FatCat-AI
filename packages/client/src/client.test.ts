@@ -254,4 +254,48 @@ describe('令牌换取', () => {
         expect(header(f.calls[1]!, 'cookie')).toBe('aip_session=s1; aip_csrf=c1');
         expect(header(f.calls[1]!, 'x-csrf-token')).toBe('c1');
     });
+
+    it('loginForToken answers the TOTP challenge before creating the token, and fails without a code source', async () => {
+        const challenge = () =>
+            Response.json(
+                { totpRequired: true, challengeToken: 'c'.repeat(43), expiresAt: '2026-11-13T00:05:00.000Z' },
+                { status: 202 },
+            );
+        const finished = () =>
+            new Response(JSON.stringify({ owner: { id: 'o', username: 'owner' }, csrfToken: 'c1', expiresAt: 'x' }), {
+                status: 200,
+                headers: [
+                    ['set-cookie', 'aip_session=s1; Path=/; HttpOnly'],
+                    ['set-cookie', 'aip_csrf=c1; Path=/'],
+                ],
+            });
+        const token = { id: 't', name: 'cli', token: 'aip_pat_new', createdAt: 'x', lastUsedAt: null, expiresAt: null };
+        const f = fakeFetch([
+            challenge(),
+            finished(),
+            Response.json(token, { status: 201 }),
+            new Response(null, { status: 204 }),
+        ]);
+        const client = createClient({ baseUrl: 'http://h', fetch: f.fn });
+        const result = await client.auth.loginForToken({
+            username: 'owner',
+            password: 'p',
+            tokenName: 'cli',
+            secondFactor: async () => ({ code: '123456' }),
+        });
+        expect(result.token.token).toBe('aip_pat_new');
+        expect(f.calls.map((c) => c.url)).toEqual([
+            'http://h/api/v1/auth/login',
+            'http://h/api/v1/auth/login/totp',
+            'http://h/api/v1/tokens',
+            'http://h/api/v1/auth/logout',
+        ]);
+        expect(JSON.parse(String(f.calls[1]!.init.body))).toEqual({ challengeToken: 'c'.repeat(43), code: '123456' });
+
+        const g = fakeFetch([challenge()]);
+        const bare = createClient({ baseUrl: 'http://h', fetch: g.fn });
+        await expect(bare.auth.loginForToken({ username: 'owner', password: 'p', tokenName: 'cli' })).rejects.toThrow(
+            /verification code/,
+        );
+    });
 });

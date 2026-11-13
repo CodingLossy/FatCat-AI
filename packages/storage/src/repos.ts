@@ -16,6 +16,7 @@ import type {
 import { z } from 'zod';
 import { createAttachmentRepository } from './attachments.js';
 import { createAuthRepositories } from './auth.js';
+import { createTotpRepository } from './totp.js';
 import { createMemoryRepository, createSummaryRepository } from './memory.js';
 import { createMemoryReadRepository } from './memory-read.js';
 import { createMemoryMaintenanceRepository } from './memory-maintenance.js';
@@ -548,6 +549,7 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
         mail: createMailRepository(conn, now),
         mailCache: createMailCacheRepository(conn, now),
         ...createAuthRepositories(conn, now),
+        totp: createTotpRepository(conn, now),
     };
 }
 

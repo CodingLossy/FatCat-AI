@@ -37,7 +37,15 @@ async function signIn(ctx: Ctx, args: string[], mode: 'setup' | 'login'): Promis
     const result =
         mode === 'setup'
             ? await client.auth.setupForToken({ ...credentials, ...(setupCode ? { setupCode } : {}), tokenName })
-            : await client.auth.loginForToken({ ...credentials, tokenName });
+            : await client.auth.loginForToken({
+                  ...credentials,
+                  tokenName,
+                  // 启用了两步验证的账户:输入 6 位验证码,或 XXXXX-XXXXX 形式的恢复码
+                  secondFactor: async () => {
+                      const answer = (await promptLine(ctx, 'Verification code (or recovery code): ')).trim();
+                      return /^\d{6}$/.test(answer) ? { code: answer } : { recoveryCode: answer };
+                  },
+              });
     writeConfigFile(config.path, { server: config.server, token: result.token.token, tokenId: result.token.id });
     status(
         ctx,

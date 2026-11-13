@@ -400,6 +400,42 @@ const zh = {
     'secrets.done': '已加密 {n} 个密钥,主密钥指纹 {fp}。请确认模型调用和渠道正常,再清理 secrets.yaml.migrated。',
     'secrets.cleanupHint':
         '如果数据目录里还有 secrets.yaml.migrated(迁移留下的明文),确认一切正常后在服务器上运行 node dist/index.js secrets cleanup 删除它。',
+    'auth.totpTitle': '两步验证',
+    'auth.totpHint': '请输入验证器 App 里显示的 6 位验证码。',
+    'auth.recoveryHint': '请输入一个未使用过的恢复码。每个恢复码只能用一次。',
+    'auth.totpCode': '验证码',
+    'auth.recoveryCode': '恢复码',
+    'auth.totpSubmit': '验证并登录',
+    'auth.useRecovery': '改用恢复码',
+    'auth.useCode': '改用验证码',
+    'auth.totpBack': '返回',
+    'totp.title': '安全',
+    'totp.on': '两步验证:已开启(剩余 {n} 个恢复码)',
+    'totp.off': '两步验证:未开启',
+    'totp.hint':
+        '开启后,登录除了密码还需要验证器 App(Google Authenticator、Microsoft Authenticator、1Password 等)里的 6 位验证码。',
+    'totp.enable': '开启两步验证',
+    'totp.disable': '关闭两步验证',
+    'totp.regenerate': '重新生成恢复码',
+    'totp.passwordStep': '第 1 步:输入当前密码。',
+    'totp.next': '下一步',
+    'totp.scanStep': '第 2 步:用验证器 App 扫描二维码(或手动输入密钥),再输入 App 显示的 6 位验证码。',
+    'totp.qrLabel': '两步验证二维码',
+    'totp.manual': '无法扫码时手动输入:',
+    'totp.code': '验证码',
+    'totp.recoveryCode': '恢复码',
+    'totp.useRecovery': '改用恢复码',
+    'totp.enableNote': '开启后,其他已登录的设备会被退出;当前这个浏览器保持登录。',
+    'totp.confirmEnable': '确认开启',
+    'totp.codesTitle': '恢复码',
+    'totp.codesWarning':
+        '请现在保存这 10 个恢复码(例如存进密码管理器)。它们只显示这一次;手机丢失时,每个码可以登录一次。',
+    'totp.savedCodes': '我已保存',
+    'totp.disableStep': '关闭需要密码和一个验证码(或恢复码)。其他已登录的设备会被退出。',
+    'totp.confirmDisable': '确认关闭',
+    'totp.regenerateStep': '重新生成需要密码和一个验证码(或恢复码)。旧恢复码会全部作废。',
+    'totp.confirmRegenerate': '重新生成',
+    'totp.resetHint': '验证码和恢复码都丢了:在服务器本机运行 node dist/index.js auth reset-totp,密码仍可使用。',
 };
 
 type Key = keyof typeof zh;
@@ -828,6 +864,46 @@ const en: Record<Key, string> = {
         'Encrypted {n} key(s); master key fingerprint {fp}. Check that models and channels still work, then clean up secrets.yaml.migrated.',
     'secrets.cleanupHint':
         'If secrets.yaml.migrated (the plaintext left over from the migration) is still in the data directory, delete it on the server with: node dist/index.js secrets cleanup, once you have checked that everything works.',
+    'auth.totpTitle': 'Two-step verification',
+    'auth.totpHint': 'Enter the 6-digit code shown in your authenticator app.',
+    'auth.recoveryHint': 'Enter one recovery code you have not used yet. Each code works once.',
+    'auth.totpCode': 'Verification code',
+    'auth.recoveryCode': 'Recovery code',
+    'auth.totpSubmit': 'Verify and sign in',
+    'auth.useRecovery': 'Use a recovery code',
+    'auth.useCode': 'Use a verification code',
+    'auth.totpBack': 'Back',
+    'totp.title': 'Security',
+    'totp.on': 'Two-step verification: on ({n} recovery codes left)',
+    'totp.off': 'Two-step verification: off',
+    'totp.hint':
+        'When on, signing in needs the 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, …) as well as your password.',
+    'totp.enable': 'Turn on two-step verification',
+    'totp.disable': 'Turn off two-step verification',
+    'totp.regenerate': 'Generate new recovery codes',
+    'totp.passwordStep': 'Step 1: enter your current password.',
+    'totp.next': 'Next',
+    'totp.scanStep':
+        'Step 2: scan the QR code with your authenticator app (or type the key in), then enter the 6-digit code the app shows.',
+    'totp.qrLabel': 'Two-step verification QR code',
+    'totp.manual': 'Cannot scan? Type this key:',
+    'totp.code': 'Verification code',
+    'totp.recoveryCode': 'Recovery code',
+    'totp.useRecovery': 'Use a recovery code instead',
+    'totp.enableNote': 'Turning it on signs out every other device; this browser stays signed in.',
+    'totp.confirmEnable': 'Turn on',
+    'totp.codesTitle': 'Recovery codes',
+    'totp.codesWarning':
+        'Save these 10 recovery codes now (a password manager is a good place). They are shown only once; if you lose your phone, each code signs you in once.',
+    'totp.savedCodes': 'I have saved them',
+    'totp.disableStep':
+        'Turning it off needs your password and a verification code (or a recovery code). Every other device is signed out.',
+    'totp.confirmDisable': 'Turn off',
+    'totp.regenerateStep':
+        'New codes need your password and a verification code (or a recovery code). All old recovery codes stop working.',
+    'totp.confirmRegenerate': 'Generate',
+    'totp.resetHint':
+        'Lost both the code and the recovery codes? On the server machine run: node dist/index.js auth reset-totp. Your password keeps working.',
 };
 
 export const dictionaries: Record<Locale, Record<Key, string>> = { 'zh-CN': zh, en };
