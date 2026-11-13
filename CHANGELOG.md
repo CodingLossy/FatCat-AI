@@ -39,6 +39,7 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - On Windows, `secrets.yaml` and the backup written with it no longer keep the profile's inherited access list. After each write the server runs `icacls` with no shell, removes inherited entries, and grants full control only to the current user. If that fails, the file is kept and a warning is logged.
 - The one-second pause between WeChat long polls, and between QR-status polls that return immediately, ends as soon as the channel is stopped or the process shuts down.
 - Hold to talk: a recording is no longer dropped as silent when the tab was in the background for part of it (the level meter doesn't run there), even if the first part was recorded in the foreground.
+- Channels: four approval gaps are closed (ADR 0022). An approval notice in IM now lists the approval's warnings, one `Note: ...` line each (for example when an e-mail goes to a recipient that did not come from your own messages), and a long notice shortens the warnings, never the "reply Confirm K7 or Reject K7" line. After you approve or reject in the Web UI, replying with that code in IM says "Already handled." instead of "No such pending item." and runs nothing again; codes from other channels, expired codes and codes from before a restart still get "No such pending item." A message that quotes or forwards something is never an approval, even if its text is exactly "Confirm K7"; it goes to the assistant as a normal message with the quoted part marked as untrusted. Before a channel is bound, a wrong or expired pairing code, or one sent after the 5-try lock, gets no reply and counts toward the per-minute limit for ignored messages; a correct code still replies "Bound.".
 
 ### M4 · Voice and images (2026-11-10)
 
@@ -262,6 +263,7 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 - **修复**:在 Windows 上,`secrets.yaml` 和同一次写入产生的备份不再沿用用户配置文件里继承来的访问权限。每次写完后用 `icacls`(不经过 shell)去掉继承项,只给当前用户完全控制。失败时保留文件并记一条警告。
 - **修复**:微信长轮询之间、以及扫码状态立刻返回时的 1 秒间隔,在停止渠道或进程退出时会马上结束,不再干等。
 - **修复**:按住说话时,如果录音中途标签页切到过后台(那段时间采不到电平),即使前半段是在前台录的,也不再被当成静音丢掉。
+- **修复**:渠道审批的四处缺口(ADR 0022)。IM 里的审批提醒现在会列出这个审批的警告,每条一行「注意:…」(例如邮件发给了不是来自你自己消息的收件人);提醒太长时只截断警告,不截断「回复『确认 K7』或『拒绝 K7』」这一句。在 Web 上批准或拒绝之后,IM 再回这个短码会得到「已处理。」而不是「没有这个待确认项。」,也不会再执行一次;别的渠道的短码、过期的短码和重启之前的短码仍然是「没有这个待确认项。」。带引用或转发的消息即使正文整条是「确认 K7」也不算审批,会作为普通消息交给助手,引用部分按不可信内容标出。渠道未绑定时,错误、过期或在 5 次锁定之后发来的配对码不再回复,并计入每分钟的忽略类消息上限;正确的码仍回「已绑定。」。
 
 ### M4 · 语音与图片(2026-11-10)
 

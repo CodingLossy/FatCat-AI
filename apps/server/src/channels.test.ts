@@ -6,7 +6,7 @@ import { FakeChannelAdapter, type FakeAdapterOptions } from '@fatcat-ai/channels
 import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
 import { Channel, ChannelPairing, ChannelStatus, MetaResponseSchema, pageOf } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { composeUserText, IGNORED_MESSAGES_PER_MINUTE, MAX_QUEUE, REPLIES } from './channels/hub.js';
+import { approvalReminder, composeUserText, IGNORED_MESSAGES_PER_MINUTE, MAX_QUEUE, REPLIES } from './channels/hub.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 let s: TestServer;
@@ -371,7 +371,7 @@ describe('渠道运行器', () => {
         await t.post(`/api/v1/channels/${channel.id}/pairing`);
         s.conn.sqlite.prepare('UPDATE channel_pairings SET expires_at = ?').run('2000-01-01T00:00:00.000Z');
         await fake.deliver({ externalUserId: OWNER, text: '绑定 123456' });
-        expect(fake.textsTo(OWNER)).toEqual([REPLIES.badCode]);
+        expect(fake.textsTo(OWNER)).toEqual([]);
         expect(s.repos.channels.getPairing(channel.id)?.failedAttempts).toBe(0);
 
         const { code } = ChannelPairing.parse(await (await t.post(`/api/v1/channels/${channel.id}/pairing`)).json());
@@ -415,5 +415,29 @@ describe('渠道运行器', () => {
         expect(logs).not.toContain(OWNER);
         expect(logs).not.toContain('314159');
         expect(logs).not.toContain('引用的话');
+    });
+});
+
+describe('approvalReminder', () => {
+    const tail = '回复「确认 K7」或「拒绝 K7」,30 分钟内有效。';
+
+    it('没有警告时与原文案逐字相同', () => {
+        expect(approvalReminder('Send e-mail', 'K7', 30, undefined, 2048)).toBe(`需要确认:Send e-mail。${tail}`);
+        expect(approvalReminder('Send e-mail', 'K7', 30, [], 2048)).toBe(`需要确认:Send e-mail。${tail}`);
+    });
+
+    it('每条警告单独一行;过长时截断警告,「回复」一句保持完整且不超限', () => {
+        const warnings = [{ message: '收件人不来自你的消息' }, { message: '甲'.repeat(2000) }];
+        const short = approvalReminder('Send', 'K7', 30, warnings.slice(0, 1), 2048).split('\n');
+        expect(short).toEqual(['需要确认:Send。', '注意:收件人不来自你的消息', tail]);
+        const long = approvalReminder('Send', 'K7', 30, warnings, 512);
+        expect(Buffer.byteLength(long)).toBeLessThanOrEqual(512);
+        expect(long.endsWith(`\n${tail}`)).toBe(true);
+        expect(long).toContain('注意:收件人不来自你的消息');
+        expect(long).toContain('…');
+        // 摘要把空间占满时,警告退成固定的一行,「回复」一句仍在
+        const crowded = approvalReminder('x'.repeat(480), 'K7', 30, warnings, 512);
+        expect(crowded.endsWith(`\n${tail}`)).toBe(true);
+        expect(crowded).toContain('有安全警告');
     });
 });
