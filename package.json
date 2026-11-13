@@ -32,7 +32,8 @@
     "check:licenses": "node scripts/check-licenses.mjs",
     "check:placeholders": "node scripts/check-placeholders.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
-    "perf:mail-sync": "node scripts/perf/mail-sync-rss.mjs"
+    "perf:mail-sync": "node scripts/perf/mail-sync-rss.mjs",
+    "perf:channel": "node scripts/perf/channel-rss.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
