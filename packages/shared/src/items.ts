@@ -110,3 +110,47 @@ export const ItemContent = z.object({
     truncated: z.boolean(),
 });
 export type ItemContent = z.infer<typeof ItemContent>;
+
+// ---- 关联条目与「问 AI」(ADR 0029,自 M5b 起提供;只新增) ----
+
+/** GET /items/{id}/related:只含非 primary 边;contains 的 primary 边走 children / ancestors。 */
+export const ItemRelatedQuery = z.object({
+    cursor: z.string().min(1).max(1024).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+    rel: ItemRel.optional(),
+});
+export type ItemRelatedQuery = z.input<typeof ItemRelatedQuery>;
+
+export const ItemRelatedEntry = z.object({
+    item: Item,
+    rel: ItemRel,
+    /** out:本条目指向对方(如人物提及邮件);in:对方指向本条目(如邮件被哪些人物提及)。 */
+    direction: z.enum(['out', 'in']),
+});
+export type ItemRelatedEntry = z.infer<typeof ItemRelatedEntry>;
+
+export const ItemRelatedPage = z.object({
+    items: z.array(ItemRelatedEntry),
+    nextCursor: z.string().nullable(),
+});
+export type ItemRelatedPage = z.infer<typeof ItemRelatedPage>;
+
+export const ItemAskScope = z.enum(['item', 'subtree']);
+export type ItemAskScope = z.infer<typeof ItemAskScope>;
+
+/** POST /items/{id}/ask。 */
+export const ItemAskRequest = z.object({ scope: ItemAskScope.default('item') });
+export type ItemAskRequest = z.input<typeof ItemAskRequest>;
+
+/**
+ * 与 POST /mail/messages/{id}/ask 同形:创建会话并返回预填提示词,由客户端填入输入框,不自动发送。
+ * 涉及邮件的条目(含子树内有邮件)会话置 untrustedContentSeen,untrustedContentSeen 在这里如实回报。
+ */
+export const ItemAskResponse = z.object({
+    sessionId: Id,
+    prompt: z.string(),
+    untrustedContentSeen: z.boolean(),
+    /** 子树摘要因条数或长度上限被截断。 */
+    truncated: z.boolean(),
+});
+export type ItemAskResponse = z.infer<typeof ItemAskResponse>;
