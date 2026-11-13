@@ -23,11 +23,25 @@ import { itemProviders } from './memory-provider.js';
 import { createEmbeddingService } from './embeddings.js';
 import { randomToken } from './auth/crypto.js';
 import { loadConfig, SERVER_ENV_NAMES } from './config.js';
-import { LEGACY_DATA_DIR_NAME, LegacyDataDirBusyError, migrateLegacyDataDir } from './data-dir.js';
+import { dataDirMasterKey, LEGACY_DATA_DIR_NAME, LegacyDataDirBusyError, migrateLegacyDataDir } from './data-dir.js';
+import { runSecretsCommand } from './secrets-cli.js';
 import { createLogger } from './log.js';
 import { attachWebSocket } from './ws.js';
 import { ChannelHub } from './channels/hub.js';
 import { WechatChannels } from './channels/wechat.js';
+
+// 离线子命令:`node dist/index.js secrets migrate|rekey|cleanup`(ADR 0026);不启动服务器
+if (process.argv[2] === 'secrets') {
+    applyLegacyEnv(process.env, SERVER_ENV_NAMES);
+    process.exit(
+        runSecretsCommand(process.argv.slice(3), {
+            dataDir: loadConfig().dataDir,
+            env: process.env,
+            out: (line) => console.log(line),
+            err: (line) => console.error(line),
+        }),
+    );
+}
 
 // 改名前的 AIP_* 环境变量暂时兼容读取(ADR 0019)
 const legacyEnv = applyLegacyEnv(process.env, SERVER_ENV_NAMES);
@@ -74,7 +88,26 @@ if (migrated.applied.length > 0) {
     logger.info({ applied: migrated.applied, backup: migrated.backupPath }, 'database migrated');
 }
 const repos = createRepositories(conn);
-const secrets = new SecretStore({ dataDir: config.dataDir, redactor, onWarning: (msg) => logger.warn(msg) });
+// 主密钥来源:FATCAT_MASTER_KEY → FATCAT_MASTER_KEY_FILE → 数据目录的 master.key。前两个格式不对时启动报错,不回退(ADR 0026)
+const masterKey = dataDirMasterKey(config.dataDir, process.env, (msg) => logger.warn(msg));
+try {
+    masterKey.current();
+} catch (error) {
+    logger.error({ code: (error as { code?: string }).code }, (error as Error).message);
+    process.exit(1);
+}
+const secrets = new SecretStore({ dataDir: config.dataDir, redactor, masterKey, onWarning: (msg) => logger.warn(msg) });
+// 明文与密文同时存在:不猜,报错并说明处理办法
+try {
+    if (secrets.checkLayout() === 'plaintext') {
+        logger.warn(
+            'secrets.yaml is stored as plaintext; encrypt it from Settings → Secrets or run: node dist/index.js secrets migrate',
+        );
+    }
+} catch (error) {
+    logger.error({ code: (error as { code?: string }).code }, (error as Error).message);
+    process.exit(1);
+}
 
 // 尚未初始化时,生成一次性设置码供非本机完成初始化;本机直连无需设置码(ADR 0004 第 2 节)
 let setupCode = config.setupCode;

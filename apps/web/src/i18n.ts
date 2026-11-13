@@ -364,6 +364,42 @@ const zh = {
     'settings.voiceHint': '语音配置档必须是 OpenAI 兼容类型,用途勾选 stt 或 tts;录音与朗读的文字不保存、不写日志。',
     'models.voice': '朗读音色',
     'models.voiceHint': '只对 tts 用途有效;留空时用 alloy(OpenAI 的默认音色,其他服务的音色名可能不同)。',
+    'secrets.title': '密钥',
+    'secrets.file': '密钥文件',
+    'secrets.state.none': '还没有密钥文件',
+    'secrets.state.plaintext': '明文(secrets.yaml)',
+    'secrets.state.encrypted': '已加密(secrets.yaml.enc)',
+    'secrets.masterKey': '主密钥',
+    'secrets.keyNone': '尚未生成',
+    'secrets.key.env': '环境变量 FATCAT_MASTER_KEY',
+    'secrets.key.env-file': '环境变量 FATCAT_MASTER_KEY_FILE 指向的文件',
+    'secrets.key.data-dir': '数据目录里的 master.key',
+    'secrets.key.none': '尚未生成',
+    'secrets.fingerprint': '指纹',
+    'secrets.backups': '备份',
+    'secrets.backupsCount': '共 {total} 份,其中明文 {plain} 份',
+    'secrets.unavailable': '密钥不可用。',
+    'secrets.unavailableHint':
+        '找不到主密钥,或它与加密文件不匹配。服务器照常运行,但模型、邮件、渠道等依赖密钥的功能暂时不能用;没有任何文件被改动。请恢复原来的主密钥(对照上面的指纹)。',
+    'secrets.plaintextHint': '密钥文件目前是明文。可以把它加密;不会自动进行,需要你确认。',
+    'secrets.migrate': '加密密钥文件…',
+    'secrets.confirmTitle': '确认加密密钥文件',
+    'secrets.step1': '先备份现有的 secrets.yaml。',
+    'secrets.step2': '用主密钥加密,写入 secrets.yaml.enc。',
+    'secrets.step3': '解密回读,逐个密钥核对一致。',
+    'secrets.step4':
+        '全部通过后,明文文件改名为 secrets.yaml.migrated(仍含明文,确认一切正常后用命令行清理)。任何一步失败都会保留明文原样。',
+    'secrets.plainBackups': '已有 {n} 份明文备份,怎么处理?',
+    'secrets.backupsKeep': '保留(默认,不动)',
+    'secrets.backupsEncrypt': '逐个加密,并删除明文副本',
+    'secrets.backupsDelete': '删除',
+    'secrets.deleteConfirm': '我确认删除这些明文备份,删除后无法恢复。',
+    'secrets.masterKeyNote':
+        '主密钥不会进入备份:丢失主密钥就等于丢失全部密钥(模型 key 重新填写,微信重新扫码)。拿到整个数据目录(含 master.key)的人仍能解密,公网部署请把主密钥放在环境变量里。',
+    'secrets.confirmMigrate': '确认加密',
+    'secrets.done': '已加密 {n} 个密钥,主密钥指纹 {fp}。请确认模型调用和渠道正常,再清理 secrets.yaml.migrated。',
+    'secrets.cleanupHint':
+        '如果数据目录里还有 secrets.yaml.migrated(迁移留下的明文),确认一切正常后在服务器上运行 node dist/index.js secrets cleanup 删除它。',
 };
 
 type Key = keyof typeof zh;
@@ -755,6 +791,43 @@ const en: Record<Key, string> = {
     'models.voice': 'Voice (read aloud)',
     'models.voiceHint':
         'Only used for the tts purpose. Leave empty for alloy (the OpenAI default; other services use different voice names).',
+    'secrets.title': 'Secrets',
+    'secrets.file': 'Secrets file',
+    'secrets.state.none': 'No secrets file yet',
+    'secrets.state.plaintext': 'Plaintext (secrets.yaml)',
+    'secrets.state.encrypted': 'Encrypted (secrets.yaml.enc)',
+    'secrets.masterKey': 'Master key',
+    'secrets.keyNone': 'Not created yet',
+    'secrets.key.env': 'Environment variable FATCAT_MASTER_KEY',
+    'secrets.key.env-file': 'File named by FATCAT_MASTER_KEY_FILE',
+    'secrets.key.data-dir': 'master.key in the data directory',
+    'secrets.key.none': 'Not created yet',
+    'secrets.fingerprint': 'fingerprint',
+    'secrets.backups': 'Backups',
+    'secrets.backupsCount': '{total} in total, {plain} of them plaintext',
+    'secrets.unavailable': 'Secrets key unavailable.',
+    'secrets.unavailableHint':
+        'The master key is missing or does not match the encrypted file. The server keeps running, but features that need secrets (models, mail, channels) will not work, and no file was changed. Restore the original master key (compare the fingerprint above).',
+    'secrets.plaintextHint': 'Your secrets file is plaintext. You can encrypt it; this never happens automatically.',
+    'secrets.migrate': 'Encrypt secrets file…',
+    'secrets.confirmTitle': 'Encrypt the secrets file?',
+    'secrets.step1': 'Back up the current secrets.yaml.',
+    'secrets.step2': 'Encrypt it with the master key into secrets.yaml.enc.',
+    'secrets.step3': 'Decrypt it again and compare every key.',
+    'secrets.step4':
+        'Only if all of that passes, rename the plaintext file to secrets.yaml.migrated (it still holds plaintext; remove it from the command line once everything works). If any step fails the plaintext stays as it was.',
+    'secrets.plainBackups': 'There are {n} plaintext backups. What should happen to them?',
+    'secrets.backupsKeep': 'Keep them (default, untouched)',
+    'secrets.backupsEncrypt': 'Encrypt each one and delete the plaintext copy',
+    'secrets.backupsDelete': 'Delete them',
+    'secrets.deleteConfirm': 'I confirm deleting these plaintext backups; this cannot be undone.',
+    'secrets.masterKeyNote':
+        'The master key is never part of a backup: losing it means losing every secret (re-enter model keys, scan WeChat again). Anyone who gets the whole data directory, master.key included, can still decrypt; for public deployments keep the master key in an environment variable.',
+    'secrets.confirmMigrate': 'Encrypt now',
+    'secrets.done':
+        'Encrypted {n} key(s); master key fingerprint {fp}. Check that models and channels still work, then clean up secrets.yaml.migrated.',
+    'secrets.cleanupHint':
+        'If secrets.yaml.migrated (the plaintext left over from the migration) is still in the data directory, delete it on the server with: node dist/index.js secrets cleanup, once you have checked that everything works.',
 };
 
 export const dictionaries: Record<Locale, Record<Key, string>> = { 'zh-CN': zh, en };

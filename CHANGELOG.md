@@ -17,6 +17,13 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - Environment variables now start with `FATCAT_AI_` instead of `AIP_` (for example `FATCAT_AI_PORT`, `FATCAT_AI_DATA_DIR`, `FATCAT_AI_TOKEN`). The old names still work for now and print a deprecation warning.
 - Unchanged on purpose: the `aip_pat_` token prefix, the `aip_session` / `aip_csrf` cookies and the `X-AIP-Server-Version` header, so existing tokens and API v1 clients keep working.
 
+### M5b · Secrets, TOTP and the knowledge map (in progress)
+
+#### Added
+
+- Secrets encryption (ADR 0026). `secrets.yaml` can now be encrypted as a whole into `secrets.yaml.enc` (AES-256-GCM, envelope `fcsec1`). It is never done automatically: use Settings → Secrets (status, master key source and fingerprint, a confirmation step, and what to do with existing plaintext backups: keep, encrypt or delete) or the offline commands `node dist/index.js secrets migrate`, `secrets rekey --new-key-file <file>` and `secrets cleanup`. Migration backs up, writes and verifies the encrypted file, and only then renames the plaintext file to `secrets.yaml.migrated`; any failure leaves the plaintext untouched. The master key comes from `FATCAT_MASTER_KEY`, `FATCAT_MASTER_KEY_FILE` or a generated `master.key` (mode 600). A fresh install writes the encrypted file from the first secret on. If the master key is missing or does not match, the server still starts and features that need secrets report "密钥不可用" without any file being changed. `master.key`, `secrets.yaml.enc` and `secrets.yaml.migrated` are never committed (`pnpm check:secrets`).
+- API: `GET /api/v1/settings/secrets` and `POST /api/v1/settings/secrets/migrate` (body `confirm: true`, optional `plaintextBackups`: `keep`, `encrypt` or `delete`); neither returns any secret value. Both additive.
+
 ### M5a · Channels (in progress)
 
 #### Added
@@ -246,6 +253,11 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 - Windows 上旧服务器仍在运行时,数据目录无法迁移(`EPERM` / `EBUSY`)。服务器会重试几秒,仍失败就提示先停止旧的 AI-Personal 服务器并退出,不移动也不删除任何文件。
 - 环境变量前缀由 `AIP_` 改为 `FATCAT_AI_`(如 `FATCAT_AI_PORT`、`FATCAT_AI_DATA_DIR`、`FATCAT_AI_TOKEN`);旧名暂时仍可用,并打印弃用警告。
 - 有意不改:令牌前缀 `aip_pat_`、Cookie `aip_session` / `aip_csrf` 与响应头 `X-AIP-Server-Version`,现有令牌与 API v1 客户端不受影响。
+
+### M5b · 密钥、TOTP 与知识地图(进行中)
+
+- **新增**:密钥加密存储(ADR 0026)。`secrets.yaml` 可以整体加密为 `secrets.yaml.enc`(AES-256-GCM,信封 `fcsec1`),不会自动进行:在「设置 → 密钥」查看状态、主密钥来源与指纹,确认后迁移(并选择已有明文备份保留、加密或删除),或用离线命令 `node dist/index.js secrets migrate`、`secrets rekey --new-key-file <文件>`、`secrets cleanup`。迁移顺序为备份、写入并回读校验加密文件,全部通过后才把明文改名为 `secrets.yaml.migrated`,任何一步失败都保留明文原样。主密钥来自 `FATCAT_MASTER_KEY`、`FATCAT_MASTER_KEY_FILE` 或自动生成的 `master.key`(权限 600)。全新安装从第一个密钥起就写加密文件。主密钥缺失或不匹配时服务器照常启动,依赖密钥的功能报「密钥不可用」,不改动任何文件。`master.key`、`secrets.yaml.enc`、`secrets.yaml.migrated` 不会进仓库(`pnpm check:secrets`)。
+- **接口**:新增 `GET /api/v1/settings/secrets` 与 `POST /api/v1/settings/secrets/migrate`(请求体 `confirm: true`,可选 `plaintextBackups`:`keep` / `encrypt` / `delete`),响应里没有任何密钥值;均为增量。
 
 ### M5a · 渠道(进行中)
 

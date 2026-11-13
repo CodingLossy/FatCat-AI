@@ -54,6 +54,8 @@ pnpm dev
 
 不想用环境变量时,也可以把密钥写进数据目录(默认 `~/.fatcat-ai`,Windows 为 `%USERPROFILE%\.fatcat-ai`)下的 `secrets.yaml`,每行一个 `NAME: value`,配置档里引用 `file:NAME`。文件修改后立即生效,不需要重启。服务器自己写入这个文件时(例如微信登录令牌),在 Windows 上会去掉继承来的访问项,只保留当前用户的完全控制;做不到时记一条警告,文件仍会留下。
 
+**加密密钥文件**(可选,需要你明确确认,不会自动进行):在「设置 → 密钥」点「加密密钥文件」,或停服后运行 `node dist/index.js secrets migrate`。服务器会先备份、把 `secrets.yaml` 加密为 `secrets.yaml.enc`(AES-256-GCM)、解密回读逐个核对,全部通过后才把明文改名为 `secrets.yaml.migrated`;确认一切正常后用 `node dist/index.js secrets cleanup` 删除它。主密钥按优先级取:环境变量 `FATCAT_MASTER_KEY`(64 位十六进制或 base64)→ `FATCAT_MASTER_KEY_FILE` 指向的文件 → 数据目录里自动生成的 `master.key`(权限 600,Windows 上只给当前用户)。前两种格式不对时启动报错,不会悄悄换成下一种。**丢失主密钥等于丢失全部密钥**(模型 key 重新填写,微信重新扫码);主密钥不进备份。拿到整个数据目录(含 `master.key`)的人仍能解密,所以公网部署请把主密钥放在环境变量或容器 secret 里。换主密钥:停服后 `node dist/index.js secrets rekey --new-key-file <文件>`(不接受命令行里直接写密钥)。没有任何密钥文件的全新安装,第一次写入密钥(例如微信登录令牌)时直接写加密文件;明文与加密文件同时存在时启动报错。
+
 > 本项目原名 AI-Personal。升级后服务器首次启动会把旧的 `~/.ai-personal` 自动迁到 `~/.fatcat-ai`(已有新目录时不覆盖);旧的 `AIP_*` 环境变量暂时仍可用,但会提示改用 `FATCAT_AI_*`。
 
 ### 2. Docker
@@ -144,7 +146,7 @@ Anthropic / Gemini 用 `--kind anthropic` 或 `--kind gemini`(不需要 `--base-
 ### 5. 接入微信
 
 1. 设置 → 渠道:添加一个微信渠道并启用,点「扫码登录」,用要当作助手的微信账号扫码并在手机上确认。
-2. 登录令牌保存在数据目录的 `secrets.yaml`(键名 `ILINK_TOKEN_<渠道 id>`)。服务器写入前会把原文件复制到 `backups/secrets-<UTC 时间>.yaml`(权限 600,只保留最近 5 份),只改这一行;`secrets.yaml` 解析失败时不写入。在 Windows 上写完后会去掉继承来的访问项,只给当前用户完全控制。删除渠道时同样只删这一行。
+2. 登录令牌保存在数据目录的 `secrets.yaml`(键名 `ILINK_TOKEN_<渠道 id>`)。服务器写入前会把原文件复制到 `backups/secrets-<UTC 时间>.yaml`(密钥文件已加密时是 `.yaml.enc`,密文原样备份)(权限 600,只保留最近 5 份),只改这一行;`secrets.yaml` 解析失败时不写入。在 Windows 上写完后会去掉继承来的访问项,只给当前用户完全控制。删除渠道时同样只删这一行。
 3. 点「生成配对码」,用你自己的微信私聊助手账号发送「绑定 123456」。之后只有你的私聊消息会进入对话;需要确认的操作回复「确认 K7」或「拒绝 K7」。发送 `/clear` 或「清空」只清空这个渠道的当前会话,记忆不会删除。Web 的会话列表可以删除单条对话,或「清空全部对话」(同样保留记忆)。
 4. 登录失效时渠道显示「需要扫码登录」,重新扫码即可。暂不支持图片、文件和需要输入 PIN 的登录。
 

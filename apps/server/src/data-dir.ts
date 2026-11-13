@@ -9,15 +9,24 @@ import {
     cpSync,
     existsSync,
     lstatSync,
+    mkdirSync,
     openSync,
     readdirSync,
     readlinkSync,
+    readFileSync,
     readSync,
     renameSync,
     rmSync,
     statSync,
+    writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
+import {
+    createMasterKeyResolver,
+    encodeMasterKey,
+    type MasterKeyResolver,
+    restrictToCurrentUser,
+} from '@fatcat-ai/providers';
 
 /** 默认数据目录(用户目录下)。 */
 export const DATA_DIR_NAME = '.fatcat-ai';
@@ -165,4 +174,29 @@ function hashFile(path: string): string {
         closeSync(fd);
     }
     return hash.digest('hex');
+}
+
+/** 数据目录里的主密钥文件(ADR 0026 第 3 节);不进自动备份、不进仓库。 */
+export const MASTER_KEY_FILE = 'master.key';
+
+/**
+ * 主密钥的来源链:FATCAT_MASTER_KEY → FATCAT_MASTER_KEY_FILE → 数据目录的 master.key。
+ * master.key 只在首次需要加密(全新安装第一次写密钥,或显式迁移)时创建,权限 600,Windows 上收紧为当前用户;
+ * 已存在时绝不覆盖(用 wx 创建)。环境变量来源的格式错误在 current() 时抛出,由启动流程报错退出。
+ */
+export function dataDirMasterKey(
+    dataDir: string,
+    env: NodeJS.ProcessEnv = process.env,
+    onWarning?: (message: string) => void,
+): MasterKeyResolver {
+    const path = join(dataDir, MASTER_KEY_FILE);
+    return createMasterKeyResolver({
+        env,
+        readDataDirKey: () => (existsSync(path) ? readFileSync(path, 'utf8') : null),
+        createDataDirKey: (key) => {
+            mkdirSync(dataDir, { recursive: true, mode: 0o700 });
+            writeFileSync(path, `${encodeMasterKey(key)}\n`, { mode: 0o600, flag: 'wx' });
+            restrictToCurrentUser(path, { onWarning });
+        },
+    });
 }

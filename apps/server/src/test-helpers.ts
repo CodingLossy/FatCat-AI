@@ -21,6 +21,7 @@ import { createMailService, type MailService } from './mail-setup.js';
 import type { MailJobRunner } from '@fatcat-ai/mail';
 import { createEmbeddingService, type EmbeddingService } from './embeddings.js';
 import { FailureLimiter } from './auth/rate-limit.js';
+import { dataDirMasterKey } from './data-dir.js';
 import { createLogger } from './log.js';
 import { type AdapterFactory, ChannelHub } from './channels/hub.js';
 import { WechatChannels } from './channels/wechat.js';
@@ -93,7 +94,12 @@ export async function createTestServer(
         },
     });
     const redactor = new Redactor();
-    const secrets = new SecretStore({ dataDir: dir, redactor, env: options.env ?? {} });
+    const secrets = new SecretStore({
+        dataDir: dir,
+        redactor,
+        env: options.env ?? {},
+        masterKey: dataDirMasterKey(dir, options.env ?? {}),
+    });
     const providerDeps = {
         secrets,
         redactor,

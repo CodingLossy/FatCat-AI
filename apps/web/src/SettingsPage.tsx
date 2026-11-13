@@ -12,6 +12,7 @@ import { Channels } from './Channels.js';
 import { MailAccounts } from './MailAccounts.js';
 import { EmbeddingIndex } from './EmbeddingIndex.js';
 import { Preauthorizations } from './Preauthorizations.js';
+import { SecretsSection } from './SecretsSection.js';
 import { TimeZoneSetting } from './TimeZoneSetting.js';
 
 const PURPOSES: ModelPurpose[] = ['chat', 'cheap', 'stt', 'tts'];
@@ -443,6 +444,7 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                 </label>
                 <span className="small muted">{t('settings.voiceHint')}</span>
             </section>
+            <SecretsSection />
             <ModelProfiles onChanged={setProfiles} />
             {/* 配置档变化(新增 embed 档、改模型)后重新读取状态 */}
             <EmbeddingIndex key={profiles.map((p) => `${p.id}:${p.model}:${p.purpose.join()}`).join()} />
