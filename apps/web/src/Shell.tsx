@@ -3,7 +3,7 @@
 
 import type { Session, Settings } from '@fatcat-ai/shared';
 import { useCallback, useEffect, useState } from 'react';
-import { api } from './api.js';
+import { api, errorText } from './api.js';
 import { ApprovalPanel } from './ApprovalPanel.js';
 import { AuditPage } from './AuditPage.js';
 import { ChatView } from './ChatView.js';
@@ -42,6 +42,8 @@ export function Shell({
     const { t } = useI18n();
     const route = useRoute();
     const [sessions, setSessions] = useState<Session[]>([]);
+    const [sessionError, setSessionError] = useState<string | null>(null);
+    const [pending, setPending] = useState<{ kind: 'one'; id: string } | { kind: 'all' } | null>(null);
 
     const reloadSessions = useCallback(
         () =>
@@ -65,6 +67,30 @@ export function Shell({
 
     const activeId = route.name === 'session' ? route.id : null;
 
+    const deleteSession = async (id: string) => {
+        try {
+            await api.sessions.delete(id);
+            setSessionError(null);
+            setPending(null);
+            await reloadSessions();
+            if (activeId === id) navigate({ name: 'home' });
+        } catch (e) {
+            setSessionError(errorText(e));
+        }
+    };
+
+    const clearSessions = async () => {
+        try {
+            await api.sessions.clear();
+            setSessionError(null);
+            setPending(null);
+            await reloadSessions();
+            if (activeId) navigate({ name: 'home' });
+        } catch (e) {
+            setSessionError(errorText(e));
+        }
+    };
+
     return (
         <div className="shell">
             <aside className="sidebar">
@@ -74,15 +100,54 @@ export function Shell({
                 <nav className="session-list" aria-label="sessions">
                     {sessions.length === 0 ? <p className="muted small">{t('nav.noSessions')}</p> : null}
                     {sessions.map((s) => (
-                        <Link
-                            key={s.id}
-                            to={{ name: 'session', id: s.id }}
-                            className={`session-link${s.id === activeId ? ' active' : ''}`}
-                        >
-                            {s.title || t('nav.untitled')}
-                        </Link>
+                        <div key={s.id} className="session-row">
+                            <Link
+                                to={{ name: 'session', id: s.id }}
+                                className={`session-link${s.id === activeId ? ' active' : ''}`}
+                            >
+                                {s.title || t('nav.untitled')}
+                            </Link>
+                            <button
+                                type="button"
+                                className="link small"
+                                aria-label={`${t('chat.delete')}: ${s.title || t('nav.untitled')}`}
+                                onClick={() => setPending({ kind: 'one', id: s.id })}
+                            >
+                                {t('nav.deleteSession')}
+                            </button>
+                        </div>
                     ))}
                 </nav>
+                {sessionError ? <p className="error small">{sessionError}</p> : null}
+                <button
+                    type="button"
+                    className="link small"
+                    disabled={sessions.length === 0}
+                    onClick={() => setPending({ kind: 'all' })}
+                >
+                    {t('nav.clearSessions')}
+                </button>
+                {pending ? (
+                    <div className="card" role="dialog" aria-labelledby="session-confirm-title">
+                        <p id="session-confirm-title">
+                            {pending.kind === 'all' ? t('nav.clearSessionsConfirm') : t('chat.deleteConfirm')}
+                        </p>
+                        <div className="row">
+                            <button
+                                type="button"
+                                className="danger"
+                                onClick={() =>
+                                    void (pending.kind === 'all' ? clearSessions() : deleteSession(pending.id))
+                                }
+                            >
+                                {t('nav.confirm')}
+                            </button>
+                            <button type="button" onClick={() => setPending(null)}>
+                                {t('nav.cancel')}
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
                 <div className="sidebar-foot">
                     <Link to={{ name: 'items' }} className={route.name === 'items' ? 'active' : ''}>
                         {t('nav.items')}

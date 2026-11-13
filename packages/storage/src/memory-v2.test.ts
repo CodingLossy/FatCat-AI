@@ -171,7 +171,11 @@ describe('v1 → v2 数据迁移', () => {
         expect(titles(dec)).toEqual(['记忆', '工作', '决策']);
         expect(titles(ep)).toEqual(['记忆', '通用', '经历']);
         const root = repos.items.bySource(ownerId, 'memory', 'memory')!;
-        expect(root).toMatchObject({ childCount: 3, descendantCount: 4 + 3 + 3 + 1 });
+        expect(repos.items.get(ownerId, root.id)).toMatchObject({
+            childCount: 3,
+            descendantCount: 4 + 3 + 3 + 1,
+            contentCount: 3,
+        });
         expect(repos.items.bySource(ownerId, 'memory', 'memory:life:semantic:history')!.meta).toEqual({ hidden: true });
         const edge = conn.sqlite
             .prepare(
@@ -270,5 +274,47 @@ describe('属性测试:随机写入 / 更替 / 改域 / 撤回 / 忘记', () => 
         const vectors = (conn.sqlite.prepare(`SELECT count(*) AS n FROM ${VECTOR_TABLE}`).get() as { n: number }).n;
         expect(vectors).toBe(embedded);
         conn.close();
+    });
+});
+
+describe('任务类记忆出现在知识地图', () => {
+    it('episodic/task 与 semantic/task 挂在对应类型下;丢掉父边或标题过期后,ensureTree 会补上', () => {
+        const dir = tempDir();
+        const conn = openDatabase(join(dir, 'db.sqlite'));
+        return migrate(conn.sqlite, migrations).then(() => {
+            const repos = createRepositories(conn);
+            const ownerId = repos.owners.create({ username: 'owner', passwordHash: 'x' }).id;
+            const task = repos.memories.save(
+                ownerId,
+                memory('下周三提交报告', { memType: 'episodic', subtype: 'task', domain: 'work' }),
+            );
+            const fact = repos.memories.save(
+                ownerId,
+                memory('项目代号是 FatCat', { memType: 'semantic', subtype: 'task', domain: 'life' }),
+            );
+            const titles = (id: string) => repos.items.ancestors(ownerId, id).map((a) => a.title);
+            expect(titles(task.id)).toEqual(['记忆', '工作', '经历']);
+            expect(titles(fact.id)).toEqual(['记忆', '生活', '事实']);
+            const root = repos.items.bySource(ownerId, 'memory', 'memory')!;
+            expect(repos.items.get(ownerId, root.id)!.contentCount).toBe(2);
+            const episodic = repos.items.bySource(ownerId, 'memory', 'memory:work:episodic')!;
+            expect(repos.items.get(ownerId, episodic.id)!.contentCount).toBe(1);
+
+            repos.items.attach(ownerId, task.id, null);
+            expect(repos.items.parentId(task.id)).toBeNull();
+            repos.memories.update(ownerId, fact.id, { text: '项目代号改成了 Cat' });
+            conn.sqlite.prepare('UPDATE items SET title = ? WHERE id = ?').run('旧标题', fact.id);
+            expect(repos.memories.ensureTree(ownerId)).toBeGreaterThan(0);
+            expect(titles(task.id)).toEqual(['记忆', '工作', '经历']);
+            expect(repos.items.get(ownerId, fact.id)).toMatchObject({
+                title: '项目代号改成了 Cat',
+                summary: '项目代号改成了 Cat',
+            });
+            expect(repos.items.recount(ownerId)).toBe(0);
+            expect(repos.items.get(ownerId, repos.items.bySource(ownerId, 'memory', 'memory')!.id)!.contentCount).toBe(
+                2,
+            );
+            conn.close();
+        });
     });
 });

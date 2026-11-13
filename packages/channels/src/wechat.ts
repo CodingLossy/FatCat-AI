@@ -21,7 +21,8 @@ const POLL_MARGIN_MS = 10_000;
 const SEND_TIMEOUT_MS = 15_000;
 export const MIN_POLL_GAP_MS = 1000;
 
-function pause(ms: number, signal: AbortSignal): Promise<void> {
+/** 两次轮询之间的等待;signal 中止(停止渠道或关机)时立刻结束,不等满这段时间。 */
+export function abortablePause(ms: number, signal: AbortSignal): Promise<void> {
     if (ms <= 0 || signal.aborted) return Promise.resolve();
     return new Promise((resolve) => {
         const timer = setTimeout(done, ms);
@@ -149,7 +150,7 @@ export class WechatAdapter implements ChannelAdapter {
             // 一批处理完才前移游标:中途重启时平台会重投,框架按消息 id 去重
             this.options.cursor.set(batch.cursor);
             // 平台没有挂起就立刻返回时,两次请求之间至少隔 1 秒,不空转
-            await pause(MIN_POLL_GAP_MS - (Date.now() - started), signal);
+            await abortablePause(MIN_POLL_GAP_MS - (Date.now() - started), signal);
         }
     }
 

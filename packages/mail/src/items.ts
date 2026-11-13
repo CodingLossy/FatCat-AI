@@ -11,6 +11,12 @@ import { fullText } from './tools.js';
 
 export const MAIL_ROOT_REF = 'mail';
 
+/**
+ * 子树布局版本。一封邮件可以同时挂在多个文件夹下,source_ref 因此带文件夹 id。
+ * 写进账户指纹,已同步过的账户会在下次同步时按新布局重写。
+ */
+const MAIL_TREE_VERSION = 2;
+
 const FOLDER_TITLES: Record<string, string> = { inbox: '收件箱', sent: '已发送' };
 
 function from(row: MailItemRow): string {
@@ -35,7 +41,7 @@ export const mailProvider: ItemProvider = {
         for (const account of accounts) {
             const ref = `account:${account.id}`;
             keepAccounts.add(ref);
-            const signature = `${repos.mailCache.signature(account.id)}:${account.label}:${account.address}`;
+            const signature = `${repos.mailCache.signature(account.id)}:${account.label}:${account.address}:v${MAIL_TREE_VERSION}`;
             const existing = repos.items.bySource(ownerId, 'mail', ref);
             if (
                 existing &&
@@ -91,7 +97,8 @@ export const mailProvider: ItemProvider = {
                     });
                     const keepMessages = new Set<string>();
                     messages.forEach((m, i) => {
-                        const messageRef = `message:${m.id}`;
+                        // 同一封邮件可以出现在多个文件夹(例如发给自己):每个文件夹一份条目,打开时仍用 messageId
+                        const messageRef = `message:${folder.id}:${m.id}`;
                         keepMessages.add(messageRef);
                         const messageItem = ctx.upsert({
                             sourceRef: messageRef,
@@ -105,9 +112,10 @@ export const mailProvider: ItemProvider = {
                         });
                         const keepAttachments = new Set<string>();
                         for (const a of m.attachments) {
-                            const attRef = `attachment:${a.id}`;
+                            const attRef = `attachment:${folder.id}:${a.id}`;
                             keepAttachments.add(attRef);
-                            ctx.upsert({
+                            const legacy = repos.items.bySource(ownerId, 'mail', `attachment:${a.id}`);
+                            const attItem = ctx.upsert({
                                 sourceRef: attRef,
                                 kind: 'content',
                                 type: 'mail.attachment',
@@ -116,6 +124,10 @@ export const mailProvider: ItemProvider = {
                                 meta: { attachmentId: a.id, messageId: m.id, size: a.size },
                                 parentId: messageItem.id,
                             });
+                            // 旧条目上的知识库数据先迁到新条目,否则 removeMissing 之后会被清掉
+                            if (legacy && legacy.id !== attItem.id && repos.kb.source(legacy.id)) {
+                                repos.kb.reassign(legacy.id, attItem.id);
+                            }
                         }
                         ctx.removeMissing(messageItem.id, keepAttachments);
                     });

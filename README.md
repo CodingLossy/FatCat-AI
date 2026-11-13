@@ -52,7 +52,7 @@ pnpm dev
 - Web UI:<http://127.0.0.1:5173>。按提示创建主人账户(1.0 只有一个账户),到「设置 → 模型配置档」添加配置档,密钥引用填 `env:DEEPSEEK_API_KEY`(本地 Ollama 留空),看到「密钥: 已设置」后就可以开始对话。
 - 本地运行时核心服务默认不托管 Web UI:没有设置 `FATCAT_AI_WEB_DIR` 时,<http://127.0.0.1:8787/> 返回 404,这是正常的,`pnpm dev` 下请用 5173 端口。想让 8787 端口直接提供 Web UI(例如 `pnpm build` 后用 `pnpm --filter @fatcat-ai/server start` 运行,它会同时带上内存参数 `--max-semi-space-size=8`),先把 `FATCAT_AI_WEB_DIR` 设为 `apps/web/dist` 的绝对路径。Docker 镜像已经设置好。
 
-不想用环境变量时,也可以把密钥写进数据目录(默认 `~/.fatcat-ai`,Windows 为 `%USERPROFILE%\.fatcat-ai`)下的 `secrets.yaml`,每行一个 `NAME: value`,配置档里引用 `file:NAME`。文件修改后立即生效,不需要重启。
+不想用环境变量时,也可以把密钥写进数据目录(默认 `~/.fatcat-ai`,Windows 为 `%USERPROFILE%\.fatcat-ai`)下的 `secrets.yaml`,每行一个 `NAME: value`,配置档里引用 `file:NAME`。文件修改后立即生效,不需要重启。服务器自己写入这个文件时(例如微信登录令牌),在 Windows 上会去掉继承来的访问项,只保留当前用户的完全控制;做不到时记一条警告,文件仍会留下。
 
 > 本项目原名 AI-Personal。升级后服务器首次启动会把旧的 `~/.ai-personal` 自动迁到 `~/.fatcat-ai`(已有新目录时不覆盖);旧的 `AIP_*` 环境变量暂时仍可用,但会提示改用 `FATCAT_AI_*`。
 
@@ -144,8 +144,8 @@ Anthropic / Gemini 用 `--kind anthropic` 或 `--kind gemini`(不需要 `--base-
 ### 5. 接入微信
 
 1. 设置 → 渠道:添加一个微信渠道并启用,点「扫码登录」,用要当作助手的微信账号扫码并在手机上确认。
-2. 登录令牌保存在数据目录的 `secrets.yaml`(键名 `ILINK_TOKEN_<渠道 id>`)。服务器写入前会把原文件复制到 `backups/secrets-<UTC 时间>.yaml`(权限 600,只保留最近 5 份),只改这一行;`secrets.yaml` 解析失败时不写入。删除渠道时同样只删这一行。
-3. 点「生成配对码」,用你自己的微信私聊助手账号发送「绑定 123456」。之后只有你的私聊消息会进入对话;需要确认的操作回复「确认 K7」或「拒绝 K7」。
+2. 登录令牌保存在数据目录的 `secrets.yaml`(键名 `ILINK_TOKEN_<渠道 id>`)。服务器写入前会把原文件复制到 `backups/secrets-<UTC 时间>.yaml`(权限 600,只保留最近 5 份),只改这一行;`secrets.yaml` 解析失败时不写入。在 Windows 上写完后会去掉继承来的访问项,只给当前用户完全控制。删除渠道时同样只删这一行。
+3. 点「生成配对码」,用你自己的微信私聊助手账号发送「绑定 123456」。之后只有你的私聊消息会进入对话;需要确认的操作回复「确认 K7」或「拒绝 K7」。发送 `/clear` 或「清空」只清空这个渠道的当前会话,记忆不会删除。Web 的会话列表可以删除单条对话,或「清空全部对话」(同样保留记忆)。
 4. 登录失效时渠道显示「需要扫码登录」,重新扫码即可。暂不支持图片、文件和需要输入 PIN 的登录。
 
 ### 开发

@@ -184,6 +184,70 @@ describe('渠道运行器', () => {
         await c.fake.deliver({ externalUserId: OWNER, text: '/new' });
         expect(c.last()).toBe(REPLIES.newSession);
         expect(s.repos.channels.byId(c.channel.id)!.sessionId).not.toBe(first);
+        expect(REPLIES.help).toContain('/clear');
+        expect(REPLIES.help).toContain('清空');
+    });
+
+    it('/clear 与「清空」只删除该渠道的当前会话,并停掉进行中的运行;记忆和其他对话还在', async () => {
+        const t = await setup();
+        const c = await t.bound();
+        const kept = s.repos.sessions.create(t.ownerId, { title: '网页上的对话' });
+        expect(
+            (await t.post('/api/v1/memory', { text: '下周三提交周报', memType: 'episodic', subtype: 'task' })).status,
+        ).toBe(200);
+
+        let aborted = false;
+        let providerStarted = false;
+        t.steps.push(async function* (request) {
+            providerStarted = true;
+            await new Promise<void>((resolve) => {
+                const finish = () => {
+                    aborted = true;
+                    resolve();
+                };
+                if (request.signal?.aborted) return finish();
+                request.signal?.addEventListener('abort', finish);
+            });
+            yield { type: 'finish', reason: 'aborted' };
+        });
+        await c.fake.deliver({ externalUserId: OWNER, text: '先说一句' });
+        await vi.waitFor(() => expect(s.repos.channels.byId(c.channel.id)?.sessionId).toBeTruthy());
+        const channelSession = s.repos.channels.byId(c.channel.id)!.sessionId!;
+        await vi.waitFor(() => expect(providerStarted).toBe(true));
+
+        await c.fake.deliver({ externalUserId: 'stranger-1', text: '/clear' });
+        expect(c.fake.textsTo('stranger-1')).toEqual([]);
+        expect(s.repos.sessions.get(t.ownerId, channelSession)).not.toBeNull();
+
+        await c.fake.deliver({ externalUserId: OWNER, text: '清空' });
+        await vi.waitFor(() => expect(c.last()).toBe(REPLIES.cleared));
+        expect(aborted).toBe(true);
+        expect(s.repos.sessions.get(t.ownerId, channelSession)).toBeNull();
+        expect(s.repos.channels.byId(c.channel.id)?.sessionId).toBeNull();
+        expect(s.repos.sessions.get(t.ownerId, kept.id)?.title).toBe('网页上的对话');
+        expect(s.repos.sessions.delete('someone-else', kept.id)).toBe(false);
+        expect(s.repos.memories.list(t.ownerId, 10).map((m) => m.text)).toContain('下周三提交周报');
+        expect(c.fake.textsTo(OWNER).some((text) => text.includes('先说一句'))).toBe(false);
+    });
+
+    it('/clear 之后马上再发一条消息:消息落在新会话里并收到回答,旧会话已删除', async () => {
+        const t = await setup();
+        const c = await t.bound();
+        t.steps.push(say('旧回答'));
+        await c.fake.deliver({ externalUserId: OWNER, text: '先建会话' });
+        await c.idle();
+        const oldSession = s.repos.channels.byId(c.channel.id)!.sessionId!;
+
+        t.steps.push(say('新回答'));
+        await c.fake.deliver({ externalUserId: OWNER, text: '/clear' });
+        await c.fake.deliver({ externalUserId: OWNER, text: '清空后的第一条' });
+        await c.idle();
+
+        const newSession = s.repos.channels.byId(c.channel.id)!.sessionId!;
+        expect(newSession).not.toBe(oldSession);
+        expect(s.repos.sessions.get(t.ownerId, oldSession)).toBeNull();
+        expect(s.repos.sessions.get(t.ownerId, newSession)).not.toBeNull();
+        expect(c.fake.textsTo(OWNER).slice(-2)).toEqual([REPLIES.cleared, '新回答']);
     });
 
     it('同一会话正在运行时排队(最多 5 条),多出的回复「上一条还没处理完」;处理完按顺序回答', async () => {

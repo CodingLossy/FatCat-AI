@@ -144,6 +144,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             runs: deps.runs,
             bus: deps.bus,
             secrets: deps.secrets,
+            files,
             logger,
             sourceUrl: config.sourceUrl,
             now,

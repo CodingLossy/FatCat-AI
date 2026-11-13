@@ -7,7 +7,7 @@ import type { ChannelState } from '@fatcat-ai/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { IlinkClient } from './ilink.js';
 import type { ChannelContext, ChannelErrorReport, InboundMessage } from './types.js';
-import { toInbound, WechatAdapter } from './wechat.js';
+import { abortablePause, toInbound, WechatAdapter } from './wechat.js';
 
 /** 假的 iLink 服务器:按队列应答长轮询,没有排队的应答时挂起到 holdMs 后返回空批。不连真实微信。 */
 class FakeIlink {
@@ -170,6 +170,27 @@ describe('WechatAdapter against a fake iLink server', () => {
         await a.stop();
         expect(Date.now() - t0).toBeLessThan(1000);
         expect(reports).toEqual([]);
+    });
+
+    it('abortablePause 在 signal 中止时立刻结束', async () => {
+        const controller = new AbortController();
+        const started = Date.now();
+        const pending = abortablePause(10_000, controller.signal);
+        controller.abort();
+        await pending;
+        expect(Date.now() - started).toBeLessThan(200);
+    });
+
+    it('stop() 在两次轮询之间的 1 秒间隔里立刻返回', async () => {
+        fake.updates.push({ body: { ret: 0, msgs: [], get_updates_buf: 'B1' } });
+        const { ctx } = makeCtx('tok');
+        const a = adapter();
+        await a.start(ctx);
+        await until(() => fake.requests.length === 1);
+        await new Promise((r) => setTimeout(r, 30));
+        const started = Date.now();
+        await a.stop();
+        expect(Date.now() - started).toBeLessThan(300);
     });
 
     it('waits about a second between polls when the platform answers at once', async () => {

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Redactor } from './redact.js';
-import { SecretStore, SecretsWriteError, writeSecretsKey } from './secrets.js';
+import { restrictToCurrentUser, SecretStore, SecretsWriteError, writeSecretsKey } from './secrets.js';
 
 // ADR 0022 第 9 节:先备份、只改目标键、解析失败不写、CRLF 保持 CRLF。
 describe('writeSecretsKey', () => {
@@ -91,5 +91,90 @@ describe('writeSecretsKey', () => {
         expect(redactor.redact('x secret-token-123 y')).not.toContain('secret-token-123');
         store.remove('T');
         expect(store.resolve('file:T')).toBeNull();
+    });
+
+    it('keeps the written file when tightening permissions throws', () => {
+        writeFileSync(file(), 'A: 1\n');
+        const warnings: string[] = [];
+        writeSecretsKey(dir, 'B', '2', at(0), {
+            onWarning: (message) => warnings.push(message),
+            restrict: () => {
+                throw Object.assign(new Error('icacls missing'), { code: 'ENOENT' });
+            },
+        });
+        expect(readFileSync(file(), 'utf8')).toBe("A: 1\nB: '2'\n");
+        expect(warnings.some((message) => message.includes('ENOENT') && message.includes('kept'))).toBe(true);
+        expect(backups()).toHaveLength(1);
+    });
+});
+
+describe('restrictToCurrentUser', () => {
+    it('on win32 runs icacls without a shell, dropping inherited ACEs and granting only the current user', () => {
+        const calls: unknown[][] = [];
+        restrictToCurrentUser('C:\\Users\\me\\.fatcat-ai\\secrets.yaml', {
+            platform: 'win32',
+            username: 'theodore',
+            domain: '',
+            execFile: (file, args, options) => {
+                calls.push([file, args, options]);
+            },
+        });
+        expect(calls).toEqual([
+            [
+                'icacls',
+                ['C:\\Users\\me\\.fatcat-ai\\secrets.yaml', '/inheritance:r', '/grant:r', 'theodore:F'],
+                { shell: false, windowsHide: true },
+            ],
+        ]);
+    });
+
+    it('grants DOMAIN\\user when a domain is known, so a same-named local account is not picked', () => {
+        const calls: string[][] = [];
+        restrictToCurrentUser('C:\\secrets.yaml', {
+            platform: 'win32',
+            username: 'theodore',
+            domain: 'CORP',
+            execFile: (_file, args) => {
+                calls.push([...args]);
+            },
+        });
+        expect(calls[0]?.[3]).toBe('CORP\\theodore:F');
+    });
+
+    it('warns and does not throw when icacls fails or USERNAME is missing', () => {
+        const warnings: string[] = [];
+        expect(() =>
+            restrictToCurrentUser('C:\\secrets.yaml', {
+                platform: 'win32',
+                username: 'theodore',
+                execFile: () => {
+                    throw Object.assign(new Error('fail'), { code: 'ENOENT' });
+                },
+                onWarning: (message) => warnings.push(message),
+            }),
+        ).not.toThrow();
+        expect(warnings[0]).toContain('ENOENT');
+        expect(warnings[0]).toContain('kept');
+        warnings.length = 0;
+        restrictToCurrentUser('C:\\backups\\secrets-20261111T080000Z.yaml', {
+            platform: 'win32',
+            username: '',
+            execFile: () => {
+                throw new Error('should not run');
+            },
+            onWarning: (message) => warnings.push(message),
+        });
+        expect(warnings[0]).toContain('USERNAME');
+    });
+
+    it('does not call icacls on other platforms', () => {
+        let called = false;
+        restrictToCurrentUser('/tmp/secrets.yaml', {
+            platform: 'linux',
+            execFile: () => {
+                called = true;
+            },
+        });
+        expect(called).toBe(false);
     });
 });

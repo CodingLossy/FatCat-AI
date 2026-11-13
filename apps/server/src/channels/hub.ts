@@ -35,8 +35,10 @@ import type {
     EventEnvelope,
 } from '@fatcat-ai/shared';
 import type { ChannelRecord, Repositories } from '@fatcat-ai/storage';
+import type { AttachmentFiles } from '../attachment-files.js';
 import type { Logger } from '../log.js';
 import { resolveProfile } from '../routes/sessions.js';
+import { removeOwnerSessions } from '../session-delete.js';
 
 /** 按渠道类型创建适配器;没有注册的类型启用后显示 error(adapter_unavailable)。 */
 export type AdapterFactory = (channel: ChannelRecord) => ChannelAdapter;
@@ -46,6 +48,8 @@ export interface ChannelHubOptions {
     runs: RunManager;
     bus: EventBus;
     secrets: SecretStore;
+    /** 清空渠道会话时删除附件文件,与 DELETE /sessions 相同。 */
+    files: AttachmentFiles;
     logger: Logger;
     sourceUrl: string;
     adapters?: Partial<Record<ChannelKind, AdapterFactory>>;
@@ -76,6 +80,7 @@ export const REPLIES = {
     approved: '已确认。',
     rejected: '已拒绝。',
     newSession: '已开始新会话。',
+    cleared: '已清空本渠道的当前会话,消息已删除。记忆没有删除。',
     textOnly: '暂时只能看文字,请发文字消息。',
     noModel: '还没有可用的模型配置档,请先在 Web「设置 → 模型配置档」添加。',
     failed: '这一轮没有完成,请在 Web 查看详情。',
@@ -84,6 +89,7 @@ export const REPLIES = {
     help: [
         '可用指令:',
         '/new 开始新会话',
+        '/clear 或「清空」清空本渠道的当前会话(记忆不会删除)',
         '/source 源代码地址',
         '/help 显示这条帮助',
         '需要确认的操作会发来短码,回复「确认 K7」或「拒绝 K7」(K7 换成收到的短码)。',
@@ -160,12 +166,15 @@ interface Runtime {
     ignoredLimiter: SlidingWindow;
     /** 本分钟内已经回复过「太快了」。 */
     tooFastSentAt: number | null;
-    queue: { message: InboundMessage; target: ChannelTarget }[];
+    /** message 为 null 表示「清空」:和普通消息排在同一个队列里,按顺序执行。 */
+    queue: { message: InboundMessage | null; target: ChannelTarget }[];
     draining: Promise<void> | null;
     codes: Map<string, PendingCode>;
     degradedAt: number[];
     degradedAlerted: boolean;
     degradedRuns: Set<string>;
+    /** 清空会话后,正在进行的那一轮不再把回答发回渠道。 */
+    suppressOutbound: boolean;
     /** 最近一次主人消息的回复目标(推送审批请求时使用)。 */
     target: ChannelTarget | null;
     unsubscribe: (() => void) | null;
@@ -206,6 +215,7 @@ export class ChannelHub {
                 degradedAt: [],
                 degradedAlerted: false,
                 degradedRuns: new Set(),
+                suppressOutbound: false,
                 target: null,
                 unsubscribe: null,
             };
@@ -483,6 +493,8 @@ export class ChannelHub {
                 channels.setSession(channel.id, session.id);
                 return this.send(rt, target, REPLIES.newSession);
             }
+            case 'clear':
+                return this.requestClear(rt, channel, target);
             case 'source':
                 return this.send(rt, target, this.options.sourceUrl);
             case 'help':
@@ -539,10 +551,48 @@ export class ChannelHub {
         return this.send(rt, target, decision === 'approve' ? REPLIES.approved : REPLIES.rejected);
     }
 
+    /**
+     * 「清空」排进同一个队列:先丢掉还没开始的消息、停掉进行中的运行,
+     * 等这一轮结束后再删会话,之后的新消息落在新会话里。
+     */
+    private async requestClear(rt: Runtime, channel: ChannelRecord, target: ChannelTarget): Promise<void> {
+        rt.suppressOutbound = true;
+        rt.queue.length = 0;
+        const { repos, runs } = this.options;
+        const activeRunId = channel.sessionId
+            ? repos.sessions.get(channel.ownerId, channel.sessionId)?.activeRunId
+            : null;
+        if (activeRunId) await runs.stop(activeRunId);
+        rt.queue.push({ message: null, target });
+        rt.draining ??= this.drain(rt).finally(() => {
+            rt.draining = null;
+        });
+    }
+
+    /** 只删除这个渠道当前的会话(停掉运行、删掉附件),不碰别的对话,也不删记忆。 */
+    private async clearChannel(rt: Runtime, target: ChannelTarget): Promise<void> {
+        const channel = this.options.repos.channels.byId(rt.channelId);
+        if (channel?.sessionId) {
+            await removeOwnerSessions(
+                {
+                    repos: this.options.repos,
+                    runs: this.options.runs,
+                    files: this.options.files,
+                    warn: (err) => this.log.warn({ err, channelId: channel.id }, 'attachment cleanup failed'),
+                },
+                channel.ownerId,
+                [channel.sessionId],
+            );
+        }
+        rt.suppressOutbound = false;
+        await this.send(rt, target, REPLIES.cleared);
+    }
+
     private async drain(rt: Runtime): Promise<void> {
         for (let next = rt.queue.shift(); next; next = rt.queue.shift()) {
             try {
-                await this.turn(rt, next.message, next.target);
+                if (next.message) await this.turn(rt, next.message, next.target);
+                else await this.clearChannel(rt, next.target);
             } catch (error) {
                 this.log.warn({ err: error, channelId: rt.channelId }, 'channel turn failed');
                 await this.send(rt, next.target, REPLIES.failed);
@@ -553,6 +603,7 @@ export class ChannelHub {
 
     /** 一轮:写进渠道的当前会话,等 runner 跑完,把最终回答降级后发回。 */
     private async turn(rt: Runtime, message: InboundMessage, target: ChannelTarget): Promise<void> {
+        rt.suppressOutbound = false;
         const { repos, runs } = this.options;
         const channel = repos.channels.byId(rt.channelId);
         if (!channel?.binding) return;
@@ -588,7 +639,7 @@ export class ChannelHub {
             }
         }
         const status = await this.waitForRun(channel.ownerId, started.runId);
-        if (!rt.adapter) return;
+        if (!rt.adapter || rt.suppressOutbound) return;
         // 这一轮进行中在 Web 解除或更换了绑定:回答不发给旧主人
         if (repos.channels.byId(rt.channelId)?.binding?.externalUserId !== target.externalUserId) return;
         if (status !== 'succeeded') return this.send(rt, target, REPLIES.failed);

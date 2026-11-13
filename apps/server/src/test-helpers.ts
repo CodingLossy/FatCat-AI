@@ -44,6 +44,7 @@ export interface TestServer {
     conn: Connection;
     /** 本测试期间写出的全部日志行。 */
     logs: string[];
+    wechat: WechatChannels;
     cleanup(): Promise<void>;
 }
 
@@ -156,6 +157,7 @@ export async function createTestServer(
         runs,
         bus,
         secrets,
+        files: attachmentFiles,
         logger,
         sourceUrl: overrides.sourceUrl ?? 'https://github.com/CodingLossy/FatCat-AI',
         ...(adapters ? { adapters } : {}),
@@ -203,6 +205,7 @@ export async function createTestServer(
         repos,
         conn,
         logs,
+        wechat,
         async cleanup() {
             await channels.stopAll();
             mcp.closeAll();
