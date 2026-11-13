@@ -3,7 +3,9 @@
 
 // 渠道内存压测(ADR 0018 第 5 节,M5a PR 8):起假的微信 iLink 服务器与构建好的服务器(apps/server/dist),
 // 先测不配渠道的空闲内存,再走真实流程(建渠道、扫码、配对、启用)配好微信渠道,测配置后的空闲内存,
-// 两者之差就是该渠道的增量;然后让「主人」发 MESSAGES 条 /help,等回复收齐后空闲 SETTLE_S 秒,连跑 RUNS 次。
+// 两者之差就是该渠道的增量;然后让「主人」发 MESSAGES 条普通文字消息,每条都走完整的一轮对话
+// (收消息、去重、限流、入队、runs.start、模型流式输出、写消息与会话、回复文本),等回复收齐后空闲 SETTLE_S 秒,连跑 RUNS 次。
+// 模型是本地假的 OpenAI 兼容端点(fake-openai.mjs),通过真实的模型配置档接入,不调用外网。
 // 服务器代码不改:ilink-redirect.mjs 以 --import 预加载,把发往 iLink 默认地址的请求改到本地假端点。
 // 主人消息每分钟最多 20 条(ADR 0022 第 4 节),所以按 PACE_MS 间隔发送,默认每 3.4 秒一条(约 17.6 条/分钟)。
 // Linux 读 /proc/<pid>/status 的 VmRSS;Windows 读 WorkingSet64。
@@ -20,6 +22,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { capFromMeasured, evaluateChannel } from './budget.mjs';
 import { startFakeIlink } from './fake-ilink.mjs';
+import { startFakeOpenAI } from './fake-openai.mjs';
 
 const MESSAGES = Number(process.env.MESSAGES ?? 100);
 const RUNS = Number(process.env.RUNS ?? 3);
@@ -88,6 +91,7 @@ if (CHECK && !Number.isFinite(incrementCap)) {
 
 const dir = mkdtempSync(join(tmpdir(), 'fatcat-channel-rss-'));
 const ilink = await startFakeIlink();
+const model = await startFakeOpenAI();
 const port = await freePort();
 const origin = `http://127.0.0.1:${port}`;
 const server = spawn(
@@ -103,6 +107,7 @@ const server = spawn(
             FATCAT_AI_DATA_DIR: join(dir, 'data'),
             FATCAT_AI_LOG_LEVEL: 'warn',
             FATCAT_AI_PERF_ILINK_URL: ilink.url,
+            PERF_MODEL_KEY: 'perf-fake-key',
         },
         stdio: ['ignore', 'ignore', 'inherit'],
     },
@@ -142,6 +147,7 @@ async function cleanup() {
     cleaned = true;
     server.kill();
     await ilink.close();
+    await model.close();
     rmSync(dir, { recursive: true, force: true });
 }
 for (const [signal, code] of [
@@ -168,6 +174,16 @@ try {
     const idleWithout = await sample(pid);
     console.log(`idle without a channel: ${idleWithout} MiB`);
 
+    // 模型配置档指向假的 OpenAI 兼容端点;密钥用 env: 引用(ADR 0006),不写明文
+    await api('POST', '/models', {
+        label: 'perf-model',
+        kind: 'openai-compatible',
+        baseURL: model.url,
+        apiKeyRef: 'env:PERF_MODEL_KEY',
+        model: 'perf-model',
+        purpose: ['chat'],
+    });
+
     // 真实流程:建渠道 → 扫码(假端点立刻确认)→ 配对码 → 启用 → 主人发「绑定」
     const channel = await api('POST', '/channels', { kind: 'wechat', label: 'perf' });
     await api('POST', `/channels/${channel.id}/wechat/login`);
@@ -193,12 +209,16 @@ try {
     const runs = [];
     for (let run = 1; run <= RUNS; run++) {
         const sentBefore = ilink.sent();
+        const turnsBefore = model.turns();
         const started = Date.now();
         for (let i = 0; i < MESSAGES; i++) {
-            ilink.push('/help');
+            ilink.push(`第 ${run}.${i + 1} 条:你好,今天怎么样?`);
             await sleep(PACE_MS);
         }
         await until('all replies', () => ilink.sent() - sentBefore >= MESSAGES, 60_000);
+        const modelTurns = model.turns() - turnsBefore;
+        if (modelTurns < MESSAGES)
+            throw new Error(`run ${run}: only ${modelTurns} model calls for ${MESSAGES} messages`);
         const seconds = Math.round((Date.now() - started) / 1000);
         const status = await api('GET', `/channels/${channel.id}/status`);
         if (status.rateLimitedCount > 0)
@@ -207,8 +227,10 @@ try {
         await sleep(SETTLE_S * 1000);
         const rss = await sample(pid);
         settled.push(rss);
-        runs.push({ run, messages: MESSAGES, seconds, after, settled: rss });
-        console.log(`run ${run}: ${MESSAGES} messages in ${seconds}s, after ${after}, after ${SETTLE_S}s ${rss} MiB`);
+        runs.push({ run, messages: MESSAGES, modelTurns, seconds, after, settled: rss });
+        console.log(
+            `run ${run}: ${MESSAGES} conversation turns (${modelTurns} model calls) in ${seconds}s, after ${after}, after ${SETTLE_S}s ${rss} MiB`,
+        );
     }
     console.log(
         JSON.stringify({
