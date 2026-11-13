@@ -3,7 +3,7 @@
 
 // 离线命令(ADR 0026):secrets migrate / rekey / cleanup。`apps/cli` 目前只是占位,所以命令放在服务器入口。
 // 输出里只有键数、指纹与文件名,没有任何密钥值;不接受命令行形式的密钥。
-import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 import {
     cleanupMigrated,
@@ -13,16 +13,19 @@ import {
     parseMasterKey,
     rekeySecrets,
     restrictToCurrentUser,
+    SECRETS_BACKUP_DIR,
+    SECRETS_ENC_FILE,
+    writeFileAtomic,
     SecretsMigrateError,
 } from '@fatcat-ai/providers';
 import { PlaintextBackupAction } from '@fatcat-ai/shared';
 import { dataDirMasterKey, MASTER_KEY_FILE } from './data-dir.js';
 
-export const SECRETS_USAGE = `Usage:
+export const SECRETS_USAGE = `Usage (stop the server first for migrate and rekey; neither checks whether it is running):
   secrets migrate [--plaintext-backups keep|encrypt|delete]
       Encrypt secrets.yaml into secrets.yaml.enc. The plaintext file is kept as secrets.yaml.migrated.
   secrets rekey --new-key-file <path>
-      Re-encrypt secrets.yaml.enc under a new master key (64 hex characters or base64, in a file). Stop the server first.
+      Re-encrypt secrets.yaml.enc under a new master key (64 hex characters or base64, in a file).
   secrets cleanup
       Delete secrets.yaml.migrated once you have confirmed the encrypted file works.
 Keys are never accepted on the command line.`;
@@ -32,6 +35,8 @@ export interface SecretsCommandIo {
     env: NodeJS.ProcessEnv;
     out: (line: string) => void;
     err: (line: string) => void;
+    /** 测试用:替换 master.key.new → master.key 的改名(注入失败)。 */
+    replaceMasterKey?: (from: string, to: string) => void;
 }
 
 /** 返回进程退出码。 */
@@ -64,15 +69,60 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
                 return 1;
             }
             const newKey = parseMasterKey(readFileSync(file, 'utf8'), 'The new key file');
-            const r = rekeySecrets({ dataDir: io.dataDir, oldKey: current.key, newKey });
+            const keyPath = join(io.dataDir, MASTER_KEY_FILE);
+            const staged = `${keyPath}.new`;
+            const fromDataDir = current.source === 'data-dir';
+            // 1. 先把新密钥写成 master.key.new 并 fsync;这一步失败时密文还没动
+            if (fromDataDir) {
+                try {
+                    rmSync(staged, { force: true });
+                    const fd = openSync(staged, 'wx', 0o600);
+                    try {
+                        writeSync(fd, `${encodeMasterKey(newKey)}\n`);
+                        fsyncSync(fd);
+                    } finally {
+                        closeSync(fd);
+                    }
+                } catch (error) {
+                    rmSync(staged, { force: true });
+                    io.err(
+                        `Error: cannot stage the new master key (${(error as NodeJS.ErrnoException).code ?? 'error'}). Nothing was changed.`,
+                    );
+                    return 1;
+                }
+            }
+            // 2. 换密文(失败时 rekeySecrets 保留原文件;这里清掉暂存的新密钥)
+            let r;
+            try {
+                r = rekeySecrets({ dataDir: io.dataDir, oldKey: current.key, newKey });
+            } catch (error) {
+                rmSync(staged, { force: true });
+                throw error;
+            }
             io.out(`Re-encrypted ${r.keys} key(s). New master key fingerprint: ${r.fingerprint}. Backup: ${r.backup}.`);
-            if (current.source === 'data-dir') {
-                const path = join(io.dataDir, MASTER_KEY_FILE);
-                const tmp = `${path}.tmp`;
-                rmSync(tmp, { force: true });
-                writeFileSync(tmp, `${encodeMasterKey(newKey)}\n`, { mode: 0o600, flag: 'wx' });
-                renameSync(tmp, path);
-                restrictToCurrentUser(path, { onWarning: (m) => io.err(`warning: ${m}`) });
+            // 3. 最后改名;失败时用刚做的备份把密文恢复成旧密钥的那份
+            if (fromDataDir) {
+                try {
+                    (io.replaceMasterKey ?? renameSync)(staged, keyPath);
+                } catch (error) {
+                    const code = (error as NodeJS.ErrnoException).code ?? 'error';
+                    const backup = join(io.dataDir, SECRETS_BACKUP_DIR, r.backup);
+                    try {
+                        writeFileAtomic(io.dataDir, join(io.dataDir, SECRETS_ENC_FILE), readFileSync(backup, 'utf8'));
+                        rmSync(staged, { force: true });
+                        io.err(
+                            `Error: could not replace ${MASTER_KEY_FILE} (${code}). ${SECRETS_ENC_FILE} was restored from the backup and still uses the old key; nothing else changed.`,
+                        );
+                    } catch {
+                        io.err(
+                            `Error: could not replace ${MASTER_KEY_FILE} (${code}), and restoring the backup failed too. ` +
+                                `${SECRETS_ENC_FILE} now uses the NEW key. Move ${staged} to ${keyPath} (or point FATCAT_MASTER_KEY_FILE at ${file}), ` +
+                                `or restore ${join(SECRETS_BACKUP_DIR, r.backup)} over ${SECRETS_ENC_FILE} to go back to the old key.`,
+                        );
+                    }
+                    return 1;
+                }
+                restrictToCurrentUser(keyPath, { onWarning: (m) => io.err(`warning: ${m}`) });
                 io.out(`${MASTER_KEY_FILE} was replaced with the new key.`);
             } else {
                 io.out(
@@ -95,7 +145,9 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
             io.err(`Error: ${error.message}`);
             return 1;
         }
-        io.err(`Error: ${(error as NodeJS.ErrnoException).code ?? 'unexpected failure'} (nothing was changed)`);
+        io.err(
+            `Error: ${(error as NodeJS.ErrnoException).code ?? 'unexpected failure'} (see the message above for what was changed)`,
+        );
         return 1;
     }
 }

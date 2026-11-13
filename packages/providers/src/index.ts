@@ -26,6 +26,7 @@ export {
     SecretsFileError,
     SecretsLayoutError,
     SECRETS_ENC_FILE,
+    writeFileAtomic,
     SECRETS_MIGRATED_FILE,
     restrictToCurrentUser,
     secretsLayout,

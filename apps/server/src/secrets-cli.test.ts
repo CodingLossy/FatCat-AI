@@ -5,14 +5,14 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runSecretsCommand } from './secrets-cli.js';
+import { runSecretsCommand, type SecretsCommandIo } from './secrets-cli.js';
 
 describe('secrets commands', () => {
     let dir: string;
     let out: string[];
     let err: string[];
-    const run = (argv: string[], env: NodeJS.ProcessEnv = {}) =>
-        runSecretsCommand(argv, { dataDir: dir, env, out: (l) => out.push(l), err: (l) => err.push(l) });
+    const run = (argv: string[], env: NodeJS.ProcessEnv = {}, extra: Partial<SecretsCommandIo> = {}) =>
+        runSecretsCommand(argv, { dataDir: dir, env, out: (l) => out.push(l), err: (l) => err.push(l), ...extra });
     beforeEach(() => {
         dir = mkdtempSync(join(tmpdir(), 'fatcat-cli-'));
         out = [];
@@ -38,6 +38,58 @@ describe('secrets commands', () => {
         expect(all).not.toContain('sk-test-cli');
         expect(all).not.toContain(oldKey);
         expect(all).not.toContain(newKey);
+    });
+
+    it('rekey: when master.key cannot be replaced, the ciphertext goes back to the old key and the message says so', () => {
+        writeFileSync(join(dir, 'secrets.yaml'), "MODEL_KEY: 'sk-test-cli-0000000000'\n");
+        expect(run(['migrate'])).toBe(0);
+        const oldKey = readFileSync(join(dir, 'master.key'), 'utf8');
+        const encBefore = readFileSync(join(dir, 'secrets.yaml.enc'));
+        writeFileSync(join(dir, 'new.key'), `${'cd'.repeat(32)}\n`);
+        out = [];
+        err = [];
+        const code = run(
+            ['rekey', '--new-key-file', join(dir, 'new.key')],
+            {},
+            {
+                replaceMasterKey: () => {
+                    throw Object.assign(new Error('busy'), { code: 'EBUSY' });
+                },
+            },
+        );
+        expect(code).toBe(1);
+        expect(readFileSync(join(dir, 'master.key'), 'utf8')).toBe(oldKey);
+        // 密文已恢复成旧密钥的那份:还能用旧密钥迁移后的流程读出来(cleanup 要求能解开)
+        expect(run(['cleanup'])).toBe(0);
+        expect(readFileSync(join(dir, 'secrets.yaml.enc'), 'utf8')).toMatch(/^fcsec1:/);
+        expect(readFileSync(join(dir, 'secrets.yaml.enc')).length).toBe(encBefore.length);
+        expect(existsSync(join(dir, 'master.key.new'))).toBe(false);
+        expect(err.join('\n')).toMatch(/EBUSY.*restored from the backup.*old key/);
+        expect(err.join('\n')).not.toContain('nothing was changed');
+    });
+
+    it('rekey: if the backup cannot be restored either, the message names the new key file and the backup', () => {
+        writeFileSync(join(dir, 'secrets.yaml'), "MODEL_KEY: 'sk-test-cli-0000000000'\n");
+        expect(run(['migrate'])).toBe(0);
+        writeFileSync(join(dir, 'new.key'), `${'cd'.repeat(32)}\n`);
+        err = [];
+        const code = run(
+            ['rekey', '--new-key-file', join(dir, 'new.key')],
+            {},
+            {
+                replaceMasterKey: () => {
+                    // 改名失败的同时备份也没了
+                    rmSync(join(dir, 'backups'), { recursive: true, force: true });
+                    throw Object.assign(new Error('denied'), { code: 'EACCES' });
+                },
+            },
+        );
+        expect(code).toBe(1);
+        const text = err.join('\n');
+        expect(text).toContain('NEW key');
+        expect(text).toContain('master.key.new');
+        expect(text).toContain('new.key');
+        expect(existsSync(join(dir, 'master.key.new'))).toBe(true); // 新密钥文件留着,可手工改名
     });
 
     it('refuses keys on the command line, unknown commands, and a malformed environment key', () => {
