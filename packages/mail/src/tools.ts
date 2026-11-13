@@ -16,7 +16,7 @@ import {
     type UntrustedContent,
 } from '@fatcat-ai/shared';
 import type { MailMessageRecord, Repositories } from '@fatcat-ai/storage';
-import { resolveInRoots, type ToolContext, type ToolDefinition } from '@fatcat-ai/tools';
+import { resolveInRoots, stripUntrustedBlocks, type ToolContext, type ToolDefinition } from '@fatcat-ai/tools';
 import { statSync } from 'node:fs';
 import { z } from 'zod';
 import type { MailJobRunner } from './run.js';
@@ -150,7 +150,7 @@ export function createMailTools(options: MailToolOptions): ToolDefinition[] {
 
     /**
      * 会话被污染后,收件人必须来自主人自己在本会话中发的消息,或是被回复邮件的发件人 / Reply-To(ADR 0016 第 7 节)。
-     * 只用 core 已知的事实:用户消息的原文与缓存中的邮件头。
+     * 只用 core 已知的事实:用户消息的原文(去掉渠道拼进去的不可信块)与缓存中的邮件头。
      */
     function untrustedRecipients(
         ownerId: string,
@@ -165,7 +165,8 @@ export function createMailTools(options: MailToolOptions): ToolDefinition[] {
                 if (m.role !== 'user') continue;
                 for (const part of m.parts) {
                     if (part.type !== 'text') continue;
-                    for (const a of part.text.match(ADDRESS) ?? []) allowed.add(lower(a));
+                    // 渠道拼进来的转发 / 引用块是别人写的,不算主人的话(ADR 0022 第 14 节)
+                    for (const a of stripUntrustedBlocks(part.text).match(ADDRESS) ?? []) allowed.add(lower(a));
                 }
             }
             cursor = page.nextCursor ?? undefined;

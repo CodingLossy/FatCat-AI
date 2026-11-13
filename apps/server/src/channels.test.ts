@@ -440,4 +440,17 @@ describe('approvalReminder', () => {
         expect(crowded.endsWith(`\n${tail}`)).toBe(true);
         expect(crowded).toContain('有安全警告');
     });
+
+    it('因长度丢弃警告时加一行「还有 N 条警告」,回复句不被截断;没有丢弃时没有这一行', () => {
+        const warnings = Array.from({ length: 6 }, () => ({ message: '甲'.repeat(60) }));
+        for (const max of [330, 400, 512]) {
+            const out = approvalReminder('Send', 'K7', 30, warnings, max);
+            expect(Buffer.byteLength(out)).toBeLessThanOrEqual(max);
+            const lines = out.split('\n');
+            expect(lines.at(-1)).toBe(tail);
+            const kept = lines.filter((l) => l.startsWith('注意:')).length;
+            expect(lines.at(-2)).toBe(`还有 ${warnings.length - kept} 条警告,请在 Web 查看。`);
+        }
+        expect(approvalReminder('Send', 'K7', 30, warnings, 4096)).not.toContain('还有');
+    });
 });
