@@ -21,7 +21,12 @@ export async function removeOwnerSessions(
     for (const id of sessionIds) {
         const session = deps.repos.sessions.get(ownerId, id);
         if (!session) continue;
-        if (session.activeRunId) await deps.runs.stop(session.activeRunId);
+        // 停止期间可能又有新运行开始:删除前重新读 activeRunId,直到没有为止
+        let activeRunId = session.activeRunId;
+        for (let attempt = 0; activeRunId && attempt < 5; attempt++) {
+            await deps.runs.stop(activeRunId);
+            activeRunId = deps.repos.sessions.get(ownerId, session.id)?.activeRunId ?? null;
+        }
         const attachmentIds = deps.repos.attachments.idsForSession(ownerId, session.id);
         if (!deps.repos.sessions.delete(ownerId, session.id)) continue;
         removed++;

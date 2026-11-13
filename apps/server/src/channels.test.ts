@@ -220,7 +220,7 @@ describe('渠道运行器', () => {
         expect(s.repos.sessions.get(t.ownerId, channelSession)).not.toBeNull();
 
         await c.fake.deliver({ externalUserId: OWNER, text: '清空' });
-        expect(c.last()).toBe(REPLIES.cleared);
+        await vi.waitFor(() => expect(c.last()).toBe(REPLIES.cleared));
         expect(aborted).toBe(true);
         expect(s.repos.sessions.get(t.ownerId, channelSession)).toBeNull();
         expect(s.repos.channels.byId(c.channel.id)?.sessionId).toBeNull();
@@ -228,6 +228,26 @@ describe('渠道运行器', () => {
         expect(s.repos.sessions.delete('someone-else', kept.id)).toBe(false);
         expect(s.repos.memories.list(t.ownerId, 10).map((m) => m.text)).toContain('下周三提交周报');
         expect(c.fake.textsTo(OWNER).some((text) => text.includes('先说一句'))).toBe(false);
+    });
+
+    it('/clear 之后马上再发一条消息:消息落在新会话里并收到回答,旧会话已删除', async () => {
+        const t = await setup();
+        const c = await t.bound();
+        t.steps.push(say('旧回答'));
+        await c.fake.deliver({ externalUserId: OWNER, text: '先建会话' });
+        await c.idle();
+        const oldSession = s.repos.channels.byId(c.channel.id)!.sessionId!;
+
+        t.steps.push(say('新回答'));
+        await c.fake.deliver({ externalUserId: OWNER, text: '/clear' });
+        await c.fake.deliver({ externalUserId: OWNER, text: '清空后的第一条' });
+        await c.idle();
+
+        const newSession = s.repos.channels.byId(c.channel.id)!.sessionId!;
+        expect(newSession).not.toBe(oldSession);
+        expect(s.repos.sessions.get(t.ownerId, oldSession)).toBeNull();
+        expect(s.repos.sessions.get(t.ownerId, newSession)).not.toBeNull();
+        expect(c.fake.textsTo(OWNER).slice(-2)).toEqual([REPLIES.cleared, '新回答']);
     });
 
     it('同一会话正在运行时排队(最多 5 条),多出的回复「上一条还没处理完」;处理完按顺序回答', async () => {
