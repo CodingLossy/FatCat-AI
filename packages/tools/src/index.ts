@@ -2,6 +2,13 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 工具框架(ADR 0010):工具定义、注册表、审批策略、审计摘要,以及内置工具。
+export {
+    composeUntrustedBlocks,
+    stripUntrustedBlocks,
+    UNTRUSTED_INTRO,
+    untrustedBlockLine,
+    type UntrustedKind,
+} from './untrusted-blocks.js';
 export { DIGEST_LIMIT, inputDigest, redactedInput } from './digest.js';
 export {
     checkRemember,
