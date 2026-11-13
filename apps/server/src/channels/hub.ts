@@ -27,6 +27,7 @@ import {
 } from '@fatcat-ai/channels';
 import type { SecretStore } from '@fatcat-ai/providers';
 import type {
+    ApprovalWarning,
     Channel,
     ChannelKind,
     ChannelPairing,
@@ -71,7 +72,6 @@ export const DEGRADED_THRESHOLD = 3;
 
 export const REPLIES = {
     bound: '已绑定。之后这里的私聊消息会交给助手处理;发送 /help 查看指令。',
-    badCode: '配对码不对。',
     alreadyBound: '这个渠道已经绑定。如需更换主人,请先在 Web「设置 → 渠道」解除绑定。',
     tooFast: '太快了,请稍后再发。',
     busy: '上一条还没处理完,这条没有处理,请稍后再发。',
@@ -148,6 +148,51 @@ interface PendingCode {
     expiresAt: number;
 }
 
+/** 审批提醒:有警告时每条 warning.message 单独一行(「注意:…」);过长时只截断警告,「回复…」一句不截断。 */
+export function approvalReminder(
+    summary: string,
+    code: string,
+    minutes: number,
+    warnings: readonly Pick<ApprovalWarning, 'message'>[] | undefined,
+    maxBytes: number,
+): string {
+    const head = `需要确认:${summary}。`;
+    const tail = `回复「确认 ${code}」或「拒绝 ${code}」,${minutes} 分钟内有效。`;
+    if (!warnings?.length) return `${head}${tail}`;
+    const lines = warnings.map((w) => `注意:${w.message}`);
+    const full = [head, ...lines, tail].join('\n');
+    if (Buffer.byteLength(full) <= maxBytes) return full;
+    const budget = maxBytes - Buffer.byteLength(head) - Buffer.byteLength(tail) - 2;
+    if (budget < Buffer.byteLength(NO_ROOM_FOR_WARNINGS)) return [head, NO_ROOM_FOR_WARNINGS, tail].join('\n');
+    let used = 0;
+    const kept: string[] = [];
+    for (const line of lines) {
+        const size = Buffer.byteLength(line) + 1;
+        if (used + size <= budget) {
+            kept.push(line);
+            used += size;
+            continue;
+        }
+        const room = budget - used - Buffer.byteLength('…') - 1;
+        if (room > 0) kept.push(`${cutBytes(line, room)}…`);
+        break;
+    }
+    return [head, ...kept, tail].join('\n');
+}
+
+const NO_ROOM_FOR_WARNINGS = '注意:有安全警告,请在 Web 查看。';
+
+function cutBytes(text: string, max: number): string {
+    let out = '';
+    let size = 0;
+    for (const ch of text) {
+        size += Buffer.byteLength(ch);
+        if (size > max) break;
+        out += ch;
+    }
+    return out;
+}
+
 interface Runtime {
     channelId: string;
     ownerId: string;
@@ -170,6 +215,8 @@ interface Runtime {
     queue: { message: InboundMessage | null; target: ChannelTarget }[];
     draining: Promise<void> | null;
     codes: Map<string, PendingCode>;
+    /** 已在别处(Web 等)处理的短码 → 原审批的过期时间;只在进程内存里,到期即忘。 */
+    handled: Map<string, number>;
     degradedAt: number[];
     degradedAlerted: boolean;
     degradedRuns: Set<string>;
@@ -212,6 +259,7 @@ export class ChannelHub {
                 queue: [],
                 draining: null,
                 codes: new Map(),
+                handled: new Map(),
                 degradedAt: [],
                 degradedAlerted: false,
                 degradedRuns: new Set(),
@@ -282,6 +330,7 @@ export class ChannelHub {
         const rt = this.runtimes.get(channelId);
         if (!rt) return;
         rt.codes.clear();
+        rt.handled.clear();
         rt.target = null;
         rt.queue.length = 0;
     }
@@ -395,6 +444,7 @@ export class ChannelHub {
         rt.controller = null;
         rt.queue.length = 0;
         rt.codes.clear();
+        rt.handled.clear();
         rt.state = 'stopped';
         if (adapter) {
             let timer: NodeJS.Timeout | undefined;
@@ -436,20 +486,26 @@ export class ChannelHub {
         if (!rt.adapter) return;
         const channel = channels.byId(rt.channelId);
         if (!channel) return;
-        const command = parseCommand(message.text);
-        // 一定会被忽略的消息(群聊、未绑定时的非绑定指令、非主人)超过渠道级上限时只计数,不写去重表
+        // 带引用的消息即使正文整条是「确认 K7」也不算审批,按普通消息处理(ADR 0022 第 5 节)
+        const parsed = parseCommand(message.text);
+        const command = parsed?.type === 'approval' && message.quoted.length > 0 ? null : parsed;
+        // 一定会被忽略的消息(群聊、未绑定时的非绑定指令或错误的绑定码、非主人)超过渠道级上限时只计数,不写去重表
         const ignoreReason =
             message.chat !== 'direct'
                 ? 'group'
                 : !channel.binding
                   ? command?.type === 'bind'
-                      ? null
+                      ? this.pairingValid(channel, command.code)
+                          ? null
+                          : 'bad-code'
                       : 'unbound'
                   : channel.binding.externalUserId !== message.externalUserId
                     ? 'not-owner'
                     : null;
         if (ignoreReason && !rt.ignoredLimiter.take()) {
             rt.ignoredCount += 1;
+            // 失败次数照常累计:超过上限不能绕过 5 次锁定
+            if (ignoreReason === 'bad-code') this.failPairing(channel);
             return;
         }
         // 去重在过滤之前:被忽略的消息也会去重
@@ -458,13 +514,16 @@ export class ChannelHub {
             return;
         }
         rt.lastInboundAt = this.now().toISOString();
-        if (ignoreReason) return this.ignore(rt, ignoreReason);
+        if (ignoreReason) {
+            if (ignoreReason === 'bad-code') this.failPairing(channel);
+            return this.ignore(rt, ignoreReason);
+        }
         const target: ChannelTarget = {
             externalUserId: message.externalUserId,
             ...(message.replyContext ? { replyContext: message.replyContext } : {}),
         };
         if (!channel.binding) {
-            if (command?.type === 'bind') return this.bind(rt, channel, message.externalUserId, command.code, target);
+            if (command?.type === 'bind') return this.bind(rt, channel, message.externalUserId, target);
             return;
         }
 
@@ -511,44 +570,60 @@ export class ChannelHub {
         });
     }
 
-    private bind(rt: Runtime, channel: ChannelRecord, sender: string, code: string, target: ChannelTarget) {
-        const { channels } = this.options.repos;
-        const pairing = channels.getPairing(channel.id);
-        const expected = pairing ? Buffer.from(pairing.codeHash, 'hex') : null;
+    /** 配对码是否正确、未过期、未被锁定(只读,不计数)。 */
+    private pairingValid(channel: ChannelRecord, code: string): boolean {
+        const pairing = this.options.repos.channels.getPairing(channel.id);
+        if (!pairing) return false;
+        const expected = Buffer.from(pairing.codeHash, 'hex');
         const actual = Buffer.from(pairingHash(channel.id, code), 'hex');
-        const valid =
-            pairing !== null &&
-            expected !== null &&
+        return (
             Date.parse(pairing.expiresAt) > this.now().getTime() &&
             pairing.failedAttempts < MAX_PAIRING_FAILURES &&
             expected.length === actual.length &&
-            timingSafeEqual(expected, actual);
-        if (valid && channels.bind(channel.id, sender)) {
+            timingSafeEqual(expected, actual)
+        );
+    }
+
+    /** 失败计数;没有配对码或已过期时不计数(ADR 0022 第 14 节),累计 5 次后作废,需要在 Web 重新生成。 */
+    private failPairing(channel: ChannelRecord): void {
+        const { channels } = this.options.repos;
+        const pairing = channels.getPairing(channel.id);
+        if (!pairing || Date.parse(pairing.expiresAt) <= this.now().getTime()) return;
+        channels.failPairing(channel.id);
+        if (pairing.failedAttempts + 1 >= MAX_PAIRING_FAILURES) channels.deletePairing(channel.id);
+    }
+
+    /** 码错误的绑定消息在 receive 里已按「忽略」处理;走到这里的码是对的。 */
+    private bind(rt: Runtime, channel: ChannelRecord, sender: string, target: ChannelTarget) {
+        const { channels } = this.options.repos;
+        if (channels.bind(channel.id, sender)) {
             channels.deletePairing(channel.id);
             rt.target = target;
             this.log.info({ channelId: channel.id }, 'channel bound');
             return this.send(rt, target, REPLIES.bound);
         }
-        // 没有配对码或已过期时不计数(ADR 0022 第 14 节)
-        if (pairing && Date.parse(pairing.expiresAt) > this.now().getTime()) {
-            channels.failPairing(channel.id);
-            // 累计失败 5 次后作废,需要在 Web 重新生成
-            if (pairing.failedAttempts + 1 >= MAX_PAIRING_FAILURES) channels.deletePairing(channel.id);
-        }
-        this.log.info({ channelId: channel.id, reason: 'bad-code' }, 'channel pairing failed');
-        return this.send(rt, target, REPLIES.badCode);
+        this.failPairing(channel);
+        this.log.info({ channelId: channel.id, reason: 'bind-conflict' }, 'channel pairing failed');
     }
 
     private approve(rt: Runtime, target: ChannelTarget, decision: 'approve' | 'reject', code: string) {
         const nowMs = this.now().getTime();
-        for (const [c, p] of rt.codes) if (p.expiresAt <= nowMs) rt.codes.delete(c);
+        this.purgeCodes(rt, nowMs);
         const pending = rt.codes.get(code);
-        if (!pending) return this.send(rt, target, REPLIES.noSuchApproval);
+        if (!pending) {
+            // 只有「本渠道的审批在别处已处理」才说已处理;其余(不存在、过期、别的渠道、重启后)一律说没有
+            return this.send(rt, target, rt.handled.has(code) ? REPLIES.alreadyHandled : REPLIES.noSuchApproval);
+        }
         rt.codes.delete(code);
         const via: ApprovalVia = { channelId: rt.channelId };
         const outcome = this.options.runs.resolveApproval(rt.ownerId, pending.callId, decision, undefined, via);
         if (outcome !== 'resolved') return this.send(rt, target, REPLIES.alreadyHandled);
         return this.send(rt, target, decision === 'approve' ? REPLIES.approved : REPLIES.rejected);
+    }
+
+    private purgeCodes(rt: Runtime, nowMs: number): void {
+        for (const [c, p] of rt.codes) if (p.expiresAt <= nowMs) rt.codes.delete(c);
+        for (const [c, expiresAt] of rt.handled) if (expiresAt <= nowMs) rt.handled.delete(c);
     }
 
     /**
@@ -675,7 +750,11 @@ export class ChannelHub {
     private onEvent(rt: Runtime, envelope: EventEnvelope, runId: string | null): void {
         const event = envelope.event;
         if (event.type === 'approval-resolved') {
-            for (const [code, p] of rt.codes) if (p.callId === event.callId) rt.codes.delete(code);
+            for (const [code, p] of rt.codes) {
+                if (p.callId !== event.callId) continue;
+                rt.codes.delete(code);
+                rt.handled.set(code, p.expiresAt);
+            }
             return;
         }
         if (event.type !== 'approval-required' && event.type !== 'memory-used' && event.type !== 'run-finished') {
@@ -686,18 +765,17 @@ export class ChannelHub {
         if (envelope.sessionId !== channel.sessionId) return;
         const target = rt.target ?? { externalUserId: channel.binding.externalUserId };
         if (event.type === 'approval-required') {
-            const code = allocateApprovalCode(new Set(rt.codes.keys()), this.random);
+            this.purgeCodes(rt, this.now().getTime());
+            // 避开「已处理」的短码,免得旧短码误指向新的审批
+            const code = allocateApprovalCode(new Set([...rt.codes.keys(), ...rt.handled.keys()]), this.random);
             if (!code) return;
             const expiresAt = event.expiresAt
                 ? Date.parse(event.expiresAt)
                 : this.now().getTime() + DEFAULT_APPROVAL_TIMEOUT_MS;
             rt.codes.set(code, { callId: event.callId, expiresAt });
             const minutes = Math.max(1, Math.ceil((expiresAt - this.now().getTime()) / 60_000));
-            void this.send(
-                rt,
-                target,
-                `需要确认:${event.summary}。回复「确认 ${code}」或「拒绝 ${code}」,${minutes} 分钟内有效。`,
-            );
+            const maxBytes = rt.adapter.capabilities.maxTextBytes;
+            void this.send(rt, target, approvalReminder(event.summary, code, minutes, event.warnings, maxBytes));
             return;
         }
         if (!channel.notifyDegraded || runId === null) return;
