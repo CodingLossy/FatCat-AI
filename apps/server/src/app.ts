@@ -246,7 +246,15 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             }),
         )
         .route('/', embeddingRoutes({ embeddings }))
-        .route('/', settingsRoutes({ repos, onTimeZoneChanged: deps.onTimeZoneChanged }))
+        .route(
+            '/',
+            settingsRoutes({
+                repos,
+                secrets: deps.secrets,
+                log: (message, fields) => logger.info(fields, message),
+                onTimeZoneChanged: deps.onTimeZoneChanged,
+            }),
+        )
         .route('/', sessionRoutes(runDeps))
         .route('/', attachmentRoutes({ repos, files }))
         .route(

@@ -55,6 +55,8 @@ fcsec1:<base64url(nonce 12 字节)>:<base64url(密文)>:<base64url(认证标签 
 3. **解密回读并逐键比对**:用主密钥重新解密新文件,与内存中的明文映射逐键比较(常数时间比较,值不进日志)。
 4. **全部通过后才处理明文**:原 `secrets.yaml` 改名为 `secrets.yaml.migrated`,再按用户的选择处理(见下)。任一步失败:删除临时文件、保留明文原样、返回错误,可重复执行。
 
+实现定值(PR 4):命令行 `secrets migrate` 接受 `--plaintext-backups keep|encrypt|delete`,默认 `keep`;`.enc.tmp` 的固定名字是 `secrets.yaml.enc.tmp`;回读比对在改名之后进行,失败时同时删掉刚建的 `secrets.yaml.enc`;上次迁移在最后一步前中断(明文与密文并存)时,再次运行 `secrets migrate` 会在两者逐键一致的情况下补完最后一步,不一致则两个文件都不动;已有 `secrets.yaml.migrated` 时新的一份命名为 `secrets.yaml.migrated.2`,以此类推,不覆盖。`secrets.yaml.migrated` 只能用 `secrets cleanup` 清理(且只在加密文件当前能解开时),Web 上只显示提示文字,不加新端点。
+
 迁移界面显示已有明文备份的份数,请求体 `plaintextBackups` 取 `keep`(默认,不动)、`encrypt`(逐个加密为 `.enc` 并删除明文副本)、`delete`(删除)。删除需要界面上二次确认。`secrets.yaml.migrated` 在用户确认新文件可用后由设置页的「清理」按钮或命令删除;迁移本身不自动删它。
 
 ### 6. 备份
@@ -69,7 +71,7 @@ fcsec1:<base64url(nonce 12 字节)>:<base64url(密文)>:<base64url(认证标签 
 
 ### 8. 轮换
 
-命令 `node dist/index.js secrets rekey --new-key-file <path>`(离线,服务器停止时执行):用旧主密钥解密 → 备份 → 用新主密钥加密写新文件 → 回读比对 → 替换;TOTP 共享密钥(数据库内)同事务重加密。失败保留原状。命令不接受命令行参数形式的密钥(避免进 shell 历史)。
+命令 `node dist/index.js secrets rekey --new-key-file <path>`(离线,服务器停止时执行):用旧主密钥解密 → 备份 → 用新主密钥加密写新文件 → 回读比对 → 替换;TOTP 共享密钥(数据库内)同事务重加密。失败保留原状。命令不接受命令行参数形式的密钥(避免进 shell 历史)。实现定值(PR 4):本 PR 只重新加密 secrets 文件(数据库内 TOTP 密钥的重新加密留给 PR 5);原主密钥来自数据目录的 `master.key` 时,命令在加密文件替换成功后原子地换掉 `master.key`,来自环境变量时只打印提示,由部署者改环境变量;回读比对在替换之前用新主密钥进行。
 
 ### 9. 接口(shared:`packages/shared/src/secrets.ts`)
 

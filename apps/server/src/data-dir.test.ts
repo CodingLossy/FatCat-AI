@@ -1,11 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import {
+    cpSync,
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    renameSync,
+    rmSync,
+    statSync,
+    writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { LegacyDataDirBusyError, migrateLegacyDataDir } from './data-dir.js';
+import { dataDirMasterKey, LegacyDataDirBusyError, MASTER_KEY_FILE, migrateLegacyDataDir } from './data-dir.js';
 
 let base: string;
 let from: string;
@@ -124,4 +134,29 @@ describe('migrateLegacyDataDir', () => {
         expect(readFileSync(join(from, 'backups', 'db-0001.sqlite'), 'utf8')).toBe('backup');
         expect(existsSync(to)).toBe(false);
     });
+});
+
+describe('dataDirMasterKey (ADR 0026)', () => {
+    it.skipIf(process.platform === 'win32')(
+        'creates master.key with mode 600 only when asked, and never overwrites it',
+        () => {
+            const dir = mkdtempSync(join(tmpdir(), 'fatcat-master-'));
+            try {
+                const keys = dataDirMasterKey(dir, {});
+                expect(keys.current()).toEqual({ source: 'none', key: null });
+                expect(existsSync(join(dir, MASTER_KEY_FILE))).toBe(false); // current() 不创建
+                const created = keys.ensure();
+                expect(created.source).toBe('data-dir');
+                expect(statSync(join(dir, MASTER_KEY_FILE)).mode & 0o777).toBe(0o600);
+                expect(readFileSync(join(dir, MASTER_KEY_FILE), 'utf8')).toMatch(/^[0-9a-f]{64}\n$/);
+                expect(keys.ensure().key).toEqual(created.key);
+                // 内容被改坏:不覆盖,按不可用处理
+                writeFileSync(join(dir, MASTER_KEY_FILE), 'garbage');
+                expect(keys.ensure()).toEqual({ source: 'data-dir', key: null });
+                expect(readFileSync(join(dir, MASTER_KEY_FILE), 'utf8')).toBe('garbage');
+            } finally {
+                rmSync(dir, { recursive: true, force: true });
+            }
+        },
+    );
 });

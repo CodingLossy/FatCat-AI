@@ -82,12 +82,14 @@ describe('writeSecretsKey', () => {
         expect(readFileSync(join(dir, 'backups', 'secrets-20261111T080007Z.yaml'), 'utf8')).toBe("A: '6'\n");
     });
 
-    it('SecretStore.write registers the value with the redactor and resolve sees it at once', () => {
+    it('SecretStore.write on an existing plaintext file registers the value and keeps the file plaintext', () => {
+        writeFileSync(file(), 'A: 1\n');
         const redactor = new Redactor();
         const store = new SecretStore({ dataDir: dir, env: {}, redactor });
         expect(store.resolve('file:T')).toBeNull();
         store.write('T', 'secret-token-123');
         expect(store.resolve('file:T')).toBe('secret-token-123');
+        expect(readFileSync(file(), 'utf8')).toBe("A: 1\nT: 'secret-token-123'\n");
         expect(redactor.redact('x secret-token-123 y')).not.toContain('secret-token-123');
         store.remove('T');
         expect(store.resolve('file:T')).toBeNull();

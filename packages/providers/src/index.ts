@@ -24,10 +24,36 @@ export {
     SecretsWriteError,
     writeSecretsKey,
     SecretsFileError,
+    SecretsLayoutError,
+    SECRETS_ENC_FILE,
+    SECRETS_MIGRATED_FILE,
+    restrictToCurrentUser,
+    secretsLayout,
     SecretStore,
     type KeyStatusValue,
     type SecretStoreOptions,
 } from './secrets.js';
+export {
+    createMasterKeyResolver,
+    decryptSecrets,
+    encodeMasterKey,
+    encryptSecrets,
+    generateMasterKey,
+    keyFingerprint,
+    MasterKeyFormatError,
+    parseMasterKey,
+    SecretsEnvelopeError,
+    SecretsKeyUnavailableError,
+    type MasterKeyResolution,
+    type MasterKeyResolver,
+} from './secrets-crypto.js';
+export {
+    cleanupMigrated,
+    migrateSecrets,
+    readSecretsStatus,
+    rekeySecrets,
+    SecretsMigrateError,
+} from './secrets-migrate.js';
 export {
     createVoiceClient,
     DEFAULT_TTS_VOICE,

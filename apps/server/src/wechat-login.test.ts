@@ -129,6 +129,26 @@ describe('WeChat QR-code login', () => {
         expect(readFileSync(secretsFile(), 'utf8')).toBe(original);
     });
 
+    it('on a fresh install writes the token only to the encrypted file (via SecretStore), polls with it, and removes it on delete', async () => {
+        const channel = await createChannel();
+        await until(async () => (await status(channel.id)).state === 'needs-login');
+        fake.qrStatus.push({ status: 'confirmed', bot_token: TOKEN, baseurl: fake.url });
+        expect((await req(`/api/v1/channels/${channel.id}/wechat/login`, { method: 'POST' })).status).toBe(201);
+        await until(async () => (await loginState(channel.id)).state === 'confirmed');
+
+        const enc = join(s.dir, 'secrets.yaml.enc');
+        expect(existsSync(secretsFile())).toBe(false);
+        expect(readFileSync(enc, 'utf8')).toMatch(/^fcsec1:/);
+        expect(readFileSync(enc, 'utf8')).not.toContain(TOKEN);
+        expect(readFileSync(join(s.dir, 'master.key'), 'utf8').trim()).toMatch(/^[0-9a-f]{64}$/);
+        await until(() => fake.polls.length > 0);
+        expect(fake.polls[0]!.authorization).toBe(`Bearer ${TOKEN}`);
+        expect(s.logs.join('')).not.toContain(TOKEN);
+
+        expect((await req(`/api/v1/channels/${channel.id}`, { method: 'DELETE' })).status).toBe(204);
+        expect(readFileSync(enc, 'utf8')).toMatch(/^fcsec1:/); // 仍是密文,键已删除
+    });
+
     it('fails with secrets_write_failed and leaves secrets.yaml untouched when it does not parse', async () => {
         const broken = 'A: 1\n  nested: 2\n';
         writeFileSync(secretsFile(), broken, { mode: 0o600 });

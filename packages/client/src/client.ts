@@ -69,6 +69,9 @@ import type {
     SetupRequest,
     Settings,
     SettingsPatch,
+    SecretsMigrateRequest,
+    SecretsMigrateResponse,
+    SecretsStatus,
     TimeZoneInfo,
     ToolInfo,
     ToolRisk,
@@ -191,6 +194,13 @@ export function createClient(options: ClientOptions) {
             update: (body: SettingsPatch) => t.json<Settings>('/settings', { method: 'PUT', body }),
             /** 可选时区与服务器时区(ADR 0023);老服务器返回 404。 */
             timeZones: () => t.json<TimeZoneInfo>('/settings/time-zones'),
+        },
+
+        /** 密钥加密存储(ADR 0026);老服务器返回 404。响应里没有任何密钥值。 */
+        secrets: {
+            status: () => t.json<SecretsStatus>('/settings/secrets'),
+            migrate: (body: SecretsMigrateRequest) =>
+                t.json<SecretsMigrateResponse>('/settings/secrets/migrate', { method: 'POST', body }),
         },
 
         /** 图片附件(ADR 0020):先上传,再在发送消息时带上 attachmentIds。 */

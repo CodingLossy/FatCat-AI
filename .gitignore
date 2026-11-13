@@ -14,3 +14,10 @@ Thumbs.db
 /FatCat-AI-开发计划.md
 test-results/
 playwright-report/
+# 密钥加密存储(ADR 0026):主密钥、加密后的密钥文件、迁移留下的明文都不进仓库
+master.key
+secrets.yaml
+secrets.yaml.enc
+secrets.yaml.enc.tmp
+secrets.yaml.migrated
+secrets.yaml.migrated.*
