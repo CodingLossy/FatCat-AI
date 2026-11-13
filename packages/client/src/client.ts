@@ -24,6 +24,7 @@ import type {
     ItemCounts,
     ItemSort,
     ItemSubtree,
+    LoginChallenge,
     LoginRequest,
     McpServerInput,
     McpServerPatch,
@@ -67,6 +68,13 @@ import type {
     SendMessageRequest,
     Session,
     SetupRequest,
+    TotpConfirmRequest,
+    TotpEnableRequest,
+    TotpLoginRequest,
+    TotpRecoveryCodes,
+    TotpSetup,
+    TotpSetupRequest,
+    TotpStatus,
     Settings,
     SettingsPatch,
     SecretsMigrateRequest,
@@ -158,7 +166,11 @@ export function createClient(options: ClientOptions) {
         auth: {
             status: () => t.json<AuthStatus>('/auth/status'),
             setup: (body: SetupRequest) => t.json<LoginResponse>('/auth/setup', { method: 'POST', body }),
-            login: (body: LoginRequest) => t.json<LoginResponse>('/auth/login', { method: 'POST', body }),
+            /** 已启用 TOTP 的账户在密码通过后返回 LoginChallenge(HTTP 202,没有会话);用 loginTotp 完成。 */
+            login: (body: LoginRequest) =>
+                t.json<LoginResponse | LoginChallenge>('/auth/login', { method: 'POST', body }),
+            /** 提交验证码或恢复码,完成需要第二因素的登录。 */
+            loginTotp: (body: TotpLoginRequest) => t.json<LoginResponse>('/auth/login/totp', { method: 'POST', body }),
             logout: () => t.json<void>('/auth/logout', { method: 'POST' }),
             me: () => t.json<Me>('/auth/me'),
             /** 仅 Node:初始化主人账户并直接换成个人访问令牌,不保留 Cookie 会话。 */
@@ -167,10 +179,38 @@ export function createClient(options: ClientOptions) {
                 return exchange(await t.raw('/auth/setup', { method: 'POST', body: setup }), tokenName, expiresInDays);
             },
             /** 仅 Node:用密码登录并换成个人访问令牌,不保留 Cookie 会话。 */
-            loginForToken: async (body: LoginRequest & { tokenName: string; expiresInDays?: number }) => {
-                const { tokenName, expiresInDays, ...login } = body;
-                return exchange(await t.raw('/auth/login', { method: 'POST', body: login }), tokenName, expiresInDays);
+            loginForToken: async (
+                body: LoginRequest & {
+                    tokenName: string;
+                    expiresInDays?: number;
+                    /** 账户启用了 TOTP 时被调用,返回验证码或恢复码;不给则登录失败。 */
+                    secondFactor?: () => Promise<{ code: string } | { recoveryCode: string }>;
+                },
+            ) => {
+                const { tokenName, expiresInDays, secondFactor, ...login } = body;
+                let res = await t.raw('/auth/login', { method: 'POST', body: login });
+                if (res.status === 202) {
+                    const challenge = (await res.json()) as LoginChallenge;
+                    if (!secondFactor) throw new Error('This account needs a verification code (TOTP) to sign in');
+                    const factor = await secondFactor();
+                    res = await t.raw('/auth/login/totp', {
+                        method: 'POST',
+                        body: { challengeToken: challenge.challengeToken, ...factor },
+                    });
+                }
+                return exchange(res, tokenName, expiresInDays);
             },
+        },
+
+        /** TOTP 两步验证的设置(ADR 0027);只能用浏览器会话,个人访问令牌会被拒绝。 */
+        totp: {
+            status: () => t.json<TotpStatus>('/auth/totp'),
+            setup: (body: TotpSetupRequest) => t.json<TotpSetup>('/auth/totp/setup', { method: 'POST', body }),
+            enable: (body: TotpEnableRequest) =>
+                t.json<TotpRecoveryCodes>('/auth/totp/enable', { method: 'POST', body }),
+            disable: (body: TotpConfirmRequest) => t.json<void>('/auth/totp/disable', { method: 'POST', body }),
+            recoveryCodes: (body: TotpConfirmRequest) =>
+                t.json<TotpRecoveryCodes>('/auth/totp/recovery-codes', { method: 'POST', body }),
         },
 
         tokens: {

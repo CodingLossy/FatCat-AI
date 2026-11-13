@@ -4,9 +4,10 @@
 // ADR 0026 测试清单:扫库(数据库所有列与加密文件里找不到明文密钥)与接口越权。只用临时目录和假密钥。
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Redactor, SecretStore } from '@fatcat-ai/providers';
-import { SecretsMigrateResponse, SecretsStatus } from '@fatcat-ai/shared';
+import { decryptSecrets, parseMasterKey, Redactor, SecretStore } from '@fatcat-ai/providers';
+import { SecretsMigrateResponse, SecretsStatus, TotpRecoveryCodes, TotpSetup } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
+import { base32Decode, hotp, timeStep } from './auth/totp.js';
 import { dataDirMasterKey } from './data-dir.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
@@ -129,6 +130,29 @@ describe('secrets scan (ADR 0026)', () => {
         // 对照:被改名的明文文件确实含有密钥,说明扫描用的值是真的
         expect(readFileSync(join(s.dir, 'secrets.yaml.migrated'), 'utf8')).toContain(MODEL_KEY);
         expect(store.resolve('file:MODEL_KEY')).toBe(MODEL_KEY);
+    });
+});
+
+describe('secrets scan: TOTP (ADR 0027)', () => {
+    it('the shared secret is stored only as an envelope, and neither it nor any recovery code appears in the database or the logs', async () => {
+        const { post } = await setup();
+        const setupRes = await post('/api/v1/auth/totp/setup', { password: TEST_PASSWORD });
+        const { secret } = TotpSetup.parse(await setupRes.json());
+        const code = hotp(base32Decode(secret), timeStep(Date.now()));
+        const enable = await post('/api/v1/auth/totp/enable', { password: TEST_PASSWORD, code });
+        const { recoveryCodes } = TotpRecoveryCodes.parse(await enable.json());
+        const db = dumpDatabase();
+        expect(db).not.toContain(secret);
+        for (const c of recoveryCodes) expect(db).not.toContain(c);
+        const stored = s.conn.sqlite.prepare('SELECT secret_enc AS e FROM totp_credentials').get() as { e: string };
+        expect(stored.e).toMatch(/^fcsec1:/);
+        const logs = s.logs.join('\n');
+        expect(logs).not.toContain(secret);
+        for (const c of recoveryCodes) expect(logs).not.toContain(c);
+        // 对照:用主密钥确实能解出共享密钥,说明扫描用的值是真的
+        const key = readFileSync(join(s.dir, 'master.key'), 'utf8').trim();
+        expect(decryptSecrets(stored.e, parseMasterKey(key))).toBe(secret);
+        expect(db).not.toContain(key);
     });
 });
 
