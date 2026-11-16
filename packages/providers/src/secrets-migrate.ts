@@ -4,7 +4,7 @@
 // 明文 secrets.yaml → 加密文件的迁移、换主密钥、清理(ADR 0026 第 5、8 节)。只含文件层的纯逻辑;
 // 路由与命令行只是调用这里。任何一步失败都保留原文件,可重复执行;返回值与错误里没有密钥值。
 import { existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import type { PlaintextBackupAction, SecretsMigrateResponse, SecretsStatus, MasterKeySource } from '@fatcat-ai/shared';
 import {
     constantTimeEqual,
@@ -17,6 +17,7 @@ import {
 import {
     backupSecrets,
     parseSecretsFile,
+    pruneBackups,
     restrictToCurrentUser,
     SECRETS_BACKUP_DIR,
     SECRETS_BACKUP_PATTERN,
@@ -237,8 +238,9 @@ function finish(
     key: Buffer,
     migratedKeys: number,
 ): SecretsMigrateResponse {
+    const migratedName = nextMigratedName(dataDir);
     try {
-        renameSync(join(dataDir, SECRETS_FILE), join(dataDir, nextMigratedName(dataDir)));
+        renameSync(join(dataDir, SECRETS_FILE), join(dataDir, migratedName));
     } catch (error) {
         // 改名失败:删掉新密文,明文原样保留
         rmSync(join(dataDir, SECRETS_ENC_FILE), { force: true });
@@ -263,10 +265,21 @@ function finish(
             } else {
                 rmSync(from, { force: true });
                 counts.deleted++;
+                // 刚做的那份备份也被删了:回滚副本是改名后的明文 secrets.yaml.migrated,返回它而不是已删除的文件
+                if (backup === name) backup = migratedName;
             }
         } catch {
             counts.kept++; // 处理失败的备份保持原样
         }
+    }
+    // 加密备份同样只留最近几份(.enc 加上迁移时转成密文的那些)
+    if (mode === 'encrypt' && counts.encrypted > 0) {
+        try {
+            pruneBackups(dir, '.yaml.enc');
+        } catch {
+            // 清理失败不影响迁移结果
+        }
+        if (backup !== null && !existsSync(join(dir, backup))) backup = migratedName;
     }
     return {
         migratedKeys,
@@ -284,11 +297,27 @@ export interface RekeyOptions {
     hooks?: MigrateHooks;
 }
 
+export interface RekeyResult {
+    keys: number;
+    fingerprint: string;
+    /** 换钥前的密文备份(已用新密钥重新加密,可以用新密钥解开)。 */
+    backup: string;
+    /** 一并改用新密钥的加密备份份数(含上面那份)。 */
+    backupsRekeyed: number;
+    /** 用旧密钥解不开(本来就不可用)、保持原样的加密备份。 */
+    backupsSkipped: string[];
+    /** 把本次改动的文件全部恢复成换钥前的字节(旧密钥)。后续步骤失败时由调用方使用;失败时抛错。 */
+    rollback: () => void;
+}
+
 /**
- * 换主密钥(服务器停止时运行):旧密钥解密 → 备份(密文原样)→ 新密钥加密写临时文件 → 用新密钥回读比对 → 替换。
- * 失败保留原文件。只处理 secrets 文件;数据库里 TOTP 密钥的重新加密在 PR 5。
+ * 换主密钥(服务器停止时运行)。旧密钥解密 → 备份(旧密钥,留作回滚)→ 把主文件和 backups/ 下所有 .yaml.enc 备份
+ * 都用新密钥加密写成临时文件 → 逐个用新密钥回读比对 → 全部通过后才改名替换。任何一个失败,临时文件删掉,
+ * 已经改名的恢复成原来的字节(内存里保留着),抛 SecretsMigrateError。否则换钥之后旧备份会静默变成解不开的文件。
+ * 用旧密钥解不开的备份(例如更早一次换钥留下的)不属于本次失败:保持原样并在结果里列出。
+ * 只处理 secrets 文件与它的备份;数据库里 TOTP 密钥的重新加密在 apps/server 的命令里。
  */
-export function rekeySecrets(options: RekeyOptions): { keys: number; fingerprint: string; backup: string } {
+export function rekeySecrets(options: RekeyOptions): RekeyResult {
     const { dataDir, oldKey, newKey, hooks } = options;
     const tighten = tightener(hooks);
     const encPath = join(dataDir, SECRETS_ENC_FILE);
@@ -314,29 +343,84 @@ export function rekeySecrets(options: RekeyOptions): { keys: number; fingerprint
     } catch (error) {
         throw new SecretsMigrateError('write_failed', `cannot back up ${SECRETS_ENC_FILE}: ${code(error)}`);
     }
-    const tmp = `${SECRETS_ENC_FILE}.tmp`;
-    const tmpPath = join(dataDir, tmp);
+
+    // 要换钥的文件:主文件 + 所有加密备份(含刚做的那份)。原始字节留在内存里,失败时按它恢复。
+    const backupDir = join(dataDir, SECRETS_BACKUP_DIR);
+    const targets: { path: string; original: Buffer; plain: string; tmp: string }[] = [];
+    const skipped: string[] = [];
+    const sources = [encPath, ...backupFiles(dataDir).encrypted.map((f) => join(backupDir, f))];
+    for (const path of sources) {
+        const original = readFileSync(path);
+        let plain: string;
+        try {
+            plain = decryptSecrets(original.toString('utf8'), oldKey);
+        } catch {
+            if (path === encPath) throw new SecretsMigrateError('verify_failed', 'the secrets file cannot be read');
+            skipped.push(basename(path));
+            continue;
+        }
+        targets.push({ path, original, plain, tmp: `${path}.rekey.tmp` });
+    }
+
+    const restoreOriginals = (): void => {
+        for (const t of targets) {
+            if (readFileSync(t.path).equals(t.original)) continue;
+            writeFileAtomic(dirname(t.path), t.path, t.original.toString('utf8'));
+            tighten(t.path);
+        }
+    };
+    const cleanTmp = (): void => targets.forEach((t) => rmSync(t.tmp, { force: true }));
+    const readBack = hooks?.readBack ?? ((p: string, k: Buffer) => decryptSecrets(readFileSync(p, 'utf8'), k));
     try {
         hooks?.beforeWrite?.();
-        rmSync(tmpPath, { force: true });
-        writeFileSync(tmpPath, encryptSecrets(text, newKey), { mode: 0o600, flag: 'wx' });
-        let ok = false;
-        try {
-            const back = (hooks?.readBack ?? ((p, k) => decryptSecrets(readFileSync(p, 'utf8'), k)))(tmpPath, newKey);
-            ok = secretMapsEqual(values, parseSecretsFile(back));
-        } catch {
-            ok = false;
+        // 1. 全部写成临时文件并用新密钥回读比对;这一阶段没有任何正式文件被改动
+        for (const t of targets) {
+            rmSync(t.tmp, { force: true });
+            writeFileSync(t.tmp, encryptSecrets(t.plain, newKey), { mode: 0o600, flag: 'wx' });
+            let ok = false;
+            try {
+                const back = readBack(t.tmp, newKey);
+                ok =
+                    t.path === encPath
+                        ? secretMapsEqual(values, parseSecretsFile(back))
+                        : constantTimeEqual(back, t.plain);
+            } catch {
+                ok = false;
+            }
+            if (!ok) {
+                throw new SecretsMigrateError(
+                    'verify_failed',
+                    'a re-encrypted copy did not match; nothing was changed',
+                );
+            }
         }
-        if (!ok)
-            throw new SecretsMigrateError('verify_failed', 'the re-encrypted copy did not match; nothing was changed');
-        renameSync(tmpPath, encPath);
-        tighten(encPath);
+        // 2. 逐个改名;中途失败就把已换的恢复成原字节(主文件放最后,失败时它最可能还没动)
+        const order = [...targets.filter((t) => t.path !== encPath), ...targets.filter((t) => t.path === encPath)];
+        for (const t of order) {
+            renameSync(t.tmp, t.path);
+            tighten(t.path);
+        }
     } catch (error) {
-        rmSync(tmpPath, { force: true });
+        cleanTmp();
+        try {
+            restoreOriginals();
+        } catch {
+            throw new SecretsMigrateError(
+                'write_failed',
+                `re-encrypting failed and some files could not be restored; the originals of ${SECRETS_ENC_FILE} and the backups are in ${SECRETS_BACKUP_DIR}/ only if their names still match`,
+            );
+        }
         if (error instanceof SecretsMigrateError) throw error;
         throw new SecretsMigrateError('write_failed', `cannot write ${SECRETS_ENC_FILE}: ${code(error)}`);
     }
-    return { keys: values.size, fingerprint: keyFingerprint(newKey), backup };
+    return {
+        keys: values.size,
+        fingerprint: keyFingerprint(newKey),
+        backup,
+        backupsRekeyed: targets.length - 1,
+        backupsSkipped: skipped,
+        rollback: restoreOriginals,
+    };
 }
 
 /**

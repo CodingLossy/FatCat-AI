@@ -273,14 +273,43 @@ describe('secrets migration and file states', () => {
         });
     });
 
+    describe('backups: delete mode name, encrypted pruning and ordering (X review of #32)', () => {
+        it('plaintextBackups=delete returns a file that still exists: the renamed plaintext rollback copy', () => {
+            writeFileSync(plain(), PLAIN);
+            const r = migrateSecrets({ dataDir: dir, keys: keys(), plaintextBackups: 'delete', now: at(0) });
+            expect(r.plaintextBackups.deleted).toBeGreaterThan(0);
+            expect(r.backup).toBe('secrets.yaml.migrated');
+            expect(existsSync(join(dir, r.backup))).toBe(true);
+            expect(readdirSync(backupDir())).toEqual([]);
+        });
+
+        it('encrypt mode keeps only the 5 newest encrypted backups, ordering by timestamp not by file name', () => {
+            mkdirSync(backupDir(), { recursive: true });
+            // 同一秒内的第二份备份叫 -2:按文件名排会排在无后缀那份前面,被当成更旧的
+            const stamps = ['20261101T000001Z', '20261101T000002Z', '20261101T000003Z', '20261101T000004Z'];
+            for (const t of stamps) writeFileSync(join(backupDir(), `secrets-${t}.yaml`), PLAIN);
+            writeFileSync(join(backupDir(), 'secrets-20261101T000004Z-2.yaml'), PLAIN);
+            writeFileSync(join(backupDir(), 'secrets-20261101T000000Z.yaml'), PLAIN);
+            writeFileSync(plain(), PLAIN);
+            const r = migrateSecrets({ dataDir: dir, keys: keys(), plaintextBackups: 'encrypt', now: at(0) });
+            const kept = readdirSync(backupDir()).sort();
+            expect(kept).toHaveLength(5);
+            expect(kept.every((f) => f.endsWith('.yaml.enc'))).toBe(true);
+            expect(kept).toContain('secrets-20261101T000004Z-2.yaml.enc'); // 较新的那份没有先被删掉
+            expect(kept).not.toContain('secrets-20261101T000000Z.yaml.enc');
+            expect(existsSync(join(backupDir(), r.backup)) || existsSync(join(dir, r.backup))).toBe(true);
+        });
+    });
+
     describe('rekeySecrets and cleanup', () => {
-        it('re-encrypts under the new key after backing up the old envelope, and the old key stops working', () => {
+        it('re-encrypts under the new key, the pre-rekey backup is re-encrypted too, and the old key stops working', () => {
             const s = store();
             s.write('A_KEY', 'aaaa-1111', at(0));
-            const old = readFileSync(enc(), 'utf8');
             const r = rekeySecrets({ dataDir: dir, oldKey: KEY_A, newKey: KEY_B, now: at(1) });
             expect(r.keys).toBe(1);
-            expect(readFileSync(join(backupDir(), r.backup), 'utf8')).toBe(old);
+            expect(decryptSecrets(readFileSync(join(backupDir(), r.backup), 'utf8'), KEY_B)).toBe(
+                "A_KEY: 'aaaa-1111'\n",
+            );
             expect(decryptSecrets(readFileSync(enc(), 'utf8'), KEY_B)).toBe("A_KEY: 'aaaa-1111'\n");
             expect(() => decryptSecrets(readFileSync(enc(), 'utf8'), KEY_A)).toThrow(SecretsKeyUnavailableError);
             expect(existsSync(join(dir, 'secrets.yaml.enc.tmp'))).toBe(false);
@@ -295,6 +324,91 @@ describe('secrets migration and file states', () => {
             ).toThrow(/did not match/);
             expect(readFileSync(enc()).equals(bytes)).toBe(true);
             expect(existsSync(join(dir, 'secrets.yaml.enc.tmp'))).toBe(false);
+        });
+
+        it('re-encrypts every encrypted backup under the new key too, including the one it just made (X review of #32)', () => {
+            const s = store();
+            s.write('A_KEY', 'aaaa-1111', at(0));
+            s.write('A_KEY', 'aaaa-2222', at(1)); // 第一次写入建文件,之后每次写入各留一份加密备份
+            s.write('A_KEY', 'aaaa-3333', at(2));
+            const before = readdirSync(backupDir()).filter((f) => f.endsWith('.yaml.enc'));
+            expect(before).toHaveLength(2);
+            const oldBackups = before.map((f) => readFileSync(join(backupDir(), f), 'utf8'));
+            const r = rekeySecrets({ dataDir: dir, oldKey: KEY_A, newKey: KEY_B, now: at(3) });
+            const after = readdirSync(backupDir()).filter((f) => f.endsWith('.yaml.enc'));
+            expect(after).toHaveLength(3);
+            expect(r.backupsRekeyed).toBe(3);
+            expect(after).toContain(r.backup);
+            for (const f of after) {
+                const text = readFileSync(join(backupDir(), f), 'utf8');
+                expect(decryptSecrets(text, KEY_B)).toMatch(/^A_KEY: 'aaaa-/);
+                expect(() => decryptSecrets(text, KEY_A)).toThrow(SecretsKeyUnavailableError);
+            }
+            // 内容没变,只是换了密钥
+            expect(decryptSecrets(readFileSync(join(backupDir(), before[0]!), 'utf8'), KEY_B)).toBe(
+                decryptSecrets(oldBackups[0]!, KEY_A),
+            );
+            expect(readdirSync(dir).filter((f) => f.endsWith('.tmp'))).toEqual([]);
+            expect(readdirSync(backupDir()).filter((f) => f.endsWith('.tmp'))).toEqual([]);
+        });
+
+        it('rolls everything back when one backup fails its read-back: main file and all backups are byte-identical', () => {
+            const s = store();
+            s.write('A_KEY', 'aaaa-1111', at(0));
+            s.write('A_KEY', 'aaaa-2222', at(1));
+            s.write('A_KEY', 'aaaa-3333', at(2));
+            const snapshot = () =>
+                [enc(), ...readdirSync(backupDir()).map((f) => join(backupDir(), f))]
+                    .sort()
+                    .map((f): [string, string] => [f, readFileSync(f).toString('hex')]);
+            const bytes = snapshot();
+            let calls = 0;
+            expect(() =>
+                rekeySecrets({
+                    dataDir: dir,
+                    oldKey: KEY_A,
+                    newKey: KEY_B,
+                    now: at(2),
+                    hooks: {
+                        // 第 3 个文件(一份备份)回读不一致
+                        readBack: (path, key) => {
+                            calls++;
+                            return calls === 3
+                                ? "A_KEY: 'tampered'\n"
+                                : decryptSecrets(readFileSync(path, 'utf8'), key);
+                        },
+                    },
+                }),
+            ).toThrow(/did not match/);
+            // 换钥前新做的那份备份(旧密钥)是新增的;其余文件逐字节不变
+            const after = snapshot();
+            for (const [file, hex] of bytes) expect(after).toContainEqual([file, hex]);
+            for (const [file] of after) {
+                const text = readFileSync(file as string, 'utf8');
+                expect(decryptSecrets(text, KEY_A)).toMatch(/^A_KEY/);
+            }
+            expect(readdirSync(dir).filter((f) => f.endsWith('.tmp'))).toEqual([]);
+            expect(readdirSync(backupDir()).filter((f) => f.endsWith('.tmp'))).toEqual([]);
+        });
+
+        it('rollback() puts the main file and all backups back under the old key', () => {
+            store().write('A_KEY', 'aaaa-1111', at(0));
+            const r = rekeySecrets({ dataDir: dir, oldKey: KEY_A, newKey: KEY_B, now: at(1) });
+            expect(() => decryptSecrets(readFileSync(enc(), 'utf8'), KEY_A)).toThrow();
+            r.rollback();
+            for (const f of [enc(), ...readdirSync(backupDir()).map((n) => join(backupDir(), n))]) {
+                expect(decryptSecrets(readFileSync(f, 'utf8'), KEY_A)).toBe("A_KEY: 'aaaa-1111'\n");
+            }
+        });
+
+        it('leaves a backup that the old key cannot open as it is, and reports it', () => {
+            store().write('A_KEY', 'aaaa-1111', at(0));
+            mkdirSync(backupDir(), { recursive: true });
+            const stale = join(backupDir(), 'secrets-20260101T000000Z.yaml.enc');
+            writeFileSync(stale, 'fcsec1:not-decryptable-with-the-old-key');
+            const r = rekeySecrets({ dataDir: dir, oldKey: KEY_A, newKey: KEY_B, now: at(1) });
+            expect(r.backupsSkipped).toEqual(['secrets-20260101T000000Z.yaml.enc']);
+            expect(readFileSync(stale, 'utf8')).toBe('fcsec1:not-decryptable-with-the-old-key');
         });
 
         it('cleanup removes secrets.yaml.migrated only while the encrypted file works', () => {

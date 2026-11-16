@@ -17,16 +17,27 @@ const SKIP_DIRS = new Set(['node_modules', 'dist', 'e2e', 'fixtures', '.turbo'])
 const SKIP_FILE = /\.(test|eval|perf)\.[cm]?[jt]sx?$|\.d\.ts$|(^|\/)(testing|test-helpers)\.ts$/;
 const SOURCE_FILE = /\.[cm]?[jt]sx?$/;
 
-/** 网络 API 的特征(ADR 0028 第 3 节);fetch 也包括 `?? fetch` 与 globalThis.fetch 这类未带括号的取用。 */
+/**
+ * 网络 API 的特征(ADR 0028 第 3 节)。fetch 也包括未带括号的取用:`?? fetch`、`= fetch`、`fetch,`、`fetch)`、globalThis.fetch;
+ * 模块名只在 `from` / `import` / `import(` / `require(` 之后匹配,`node:` 前缀可有可无;不然 `security: 'tls'`、
+ * `type: 'http'` 这类普通字符串会误报。
+ */
+const MODULE = String.raw`(?:\bfrom|\bimport|\brequire\()\s*\(?\s*`;
 const PATTERNS = [
     /(?<![.\w])fetch\(/,
     /\bglobalThis\.fetch\b/,
     /\?\?\s*fetch\b/,
-    /['"]node:(?:net|tls|http|https|dgram)['"]/,
+    /=\s*fetch\b/,
+    /(?<![.\w])fetch\s*[,)]/,
+    new RegExp(`${MODULE}['"](?:node:)?(?:net|tls|http|https|http2|dgram)['"]`),
+    /['"]node:(?:net|tls|http|https|http2|dgram)['"]/,
     /new\s+WebSocket\(/,
     /['"]undici['"]/,
     // 邮件客户端库自己开 TCP 连接
     /['"](?:imapflow|nodemailer)(?:\/[^'"]*)?['"]/,
+    // 常见网络库;MCP SDK 里走网络的是 sse / streamableHttp 客户端(stdio 不算)
+    new RegExp(`${MODULE}['"](?:ws|node-fetch|axios|got)(?:/[^'"]*)?['"]`),
+    /['"]@modelcontextprotocol\/sdk\/client\/(?:sse|streamableHttp)(?:\.js)?['"]/,
 ];
 
 function walk(dir, out) {

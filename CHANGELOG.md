@@ -30,6 +30,12 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - People in the knowledge map (ADR 0029). A new top-level category "People" lists the contacts found in your synced mail: everyone you have sent mail to (To and Cc), plus senders who wrote to you at least twice. Your own addresses, obvious system senders (`noreply`, `no-reply`, `donotreply`, `do-not-reply`, `mailer-daemon`, `postmaster`, `notification(s)`) are left out. Each person shows a name (the latest non-empty display name, cleaned of control characters), the address, the mail count and the last contact time, and links to their 200 most recent e-mails. Only the From, To and Cc headers are read, never the message body. Mail with a `List-Id` header is not excluded yet, because the local mail cache does not store that header; this needs a database migration and is left for a later change.
 - API: `GET /api/v1/items/{id}/related` returns the non-primary links of an item (outgoing and incoming, for example a person's mails and a mail's people), cursor-paginated with an optional `rel` filter. Login required, read-only; additive. The client SDK has `items.related`. Links do not change item counts. No migration.
 
+#### Fixed
+
+- Two-step verification no longer allows endless guessing: failed codes are now counted per user name and per IP over 24 hours, and lock for 15 minutes after 10 failures, 1 hour after 20, then twice as long every 10 more (up to 24 hours). Only a successful verification resets the count, and a correct code is refused during a lock. Each lock writes a warning to the log. Concurrent requests can no longer each get a guess in before the first failure is counted (also for sign-in with a password). (Reported in the review of #35.)
+- `secrets rekey` now re-encrypts every encrypted backup in `backups/` with the new key, checks each one by reading it back, and puts everything back if any step fails. It also works when `secrets.yaml` is still plaintext but TOTP is on (only the TOTP secret in the database is re-encrypted). `secrets migrate` and `secrets rekey` refuse to run while the server is running (the server writes `server.lock` in the data directory). With `--plaintext-backups delete` the printed backup name is the rollback copy `secrets.yaml.migrated`; encrypted backups are pruned to the newest 5 by timestamp. `GET /api/v1/settings/secrets` answers 409 with a remedy, not 500, when both `secrets.yaml` and `secrets.yaml.enc` exist. (Review of #32.)
+- `pnpm check:egress` now also catches `import https from 'https'`, `node:http2`, `require('net')`, `fetch` passed or assigned without a call, and the `ws`, `node-fetch`, `axios`, `got` libraries and MCP SDK sse / streamableHttp clients. The memory gate (ADR 0018 rule 4) now also fails a slow leak that grows a few MiB on every run. (Review of #34 and #36.)
+
 ### M5a · Channels (in progress)
 
 #### Added
@@ -270,6 +276,12 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 - **接口**(只增):已启用 TOTP 的账户 `POST /api/v1/auth/login` 返回 `202` 与 `LoginChallenge`(不设会话 Cookie);未启用的账户响应与以前完全相同。新增 `POST /api/v1/auth/login/totp`、`GET /api/v1/auth/totp`、`POST /api/v1/auth/totp/setup`、`enable`、`disable`、`recovery-codes`;响应带 `Cache-Control: no-store`。
 - **新增**:知识地图中的「人物」(ADR 0029)。新增顶层类别「人物」,列出已同步邮件里的联系人:你发过邮件的收件人(To / Cc),以及给你来信不少于 2 封的发件人;自己的地址与明显的系统发件地址(`noreply`、`no-reply`、`donotreply`、`do-not-reply`、`mailer-daemon`、`postmaster`、`notification(s)`)不计入。每个人物显示名称(最近一次的非空显示名,去掉控制字符)、地址、邮件数与最近往来时间,并关联其最近 200 封邮件。只读取 From、To、Cc,不读正文。带 `List-Id` 头的群发邮件暂未排除:本地邮件缓存没有保存该头,需要数据库迁移,留待后续。
 - **接口**:新增 `GET /api/v1/items/{id}/related`,返回条目的非 primary 关联(出边与入边,如人物的邮件、邮件涉及的人物),游标分页,可按 `rel` 过滤;需要登录,只读;为增量。客户端 SDK 增加 `items.related`。关联不改变条目计数。无需迁移。
+
+#### 修复
+
+- TOTP 两步验证不再能被无限次猜码:失败的验证码按用户名与按 IP 累计 24 小时,失败 10 次锁 15 分钟,20 次锁 1 小时,之后每多 10 次时长翻倍(最长 24 小时);只有验证成功才清零,锁定期间连正确的验证码也拒绝,每次锁定写一条警告日志。并发请求也不能在第一次失败被记下之前各猜一次(密码登录同样)。(来自 #35 的审查)
+- `secrets rekey` 现在把 `backups/` 下所有加密备份一起用新密钥重新加密,逐个回读比对,任何一步失败就整体恢复;`secrets.yaml` 还是明文但已启用 TOTP 时也能运行(只重新加密数据库里的 TOTP 密钥)。`secrets migrate` 与 `secrets rekey` 在服务器运行时拒绝执行(服务器在数据目录写 `server.lock`)。`--plaintext-backups delete` 时输出的备份名是回滚副本 `secrets.yaml.migrated`;加密备份按时间戳只留最近 5 份。明文与密文并存时 `GET /api/v1/settings/secrets` 返回 409 并附处理办法,不再是 500。(来自 #32 的审查)
+- `pnpm check:egress` 还能发现 `import https from 'https'`、`node:http2`、`require('net')`、不带括号传递或赋值的 `fetch`,以及 `ws`、`node-fetch`、`axios`、`got` 与 MCP SDK 的 sse / streamableHttp 客户端。内存检查(ADR 0018 规则 4)还会拦住每次只涨几 MiB 的慢泄漏。(来自 #34、#36 的审查)
 
 ### M5a · 渠道(进行中)
 

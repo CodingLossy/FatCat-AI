@@ -282,11 +282,27 @@ export function backupSecrets(
     // 读出内容后以 600 新建备份;copyFile 会把权限改成和源文件一样(源文件可能是 644),所以不用它
     writeFileSync(join(dir, name), readFileSync(path), { mode: 0o600, flag: 'wx' });
     tighten(join(dir, name));
-    const old = readdirSync(dir)
-        .filter((f) => SECRETS_BACKUP_PATTERN.test(f) && f.endsWith(ext))
-        .sort();
-    for (const f of old.slice(0, Math.max(0, old.length - SECRETS_BACKUP_KEEP))) rmSync(join(dir, f), { force: true });
+    pruneBackups(dir, ext);
     return name;
+}
+
+/** 按时间戳(同一秒内按 -2、-3 后缀的序号)排序;不能直接按文件名排,`-2` 会排在无后缀的前面。 */
+export function sortBackupNames(names: readonly string[]): string[] {
+    const key = (name: string): [string, number] => {
+        const m = /^secrets-(\d{8}T\d{6}Z)(?:-(\d+))?\.yaml/.exec(name);
+        return [m?.[1] ?? name, m?.[2] ? Number(m[2]) : 1];
+    };
+    return [...names].sort((a, b) => {
+        const [sa, na] = key(a);
+        const [sb, nb] = key(b);
+        return sa < sb ? -1 : sa > sb ? 1 : na - nb;
+    });
+}
+
+/** 每种备份(.yaml 或 .yaml.enc,ext 为后缀)只留最近 SECRETS_BACKUP_KEEP 份。 */
+export function pruneBackups(dir: string, ext: string): void {
+    const old = sortBackupNames(readdirSync(dir).filter((f) => SECRETS_BACKUP_PATTERN.test(f) && f.endsWith(ext)));
+    for (const f of old.slice(0, Math.max(0, old.length - SECRETS_BACKUP_KEEP))) rmSync(join(dir, f), { force: true });
 }
 
 export type KeyStatusValue = 'present' | 'missing' | 'not_required';

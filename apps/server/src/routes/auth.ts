@@ -24,7 +24,7 @@ import { deleteCookie, setCookie } from 'hono/cookie';
 import { dummyPasswordHash, hashPassword, randomToken, safeEqual, sha256, verifyPassword } from '../auth/crypto.js';
 import { CSRF_COOKIE, requireOwner, SESSION_COOKIE, SESSION_TTL_MS } from '../auth/middleware.js';
 import { LoginChallenges } from '../auth/login-challenge.js';
-import { FailureLimiter } from '../auth/rate-limit.js';
+import { type AttemptLimiter, EscalatingLimiter, FailureLimiter } from '../auth/rate-limit.js';
 import { TotpService } from '../auth/totp-service.js';
 import { generateTotpSecret, otpauthUri } from '../auth/totp.js';
 import type { CookieSecure } from '../config.js';
@@ -40,9 +40,9 @@ export interface AuthRouteDeps {
     setupCode: string | null;
     /** 请求来源地址(TCP 对端),用于限速与本机判断。 */
     clientIp: (c: Context<AppEnv>) => string;
-    loginLimiter?: FailureLimiter;
-    /** 第二因素的失败限速(按用户名与按 IP 分别计数,ADR 0027 第 5 节);不给时每分钟 5 次。 */
-    totpLimiter?: FailureLimiter;
+    loginLimiter?: AttemptLimiter;
+    /** 第二因素的失败限速(按用户名与按 IP 分别计数,ADR 0027 第 5 节);不给时用逐级加长锁定的 EscalatingLimiter。 */
+    totpLimiter?: AttemptLimiter;
     /** 主密钥来源(ADR 0026);TOTP 共享密钥用它加密入库。不可用时启用与验证都失败。 */
     masterKey?: MasterKeyResolver | undefined;
     /** 登录临时凭证(内存);测试可注入。 */
@@ -203,8 +203,9 @@ const meRoute = createRoute({
 export function authRoutes(deps: AuthRouteDeps) {
     const { repos, now } = deps;
     const limiter = deps.loginLimiter ?? new FailureLimiter(5, 60_000);
-    // 第二因素:按用户名与按 IP 分别计数,任一超限即锁定,锁定期间连正确的验证码也拒绝
-    const totpLimiter = deps.totpLimiter ?? new FailureLimiter(5, 60_000);
+    // 第二因素:按用户名与按 IP 分别累计失败(24 小时),任一键被锁定即拒绝,锁定期间连正确的验证码也拒绝;
+    // 锁定时长逐级加长(15 分钟 → 1 小时 → 翻倍),只有成功验证才清零
+    const totpLimiter = deps.totpLimiter ?? new EscalatingLimiter(() => now().getTime());
     const challenges = deps.challenges ?? new LoginChallenges(now);
     const totp = new TotpService({ repos, masterKey: deps.masterKey, now });
 
@@ -219,7 +220,18 @@ export function authRoutes(deps: AuthRouteDeps) {
             });
         }
     }
-    const failTotp = (keys: string[]) => keys.forEach((k) => totpLimiter.recordFailure(k));
+    function failTotp(c: Context<AppEnv>, keys: string[]): void {
+        for (const k of keys) {
+            const locked = totpLimiter.recordFailure(k);
+            if (locked > 0) {
+                // 键里有用户名或 IP,日志只写类别与秒数
+                c.get('logger').warn(
+                    { scope: k.split(':')[0], lockedSeconds: locked },
+                    'two-factor attempts locked after repeated failures',
+                );
+            }
+        }
+    }
     const clearTotp = (keys: string[]) => keys.forEach((k) => totpLimiter.reset(k));
     // 登录第二步的所有失败(临时凭证无效、过期、用尽、验证码错)对外是同一个错误
     const loginStepFailed = () =>
@@ -249,8 +261,11 @@ export function authRoutes(deps: AuthRouteDeps) {
         if (!owner) throw unauthorized();
         const keys = [ipKey(deps.clientIp(c)), userKey(owner.username)];
         guardTotp(keys);
-        if (!(await verifyPassword(password, owner.passwordHash))) {
-            failTotp(keys);
+        const passwordOk = await verifyPassword(password, owner.passwordHash);
+        // await 期间别的并发请求可能已经把这些键锁住:放行前再检查一次,否则 N 个并发请求能一次猜 N 个码
+        guardTotp(keys);
+        if (!passwordOk) {
+            failTotp(c, keys);
             c.get('logger').warn({ ownerId: owner.id }, 'two-factor confirmation failed');
             throw badCredentials();
         }
@@ -328,6 +343,13 @@ export function authRoutes(deps: AuthRouteDeps) {
             const body = c.req.valid('json');
             const owner = repos.owners.getByUsername(body.username);
             const ok = await verifyPassword(body.password, owner?.passwordHash ?? (await dummyPasswordHash()));
+            // 并发的错误尝试在 await 期间可能已经把这个来源锁住:放行前再检查一次
+            const waitAfter = limiter.retryAfter(ip);
+            if (waitAfter > 0) {
+                throw new ApiError(429, 'rate_limited', 'Too Many Requests', 'Too many failed sign-in attempts.', {
+                    headers: { 'Retry-After': String(waitAfter) },
+                });
+            }
             if (!owner || !ok) {
                 limiter.recordFailure(ip);
                 c.get('logger').warn({ ip }, 'sign-in failed');
@@ -357,7 +379,7 @@ export function authRoutes(deps: AuthRouteDeps) {
             const pending = challenges.lookup(body.challengeToken);
             const owner = pending ? repos.owners.get(pending.ownerId) : null;
             if (!pending || !owner) {
-                totpLimiter.recordFailure(ip);
+                failTotp(c, [ip]);
                 throw loginStepFailed();
             }
             const keys = [ip, userKey(owner.username)];
@@ -365,13 +387,13 @@ export function authRoutes(deps: AuthRouteDeps) {
             const credential = repos.totp.get(owner.id);
             if (!credential?.enabled) {
                 challenges.consume(body.challengeToken);
-                failTotp(keys);
+                failTotp(c, keys);
                 throw loginStepFailed();
             }
             // 校验与核销之间没有 await:同一个验证码的并发提交只有一个能通过
             if (!totp.checkSecondFactor(credential, body)) {
                 challenges.fail(body.challengeToken);
-                failTotp(keys);
+                failTotp(c, keys);
                 c.get('logger').warn({ ownerId: owner.id }, 'second factor failed');
                 throw loginStepFailed();
             }
@@ -414,7 +436,7 @@ export function authRoutes(deps: AuthRouteDeps) {
             }
             const step = totp.stepFor(credential, body.code);
             if (step === null) {
-                failTotp(keys);
+                failTotp(c, keys);
                 throw badCredentials();
             }
             const codes = totp.newRecoveryCodes();
@@ -436,7 +458,7 @@ export function authRoutes(deps: AuthRouteDeps) {
             const credential = repos.totp.get(owner.id);
             if (!credential?.enabled) throw new ApiError(409, 'conflict', 'Conflict', 'TOTP is not enabled.');
             if (!totp.checkSecondFactor(credential, body)) {
-                failTotp(keys);
+                failTotp(c, keys);
                 throw badCredentials();
             }
             repos.totp.disable(owner.id, auth.sessionHash);
@@ -450,7 +472,7 @@ export function authRoutes(deps: AuthRouteDeps) {
             const credential = repos.totp.get(owner.id);
             if (!credential?.enabled) throw new ApiError(409, 'conflict', 'Conflict', 'TOTP is not enabled.');
             if (!totp.checkSecondFactor(credential, body)) {
-                failTotp(keys);
+                failTotp(c, keys);
                 throw badCredentials();
             }
             const codes = totp.newRecoveryCodes();

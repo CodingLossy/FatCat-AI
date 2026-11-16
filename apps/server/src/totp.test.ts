@@ -8,7 +8,13 @@ import { LoginChallenge, LoginResponse, TotpRecoveryCodes, TotpSetup, TotpStatus
 import { afterEach, describe, expect, it } from 'vitest';
 import { sha256 } from './auth/crypto.js';
 import { LoginChallenges } from './auth/login-challenge.js';
-import { FailureLimiter } from './auth/rate-limit.js';
+import {
+    type AttemptLimiter,
+    escalatedLockMs,
+    EscalatingLimiter,
+    FailureLimiter,
+    TOTP_LOCK_EVERY,
+} from './auth/rate-limit.js';
 import { base32Decode, hotp, timeStep } from './auth/totp.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
@@ -21,7 +27,7 @@ let s: TestServer;
 afterEach(() => s?.cleanup());
 
 interface Opts {
-    limiter?: FailureLimiter;
+    limiter?: AttemptLimiter;
 }
 
 async function boot(opts: Opts = {}) {
@@ -247,6 +253,95 @@ describe('rate limit (per user name and per IP)', () => {
         }
         const res = await t.call(t.session, '/auth/totp/disable', { password: TEST_PASSWORD, code: '111111' });
         expect(res.status).toBe(429);
+    });
+});
+
+describe('escalating lockout (X review of #35)', () => {
+    const HOUR = 3_600_000;
+
+    it('2 hours of 5 wrong codes per minute lets only a handful through; lock lengths escalate', () => {
+        let t = T0;
+        const limiter = new EscalatingLimiter(() => t);
+        let allowed = 0;
+        for (let minute = 0; minute < 120; minute++) {
+            for (let i = 0; i < 5; i++) {
+                if (limiter.retryAfter('user:owner') === 0) {
+                    allowed++;
+                    limiter.recordFailure('user:owner');
+                }
+            }
+            t += 60_000;
+        }
+        // 固定窗口(每分钟 5 次)下是 600 次;逐级加长后 10 次锁 15 分钟、20 次锁 1 小时、30 次锁 2 小时
+        expect(allowed).toBe(3 * TOTP_LOCK_EVERY);
+        expect(escalatedLockMs(1)).toBe(15 * 60_000);
+        expect(escalatedLockMs(2)).toBe(HOUR);
+        expect(escalatedLockMs(3)).toBe(2 * HOUR);
+        expect(escalatedLockMs(4)).toBe(4 * HOUR);
+        expect(escalatedLockMs(99)).toBe(24 * HOUR);
+    });
+
+    it('the first lock lasts 15 minutes; success resets; 24 hours without failures forget them', () => {
+        let t = T0;
+        const limiter = new EscalatingLimiter(() => t);
+        for (let i = 0; i < 9; i++) expect(limiter.recordFailure('k')).toBe(0);
+        expect(limiter.recordFailure('k')).toBe(15 * 60);
+        expect(limiter.retryAfter('k')).toBe(15 * 60);
+        t += 15 * 60_000 + 1;
+        expect(limiter.retryAfter('k')).toBe(0);
+        // 失败次数不因锁定结束而清零:再失败 10 次(累计 20)锁 1 小时
+        for (let i = 0; i < 9; i++) limiter.recordFailure('k');
+        expect(limiter.recordFailure('k')).toBe(3600);
+        t += HOUR + 1;
+        limiter.reset('k'); // 只有成功验证才清零
+        for (let i = 0; i < 9; i++) limiter.recordFailure('k');
+        expect(limiter.retryAfter('k')).toBe(0);
+        expect(limiter.recordFailure('k')).toBe(15 * 60);
+        t += 15 * 60_000 + 24 * HOUR + 1;
+        expect(limiter.retryAfter('k')).toBe(0);
+        for (let i = 0; i < 9; i++) expect(limiter.recordFailure('k')).toBe(0); // 从头计
+    });
+
+    it('a correct code during the lockout is refused with 429, and the lock is logged without the user name', async () => {
+        const t = await boot({ limiter: new EscalatingLimiter(() => clock) });
+        const { secret } = await t.enable();
+        clock += 60_000;
+        for (let i = 0; i < TOTP_LOCK_EVERY; i++) {
+            expect((await t.loginTotp({ challengeToken: 'x'.repeat(43), code: '111111' })).status).toBe(401);
+        }
+        const locked = await t.loginTotp({ challengeToken: await t.challenge(), code: codeAt(secret) });
+        expect(locked.status).toBe(429);
+        expect(Number(locked.headers.get('retry-after'))).toBeGreaterThan(14 * 60);
+        expect(s.logs.join('\n')).toContain('two-factor attempts locked');
+        expect(s.logs.join('\n')).not.toContain('user:owner');
+        // 15 分钟后锁解除,正确的验证码可以登录,并清零
+        clock += 15 * 60_000 + 1_000;
+        const ok = await t.loginTotp({ challengeToken: await t.challenge(), code: codeAt(secret) });
+        expect(ok.status).toBe(200);
+    });
+
+    it('20 concurrent disable requests with a wrong code do not each get a guess', async () => {
+        const t = await boot({ limiter: new EscalatingLimiter(() => clock) });
+        await t.enable();
+        const results = await Promise.all(
+            Array.from({ length: 20 }, () =>
+                t.call(t.session, '/auth/totp/disable', { password: TEST_PASSWORD, code: '111111' }),
+            ),
+        );
+        const passed = results.filter((r) => r.status !== 429).length;
+        expect(passed).toBeLessThanOrEqual(TOTP_LOCK_EVERY);
+        expect(results.filter((r) => r.status === 429).length).toBeGreaterThanOrEqual(20 - TOTP_LOCK_EVERY);
+    });
+
+    it('20 concurrent sign-ins with a wrong password stop at the limiter, not 20 guesses', async () => {
+        const t = await boot();
+        const results = await Promise.all(
+            Array.from({ length: 20 }, () =>
+                s.app.request('/api/v1/auth/login', jsonBody({ username: 'owner', password: 'wrong password!!' })),
+            ),
+        );
+        expect(results.filter((r) => r.status !== 429).length).toBeLessThanOrEqual(5);
+        expect(t.ownerId()).toBeTruthy();
     });
 });
 
