@@ -167,6 +167,7 @@
 ## 5. 待业主决定的问题(每条先写推荐;不回复就按推荐做,例外见下)
 
 1. **代码扫描选 CodeQL 还是 Semgrep?** 推荐 **CodeQL**:官方维护、与 GitHub 的代码扫描页集成、对 TypeScript 的数据流分析较强、不引入第三方规则许可问题。前提是仓库为公开,或已开通代码扫描;PR 2 开始时先核实,不满足就改用 Semgrep 开源规则集以容器运行。
+   - **PR 2 核实结果**:仓库是公开仓库(`visibility: public`,GitHub API 查到),CodeQL 对公开仓库免费可用,所以采用 CodeQL(`.github/workflows/codeql.yml`,`javascript-typescript`,`security-extended`)。云容器里没有读取代码扫描告警的权限(API 返回 403),首次运行结果以 PR 2 上的检查为准,结果在 PR 描述里补记。
 2. **扫描失败时是否阻塞合并?** 推荐:首次扫描的结果分类处理后,CodeQL 对「高危及以上」设为必需检查前,先观察 1 周的误报率;PR 2 本身只加工作流,不改 main 的保护规则(C 不改保护规则,需要业主在 GitHub 设置里勾选)。
 3. **最终的模型组合(默认推荐的对话、廉价、嵌入、语音模型)由谁定?** 必须由**业主确认**,C 不自己定。Release Notes 与 README 里这一处留空并标注「待业主确认」。现有的手测端点(DeepSeek、SiliconFlow)只是测试用的,不等于推荐。
 4. **镜像地址与可见性。** 推荐 `ghcr.io/codinglossy/fatcat-ai`,包可见性公开(与开源一致);PR 5 的工作流在业主确认前不推送。如果以后仓库换组织,地址会变,文档里用变量写。
