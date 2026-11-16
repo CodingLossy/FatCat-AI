@@ -22,9 +22,25 @@ FatCat-AI **不包含任何**统计或崩溃上报代码。程序只会连接你
 
 ## 快速开始
 
-需要 Node.js 24 LTS 或更高版本与 pnpm 10(`corepack enable` 即可启用)。M1 可以:接入任意 OpenAI 兼容端点(含 Ollama / DeepSeek / OpenRouter)以及 Anthropic、Gemini 原生接口流式对话,刷新页面后续看进行中的回复,让助手记住你说的事(普通事实直接记住、可以撤销,涉及敏感信息或更替画像时需要你批准),并用 Web UI、命令行或 curl 使用。
+最快的方式是 Docker(需要 Docker 24 或更高,含 Compose v2;2 GB 内存的机器即可,空闲时约 110 MiB):
 
-### 1. 启动
+```bash
+git clone https://github.com/CodingLossy/FatCat-AI.git
+cd FatCat-AI
+docker compose -f docker/docker-compose.yml up -d --build
+docker compose -f docker/docker-compose.yml logs fatcat-ai | grep -i 'setup code'   # 取一次性设置码
+```
+
+1. **首次登录**:打开 <http://127.0.0.1:8787>,按提示创建主人账户(1.0 只有一个账户),「设置码」填上一步日志里的那串字符。
+2. **添加模型配置档**:「设置 → 模型配置档」。可以用任何 OpenAI 兼容端点或本地 Ollama;密钥只从环境变量或数据目录里的 `secrets.yaml` 读取(见下面「本地开发」和「Docker」两节的写法),页面和 API 都不接收明文。看到「密钥: 已设置」后就可以对话。
+3. **(可选)绑定微信**:「设置 → 渠道」添加微信渠道并扫码,步骤见下面的「5. 接入微信」。1.0 只含微信渠道,企业微信推迟、排期另定。
+4. **要放到公网**:不要直接暴露 8787 端口。按 [docs/deploy/docker.md](docs/deploy/docker.md)(Caddy 自动 HTTPS、2 GB 内存、DNSPod 示例)部署,并先开启两步验证和密钥文件加密。
+
+> 预构建镜像(GHCR,amd64 / arm64)在 1.0 正式发布后提供;发布前请用上面的 `--build` 从源码构建。
+
+下面是本地开发的写法。需要 Node.js 24 LTS 或更高版本与 pnpm 10(`corepack enable` 即可启用)。可以:接入任意 OpenAI 兼容端点(含 Ollama / DeepSeek / OpenRouter)以及 Anthropic、Gemini 原生接口流式对话,刷新页面后续看进行中的回复,让助手记住你说的事(普通事实直接记住、可以撤销,涉及敏感信息或更替画像时需要你批准),并用 Web UI、命令行或 curl 使用。
+
+### 1. 本地开发启动
 
 模型密钥只从环境变量或本地文件读取,不能在页面或 API 里填写明文。
 

@@ -1,0 +1,116 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+#
+# 多架构(linux/amd64、linux/arm64)镜像构建(M5c PR 5,docs/adr/0032-release.md)。
+# 默认只构建、不推送:PR 上是演练;只有两种情况会推送到 GHCR,都需要业主动手:
+#   1. 推送 v* tag(业主确认发布后才会打);
+#   2. 手动触发 workflow_dispatch 并把 push 选为 true。
+name: Release image
+
+on:
+  pull_request:
+    paths:
+      - docker/Dockerfile
+      - .github/workflows/release.yml
+  workflow_dispatch:
+    inputs:
+      push:
+        description: 'Push the image to GHCR (default false: build only)'
+        type: boolean
+        default: false
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-image-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  image:
+    name: build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      # 演练:每个架构各自在原生 runner 上完整构建一遍(不用 QEMU 模拟,arm64 也跑到最后一层),不推送、不登录
+      - name: Build (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: false
+          load: true
+          tags: fatcat-ai:ci-${{ matrix.runner }}
+          build-args: |
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+            VERSION=0.0.0-ci
+      - name: Smoke check the image
+        run: |
+          docker run -d --name fatcat-ai -p 127.0.0.1:8787:8787 fatcat-ai:ci-${{ matrix.runner }}
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/healthz && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8787/healthz
+          test "$(docker image inspect -f '{{.Architecture}}' fatcat-ai:ci-${{ matrix.runner }})" = "${{ matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}"
+          docker rm -f fatcat-ai
+
+  publish:
+    name: publish to GHCR
+    # 只在 v* tag 或手动选择 push=true 时存在;普通 PR 与 main 上这个任务被跳过
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.push)
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # 标签策略(docs/release/image-tags.md):tag v1.2.3 -> 1.2.3、1.2、1、latest 与 sha-<7>;
+      # 手动触发(没有 tag)只得到 sha-<7>,不会出现 latest 或版本号标签
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') }}
+            type=sha,prefix=sha-,format=short
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+            VERSION=${{ steps.meta.outputs.version }}
+          provenance: mode=max
+          sbom: true
