@@ -20,8 +20,13 @@ import {
     type ChannelErrorReport,
     type ChannelTarget,
     type InboundMessage,
+    formatMapLeaf,
+    formatMapPage,
+    MAP_PAGE_SIZE,
+    type MapReply,
     markdownToPlainText,
     parseCommand,
+    parseMapReply,
     SlidingWindow,
     splitMessage,
 } from '@fatcat-ai/channels';
@@ -35,6 +40,7 @@ import type {
     ChannelState,
     ChannelStatus,
     EventEnvelope,
+    Item,
 } from '@fatcat-ai/shared';
 import type { ChannelRecord, Repositories } from '@fatcat-ai/storage';
 import type { AttachmentFiles } from '../attachment-files.js';
@@ -65,6 +71,8 @@ export const OWNER_MESSAGES_PER_MINUTE = 20;
 /** 会被忽略的消息(陌生人、群聊)每分钟最多写这么多条去重记录,超出只计数。 */
 export const IGNORED_MESSAGES_PER_MINUTE = 120;
 export const MAX_QUEUE = 5;
+/** `/map` 应答窗口:最近一次有效应答后 5 分钟(ADR 0029 第 5 节)。 */
+export const MAP_WINDOW_MS = 5 * 60 * 1000;
 export const INBOX_RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
 export const STOP_TIMEOUT_MS = 5000;
 /** 降级提醒:10 分钟内 3 次提醒一次,恢复正常后才会再提醒(ADR 0017 第 5 节)。 */
@@ -87,10 +95,16 @@ export const REPLIES = {
     failed: '这一轮没有完成,请在 Web 查看详情。',
     empty: '(没有文字回答,请在 Web 查看详情。)',
     degraded: '最近几次回答的记忆召回不完整(检索超时或出错),可以在 Web 查看详情。',
+    mapGone: '这一项已经不存在,已刷新列表。',
+    mapNoSuchIndex: '没有这个编号。',
+    mapAtTop: '已经在顶层。发 /map 重新查看。',
+    mapNoNext: '已经是最后一页。',
+    mapNoPrev: '已经是第一页。',
     help: [
         '可用指令:',
         '/new 开始新会话',
         '/clear 或「清空」清空本渠道的当前会话(记忆不会删除)',
+        '/map 浏览知识地图(之后回复编号、0 返回、「下一页」)',
         '/source 源代码地址',
         '/help 显示这条帮助',
         '需要确认的操作会发来短码,回复「确认 K7」或「拒绝 K7」(K7 换成收到的短码)。',
@@ -201,7 +215,24 @@ function cutBytes(text: string, max: number): string {
     return out;
 }
 
+/** `/map` 的一层列表;页内容现取,不缓存正文。 */
+interface MapLevel {
+    parent: { id: string; title: string } | null;
+    page: number;
+    /** cursors[i] 是第 i 页的游标(第 0 页为 undefined);根层不用。 */
+    cursors: (string | undefined)[];
+    entries: Item[];
+    hasNext: boolean;
+}
+
+interface MapState {
+    expiresAt: number;
+    levels: MapLevel[];
+}
+
 interface Runtime {
+    /** `/map` 状态:只在内存里,重启即忘(ADR 0029 第 5 节)。 */
+    map: MapState | null;
     channelId: string;
     ownerId: string;
     adapter: ChannelAdapter | null;
@@ -251,6 +282,7 @@ export class ChannelHub {
             rt = {
                 channelId: channel.id,
                 ownerId: channel.ownerId,
+                map: null,
                 adapter: null,
                 controller: null,
                 state: 'stopped',
@@ -339,6 +371,7 @@ export class ChannelHub {
         if (!rt) return;
         rt.codes.clear();
         rt.handled.clear();
+        rt.map = null;
         rt.target = null;
         rt.queue.length = 0;
     }
@@ -453,6 +486,7 @@ export class ChannelHub {
         rt.queue.length = 0;
         rt.codes.clear();
         rt.handled.clear();
+        rt.map = null;
         rt.state = 'stopped';
         if (adapter) {
             let timer: NodeJS.Timeout | undefined;
@@ -472,11 +506,12 @@ export class ChannelHub {
         this.log.info({ channelId: rt.channelId, reason }, 'channel message ignored');
     }
 
-    private async send(rt: Runtime, target: ChannelTarget, markdown: string): Promise<void> {
+    private async send(rt: Runtime, target: ChannelTarget, markdown: string, plain = false): Promise<void> {
         const adapter = rt.adapter;
         if (!adapter) return;
         const { markup, maxTextBytes } = adapter.capabilities;
-        const text = markup === 'none' ? markdownToPlainText(markdown) : markdown;
+        // plain:已经是纯文本(如 /map 列表,里面有不可信标题),不再按 Markdown 转换
+        const text = markup === 'none' && !plain ? markdownToPlainText(markdown) : markdown;
         try {
             for (const part of splitMessage(text, maxTextBytes)) await adapter.send(target, { text: part });
         } catch (error) {
@@ -550,7 +585,16 @@ export class ChannelHub {
             { channelId: rt.channelId, type: command?.type ?? 'text', length: message.text.length },
             'channel message',
         );
+        if (!command && message.quoted.length === 0 && rt.map) {
+            if (rt.map.expiresAt <= this.now().getTime()) rt.map = null;
+            else {
+                const reply = parseMapReply(message.text);
+                if (reply) return this.mapReply(rt, target, reply);
+            }
+        }
         switch (command?.type) {
+            case 'map':
+                return this.mapStart(rt, target);
             case 'bind':
                 return this.send(rt, target, REPLIES.alreadyBound);
             case 'approval':
@@ -576,6 +620,98 @@ export class ChannelHub {
         rt.draining ??= this.drain(rt).finally(() => {
             rt.draining = null;
         });
+    }
+
+    private mapOwnerItem(rt: Runtime, id: string): Item | null {
+        const item = this.options.repos.items.get(rt.ownerId, id);
+        return item && !item.deletedAt ? item : null;
+    }
+
+    /**
+     * 读一页(只读主人的条目;隐藏的历史版本不列出)。子层先按页大小取、再过滤隐藏项,
+     * 所以一页可能少于 9 项(「下一页」仍按游标是否有后续判断),不影响正确性。
+     */
+    private mapLoad(rt: Runtime, level: MapLevel, page: number): void {
+        const { items } = this.options.repos;
+        const visible = (list: Item[]) => list.filter((i) => (i.meta as { hidden?: unknown } | null)?.hidden !== true);
+        level.page = page;
+        if (!level.parent) {
+            const all = visible(items.roots(rt.ownerId));
+            level.entries = all.slice(page * MAP_PAGE_SIZE, (page + 1) * MAP_PAGE_SIZE);
+            level.hasNext = all.length > (page + 1) * MAP_PAGE_SIZE;
+            return;
+        }
+        const result = items.children(rt.ownerId, level.parent.id, {
+            limit: MAP_PAGE_SIZE,
+            sort: 'position',
+            ...(level.cursors[page] ? { cursor: level.cursors[page] } : {}),
+        });
+        level.entries = visible(result.items);
+        level.hasNext = result.nextCursor !== null;
+        if (result.nextCursor) level.cursors[page + 1] = result.nextCursor;
+    }
+
+    private mapRender(level: MapLevel, state: MapState): string {
+        return formatMapPage({
+            path: state.levels.flatMap((l) => (l.parent ? [l.parent.title] : [])),
+            entries: level.entries.map((e) => ({ title: e.title, count: e.kind === 'category' ? e.contentCount : 0 })),
+            page: level.page,
+            hasPrev: level.page > 0,
+            hasNext: level.hasNext,
+        });
+    }
+
+    private mapStart(rt: Runtime, target: ChannelTarget): Promise<void> {
+        const level: MapLevel = { parent: null, page: 0, cursors: [], entries: [], hasNext: false };
+        this.mapLoad(rt, level, 0);
+        rt.map = { expiresAt: this.now().getTime() + MAP_WINDOW_MS, levels: [level] };
+        return this.send(rt, target, this.mapRender(level, rt.map), true);
+    }
+
+    /** `/map` 窗口里的应答。回复不写入会话,也不进模型。 */
+    private async mapReply(rt: Runtime, target: ChannelTarget, reply: MapReply): Promise<void> {
+        const state = rt.map!;
+        state.expiresAt = this.now().getTime() + MAP_WINDOW_MS;
+        const level = state.levels[state.levels.length - 1]!;
+        const show = (text: string) => this.send(rt, target, text, true);
+        switch (reply.type) {
+            case 'back': {
+                if (state.levels.length === 1) return show(REPLIES.mapAtTop);
+                state.levels.pop();
+                const parent = state.levels[state.levels.length - 1]!;
+                this.mapLoad(rt, parent, parent.page);
+                return show(this.mapRender(parent, state));
+            }
+            case 'next':
+            case 'prev': {
+                if (reply.type === 'next' ? !level.hasNext : level.page === 0)
+                    return show(reply.type === 'next' ? REPLIES.mapNoNext : REPLIES.mapNoPrev);
+                this.mapLoad(rt, level, level.page + (reply.type === 'next' ? 1 : -1));
+                return show(this.mapRender(level, state));
+            }
+            case 'open': {
+                const entry = level.entries[reply.index - 1];
+                if (!entry) return show(REPLIES.mapNoSuchIndex);
+                const item = this.mapOwnerItem(rt, entry.id);
+                if (!item) {
+                    this.mapLoad(rt, level, level.page);
+                    return show(`${REPLIES.mapGone}\n${this.mapRender(level, state)}`);
+                }
+                if (item.kind === 'content' && item.childCount === 0) {
+                    return show(formatMapLeaf({ title: item.title, type: item.type, summary: item.summary }));
+                }
+                const next: MapLevel = {
+                    parent: { id: item.id, title: item.title },
+                    page: 0,
+                    cursors: [],
+                    entries: [],
+                    hasNext: false,
+                };
+                this.mapLoad(rt, next, 0);
+                state.levels.push(next);
+                return show(this.mapRender(next, state));
+            }
+        }
     }
 
     /** 配对码是否正确、未过期、未被锁定(只读,不计数)。 */

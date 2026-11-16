@@ -143,3 +143,63 @@ export function splitMessage(text: string, maxBytes: number): string[] {
     if (parts.length > MAX_PARTS) parts = [...parts.slice(0, MAX_PARTS - 1), TRUNCATED_NOTICE];
     return parts.map((p, i) => `${p}\n(${i + 1}/${parts.length})`);
 }
+
+/** 条目标题与摘要都是不可信文本:去掉控制字符与双向控制符,折叠空白,按字符数截断(ADR 0029 第 5 节)。 */
+export function cleanMapText(text: string, max: number): string {
+    const cleaned = text.replace(
+        // eslint-disable-next-line no-control-regex
+        /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g,
+        ' ',
+    );
+    const flat = cleaned.replace(/\s+/g, ' ').trim();
+    const chars = [...flat];
+    return chars.length > max ? `${chars.slice(0, max).join('')}…` : flat;
+}
+
+export const MAP_TITLE_MAX = 60;
+export const MAP_SUMMARY_MAX = 120;
+export const MAP_PAGE_SIZE = 9;
+
+export interface MapEntry {
+    title: string;
+    /** 内容条目的数量(contentCount);分类可省略。 */
+    count?: number;
+}
+
+/**
+ * 一页地图列表的纯文本:路径、最多 9 项编号、翻页与返回提示。只含标题与计数,不含正文。
+ * 输出永远只是展示用文字(标题里的「确认 K7」不会被当成指令,指令解析只作用于入站消息)。
+ */
+export function formatMapPage(input: {
+    path: string[];
+    entries: MapEntry[];
+    page: number;
+    hasPrev: boolean;
+    hasNext: boolean;
+}): string {
+    const head =
+        input.path.length === 0 ? '知识地图' : `知识地图 > ${input.path.map((p) => cleanMapText(p, 30)).join(' > ')}`;
+    const lines = [head];
+    if (input.entries.length === 0) lines.push('(这里还没有内容)');
+    input.entries.slice(0, MAP_PAGE_SIZE).forEach((e, i) => {
+        const count = e.count && e.count > 0 ? ` (${e.count})` : '';
+        lines.push(`${i + 1}. ${cleanMapText(e.title, MAP_TITLE_MAX) || '(无标题)'}${count}`);
+    });
+    const hints: string[] = [];
+    if (input.entries.length > 0) hints.push('回复编号查看');
+    if (input.hasNext) hints.push('「下一页」翻页');
+    if (input.hasPrev) hints.push('「上一页」');
+    if (input.path.length > 0) hints.push('0 返回');
+    hints.push('/map 回到顶层');
+    lines.push(hints.join(',') + '。');
+    return lines.join('\n');
+}
+
+/** 叶子条目:只给标题、类型与截断的摘要,不发正文。 */
+export function formatMapLeaf(input: { title: string; type: string; summary: string | null }): string {
+    const lines = [`${cleanMapText(input.title, MAP_TITLE_MAX) || '(无标题)'}`, `类型:${cleanMapText(input.type, 30)}`];
+    const summary = input.summary ? cleanMapText(input.summary, MAP_SUMMARY_MAX) : '';
+    if (summary) lines.push(`摘要:${summary}`);
+    lines.push('正文请在 Web 打开。回复 0 返回,或 /map 回到顶层。');
+    return lines.join('\n');
+}
