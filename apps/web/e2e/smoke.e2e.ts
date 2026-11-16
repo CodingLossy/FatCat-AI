@@ -244,9 +244,9 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
     await expect(page.locator(`[data-fs-root="${books.replaceAll('\\', '\\\\')}"]`)).toBeVisible();
     await page.getByRole('link', { name: '知识地图' }).click();
     await page.getByRole('button', { name: '立即同步' }).click();
-    await page.getByRole('button', { name: /小说/ }).click();
-    await page.getByRole('button', { name: /凡人/ }).click();
-    await page.getByRole('button', { name: '第二章 入门' }).click();
+    await page.getByRole('button', { name: /^小说$/ }).click();
+    await page.locator('.item-row').filter({ hasText: '凡人' }).click();
+    await page.locator('.item-row').filter({ hasText: '第二章 入门' }).click();
     await expect(page.locator('.item-text')).toHaveText('第二章 入门\n他拜入了七玄门。\n');
     await expect(page.locator('.breadcrumb')).toHaveText('小说 › 凡人 › 第二章 入门');
 });
