@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import type { Session, Settings } from '@fatcat-ai/shared';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorText } from './api.js';
 import { ApprovalPanel } from './ApprovalPanel.js';
 import { AuditPage } from './AuditPage.js';
@@ -50,10 +50,22 @@ export function Shell({
     const [navOpenAt, setNavOpenAt] = useState<string | null>(null);
     const navOpen = navOpenAt === routeKey;
     const setNavOpen = (open: boolean) => setNavOpenAt(open ? routeKey : null);
+    const menuRef = useRef<HTMLButtonElement>(null);
+    const sidebarRef = useRef<HTMLElement>(null);
+    // 抽屉打开时把焦点移到侧栏里第一个可聚焦元素;Esc 或点遮罩关闭时焦点回到「菜单」按钮(换页关闭时不抢焦点)
+    useEffect(() => {
+        if (!navOpen) return;
+        // 抽屉的 visibility 有过渡:打开的那一帧还不可聚焦,等过渡开始后再聚焦
+        const timer = window.setTimeout(() => sidebarRef.current?.querySelector<HTMLElement>('a, button')?.focus(), 50);
+        return () => window.clearTimeout(timer);
+    }, [navOpen]);
     useEffect(() => {
         if (!navOpen) return;
         const onKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setNavOpenAt(null);
+            if (e.key === 'Escape') {
+                setNavOpenAt(null);
+                menuRef.current?.focus();
+            }
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
@@ -111,6 +123,7 @@ export function Shell({
                 <button
                     type="button"
                     className="topbar-menu"
+                    ref={menuRef}
                     aria-expanded={navOpen}
                     aria-controls="sidebar"
                     onClick={() => setNavOpen(!navOpen)}
@@ -119,8 +132,25 @@ export function Shell({
                 </button>
                 <span className="topbar-title">FatCat-AI</span>
             </header>
-            {navOpen ? <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" /> : null}
-            <aside id="sidebar" className={`sidebar${navOpen ? ' open' : ''}`}>
+            {navOpen ? (
+                <div
+                    className="sidebar-backdrop"
+                    onClick={() => {
+                        setNavOpen(false);
+                        menuRef.current?.focus();
+                    }}
+                    aria-hidden="true"
+                />
+            ) : null}
+            <aside
+                id="sidebar"
+                ref={sidebarRef}
+                className={`sidebar${navOpen ? ' open' : ''}`}
+                // 点了指向当前页的链接时路由不变,抽屉不会因换页而关闭,这里补上
+                onClick={(e) => {
+                    if (navOpen && (e.target as HTMLElement).closest('a')) setNavOpenAt(null);
+                }}
+            >
                 <Link to={{ name: 'home' }} className="button primary new-chat">
                     {t('nav.newChat')}
                 </Link>
