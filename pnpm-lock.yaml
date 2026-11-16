@@ -155,6 +155,9 @@ importers:
       '@fatcat-ai/server':
         specifier: workspace:*
         version: link:../server
+      '@fatcat-ai/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       '@playwright/test':
         specifier: ^1.64.1
         version: 1.64.1

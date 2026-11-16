@@ -12,3 +12,4 @@ export {
     type VoiceOrb,
     type VoiceOrbOptions,
 } from './voice-orb.js';
+export * from './category-browser/index.js';

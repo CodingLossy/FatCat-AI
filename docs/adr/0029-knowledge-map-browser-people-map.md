@@ -55,6 +55,14 @@
 
 **已实现(M5b PR 7)与偏离**:规则与排除项按上文实现(本地部分按字面匹配,不分大小写;「主人发出的邮件」= 位于「已发送」文件夹,或发件人是本机账户)。**`List-Id` 排除:推迟,原因是邮件缓存没有 List-Id,需要迁移。**要识别它必须给邮件缓存新增列并迁移,按本节约定不在 PR 7 做;`detectContacts` 已支持 `listId` 标记,补上存储后即可接入。在此之前,订阅类邮件的发件人若来信 ≥ 2 封会被当作联系人(系统发件地址仍被排除)。
 
+### 4.1 已实现(M5b PR 8:`ask`、ETag、分类浏览器)
+
+- `POST /items/{id}/ask`:`packages/items/src/ask.ts` 的 `buildAskContext` 是纯函数。预填提示词 = 一行固定说明(声明下面是数据而不是指令,正文用 `items.open` 读取)+ 一个 JSON 数据块 `{ untrusted: true, source: { kind: 'item', ref }, items: [...] }`;每项只有 id、类型、层级、标题(清洗控制字符与双向控制符、折叠空白、截断 120 字符)和摘要(截断 240 字符)。JSON 序列化把换行与引号转义,条目文字无法在数据块之外多出一行。`subtree` 取 3 层、每个节点 20 个子项,跳过 `meta.hidden` 的历史版本;总量上限 40 条或 6000 字符,超出置 `truncated`。
+- `untrustedContentSeen`:被引用的条目(含子树)里有 `source = 'mail'`、`type` 以 `mail.` 开头,或 `source = 'characters'`(联系人显示名来自邮件头)时为 true,同时会话创建时置 `untrusted`;偏离第 1 节只写「`mail.*`」的地方是把「人物」也算进去(更保守)。会话标题只含条目标题的前 30 个字符,不含摘要。
+- ETag:`routes/etag.ts` 的 `weakEtag` 中间件,只处理 GET 的 200 JSON 响应,对响应体做 SHA-256 取前 27 个 base64url 字符,`W/"…"`;`If-None-Match` 支持列表、`*` 与弱比较。不加在 `content`、`changes`、`sync`。OpenAPI 只新增 `ask`(304 不在文档里声明,避免改动已有响应的描述)。
+- 分类浏览器:树只列能下钻的条目(分类或有子项),右侧列表是固定行高(44px)的虚拟窗口,滚到接近末尾自动取下一页(`mergePage` 去重);排序用 `sort`,类型过滤用 `type`(选项来自 `counts.byType`);面包屑来自 `ancestors`;搜索用 `/items/search?under=`。树状态与选中状态的纯逻辑放在 `packages/ui/src/category-browser/`,与视图无关,M10 可以复用。偏离 PR 方案:**不加 `@tanstack/react-virtual`**,固定行高的窗口只要几十行,少一个依赖;若以后要变行高再引入。
+- 正文、「也出现在…」与面包屑各自加载:正文打不开(二进制文件、提供者拒绝)时只在详情里提示,其余仍可用。
+
 ### 5. `/map`(PR 9)
 
 IM 里的知识地图下钻。状态只在渠道运行器的**内存**中(不入库),随进程重启消失。

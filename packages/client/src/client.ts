@@ -21,6 +21,8 @@ import type {
     FsRootPatch,
     Item,
     ItemContent,
+    ItemAskRequest,
+    ItemAskResponse,
     ItemCounts,
     ItemRel,
     ItemRelatedPage,
@@ -387,6 +389,9 @@ export function createClient(options: ClientOptions) {
                 t.json<Page<Item>>('/items/search', { query: { ...params } }),
             changes: (params: PageParams = {}) => t.json<Page<Item>>('/items/changes', { query: { ...params } }),
             sync: () => t.json<void>('/items/sync', { method: 'POST' }),
+            /** 以条目或子树为上下文创建会话,返回预填提示词(不自动发送)。 */
+            ask: (id: string, body: ItemAskRequest = { scope: 'item' }) =>
+                t.json<ItemAskResponse>(`/items/${enc(id)}/ask`, { method: 'POST', body }),
         },
 
         fsRoots: {
