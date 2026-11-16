@@ -83,7 +83,8 @@ const MISSED = {
     'node-fetch.ts': "import nodeFetch from 'node-fetch';\nexport const a = nodeFetch;\n",
     'axios.ts': "import axios from 'axios';\nexport const a = axios;\n",
     'got.ts': "import got from 'got';\nexport const a = got;\n",
-    'mcp-sse.ts': "import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';\nexport const a = SSEClientTransport;\n",
+    'mcp-sse.ts':
+        "import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';\nexport const a = SSEClientTransport;\n",
     'mcp-http.ts':
         "import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';\nexport const a = StreamableHTTPClientTransport;\n",
 };

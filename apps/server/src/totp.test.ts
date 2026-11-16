@@ -10,7 +10,10 @@ import { sha256 } from './auth/crypto.js';
 import { LoginChallenges } from './auth/login-challenge.js';
 import {
     type AttemptLimiter,
-    escalatedLockMs, EscalatingLimiter, FailureLimiter, TOTP_LOCK_EVERY,
+    escalatedLockMs,
+    EscalatingLimiter,
+    FailureLimiter,
+    TOTP_LOCK_EVERY,
 } from './auth/rate-limit.js';
 import { base32Decode, hotp, timeStep } from './auth/totp.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';

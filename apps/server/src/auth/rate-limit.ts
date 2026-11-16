@@ -79,9 +79,7 @@ export function escalatedLockMs(level: number): number {
 export class EscalatingLimiter implements AttemptLimiter {
     private readonly entries = new Map<string, { count: number; lastAt: number; lockedUntil: number }>();
 
-    constructor(
-        private readonly now: () => number = Date.now,
-    ) {}
+    constructor(private readonly now: () => number = Date.now) {}
 
     retryAfter(key: string): number {
         const entry = this.entries.get(key);

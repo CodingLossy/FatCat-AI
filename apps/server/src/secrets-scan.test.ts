@@ -210,6 +210,17 @@ describe('/api/v1/settings/secrets access control', () => {
         expect(s.logs.join('\n')).not.toContain(MODEL_KEY);
     });
 
+    it('answers 409 with a remedy (not 500) when secrets.yaml and secrets.yaml.enc both exist', async () => {
+        const { req } = await setup();
+        writeFileSync(join(s.dir, 'secrets.yaml'), `MODEL_KEY: '${MODEL_KEY}'\n`);
+        writeFileSync(join(s.dir, 'secrets.yaml.enc'), 'fcsec1:x');
+        const res = await req('/api/v1/settings/secrets');
+        expect(res.status).toBe(409);
+        const text = await res.text();
+        expect(text).toMatch(/move the other out of the data directory/);
+        expect(text).not.toContain(MODEL_KEY);
+    });
+
     it('a missing master key leaves the server up, reports keyAvailable false, and changes no file', async () => {
         const { post, req } = await setup();
         writeFileSync(join(s.dir, 'secrets.yaml'), `MODEL_KEY: '${MODEL_KEY}'\n`);

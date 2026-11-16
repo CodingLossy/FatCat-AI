@@ -18,19 +18,19 @@ import {
     secretsLayout,
     SECRETS_BACKUP_DIR,
     SECRETS_ENC_FILE,
-    writeFileAtomic,
     SecretsMigrateError,
 } from '@fatcat-ai/providers';
 import { PlaintextBackupAction } from '@fatcat-ai/shared';
 import { openDatabase, rekeyTotpSecrets } from '@fatcat-ai/storage';
 import { dataDirMasterKey, MASTER_KEY_FILE } from './data-dir.js';
+import { runningServerPid, SERVER_LOCK_FILE } from './server-lock.js';
 
-export const SECRETS_USAGE = `Usage (stop the server first for migrate and rekey; neither checks whether it is running):
+export const SECRETS_USAGE = `Usage (stop the server first: migrate and rekey refuse to run while the server's lock file is held):
   secrets migrate [--plaintext-backups keep|encrypt|delete]
       Encrypt secrets.yaml into secrets.yaml.enc. The plaintext file is kept as secrets.yaml.migrated.
   secrets rekey --new-key-file <path>
-      Re-encrypt secrets.yaml.enc and the TOTP secret stored in the database under a new master key
-      (64 hex characters or base64, in a file); the database part is one transaction with the file swap.
+      Re-encrypt secrets.yaml.enc, every encrypted backup in backups/, and the TOTP secret stored in the
+      database under a new master key (64 hex characters or base64, in a file); all of it succeeds or none of it.
   secrets cleanup
       Delete secrets.yaml.migrated once you have confirmed the encrypted file works.
 Keys are never accepted on the command line.`;
@@ -40,6 +40,8 @@ export interface SecretsCommandIo {
     env: NodeJS.ProcessEnv;
     out: (line: string) => void;
     err: (line: string) => void;
+    /** 测试用:替换「进程是否还在」的判断。 */
+    processAlive?: (pid: number) => boolean;
     /** 测试用:替换 master.key.new → master.key 的改名(注入失败)。 */
     replaceMasterKey?: (from: string, to: string) => void;
 }
@@ -50,6 +52,17 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
     try {
         const keys = dataDirMasterKey(io.dataDir, io.env, (m) => io.err(`warning: ${m}`));
         keys.current(); // 环境变量里的主密钥格式不对时在这里报错
+        if (command === 'migrate' || command === 'rekey') {
+            // 服务器在读入与改名之间写入新的令牌会被静默丢掉:有运行中的服务器就什么都不改
+            const pid = runningServerPid(io.dataDir, io.processAlive);
+            if (pid !== null) {
+                io.err(
+                    `Error: the server seems to be running (process ${pid}, see ${SERVER_LOCK_FILE} in the data directory). ` +
+                        `Stop it first, then run "secrets ${command}" again. Nothing was changed.`,
+                );
+                return 1;
+            }
+        }
         if (command === 'migrate') {
             const opts = parseOptions(rest, ['--plaintext-backups']);
             const mode = PlaintextBackupAction.safeParse(opts['--plaintext-backups'] ?? 'keep');
@@ -100,7 +113,9 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
             //    库里的信封一并回滚;只有「恢复备份也失败」时文件已是新密钥,库里随之提交新信封,保持一致
             const dbPath = join(io.dataDir, 'db.sqlite');
             const conn = existsSync(dbPath) ? openDatabase(dbPath) : null;
-            const noFile = secretsLayout(io.dataDir) === 'none';
+            // 没有加密文件(没有 secrets 文件,或还是明文)时只重新加密库里的 TOTP 密钥;明文与密文并存仍然报错
+            const layout = secretsLayout(io.dataDir);
+            const noFile = layout === 'none' || layout === 'plaintext';
             let rekeyed: ReturnType<typeof rekeySecrets> | null = null;
             let renamed = !fromDataDir;
             let restoreFailed = false;
@@ -119,19 +134,19 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
                         );
                         throw new RekeyAborted();
                     }
-                    const backup = join(io.dataDir, SECRETS_BACKUP_DIR, rekeyed.backup);
                     try {
-                        writeFileAtomic(io.dataDir, join(io.dataDir, SECRETS_ENC_FILE), readFileSync(backup, 'utf8'));
+                        // 主文件和所有加密备份一起恢复成换钥前的字节
+                        rekeyed.rollback();
                         rmSync(staged, { force: true });
                         io.err(
-                            `Error: could not replace ${MASTER_KEY_FILE} (${errCode}). ${SECRETS_ENC_FILE} was restored from the backup and still uses the old key; nothing else changed.`,
+                            `Error: could not replace ${MASTER_KEY_FILE} (${errCode}). ${SECRETS_ENC_FILE} and its backups were restored and still use the old key; nothing else changed.`,
                         );
                     } catch {
                         restoreFailed = true;
                         io.err(
-                            `Error: could not replace ${MASTER_KEY_FILE} (${errCode}), and restoring the backup failed too. ` +
+                            `Error: could not replace ${MASTER_KEY_FILE} (${errCode}), and restoring the old-key copies failed too. ` +
                                 `${SECRETS_ENC_FILE} now uses the NEW key. Move ${staged} to ${keyPath} (or point FATCAT_MASTER_KEY_FILE at ${file}), ` +
-                                `or restore ${join(SECRETS_BACKUP_DIR, rekeyed.backup)} over ${SECRETS_ENC_FILE} to go back to the old key.`,
+                                `the encrypted backups in ${SECRETS_BACKUP_DIR}/ may use the NEW key as well, so keep the new key file.`,
                         );
                     }
                     if (!restoreFailed) throw new RekeyAborted();
@@ -168,8 +183,19 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
                 io.out(
                     `Re-encrypted ${r.keys} key(s). New master key fingerprint: ${r.fingerprint}. Backup: ${r.backup}.`,
                 );
+                io.out(`Re-encrypted ${r.backupsRekeyed} backup(s) in ${SECRETS_BACKUP_DIR}/ with the new key.`);
+                if (r.backupsSkipped.length > 0) {
+                    io.err(
+                        `warning: ${r.backupsSkipped.length} backup(s) could not be opened with the old key and were left as they are: ${r.backupsSkipped.join(', ')}`,
+                    );
+                }
             }
             io.out(`Re-encrypted ${rewrapped} TOTP secret(s) in the database.`);
+            if (layout === 'plaintext') {
+                io.out(
+                    'secrets.yaml is still plaintext, so there was no file to re-encrypt; run "secrets migrate" to encrypt it.',
+                );
+            }
             if (restoreFailed) return 1;
             if (fromDataDir && renamed) {
                 restrictToCurrentUser(keyPath, { onWarning: (m) => io.err(`warning: ${m}`) });

@@ -73,6 +73,8 @@ fcsec1:<base64url(nonce 12 字节)>:<base64url(密文)>:<base64url(认证标签 
 
 命令 `node dist/index.js secrets rekey --new-key-file <path>`(离线,服务器停止时执行):用旧主密钥解密 → 备份 → 用新主密钥加密写新文件 → 回读比对 → 替换;TOTP 共享密钥(数据库内)同事务重加密。失败保留原状。命令不接受命令行参数形式的密钥(避免进 shell 历史)。实现定值(PR 4):本 PR 只重新加密 secrets 文件(数据库内 TOTP 密钥的重新加密留给 PR 5);原主密钥来自数据目录的 `master.key` 时,命令在加密文件替换成功后原子地换掉 `master.key`,来自环境变量时只打印提示,由部署者改环境变量;回读比对在替换之前用新主密钥进行。
 
+**补充(X 审查 #24–#36 之后)**:换钥时 `backups/` 下所有 `.yaml.enc` 备份(含这次刚做的那份)也用新密钥重新加密,每个都回读比对,全部通过后才改名;任何一个失败就整体恢复(原始字节在内存里)。用旧密钥解不开的备份(本来就不可用)保持原样并在输出里列出。`migrate` 与 `rekey` 先看数据目录里的 `server.lock`(服务器启动时写 pid,退出时删除):pid 对应的进程还在就退出 1、什么都不改;进程已不在(过期的锁)则照常执行。secrets 还是明文但已启用 TOTP 时,`rekey` 只重新加密库里的 TOTP 密钥。`--plaintext-backups delete` 时结果里的备份名是回滚副本 `secrets.yaml.migrated`;`encrypt` 模式的加密备份同样只留最近 5 份,按时间戳(同一秒的 `-2` 后缀按序号)而不是文件名排序。
+
 ### 9. 接口(shared:`packages/shared/src/secrets.ts`)
 
 | 端点                                    | 说明                                                                                |

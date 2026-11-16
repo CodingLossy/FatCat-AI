@@ -240,6 +240,29 @@ describe('kb.reassign', () => {
         expect(repos.kb.get(ownerId, to.id, 0)?.text).toBe('hello');
     });
 
+    it('also moves the embeddings and the embedding queue, so vector search still finds the content', () => {
+        const { repos, ownerId } = t;
+        const from = repos.items.upsert(ownerId, input('old', null));
+        const to = repos.items.upsert(ownerId, input('new', null));
+        repos.kb.replace(ownerId, { itemId: from.id, mtime: null, size: 3, chunkChars: 100 }, [
+            { page: null, heading: null, text: 'hello' },
+            { page: null, heading: null, text: 'world' },
+        ]);
+        t.conn.sqlite
+            .prepare(
+                `INSERT INTO embeddings (owner_id, item_id, chunk, text, model, created_at) VALUES (?, ?, 0, 'hello', 'm', 'now')`,
+            )
+            .run(ownerId, from.id);
+        repos.embeddings.enqueue(ownerId, from.id, 1, 'world');
+        repos.kb.reassign(from.id, to.id);
+        const count = (table: string, id: string) =>
+            (t.conn.sqlite.prepare(`SELECT count(*) AS n FROM ${table} WHERE item_id = ?`).get(id) as { n: number }).n;
+        expect(count('embeddings', from.id)).toBe(0);
+        expect(count('embeddings', to.id)).toBe(1);
+        expect(count('embed_queue', from.id)).toBe(0);
+        expect(count('embed_queue', to.id)).toBe(1);
+    });
+
     it('does not overwrite data already indexed on the target', () => {
         const { repos, ownerId } = t;
         const from = repos.items.upsert(ownerId, input('old', null));
