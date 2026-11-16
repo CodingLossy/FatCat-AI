@@ -9,19 +9,19 @@
 
 ## 一、逐 PR 对照
 
-| PR  | 分支 / 编号                                                   | 验收项(方案第 2 节)                        | 结果                          | 依据                                                                                             |
-| --- | ------------------------------------------------------------- | ------------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| 1   | `docs/m5b-plan`,#28                                           | 方案合并                                   | ✅ 已合并                     | CI 43388648985                                                                                   |
-| 2   | `fix/channel-approval-gaps`,#29                               | 四处渠道审批缺口有用例                     | ✅ 已合并;❌ 真机未验证       | `apps/server/src/channel-injection.eval.test.ts`(用例 1–21);CI 43387665786                       |
-| 2b  | `fix/mail-quoted-recipients`,#30                              | 引用块地址不算可信收件人                   | ✅ 已合并                     | 评测用例 20;CI 43393031732                                                                       |
-| 3   | `docs/m5b-contracts`,#31                                      | ADR 0026–0029;shared 只新增                | ✅ 已合并                     | `packages/shared/src/m5b-contracts.test.ts`;CI 43398015281                                       |
-| 4   | `feat/secrets-encryption`,#32                                 | 整体加密、迁移、备份、数据库无明文         | ✅ 已合并;❌ Windows 未验证   | `apps/server/src/secrets-cli.test.ts`、`secrets-scan.test.ts`;CI 43405040609                     |
-| 5   | `feat/totp-2`,#35(#33 关闭未合并)                             | 开启后无第二因素无法登录;恢复码;限流       | ✅ 已合并;❌ 真实验证器未验证 | `apps/server/src/totp.test.ts`、`auth-cli.test.ts`;CI 43807414653                                |
-| 6   | `feat/egress-targets`,#34;运行时一致性 #40                    | 清单与实际外连一致                         | ✅ #34 已合并;#40 待合并      | `apps/server/src/egress.unit.test.ts`;`apps/server/src/egress.test.ts`(#40);CI 43797253266       |
-| 6+  | `fix/perf-budget-and-acl-tests`,#36、`fix/review-pr24-36`,#38 | X 对 #24–#36 的审查修复                    | ✅ 已合并                     | CI 43814061425、43893634037                                                                      |
-| 7   | `feat/people-provider`,#37                                    | 联系人出现在「人物」下;`related`;`recount` | ✅ 已合并;❌ 真实邮箱未验证   | `packages/items/src/characters.test.ts`、`items.test.ts`;CI 43896135387                          |
-| 8   | `feat/category-browser`,#39                                   | 从三个顶层类别下钻并打开 / 问 AI;ETag      | ✅ 已合并;CI 终态未核对       | `packages/items/src/ask.test.ts`、`apps/web/e2e/items.e2e.ts`;CI 43900685209(写本报告时仍在运行) |
-| 9   | `feat/channel-map`(本 PR)                                     | `/map` 下钻、应答窗口、越权与注入用例      | ✅ 本地通过;❌ 真实微信未验证 | `apps/server/src/channel-injection.eval.test.ts` 用例 22–26;`packages/channels/src/map.test.ts`  |
+| PR  | 分支 / 编号                                                   | 验收项(方案第 2 节)                        | 结果                          | 依据                                                                                                    |
+| --- | ------------------------------------------------------------- | ------------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 1   | `docs/m5b-plan`,#28                                           | 方案合并                                   | ✅ 已合并                     | CI 43388648985                                                                                          |
+| 2   | `fix/channel-approval-gaps`,#29                               | 四处渠道审批缺口有用例                     | ✅ 已合并;❌ 真机未验证       | `apps/server/src/channel-injection.eval.test.ts`(用例 1–21);CI 43387665786                              |
+| 2b  | `fix/mail-quoted-recipients`,#30                              | 引用块地址不算可信收件人                   | ✅ 已合并                     | 评测用例 20;CI 43393031732                                                                              |
+| 3   | `docs/m5b-contracts`,#31                                      | ADR 0026–0029;shared 只新增                | ✅ 已合并                     | `packages/shared/src/m5b-contracts.test.ts`;CI 43398015281                                              |
+| 4   | `feat/secrets-encryption`,#32                                 | 整体加密、迁移、备份、数据库无明文         | ✅ 已合并;❌ Windows 未验证   | `apps/server/src/secrets-cli.test.ts`、`secrets-scan.test.ts`;CI 43405040609                            |
+| 5   | `feat/totp-2`,#35(#33 关闭未合并)                             | 开启后无第二因素无法登录;恢复码;限流       | ✅ 已合并;❌ 真实验证器未验证 | `apps/server/src/totp.test.ts`、`auth-cli.test.ts`;CI 43807414653                                       |
+| 6   | `feat/egress-targets`,#34;运行时一致性 #40                    | 清单与实际外连一致                         | ✅ #34 已合并;#40 待合并      | `apps/server/src/egress.unit.test.ts`;`apps/server/src/egress.test.ts`(#40);CI 43797253266              |
+| 6+  | `fix/perf-budget-and-acl-tests`,#36、`fix/review-pr24-36`,#38 | X 对 #24–#36 的审查修复                    | ✅ 已合并                     | CI 43814061425、43893634037                                                                             |
+| 7   | `feat/people-provider`,#37                                    | 联系人出现在「人物」下;`related`;`recount` | ✅ 已合并;❌ 真实邮箱未验证   | `packages/items/src/characters.test.ts`、`items.test.ts`;CI 43896135387                                 |
+| 8   | `feat/category-browser`,#39                                   | 从三个顶层类别下钻并打开 / 问 AI;ETag      | ✅ 已合并;CI 无失败任务       | `packages/items/src/ask.test.ts`、`apps/web/e2e/items.e2e.ts`;CI 43900685209(main `55f594a`,无失败任务) |
+| 9   | `feat/channel-map`(本 PR)                                     | `/map` 下钻、应答窗口、越权与注入用例      | ✅ 本地通过;❌ 真实微信未验证 | `apps/server/src/channel-injection.eval.test.ts` 用例 22–26;`packages/channels/src/map.test.ts`         |
 
 ## 二、开发计划 M5b 验收项(方案第 4 节)
 

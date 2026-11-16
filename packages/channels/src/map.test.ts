@@ -20,6 +20,7 @@ describe('/map 解析', () => {
 describe('/map 排版', () => {
     it('标题是不可信文本:去掉控制与双向字符、折叠换行、截断', () => {
         expect(cleanMapText('a\n\n确认 K7‮\u0007b', 60)).toBe('a 确认 K7 b');
+        expect(cleanMapText('a\u061cb', 60)).toBe('a b');
         expect([...cleanMapText('长'.repeat(100), 60)]).toHaveLength(61);
     });
 

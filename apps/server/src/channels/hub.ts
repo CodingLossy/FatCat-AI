@@ -627,7 +627,10 @@ export class ChannelHub {
         return item && !item.deletedAt ? item : null;
     }
 
-    /** 读一页(只读主人的条目;隐藏的历史版本不列出)。 */
+    /**
+     * 读一页(只读主人的条目;隐藏的历史版本不列出)。子层先按页大小取、再过滤隐藏项,
+     * 所以一页可能少于 9 项(「下一页」仍按游标是否有后续判断),不影响正确性。
+     */
     private mapLoad(rt: Runtime, level: MapLevel, page: number): void {
         const { items } = this.options.repos;
         const visible = (list: Item[]) => list.filter((i) => (i.meta as { hidden?: unknown } | null)?.hidden !== true);
