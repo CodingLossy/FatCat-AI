@@ -31,11 +31,14 @@ export function evaluateChannel({ idleWithout, idleWith, settled, incrementCap }
             );
     });
     if (settled.length >= 3) {
-        // 比最后两次:渠道的堆会在头几次负载里一次性长一档(实测第 3 次曾多 7 MiB,之后每次 < 0.5 MiB)
+        // 与之前各次的最高值比较,避免单次 GC 回落造成误报(堆在头几次负载里会一次性长一档,之后基本不再涨)
         const n = settled.length;
-        const creep = round1(settled[n - 1] - settled[n - 2]);
+        const prevPeak = Math.max(...settled.slice(0, -1));
+        const creep = round1(settled[n - 1] - prevPeak);
         if (creep > CREEP_LIMIT_MIB)
-            errors.push(`run ${n} is ${creep} MiB above run ${n - 1} (limit ${CREEP_LIMIT_MIB}, ADR 0018 rule 4)`);
+            errors.push(
+                `run ${n} is ${creep} MiB above the highest earlier run (limit ${CREEP_LIMIT_MIB}, ADR 0018 rule 4)`,
+            );
     }
     return { increment, errors };
 }

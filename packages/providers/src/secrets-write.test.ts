@@ -1,7 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+    chmodSync,
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readdirSync,
+    readFileSync,
+    rmSync,
+    statSync,
+    writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -95,6 +105,39 @@ describe('writeSecretsKey', () => {
         expect(store.resolve('file:T')).toBeNull();
     });
 
+    it('restricts the backup first, then secrets.yaml, and both files already exist at each call', () => {
+        writeFileSync(file(), 'A: 1\n');
+        const calls: { path: string; existed: boolean }[] = [];
+        writeSecretsKey(dir, 'B', '2', at(0), {
+            restrict: (path) => calls.push({ path, existed: existsSync(path) }),
+        });
+        expect(calls).toEqual([
+            { path: join(dir, 'backups', 'secrets-20261111T080000Z.yaml'), existed: true },
+            { path: file(), existed: true },
+        ]);
+        expect(readFileSync(file(), 'utf8')).toBe("A: 1\nB: '2'\n");
+    });
+
+    it('returns false without restricting or backing up when the value does not change', () => {
+        writeFileSync(file(), "A: 1\nB: '2'\n");
+        const calls: string[] = [];
+        expect(writeSecretsKey(dir, 'B', '2', at(0), { restrict: (path) => calls.push(path) })).toBe(false);
+        expect(calls).toEqual([]);
+        expect(() => backups()).toThrow();
+        expect(readFileSync(file(), 'utf8')).toBe("A: 1\nB: '2'\n");
+    });
+
+    it('rejects an invalid value before any restrict call, leaving the file and backups untouched', () => {
+        writeFileSync(file(), 'A: 1\n');
+        const calls: string[] = [];
+        expect(() => writeSecretsKey(dir, 'B', 'x\ny', at(0), { restrict: (path) => calls.push(path) })).toThrow(
+            SecretsWriteError,
+        );
+        expect(calls).toEqual([]);
+        expect(() => backups()).toThrow();
+        expect(readFileSync(file(), 'utf8')).toBe('A: 1\n');
+    });
+
     it('keeps the written file when tightening permissions throws', () => {
         writeFileSync(file(), 'A: 1\n');
         const warnings: string[] = [];
@@ -149,6 +192,7 @@ describe('restrictToCurrentUser', () => {
             restrictToCurrentUser('C:\\secrets.yaml', {
                 platform: 'win32',
                 username: 'theodore',
+                domain: '',
                 execFile: () => {
                     throw Object.assign(new Error('fail'), { code: 'ENOENT' });
                 },
@@ -161,6 +205,7 @@ describe('restrictToCurrentUser', () => {
         restrictToCurrentUser('C:\\backups\\secrets-20261111T080000Z.yaml', {
             platform: 'win32',
             username: '',
+            domain: '',
             execFile: () => {
                 throw new Error('should not run');
             },
