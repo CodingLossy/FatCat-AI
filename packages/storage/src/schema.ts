@@ -7,7 +7,9 @@
 /** 表名 → 列名(snake_case,与 SQL 一致)。 */
 export const TABLE_COLUMNS = {
     owners: ['id', 'username', 'password_hash', 'created_at', 'updated_at'],
-    auth_sessions: ['id', 'owner_id', 'csrf_hash', 'created_at', 'expires_at', 'last_seen_at'],
+    auth_sessions: ['id', 'owner_id', 'csrf_hash', 'created_at', 'expires_at', 'last_seen_at', 'second_factor_at'],
+    totp_credentials: ['owner_id', 'secret_enc', 'enabled', 'last_used_step', 'created_at', 'enabled_at'],
+    totp_recovery_codes: ['id', 'owner_id', 'salt', 'code_hash', 'used_at', 'created_at'],
     access_tokens: ['id', 'owner_id', 'name', 'token_hash', 'created_at', 'last_used_at', 'expires_at', 'revoked_at'],
     model_profiles: [
         'id',
@@ -378,6 +380,8 @@ export interface AuthSessionRow {
     createdAt: string;
     expiresAt: string;
     lastSeenAt: string;
+    /** 通过第二因素(TOTP)的时间;没有启用 TOTP 或没有通过时为 null。 */
+    secondFactorAt: string | null;
 }
 
 export interface AccessTokenRow {

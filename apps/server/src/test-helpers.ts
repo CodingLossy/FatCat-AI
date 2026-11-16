@@ -77,6 +77,10 @@ export interface TestServerOptions {
     wechatBaseUrl?: string;
     /** 渠道运行器的时钟(限流、配对码过期测试用)。 */
     now?: () => Date;
+    /** 认证路由的时钟与临时凭证、第二因素限流(TOTP 测试用)。 */
+    authNow?: () => Date;
+    challenges?: AppDeps['challenges'];
+    totpLimiter?: AppDeps['totpLimiter'];
 }
 
 export async function createTestServer(
@@ -194,6 +198,9 @@ export async function createTestServer(
         memory,
         clientIp: (c) => c.req.header('x-test-ip') ?? '127.0.0.1',
         loginLimiter: new FailureLimiter(5, 60_000),
+        ...(options.authNow ? { now: options.authNow } : {}),
+        ...(options.challenges ? { challenges: options.challenges } : {}),
+        ...(options.totpLimiter ? { totpLimiter: options.totpLimiter } : {}),
         attachmentFiles,
         ...(options.voice ? { voice: options.voice } : {}),
         ...(options.onTimeZoneChanged ? { onTimeZoneChanged: options.onTimeZoneChanged } : {}),

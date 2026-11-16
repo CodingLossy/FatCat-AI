@@ -6,7 +6,7 @@ import { AccessToken, CreatedAccessToken, CreateTokenRequest, Id, pageOf } from 
 import type { Repositories } from '@fatcat-ai/storage';
 import { newAccessToken, sha256 } from '../auth/crypto.js';
 import { requireOwner } from '../auth/middleware.js';
-import { notFound } from '../errors.js';
+import { ApiError, notFound } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -42,11 +42,25 @@ export function tokenRoutes(deps: { repos: Repositories; now: () => Date }) {
     return router()
         .openapi(listRoute, (c) => c.json({ items: repos.accessTokens.list(requireOwner(c)), nextCursor: null }, 200))
         .openapi(createTokenRoute, (c) => {
+            const ownerId = requireOwner(c);
+            // 账户启用了 TOTP:只有通过第二因素的会话才能创建令牌(令牌自己不行;ADR 0027 第 6 节)
+            if (repos.totp.get(ownerId)?.enabled) {
+                const auth = c.get('auth');
+                const session = auth?.kind === 'session' ? repos.authSessions.getValid(auth.sessionHash) : null;
+                if (!session?.secondFactorAt) {
+                    throw new ApiError(
+                        403,
+                        'forbidden',
+                        'Forbidden',
+                        'Creating a token needs a session that passed the second factor.',
+                    );
+                }
+            }
             const body = c.req.valid('json');
             const token = newAccessToken();
             const expiresAt = body.expiresInDays ? new Date(now().getTime() + body.expiresInDays * DAY_MS) : null;
             const created = repos.accessTokens.create({
-                ownerId: requireOwner(c),
+                ownerId,
                 name: body.name,
                 tokenHash: sha256(token),
                 expiresAt,

@@ -21,6 +21,7 @@ import type { Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { secureHeaders } from 'hono/secure-headers';
 import { authMiddleware } from './auth/middleware.js';
+import type { LoginChallenges } from './auth/login-challenge.js';
 import type { FailureLimiter } from './auth/rate-limit.js';
 import type { ServerConfig } from './config.js';
 import type { AppEnv } from './env.js';
@@ -83,6 +84,10 @@ export interface AppDeps {
     /** 请求来源地址;默认取 TCP 对端地址(不信任 X-Forwarded-For)。 */
     clientIp?: (c: Context<AppEnv>) => string;
     loginLimiter?: FailureLimiter;
+    /** 第二因素的失败限速(ADR 0027 第 5 节);不给时每分钟 5 次。 */
+    totpLimiter?: FailureLimiter;
+    /** 登录临时凭证(内存);测试可注入带假时钟的实例。 */
+    challenges?: LoginChallenges;
     /** 图片附件的文件(ADR 0020);不给时用内存实现,只适合测试与导出 OpenAPI 文档。 */
     attachmentFiles?: AttachmentFiles;
     /** 语音接口的限流与超时(ADR 0021 第 5 节);不给时每分钟各 20 次、默认超时。 */
@@ -166,6 +171,10 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         await next();
         c.header('X-Request-Id', requestId);
         c.header('X-AIP-Server-Version', SERVER_VERSION);
+        // 验证码相关的响应(含错误)不得被缓存(ADR 0027 第 9 节)
+        if (c.req.path === '/api/v1/auth/login/totp' || c.req.path.startsWith('/api/v1/auth/totp')) {
+            c.header('Cache-Control', 'no-store');
+        }
         log.info(
             {
                 method: c.req.method,
@@ -232,7 +241,10 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
                 cookieSecure: config.cookieSecure,
                 setupCode: config.setupCode,
                 clientIp,
+                masterKey: deps.secrets.masterKey,
                 ...(deps.loginLimiter ? { loginLimiter: deps.loginLimiter } : {}),
+                ...(deps.totpLimiter ? { totpLimiter: deps.totpLimiter } : {}),
+                ...(deps.challenges ? { challenges: deps.challenges } : {}),
             }),
         )
         .route('/', tokenRoutes({ repos, now }))
