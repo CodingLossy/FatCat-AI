@@ -3,7 +3,7 @@
 
 import type { Item } from '@fatcat-ai/shared';
 import { describe, expect, it } from 'vitest';
-import { ASK_MAX_ENTRIES, buildAskContext, isUntrustedItem } from './ask.js';
+import { ASK_MAX_ENTRIES, buildAskContext, clean, isUntrustedItem } from './ask.js';
 
 const item = (over: Partial<Item>): Item => ({
     id: '01M7JFBT5P08Z0Q8V8PKCFMGKN',
@@ -46,5 +46,13 @@ describe('buildAskContext', () => {
         expect(isUntrustedItem({ type: 'mail.message', source: 'mail' })).toBe(true);
         expect(isUntrustedItem({ type: 'character', source: 'characters' })).toBe(true);
         expect(isUntrustedItem({ type: 'novel', source: 'novels' })).toBe(false);
+    });
+
+    it('clean:不可见字符(含 U+FEFF、U+180E)换成空格,按码点截断不切断代理对', () => {
+        expect(clean('a\ufeffb\u180ec\u202ed\ne', 50)).toBe('a b c d e');
+        const cut = clean('😀'.repeat(10), 4);
+        expect(Array.from(cut)).toHaveLength(4);
+        expect(cut.endsWith('…')).toBe(true);
+        expect(cut).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])/);
     });
 });

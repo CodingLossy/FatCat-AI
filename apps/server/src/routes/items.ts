@@ -3,7 +3,7 @@
 
 // 条目索引 REST(ADR 0012 第 2 节):只读;已删除的条目只出现在 /items/changes 中。
 import { createRoute, z } from '@hono/zod-openapi';
-import { buildAskContext, type ItemService } from '@fatcat-ai/items';
+import { buildAskContext, clean, type ItemService } from '@fatcat-ai/items';
 import {
     Id,
     Item,
@@ -243,7 +243,7 @@ export function itemRoutes(deps: ItemRouteDeps) {
             const ask = buildAskContext(root, scope, entries);
             // 会话从一开始就视为读过不可信内容(含邮件、联系人时);标题只用条目标题的前几个字,不含正文
             const session = repos.sessions.create(ownerId, {
-                title: `关于「${root.title.replace(/\s+/g, ' ').slice(0, 30)}」`,
+                title: `关于「${clean(root.title, 30)}」`,
                 untrusted: ask.untrustedContentSeen,
             });
             return c.json({ sessionId: session.id, ...ask }, 201);
