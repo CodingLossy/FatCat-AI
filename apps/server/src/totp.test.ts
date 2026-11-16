@@ -289,7 +289,7 @@ describe('access control', () => {
             idHash: sha256('loose-session-token'),
             ownerId: t.ownerId(),
             csrfHash: sha256('loose-csrf'),
-            expiresAt: new Date(clock + 60_000_000),
+            expiresAt: new Date(Date.now() + 86_400_000),
         });
         expect((await t.call(loose, '/tokens', { name: 'nope' })).status).toBe(403);
         expect((await t.call(t.session, '/tokens', { name: 'ok' })).status).toBe(201);
