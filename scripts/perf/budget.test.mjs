@@ -44,3 +44,19 @@ test('rule 4 is skipped with fewer than three runs', () => {
     const r = evaluateChannel({ idleWithout: 110, idleWith: 112, settled: [130, 150], incrementCap: 10 });
     assert.deepEqual(r.errors, []);
 });
+
+test('rule 4 compares against the highest earlier run, so a one-off GC dip does not fail it', () => {
+    for (const settled of [
+        [126, 130.1, 119.5, 130.5],
+        [127.6, 133.2, 123.1, 135.3],
+    ]) {
+        const r = evaluateChannel({ idleWithout: 110, idleWith: 112, settled, incrementCap: 10 });
+        assert.deepEqual(r.errors, []);
+    }
+});
+
+test('rule 4 still fails when every run is higher than the last', () => {
+    const r = evaluateChannel({ idleWithout: 110, idleWith: 112, settled: [120, 126, 132, 138], incrementCap: 10 });
+    assert.equal(r.errors.length, 1);
+    assert.match(r.errors[0], /rule 4/);
+});
