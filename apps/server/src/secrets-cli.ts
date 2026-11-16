@@ -75,6 +75,11 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
             io.out(
                 'The old plaintext file is now secrets.yaml.migrated. Check that the server works, then run "secrets cleanup".',
             );
+            if (r.plaintextBackups.kept > 0) {
+                io.out(
+                    `Warning: ${r.plaintextBackups.kept} plaintext backup(s) are still in backups/ and hold your keys unencrypted; re-run with --plaintext-backups encrypt or delete to remove them.`,
+                );
+            }
             return 0;
         }
         if (command === 'rekey') {
