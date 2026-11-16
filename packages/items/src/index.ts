@@ -3,6 +3,17 @@
 
 // 条目索引 v1(知识地图数据层,ADR 0003、ADR 0012):提供者、同步与 items.* 工具。
 export { filesProvider, FILES_ROOT_REF, pathOfRef, readAuthorizedFile } from './files.js';
+export {
+    CHARACTERS_ROOT_REF,
+    charactersProvider,
+    cleanDisplayName,
+    type Contact,
+    detectContacts,
+    isSystemAddress,
+    type MailSample,
+    MAX_MAILS_PER_CHARACTER,
+    normalizeAddress,
+} from './characters.js';
 export { decodeText, novelsProvider, NOVELS_ROOT_REF, splitChapters, type Chapter } from './novels.js';
 export { type ItemProvider, MAX_CONTENT_CHARS, type OpenContext, type SyncContext, textContent } from './provider.js';
 export { createItemService, type ItemService, type ItemServiceOptions, SYNC_INTERVAL_MS } from './service.js';

@@ -11,6 +11,8 @@ import {
     ItemChildrenQuery,
     ItemContent,
     ItemCounts,
+    ItemRelatedPage,
+    ItemRelatedQuery,
     ItemSearchQuery,
     ItemSubtree,
     ItemSubtreeQuery,
@@ -105,6 +107,19 @@ const subtreeRoute = createRoute({
         ...authErrors,
     },
 });
+const relatedRoute = createRoute({
+    method: 'get',
+    path: '/items/{id}/related',
+    tags,
+    summary: 'Non-primary edges of an item (outgoing and incoming), cursor-paginated',
+    request: { params: idParam, query: ItemRelatedQuery },
+    responses: {
+        200: json(ItemRelatedPage, 'Related items'),
+        400: problem('Invalid query'),
+        404: problem('Not found'),
+        ...authErrors,
+    },
+});
 const contentRoute = createRoute({
     method: 'get',
     path: '/items/{id}/content',
@@ -182,6 +197,12 @@ export function itemRoutes(deps: ItemRouteDeps) {
             live(ownerId, id);
             const { depth, limitPerNode } = c.req.valid('query');
             return c.json(repos.items.subtree(ownerId, id, depth, limitPerNode), 200);
+        })
+        .openapi(relatedRoute, (c) => {
+            const ownerId = requireOwner(c);
+            const { id } = c.req.valid('param');
+            live(ownerId, id);
+            return c.json(repos.items.related(ownerId, id, c.req.valid('query')), 200);
         })
         .openapi(contentRoute, async (c) => {
             const ownerId = requireOwner(c);

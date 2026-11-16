@@ -274,3 +274,65 @@ describe('kb.reassign', () => {
         expect(repos.kb.get(ownerId, to.id, 0)?.text).toBe('new');
     });
 });
+
+describe('items:非 primary 边(relate / related)', () => {
+    function setup() {
+        const { items } = t.repos;
+        const people = items.upsert(t.ownerId, input('people', null));
+        const mails = items.upsert(t.ownerId, input('mails', null));
+        const alice = items.upsert(t.ownerId, input('alice', people.id));
+        const bob = items.upsert(t.ownerId, input('bob', people.id));
+        const m = [1, 2, 3, 4, 5].map((i) => items.upsert(t.ownerId, input(`m${i}`, mails.id)));
+        return { items, people, mails, alice, bob, m };
+    }
+
+    it('重算只换掉该 rel 的旧边,不改变计数;软删除的邮件不出现', () => {
+        const { items, people, mails, alice, m } = setup();
+        const before = { people: items.get(t.ownerId, people.id), mails: items.get(t.ownerId, mails.id) };
+        items.relate(t.ownerId, alice.id, 'mentions', [m[0]!.id, m[1]!.id, m[2]!.id]);
+        items.relate(t.ownerId, alice.id, 'mentions', [m[2]!.id, m[3]!.id]);
+        const out = items.related(t.ownerId, alice.id, { limit: 50 }).items;
+        expect(out.map((e) => e.item.title).sort()).toEqual(['m3', 'm4']);
+        expect(items.get(t.ownerId, people.id)).toEqual(before.people);
+        expect(items.get(t.ownerId, mails.id)).toEqual(before.mails);
+        expect(items.get(t.ownerId, alice.id)).toMatchObject({ childCount: 0, descendantCount: 0 });
+        items.softDelete(t.ownerId, m[3]!.id);
+        expect(items.related(t.ownerId, alice.id, { limit: 50 }).items.map((e) => e.item.title)).toEqual(['m3']);
+        // primary 的 contains 边不出现在 related 里
+        expect(items.related(t.ownerId, people.id, { limit: 50 }).items).toEqual([]);
+    });
+
+    it('related 同时给出出边与入边,可按 rel 过滤并分页', () => {
+        const { items, alice, bob, m } = setup();
+        items.relate(
+            t.ownerId,
+            alice.id,
+            'mentions',
+            m.map((x) => x.id),
+        );
+        items.relate(t.ownerId, bob.id, 'mentions', [m[0]!.id]);
+        items.relate(t.ownerId, bob.id, 'derived', [m[0]!.id]);
+
+        const incoming = items.related(t.ownerId, m[0]!.id, { limit: 50 }).items;
+        expect(incoming.map((e) => [e.item.title, e.rel, e.direction]).sort()).toEqual([
+            ['alice', 'mentions', 'in'],
+            ['bob', 'derived', 'in'],
+            ['bob', 'mentions', 'in'],
+        ]);
+        expect(items.related(t.ownerId, m[0]!.id, { limit: 50, rel: 'derived' }).items).toHaveLength(1);
+
+        const seen: string[] = [];
+        let cursor: string | undefined;
+        let pages = 0;
+        do {
+            const page = items.related(t.ownerId, alice.id, { limit: 2, ...(cursor ? { cursor } : {}) });
+            expect(page.items.every((e) => e.direction === 'out')).toBe(true);
+            seen.push(...page.items.map((e) => e.item.title));
+            cursor = page.nextCursor ?? undefined;
+            pages++;
+        } while (cursor);
+        expect(pages).toBe(3);
+        expect([...seen].sort()).toEqual(['m1', 'm2', 'm3', 'm4', 'm5']);
+        expect(new Set(seen).size).toBe(5);
+    });
+});

@@ -116,7 +116,7 @@ export type ItemContent = z.infer<typeof ItemContent>;
 /** GET /items/{id}/related:只含非 primary 边;contains 的 primary 边走 children / ancestors。 */
 export const ItemRelatedQuery = z.object({
     cursor: z.string().min(1).max(1024).optional(),
-    limit: z.coerce.number().int().min(1).max(100).default(50),
+    limit: z.coerce.number().int().min(1).max(200).default(50),
     rel: ItemRel.optional(),
 });
 export type ItemRelatedQuery = z.input<typeof ItemRelatedQuery>;
