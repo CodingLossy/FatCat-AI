@@ -1,0 +1,56 @@
+[
+  {
+    "file": "apps/server/src/index.ts",
+    "kind": "local-only",
+    "listedAs": "-",
+    "reason": "HTTP server for the local /api/v1 listener (127.0.0.1 by default); makes no outbound connection"
+  },
+  {
+    "file": "apps/server/src/ws.ts",
+    "kind": "local-only",
+    "listedAs": "-",
+    "reason": "WebSocket server on the same local listener; accepts connections, never opens one"
+  },
+  {
+    "file": "packages/channels/src/ilink.ts",
+    "kind": "fixed",
+    "listedAs": "channelTargets",
+    "reason": "WeChat iLink client; its base URL is the channel's baseUrl or ILINK_DEFAULT_BASE_URL"
+  },
+  {
+    "file": "packages/client/src/transport.ts",
+    "kind": "local-only",
+    "listedAs": "-",
+    "reason": "SDK transport; the Web UI uses it against the same origin only, other clients target a server the user names"
+  },
+  {
+    "file": "packages/eval/src/replay.ts",
+    "kind": "local-only",
+    "listedAs": "-",
+    "reason": "Evaluation harness (pnpm eval) used for tests; the server never imports it, and the real fetch is only an injectable default"
+  },
+  {
+    "file": "packages/mail/src/client.ts",
+    "kind": "fixed",
+    "listedAs": "mailTargets",
+    "reason": "IMAP and SMTP sessions via imapflow and nodemailer; node:net is only used to tell IP literals from host names"
+  },
+  {
+    "file": "packages/providers/src/http.ts",
+    "kind": "fixed",
+    "listedAs": ["modelTargets", "embeddingTargets", "voiceTargets"],
+    "reason": "The one HTTP helper for model, embedding and voice providers; the base URL comes from the model profile"
+  },
+  {
+    "file": "packages/tools/src/builtin/net-guard.ts",
+    "kind": "local-only",
+    "listedAs": "-",
+    "reason": "Address checks for web.fetch (node:net isIP, no connection is opened here)"
+  },
+  {
+    "file": "packages/tools/src/builtin/web-fetch.ts",
+    "kind": "dynamic",
+    "listedAs": "-",
+    "reason": "web.fetch: the destination is decided in the conversation and each call needs approval, so it is not a fixed target"
+  }
+]

@@ -6587,6 +6587,301 @@
         }
       }
     },
+    "/api/v1/settings/egress-targets": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Where this server may connect to, computed from the current configuration (origins only; never credentials). Per-call destinations chosen in a conversation (web.fetch) are not listed",
+        "responses": {
+          "200": {
+            "description": "Egress targets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "targets": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "model",
+                              "embedding",
+                              "voice",
+                              "mail",
+                              "channel",
+                              "mcp",
+                              "plugin",
+                              "update-check"
+                            ]
+                          },
+                          "label": {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          "origin": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "maxLength": 300,
+                            "pattern": "^[a-z][a-z0-9+.-]*:\\/\\/[^/?#@\\s]+$"
+                          },
+                          "local": {
+                            "type": "boolean"
+                          },
+                          "source": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 60
+                              },
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "id"
+                            ]
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "category",
+                          "label",
+                          "origin",
+                          "local",
+                          "source",
+                          "enabled"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "targets"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF token missing or invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/settings/secrets": {
       "get": {
         "tags": [
