@@ -1,6 +1,6 @@
 # ADR 0028 · 外连目标清单
 
-- 状态:已采纳(M5b PR 3);已实现(M5b PR 6 `feat/egress-targets`)
+- 状态:已采纳(M5b PR 3);部分实现(M5b PR 6 `feat/egress-targets` 实现了清单、设置页与 `check:egress`;第 2 节的运行时一致性测试 `apps/server/src/egress.test.ts` 尚未实现,X 审查 #24–#36 时确认,待办)
 - 日期:2026-11-13
 - 相关:开发计划第 10 节(零遥测)、ADR 0006(模型配置)、ADR 0011/0014/0022(邮件、渠道)、M5b 方案 PR 6
 - 依据:开发计划验收项 4——设置页的外连目标清单与实际外连一致。
@@ -32,13 +32,15 @@
 - `update-check`:**当前代码里没有更新检查,清单中不出现这一类**。将来加入时必须在同一个 PR 里登记(`check-egress` 会强制)。
 - `web.fetch` 之类由用户逐次审批、目的地由对话决定的工具调用不是固定目标,不列在清单里;设置页在清单下方用一句话说明,并且这类调用点在登记表里标 `dynamic`(第 3 节)。
 
-### 2. 一致性测试(`apps/server/src/egress.test.ts`)
+### 2. 一致性测试(`apps/server/src/egress.test.ts`,**尚未实现**)
+
+目前清单与代码的一致性只靠第 3 节的静态扫描与登记表约束;下面是计划中的运行时测试。
 
 假端点下把每一类外连各走一遍(模型、嵌入、语音、IMAP/SMTP、微信 iLink、HTTP/SSE 类 MCP):用 `node --import` 式的 `fetch`/`net`/`tls` 钩子记录所有真实目的地(只记录 origin),断言每个目的地都能在 `GET /settings/egress-targets` 的 `origin` 中找到;反过来,清单中 `enabled` 的项必须至少被某个路径用到过(防止清单里留着不再使用的项)。
 
 ### 3. `scripts/check-egress.mjs` 与登记表
 
-CI 脚本(`pnpm check:egress`,接入 `ci.yml`)扫描生产代码(不含测试、`dist`、`node_modules`)里使用网络 API 的文件:`fetch(`、`node:net`、`node:tls`、`node:http`、`node:https`、`node:dgram`、`new WebSocket(`、`undici` 等客户端。规则:
+CI 脚本(`pnpm check:egress`,接入 `ci.yml`)扫描生产代码(不含测试、`dist`、`node_modules`)里使用网络 API 的文件:`fetch(` 以及未带括号的取用(`= fetch`、`fetch,`、`fetch)`、`?? fetch`、`globalThis.fetch`)、`net` / `tls` / `http` / `https` / `http2` / `dgram`(`import`、`from`、`require(`、动态 `import(`,带不带 `node:` 前缀都算)、`new WebSocket(`、`undici`、`ws`、`node-fetch`、`axios`、`got`、MCP SDK 的 sse / streamableHttp 客户端等。规则:
 
 1. 每个命中的文件必须出现在登记表 `scripts/egress-registry.json` 里;每条登记包含 `file`、`kind`(`fixed`:对应清单中的某个 `category`;`dynamic`:目的地由审批的工具调用决定;`local-only`:只连 127.0.0.1/本机套接字/浏览器同源,例如 Web 客户端的 `fetch` 与服务器自己的监听)、`listedAs`(清单来源:产生 `EgressTarget` 的函数或配置对象)、一句 `reason`。
 2. 登记表里有而代码里没有网络调用的条目也失败(防止登记表腐烂)。
@@ -62,8 +64,8 @@ README 与文档站首页的零遥测承诺指向这份清单(随 PR 9 的文档
 
 ## 实现 PR 的测试清单(PR 6)
 
-- 一致性测试(见第 2 节),覆盖第 1 节每个 `category` 中当前存在的类型。
-- `check-egress`:未登记的网络调用点失败;登记了但代码里没有的条目失败;`fixed` 的 `listedAs` 找不到符号失败;通过用例(使用夹具目录,不扫真实仓库)。
+- 一致性测试(见第 2 节),覆盖第 1 节每个 `category` 中当前存在的类型。**(未实现,见状态。)**
+- `check-egress`:每种写法一个夹具文件(默认导入、`node:http2`、`fetch` 作默认参数、`require('net')`、`ws`、`node-fetch`、`axios`、`got`、MCP sse / streamableHttp)都会报错,普通字符串(`'tls'`、`'http'`)不误报;未登记的网络调用点失败;登记了但代码里没有的条目失败;`fixed` 的 `listedAs` 找不到符号失败;通过用例(使用夹具目录,不扫真实仓库)。
 - 清单不含路径、查询与凭据(脱敏用例);无法解析的地址被跳过。
 - stdio MCP 为 `local: true`、`origin: null`;停用的渠道 `enabled: false`。
 - **越权**:未登录 `GET /settings/egress-targets` 返回 401;响应不含任何密钥、`secrets` 引用名之外的值(引用名也不含)。

@@ -27,6 +27,7 @@ import { dataDirMasterKey, LEGACY_DATA_DIR_NAME, LegacyDataDirBusyError, migrate
 import { runAuthCommand } from './auth-cli.js';
 import { runSecretsCommand } from './secrets-cli.js';
 import { createLogger } from './log.js';
+import { acquireServerLock, runningServerPid } from './server-lock.js';
 import { attachWebSocket } from './ws.js';
 import { ChannelHub } from './channels/hub.js';
 import { WechatChannels } from './channels/wechat.js';
@@ -96,6 +97,18 @@ if (!process.env.FATCAT_AI_DATA_DIR) {
 }
 
 mkdirSync(config.dataDir, { recursive: true, mode: 0o700 });
+// 服务器锁:写入 pid,退出时删除;离线的 secrets migrate / rekey 看到有效的锁就拒绝执行
+const otherServer = runningServerPid(config.dataDir);
+if (otherServer !== null) {
+    logger.warn({ pid: otherServer }, 'another server process seems to be using this data directory');
+}
+let releaseLock: () => void = () => undefined;
+try {
+    releaseLock = acquireServerLock(config.dataDir);
+} catch (error) {
+    logger.warn({ code: (error as NodeJS.ErrnoException).code }, 'could not write the server lock file');
+}
+process.on('exit', () => releaseLock());
 const { conn, migrated } = await openStorage({ dataDir: config.dataDir });
 if (migrated.applied.length > 0) {
     logger.info({ applied: migrated.applied, backup: migrated.backupPath }, 'database migrated');

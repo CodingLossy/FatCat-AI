@@ -60,7 +60,11 @@ const secretsStatusRoute = createRoute({
     path: '/settings/secrets',
     tags: ['settings'],
     summary: 'Secrets storage status: file state, master key source and fingerprint (never any secret value)',
-    responses: { 200: json(SecretsStatus, 'Secrets status'), ...authErrors },
+    responses: {
+        200: json(SecretsStatus, 'Secrets status'),
+        409: problem('secrets.yaml and secrets.yaml.enc both exist; the message says what to do'),
+        ...authErrors,
+    },
 });
 
 const secretsMigrateRoute = createRoute({
@@ -112,7 +116,20 @@ export function settingsRoutes(deps: {
         })
         .openapi(secretsStatusRoute, (c) => {
             requireOwner(c);
-            return c.json(readSecretsStatus(deps.secrets.dataDir, deps.secrets.masterKey), 200);
+            try {
+                return c.json(readSecretsStatus(deps.secrets.dataDir, deps.secrets.masterKey), 200);
+            } catch (error) {
+                // 明文与密文并存:服务器启动时本来就会拒绝;这里给出处理办法,而不是 500
+                if (error instanceof SecretsMigrateError && error.code === 'conflict') {
+                    throw new ApiError(
+                        409,
+                        'conflict',
+                        'Conflict',
+                        'secrets.yaml and secrets.yaml.enc both exist in the data directory. Keep the one you want and move the other out of the data directory (for example rename secrets.yaml to secrets.yaml.old), then restart the server. Nothing was changed.',
+                    );
+                }
+                throw error;
+            }
         })
         .openapi(secretsMigrateRoute, (c) => {
             requireOwner(c);

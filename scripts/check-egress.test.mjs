@@ -68,3 +68,45 @@ test('everything registered passes; tests, comments and non-production dirs are 
     );
     assert.deepEqual(checkEgress(root), []);
 });
+
+// 每种写法一个文件,空登记表下都必须被报出来(X 审查 #34 里漏检的几种,加上其余网络库)
+const MISSED = {
+    'default-https.ts': "import https from 'https';\nexport const a = https;\n",
+    'named-http2.ts': "import { request } from 'node:http2';\nexport const a = request;\n",
+    'fetch-default-arg.ts': 'export const a = (fetchImpl = fetch) => fetchImpl("https://example.com");\n',
+    'fetch-assigned.ts': 'const f = fetch;\nexport const a = f;\n',
+    'fetch-passed.ts': 'export const a = run(fetch, 1);\nexport const b = run(1, fetch);\n',
+    'require-net.ts': "const net = require('net');\nexport const a = net;\n",
+    'bare-tls.ts': "import tls from 'tls';\nexport const a = tls;\n",
+    'dynamic-dgram.ts': "export const a = () => import('node:dgram');\n",
+    'ws.ts': "import { WebSocket as Ws } from 'ws';\nexport const a = Ws;\n",
+    'node-fetch.ts': "import nodeFetch from 'node-fetch';\nexport const a = nodeFetch;\n",
+    'axios.ts': "import axios from 'axios';\nexport const a = axios;\n",
+    'got.ts': "import got from 'got';\nexport const a = got;\n",
+    'mcp-sse.ts':
+        "import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';\nexport const a = SSEClientTransport;\n",
+    'mcp-http.ts':
+        "import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';\nexport const a = StreamableHTTPClientTransport;\n",
+};
+
+for (const [name, text] of Object.entries(MISSED)) {
+    test(`unregistered network use is reported: ${name}`, () => {
+        const root = fixture({ 'apps/server/src/egress.ts': EGRESS, [`packages/p/src/${name}`]: text }, []);
+        const errors = checkEgress(root);
+        assert.equal(errors.length, 1, errors.join('\n'));
+        assert.match(errors[0], new RegExp(`${name.replace('.', '\\.')}: uses a network API`));
+    });
+}
+
+test('plain strings and stdio MCP use are not mistaken for network use', () => {
+    const root = fixture(
+        {
+            'apps/server/src/egress.ts': EGRESS,
+            'packages/p/src/plain.ts':
+                "export const a = { security: 'tls', type: 'http', scheme: 'https' };\nexport const b = 'got it';\n" +
+                "import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';\n",
+        },
+        [],
+    );
+    assert.deepEqual(checkEgress(root), []);
+});
