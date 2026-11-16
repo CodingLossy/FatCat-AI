@@ -113,24 +113,23 @@ function VirtualList(props: { items: Item[]; onPick: (item: Item) => void; onNea
             <div style={{ height: win.totalHeight, position: 'relative' }}>
                 <div style={{ position: 'absolute', top: win.offsetTop, left: 0, right: 0 }}>
                     {items.slice(win.start, win.end).map((item) => (
-                        <button
-                            key={item.id}
-                            type="button"
-                            role="listitem"
-                            className="item-row"
-                            style={{ height: ROW_HEIGHT }}
-                            data-item-type={item.type}
-                            onClick={() => props.onPick(item)}
-                        >
-                            <span className="item-row-title">
-                                {isBranch(item) ? '▸ ' : ''}
-                                {item.title}
-                            </span>
-                            <span className="small muted item-row-meta">
-                                {item.type} · {item.updatedAt.slice(0, 10)}
-                                {isBranch(item) ? ` · ${item.contentCount ?? item.childCount}` : ''}
-                            </span>
-                        </button>
+                        <div key={item.id} role="listitem" className="item-row-wrap" style={{ height: ROW_HEIGHT }}>
+                            <button
+                                type="button"
+                                className="item-row"
+                                data-item-type={item.type}
+                                onClick={() => props.onPick(item)}
+                            >
+                                <span className="item-row-title">
+                                    {isBranch(item) ? '▸ ' : ''}
+                                    {item.title}
+                                </span>
+                                <span className="small muted item-row-meta">
+                                    {item.type} · {item.updatedAt.slice(0, 10)}
+                                    {isBranch(item) ? ` · ${item.contentCount ?? item.childCount}` : ''}
+                                </span>
+                            </button>
+                        </div>
                     ))}
                 </div>
             </div>

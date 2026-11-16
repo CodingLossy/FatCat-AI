@@ -92,6 +92,16 @@ describe('POST /items/{id}/ask', () => {
     });
 });
 
+describe('ask 的会话标题', () => {
+    it('标题里的双向控制符与换行不会出现在会话标题里', async () => {
+        const { req, ownerId, cat } = await setup();
+        const root = cat('novels.root', 'novels', `书\u202e名\n第二行\u2066`);
+        const res = ItemAskResponse.parse(await (await ask(req, root.id)).json());
+        const title = s.repos.sessions.get(ownerId, res.sessionId)!.title;
+        expect(title).toBe('关于「书 名 第二行」');
+    });
+});
+
 describe('弱 ETag', () => {
     it('读接口带 ETag;匹配时 304 无响应体;内容变化后 200 与新 ETag;content / changes 不加', async () => {
         const { req, cat } = await setup();

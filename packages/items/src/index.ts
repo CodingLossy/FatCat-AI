@@ -35,6 +35,7 @@ export {
     ASK_MAX_CHARS,
     ASK_MAX_ENTRIES,
     buildAskContext,
+    clean,
     isUntrustedItem,
     type AskContext,
     type AskEntry,

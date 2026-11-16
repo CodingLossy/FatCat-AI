@@ -16,12 +16,16 @@ const isNoise = (code: number) =>
     (code >= 0x7f && code <= 0x9f) ||
     (code >= 0x200b && code <= 0x200f) ||
     (code >= 0x202a && code <= 0x202e) ||
-    (code >= 0x2066 && code <= 0x2069);
+    (code >= 0x2066 && code <= 0x2069) ||
+    code === 0x180e ||
+    code === 0xfeff;
 
-function clean(text: string, max: number): string {
+/** 清洗外部文字:控制字符与不可见字符换成空格、折叠空白、按码点截断(不切断代理对)。 */
+export function clean(text: string, max: number): string {
     const stripped = Array.from(text, (ch) => (isNoise(ch.charCodeAt(0)) ? ' ' : ch)).join('');
     const flat = stripped.replace(/\s+/g, ' ').trim();
-    return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+    const points = Array.from(flat);
+    return points.length > max ? `${points.slice(0, max - 1).join('')}…` : flat;
 }
 
 /** 条目文字来自外部(邮件主题、联系人显示名):含它们的会话要视为读过不可信内容。 */
