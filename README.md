@@ -75,6 +75,8 @@ printf 'DEEPSEEK_API_KEY: "%s"\n' '<你的密钥>' | \
 
 > 从 AI-Personal 升级:compose 服务名由 `ai-personal` 改为 `fatcat-ai`,数据卷 `ai-personal-data` 不变,数据不受影响。升级前先用旧版的 compose 文件执行 `docker compose -f docker/docker-compose.yml down`,或者升级后用 `docker compose -f docker/docker-compose.yml up -d --build --remove-orphans` 启动;否则旧容器会继续运行并占着 8787 端口,新容器无法启动。
 
+**公网部署**(2 GB 机器、Caddy 自动 HTTPS、DNSPod 示例、备份与升级)见 [Docker 一键部署指南](docs/deploy/docker.md)。
+
 默认只监听 127.0.0.1;从其他机器访问请经反向代理并启用 HTTPS。从其他机器或经过反向代理初始化时,需要启动日志里打印的一次性设置码(`docker compose -f docker/docker-compose.yml logs`)。
 
 ### 3. 用 curl 完成一次对话(不开 Web UI)

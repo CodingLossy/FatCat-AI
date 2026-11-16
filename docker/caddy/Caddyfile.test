@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+#
+# 仅供 CI 的部署冒烟与本地试验:只监听 HTTP,不申请证书、不访问公网。不要用于生产。
+{
+	auto_https off
+	admin off
+}
+
+:80 {
+	reverse_proxy fatcat-ai:8787 {
+		flush_interval -1
+	}
+}

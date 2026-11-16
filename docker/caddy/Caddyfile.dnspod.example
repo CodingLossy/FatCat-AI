@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+#
+# DNS-01 验证(DNSPod / 腾讯云 DNS):服务器在内网、或 80 端口不通时使用,不需要公网入站就能拿到证书。
+# 需要用 docker/caddy/Dockerfile.dnspod 构建带插件的 Caddy,配合 docker-compose.dnspod.yml 使用。
+# API 密钥从只读挂载的文件里读取({file.路径}),不放进环境变量或本文件。
+# 示例,不保证长期可用:插件由社区维护,见 docs/deploy/docker.md。
+{
+	email {$ACME_EMAIL}
+	acme_dns tencentcloud {
+		secret_id {file./run/secrets/tencentcloud_secret_id}
+		secret_key {file./run/secrets/tencentcloud_secret_key}
+	}
+}
+
+{$FATCAT_AI_DOMAIN} {
+	@static not path /api/*
+	encode @static zstd gzip
+
+	header {
+		-Server
+	}
+
+	reverse_proxy fatcat-ai:8787 {
+		flush_interval -1
+		lb_try_duration 10s
+		lb_try_interval 500ms
+		health_uri /healthz
+		health_interval 30s
+	}
+}

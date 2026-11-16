@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+#
+# 生产部署:FatCat-AI + Caddy(自动 HTTPS)。完整步骤见 docs/deploy/docker.md。
+# 用法(在 docker/ 目录下):
+#   cp .env.example .env            # 填域名与邮箱
+#   mkdir -p secrets && 生成主密钥  # 见文档第 3 步
+#   docker compose -f docker-compose.prod.yml up -d --build
+# 只有 caddy 发布端口(80/443);应用容器不发布端口,只在内部网络里被 caddy 访问。
+name: fatcat-ai
+
+services:
+  fatcat-ai:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        SOURCE_URL: ${FATCAT_AI_SOURCE_URL:-}
+    # 发布镜像后可改为 ghcr.io/codinglossy/fatcat-ai:<标签>,并用 `docker compose pull` 代替 --build
+    image: ${FATCAT_AI_IMAGE:-fatcat-ai:local}
+    restart: unless-stopped
+    # 2 GB 机器:应用容器上限 512 MiB(空闲 ≤ 250 MiB、对话峰值 < 400 MiB,ADR 0018);
+    # 不设 swap 额外余量,超限时容器被杀并按 restart 策略重启,而不是拖垮整机
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1.5
+    pids_limit: 256
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      # 修改版部署者应改为自己的修改版源码地址(AGPL §13)
+      FATCAT_AI_SOURCE_URL: ${FATCAT_AI_SOURCE_URL:-}
+      # 一律经 HTTPS 访问,会话 Cookie 始终带 Secure
+      FATCAT_AI_COOKIE_SECURE: ${FATCAT_AI_COOKIE_SECURE:-always}
+      # 只用于创建主人账户:经反向代理的请求算「非本机」,需要设置码(至少 8 位)。
+      # 不设置时服务器启动日志会打印一次性设置码;账户创建后可以清空
+      FATCAT_AI_SETUP_CODE: ${FATCAT_AI_SETUP_CODE:-}
+      # 主密钥只通过文件传入(ADR 0026),不放进环境变量
+      FATCAT_MASTER_KEY_FILE: /run/secrets/fatcat_master_key
+    secrets:
+      - fatcat_master_key
+    volumes:
+      - fatcat-ai-data:/data
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:8787/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  caddy:
+    image: caddy:2.11-alpine
+    restart: unless-stopped
+    depends_on:
+      fatcat-ai:
+        condition: service_healthy
+    mem_limit: 128m
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      FATCAT_AI_DOMAIN: ${FATCAT_AI_DOMAIN:?在 .env 里设置 FATCAT_AI_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?在 .env 里设置 ACME_EMAIL}
+    volumes:
+      - ${FATCAT_AI_CADDYFILE:-./caddy/Caddyfile.example}:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+secrets:
+  fatcat_master_key:
+    file: ${FATCAT_MASTER_KEY_PATH:-./secrets/master.key}
+
+volumes:
+  fatcat-ai-data:
+  caddy-data:
+  caddy-config:

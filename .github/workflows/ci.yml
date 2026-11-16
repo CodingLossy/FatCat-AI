@@ -195,3 +195,49 @@ jobs:
       - name: Remove container
         if: always()
         run: docker rm -f fatcat-ai || true
+
+  deploy-smoke:
+    name: deploy smoke (compose + Caddy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate compose files and Caddyfiles
+        working-directory: docker
+        env:
+          FATCAT_AI_DOMAIN: fatcat.example.com
+          ACME_EMAIL: ci@example.com
+        run: |
+          set -x
+          mkdir -p secrets
+          openssl rand -hex 32 > secrets/master.key
+          docker compose -f docker-compose.prod.yml config -q
+          docker compose -f docker-compose.prod.yml -f docker-compose.dnspod.yml config -q
+          for f in Caddyfile.example Caddyfile.test; do
+            docker run --rm -e FATCAT_AI_DOMAIN -e ACME_EMAIL -v "$PWD/caddy/$f:/etc/caddy/Caddyfile:ro" caddy:2.11-alpine caddy validate --config /etc/caddy/Caddyfile
+            docker run --rm -v "$PWD/caddy/$f:/etc/caddy/Caddyfile:ro" caddy:2.11-alpine sh -c 'caddy fmt /etc/caddy/Caddyfile | diff /etc/caddy/Caddyfile -'
+          done
+      - name: Start the production compose with the HTTP-only Caddyfile
+        working-directory: docker
+        env:
+          FATCAT_AI_DOMAIN: fatcat.example.com
+          ACME_EMAIL: ci@example.com
+          FATCAT_AI_CADDYFILE: ./caddy/Caddyfile.test
+          FATCAT_AI_SETUP_CODE: ci-smoke-setup-code
+        run: |
+          # 密钥文件要让容器里的 node 用户(uid 1000)读得到
+          sudo chown 1000:1000 secrets/master.key
+          chmod 400 secrets/master.key
+          docker compose -f docker-compose.prod.yml -f docker-compose.smoke.yml up -d --build
+      - name: Smoke through Caddy (healthz, index, setup code, WebSocket, SSE)
+        run: node scripts/deploy-smoke.mjs http://127.0.0.1 ci-smoke-setup-code
+      - name: Show logs
+        if: failure()
+        working-directory: docker
+        run: docker compose -f docker-compose.prod.yml -f docker-compose.smoke.yml logs
+      - name: Tear down
+        if: always()
+        working-directory: docker
+        run: docker compose -f docker-compose.prod.yml -f docker-compose.smoke.yml down -v
