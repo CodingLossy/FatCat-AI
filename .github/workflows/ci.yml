@@ -81,6 +81,7 @@ jobs:
         run: node --test scripts/check-openapi-breaking.test.mjs
       - name: The one-off exception list must be empty once the API is frozen
         run: |
+          test -f .github/oasdiff-err-ignore.txt || { echo "::error::.github/oasdiff-err-ignore.txt is missing"; exit 1; }
           if grep -vE '^\s*(#|$)' .github/oasdiff-err-ignore.txt; then
             echo "::warning::.github/oasdiff-err-ignore.txt has entries; each needs the owner's approval in this PR."
           fi
