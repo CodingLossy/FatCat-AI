@@ -118,7 +118,7 @@ export function MailPage() {
                     </button>
                 </div>
             )}
-            <div className="mail-layout">
+            <div className={`mail-layout${open ? ' has-open' : ''}`}>
                 <ul className="list mail-list">
                     {messages.map((m) => (
                         <li key={m.id}>
@@ -145,6 +145,9 @@ export function MailPage() {
                 <section className="mail-view" aria-live="polite">
                     {open ? (
                         <>
+                            <button type="button" className="mail-back" onClick={() => setOpen(null)}>
+                                {t('mail.back')}
+                            </button>
                             <h2>{open.subject || t('mail.noSubject')}</h2>
                             <p className="small muted">
                                 {who(open)} → {open.to.map((a) => a.address).join(', ')}

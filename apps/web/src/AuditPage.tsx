@@ -49,40 +49,42 @@ export function AuditPage() {
             {items === null ? <p className="muted">{t('common.loading')}</p> : null}
             {items?.length === 0 ? <p className="muted">{t('audit.empty')}</p> : null}
             {items && items.length > 0 ? (
-                <table className="audit-table">
-                    <thead>
-                        <tr>
-                            <th>{t('audit.time')}</th>
-                            <th>{t('audit.tool')}</th>
-                            <th>{t('audit.decision')}</th>
-                            <th>{t('audit.outcome')}</th>
-                            <th>{t('audit.summary')}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {items.map((a) => (
-                            <tr key={a.id} data-action={a.action}>
-                                <td className="small">{new Date(a.at).toLocaleString(locale)}</td>
-                                <td>
-                                    {a.toolName ?? '—'}
-                                    {a.risk ? (
-                                        <span className={`badge risk-${a.risk}`}>{t(`risk.${a.risk}`)}</span>
-                                    ) : null}
-                                </td>
-                                <td>
-                                    {a.decision ? t(`audit.decision.${a.decision}`) : t(`audit.action.${a.action}`)}
-                                </td>
-                                <td className={a.outcome === 'error' ? 'error' : ''}>
-                                    {t(`audit.outcome.${a.outcome}`)}
-                                </td>
-                                <td className="small">
-                                    {a.summary}
-                                    {a.error ? <div className="error">{a.error}</div> : null}
-                                </td>
+                <div className="table-scroll">
+                    <table className="audit-table">
+                        <thead>
+                            <tr>
+                                <th>{t('audit.time')}</th>
+                                <th>{t('audit.tool')}</th>
+                                <th>{t('audit.decision')}</th>
+                                <th>{t('audit.outcome')}</th>
+                                <th>{t('audit.summary')}</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {items.map((a) => (
+                                <tr key={a.id} data-action={a.action}>
+                                    <td className="small">{new Date(a.at).toLocaleString(locale)}</td>
+                                    <td>
+                                        {a.toolName ?? '—'}
+                                        {a.risk ? (
+                                            <span className={`badge risk-${a.risk}`}>{t(`risk.${a.risk}`)}</span>
+                                        ) : null}
+                                    </td>
+                                    <td>
+                                        {a.decision ? t(`audit.decision.${a.decision}`) : t(`audit.action.${a.action}`)}
+                                    </td>
+                                    <td className={a.outcome === 'error' ? 'error' : ''}>
+                                        {t(`audit.outcome.${a.outcome}`)}
+                                    </td>
+                                    <td className="small">
+                                        {a.summary}
+                                        {a.error ? <div className="error">{a.error}</div> : null}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             ) : null}
             {cursor ? (
                 <button type="button" onClick={() => void more()}>

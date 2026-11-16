@@ -44,6 +44,20 @@ export function Shell({
     const [sessions, setSessions] = useState<Session[]>([]);
     const [sessionError, setSessionError] = useState<string | null>(null);
     const [pending, setPending] = useState<{ kind: 'one'; id: string } | { kind: 'all' } | null>(null);
+    // 手机宽度:侧栏收成抽屉。记下打开时所在的路由:换页后两者不相等,抽屉自动关闭;按 Esc 也会关闭。
+    // 桌面宽度下这个状态没有视觉效果。
+    const routeKey = routePath(route);
+    const [navOpenAt, setNavOpenAt] = useState<string | null>(null);
+    const navOpen = navOpenAt === routeKey;
+    const setNavOpen = (open: boolean) => setNavOpenAt(open ? routeKey : null);
+    useEffect(() => {
+        if (!navOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setNavOpenAt(null);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [navOpen]);
 
     const reloadSessions = useCallback(
         () =>
@@ -93,7 +107,20 @@ export function Shell({
 
     return (
         <div className="shell">
-            <aside className="sidebar">
+            <header className="topbar">
+                <button
+                    type="button"
+                    className="topbar-menu"
+                    aria-expanded={navOpen}
+                    aria-controls="sidebar"
+                    onClick={() => setNavOpen(!navOpen)}
+                >
+                    {t('nav.menu')}
+                </button>
+                <span className="topbar-title">FatCat-AI</span>
+            </header>
+            {navOpen ? <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" /> : null}
+            <aside id="sidebar" className={`sidebar${navOpen ? ' open' : ''}`}>
                 <Link to={{ name: 'home' }} className="button primary new-chat">
                     {t('nav.newChat')}
                 </Link>

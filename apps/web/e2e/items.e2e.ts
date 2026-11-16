@@ -122,6 +122,8 @@ async function drill(page: Page, mobile: boolean): Promise<void> {
         if (mobile) await page.getByRole('button', { name: '分类' }).first().click();
         await page.getByRole('button', { name, exact: true }).first().click();
     };
+    // 手机宽度下导航在抽屉里
+    if (mobile) await page.getByRole('button', { name: '菜单' }).click();
     await page.getByRole('link', { name: '知识地图' }).click();
     await page.getByRole('button', { name: '立即同步' }).click();
 
@@ -180,7 +182,7 @@ test('手机宽度:树收进抽屉,列表整宽,同样能下钻', async ({ brows
     await page.getByLabel('用户名').fill('owner');
     await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: /登录/ }).click();
-    await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '菜单' })).toBeVisible();
     await drill(page, true);
     await ctx.close();
 });
