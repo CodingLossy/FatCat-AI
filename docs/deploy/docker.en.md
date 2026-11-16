@@ -98,14 +98,16 @@ DNS-01 proves domain ownership with a temporary TXT record, so no inbound port 8
 > **An example with no long-term guarantee.** It uses the community Caddy plugin `github.com/caddy-dns/tencentcloud` (MIT, built on the MIT `github.com/libdns/tencentcloud`), built with `xcaddy` in `docker/caddy/Dockerfile.dnspod` and pinned by the `CADDY_VERSION` and `DNS_PLUGIN_VERSION` build args. It is not a dependency of this project. Read the plugin's changelog before upgrading (why this plugin: ADR 0031 section 5).
 
 1. In the Tencent Cloud console create a **sub-account** limited to managing this domain's DNS records, and generate an API key (SecretId and SecretKey).
-2. Write them to two files (owner 1000, mode 400):
+2. Write them to two files. **The owner must be root (0:0), not 1000**: the Caddy container runs as root, but the compose file drops all of its capabilities (keeping only the one for binding 80/443), so root cannot bypass file permissions and a file owned by 1000 with mode 400 is unreadable, making DNS-01 fail with `Permission denied`.
 
 ```bash
 printf '%s' 'your-SecretId'  > secrets/tencentcloud_secret_id
 printf '%s' 'your-SecretKey' > secrets/tencentcloud_secret_key
-sudo chown 1000:1000 secrets/tencentcloud_secret_id secrets/tencentcloud_secret_key
+sudo chown 0:0 secrets/tencentcloud_secret_id secrets/tencentcloud_secret_key
 sudo chmod 400 secrets/tencentcloud_secret_id secrets/tencentcloud_secret_key
 ```
+
+(The master key `secrets/master.key` is the opposite: the app container's `node` user reads it, so its owner is 1000.)
 
 3. Start with the DNSPod overlay:
 
@@ -151,7 +153,7 @@ docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai node d
 docker compose -f docker-compose.prod.yml start fatcat-ai
 ```
 
-- Replace `secrets migrate` with `secrets cleanup` to delete the plaintext leftover.
+- **After `secrets migrate` succeeds and the app works, run `secrets cleanup` right away** (replace `secrets migrate` with `secrets cleanup` above) to delete the plaintext leftover `secrets.yaml.migrated`; until then it is still plaintext, so don't leave it around.
 - Rotate the master key: write the new key to a file (for example `secrets/new.key`, readable by the container), mount it with `-v "$PWD/secrets/new.key:/run/new.key:ro"`, run `... secrets rekey --new-key-file /run/new.key`, then replace `secrets/master.key` with the new key before starting the app.
 - **server.lock**: after the app is killed hard, a stale `server.lock` can stay in the volume and the commands report "the server seems to be running". **Once you have confirmed the server is stopped**, delete it: `docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai rm /data/server.lock`.
 

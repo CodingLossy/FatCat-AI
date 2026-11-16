@@ -221,6 +221,17 @@ jobs:
             docker run --rm -e FATCAT_AI_DOMAIN -e ACME_EMAIL -v "$PWD/caddy/$f:/etc/caddy/Caddyfile:ro" caddy:2.11-alpine caddy validate --config /etc/caddy/Caddyfile
             docker run --rm -v "$PWD/caddy/$f:/etc/caddy/Caddyfile:ro" caddy:2.11-alpine sh -c 'caddy fmt /etc/caddy/Caddyfile | diff /etc/caddy/Caddyfile -'
           done
+      - name: Caddy (all capabilities dropped) can read root-owned key files but not uid-1000 ones
+        run: |
+          # docker/docker-compose.prod.yml 给 caddy 设了 cap_drop ALL:root 没有绕过文件权限的能力,
+          # 所以 DNS-01 的密钥文件属主必须是 root(docs/deploy/docker.md 第 7 节)
+          T="$(mktemp -d)"
+          echo dummy > "$T/root-owned"; echo dummy > "$T/uid1000-owned"
+          sudo chown 0:0 "$T/root-owned"; sudo chown 1000:1000 "$T/uid1000-owned"
+          sudo chmod 400 "$T/root-owned" "$T/uid1000-owned"
+          run() { docker run --rm --cap-drop ALL --cap-add NET_BIND_SERVICE -v "$T/$1:/run/secrets/x:ro" caddy:2.11-alpine cat /run/secrets/x; }
+          run root-owned
+          if run uid1000-owned; then echo "uid-1000 file was readable: the documented owner rule is wrong"; exit 1; fi
       - name: Start the production compose with the HTTP-only Caddyfile
         working-directory: docker
         run: |
