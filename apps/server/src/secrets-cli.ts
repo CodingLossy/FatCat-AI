@@ -3,7 +3,17 @@
 
 // 离线命令(ADR 0026):secrets migrate / rekey / cleanup。`apps/cli` 目前只是占位,所以命令放在服务器入口。
 // 输出里只有键数、指纹与文件名,没有任何密钥值;不接受命令行形式的密钥。
-import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from 'node:fs';
+import {
+    closeSync,
+    existsSync,
+    fsyncSync,
+    openSync,
+    readdirSync,
+    readFileSync,
+    renameSync,
+    rmSync,
+    writeSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import {
     cleanupMigrated,
@@ -75,9 +85,11 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
             io.out(
                 'The old plaintext file is now secrets.yaml.migrated. Check that the server works, then run "secrets cleanup".',
             );
-            if (r.plaintextBackups.kept > 0) {
+            // 只看 backups/ 里实际还在的明文文件:keep 模式下的、以及 encrypt / delete 处理失败而保留的
+            const left = readdirSync(join(io.dataDir, SECRETS_BACKUP_DIR)).filter((f) => /^secrets-.*\.yaml$/.test(f));
+            if (left.length > 0) {
                 io.out(
-                    `Warning: ${r.plaintextBackups.kept} plaintext backup(s) are still in backups/ and hold your keys unencrypted; re-run with --plaintext-backups encrypt or delete to remove them.`,
+                    `Warning: ${left.length} plaintext backup(s) in ${SECRETS_BACKUP_DIR}/ still hold your keys unencrypted: ${left.join(', ')}. Delete them by hand once the encrypted file works (next time, pass --plaintext-backups encrypt or delete to migrate).`,
                 );
             }
             return 0;

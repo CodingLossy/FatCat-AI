@@ -187,4 +187,26 @@ describe('secrets commands', () => {
             expect(decryptSecrets(readFileSync(path, 'utf8'), newKey)).toContain('MODEL_KEY');
         }
     });
+
+    it('migrate warns about kept plaintext backups by file name, and not when they were encrypted or deleted', () => {
+        writeFileSync(join(dir, 'secrets.yaml'), "MODEL_KEY: 'sk-test-cli-0000000000'\n");
+        expect(run(['migrate'])).toBe(0);
+        const kept = readdirSync(join(dir, 'backups')).filter((n) => n.endsWith('.yaml'));
+        expect(kept).toHaveLength(1);
+        const warning = out.find((l) => l.startsWith('Warning:'))!;
+        expect(warning).toContain(kept[0]!);
+        expect(out.join('\n')).not.toContain('sk-test-cli');
+        // 警告里的做法可行:删掉列出的文件之后,备份目录里不再有明文
+        rmSync(join(dir, 'backups', kept[0]!));
+        expect(readdirSync(join(dir, 'backups')).filter((n) => n.endsWith('.yaml'))).toEqual([]);
+
+        for (const mode of ['encrypt', 'delete']) {
+            rmSync(dir, { recursive: true, force: true });
+            dir = mkdtempSync(join(tmpdir(), 'fatcat-cli-'));
+            out = [];
+            writeFileSync(join(dir, 'secrets.yaml'), "MODEL_KEY: 'sk-test-cli-0000000000'\n");
+            expect(run(['migrate', '--plaintext-backups', mode])).toBe(0);
+            expect(out.some((l) => l.startsWith('Warning:'))).toBe(false);
+        }
+    });
 });
