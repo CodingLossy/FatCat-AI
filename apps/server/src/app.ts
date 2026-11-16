@@ -22,7 +22,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { secureHeaders } from 'hono/secure-headers';
 import { authMiddleware } from './auth/middleware.js';
 import type { LoginChallenges } from './auth/login-challenge.js';
-import type { FailureLimiter } from './auth/rate-limit.js';
+import type { AttemptLimiter } from './auth/rate-limit.js';
 import type { ServerConfig } from './config.js';
 import type { AppEnv } from './env.js';
 import { ApiError, handleError, notFound, problemResponse } from './errors.js';
@@ -83,9 +83,9 @@ export interface AppDeps {
     now?: () => Date;
     /** 请求来源地址;默认取 TCP 对端地址(不信任 X-Forwarded-For)。 */
     clientIp?: (c: Context<AppEnv>) => string;
-    loginLimiter?: FailureLimiter;
+    loginLimiter?: AttemptLimiter;
     /** 第二因素的失败限速(ADR 0027 第 5 节);不给时每分钟 5 次。 */
-    totpLimiter?: FailureLimiter;
+    totpLimiter?: AttemptLimiter;
     /** 登录临时凭证(内存);测试可注入带假时钟的实例。 */
     challenges?: LoginChallenges;
     /** 图片附件的文件(ADR 0020);不给时用内存实现,只适合测试与导出 OpenAPI 文档。 */

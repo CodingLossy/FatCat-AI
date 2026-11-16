@@ -26,6 +26,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
+import { evaluateCreep } from './budget.mjs';
 import { startFakeImap } from './fake-imap.mjs';
 
 const MAILS = Number(process.env.MAILS ?? 10_000);
@@ -35,9 +36,8 @@ const SAMPLE_GAP_MS = Number(process.env.SAMPLE_GAP_MS ?? 5000);
 const CHECK = process.env.CHECK === '1';
 const ATTACH = process.env.ATTACH?.replace(/\/+$/, '');
 const WINDOWS = process.platform === 'win32';
-/** ADR 0018 第 2 节:规则 3(空闲 60 秒后 − 负载前空闲)与规则 4(第 3 次 − 第 2 次)的上限。 */
+/** ADR 0018 第 2 节:规则 3(空闲 60 秒后 − 负载前空闲)的上限;规则 4 在 budget.mjs。 */
 const ROLLBACK_LIMIT_MIB = 60;
-const CREEP_LIMIT_MIB = 5;
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
 if (process.platform !== 'linux' && !WINDOWS) {
@@ -386,13 +386,8 @@ try {
                     `run ${r.run}: ${delta} MiB above idle after ${SETTLE_S}s (limit ${ROLLBACK_LIMIT_MIB}, ADR 0018 rule 3)`,
                 );
         }
-        if (results.length >= 3) {
-            const creep = round1(results[2].settled - results[1].settled);
-            if (creep > CREEP_LIMIT_MIB)
-                errors.push(`run 3 is ${creep} MiB above run 2 (limit ${CREEP_LIMIT_MIB}, ADR 0018 rule 4)`);
-        } else {
-            console.log(`ADR 0018 rule 4: skipped (needs RUNS >= 3, got ${results.length})`);
-        }
+        if (results.length >= 3) errors.push(...evaluateCreep(results.map((r) => r.settled)));
+        else console.log(`ADR 0018 rule 4: skipped (needs RUNS >= 3, got ${results.length})`);
         for (const e of errors) console.log(`::error::${e}`);
         if (errors.length === 0) console.log(`ADR 0018 ${results.length >= 3 ? 'rules 3 and 4' : 'rule 3'}: passed`);
         process.exitCode = errors.length > 0 ? 1 : 0;
