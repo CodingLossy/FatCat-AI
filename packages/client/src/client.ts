@@ -22,6 +22,8 @@ import type {
     Item,
     ItemContent,
     ItemCounts,
+    ItemRel,
+    ItemRelatedPage,
     ItemSort,
     ItemSubtree,
     LoginChallenge,
@@ -378,6 +380,9 @@ export function createClient(options: ClientOptions) {
             subtree: (id: string, params: { depth?: number; limitPerNode?: number } = {}) =>
                 t.json<ItemSubtree>(`/items/${enc(id)}/subtree`, { query: { ...params } }),
             content: (id: string) => t.json<ItemContent>(`/items/${enc(id)}/content`),
+            /** 非 primary 边(出边与入边),如人物提及的邮件(ADR 0029)。 */
+            related: (id: string, params: PageParams & { rel?: ItemRel } = {}) =>
+                t.json<ItemRelatedPage>(`/items/${enc(id)}/related`, { query: { ...params } }),
             search: (params: { q: string; type?: string; under?: string; limit?: number }) =>
                 t.json<Page<Item>>('/items/search', { query: { ...params } }),
             changes: (params: PageParams = {}) => t.json<Page<Item>>('/items/changes', { query: { ...params } }),

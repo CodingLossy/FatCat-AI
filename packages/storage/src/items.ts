@@ -3,7 +3,7 @@
 
 // 条目索引(ADR 0003、ADR 0012 第 1 节):upsert / 移动 / 软删除都在事务中沿祖先链维护计数;recount 用递归 CTE 校正。
 // 计数只统计未删除的条目,只沿 primary contains 边。
-import type { Item, ItemCounts, ItemKind, ItemSort } from '@fatcat-ai/shared';
+import type { Item, ItemCounts, ItemKind, ItemRel, ItemSort } from '@fatcat-ai/shared';
 import { z } from 'zod';
 import { decodeCursor, encodeCursor, type Page } from './cursor.js';
 import type { Connection } from './db.js';
@@ -88,6 +88,7 @@ export interface ItemInput {
 }
 
 const childCursor = z.object({ k: z.union([z.string(), z.number()]), id: z.string() });
+const relatedCursor = z.object({ d: z.enum(['out', 'in']), r: z.string(), i: z.string() });
 const changeCursor = z.object({ t: z.string(), id: z.string() });
 
 /** 递归 CTE:某个条目的全部未删除后代(沿 primary 边),含深度。 */
@@ -181,6 +182,14 @@ export function createItemRepository(conn: Connection, now: () => Date) {
             'UPDATE items SET child_count = ?, descendant_count = ? WHERE id = ?',
         ),
         contentOf: sqlite.prepare<{ root: string }, { n: number }>(CONTENT_COUNT),
+        deleteRelated: sqlite.prepare<[string, string]>(
+            'DELETE FROM item_edges WHERE parent_id = ? AND rel = ? AND primary_edge = 0',
+        ),
+        insertRelated: sqlite.prepare(
+            `INSERT OR IGNORE INTO item_edges (parent_id, child_id, rel, position, primary_edge)
+             SELECT @from, i.id, @rel, @position, 0 FROM items i
+             WHERE i.id = @to AND i.owner_id = @ownerId AND i.deleted_at IS NULL`,
+        ),
     };
 
     function contentCount(id: string): number {
@@ -390,6 +399,64 @@ export function createItemRepository(conn: Connection, now: () => Date) {
             return q.ancestors.all({ id }).map((row) => present(row));
         },
         children,
+        /**
+         * 重算某个条目的非 primary 出边:该 rel 的旧边全部换成 toIds(按给定顺序,只收主人自己的未删除条目)。
+         * 非 primary 边不进计数,所以不动 child_count / descendant_count。
+         */
+        relate(ownerId: string, fromId: string, rel: Exclude<ItemRel, 'contains'>, toIds: readonly string[]): void {
+            sqlite.transaction(() => {
+                const from = q.get.get(ownerId, fromId);
+                if (!from || from.deletedAt) throw new StorageError('the item does not exist');
+                q.deleteRelated.run(fromId, rel);
+                toIds.forEach((to, position) => {
+                    if (to !== fromId) q.insertRelated.run({ from: fromId, to, rel, position, ownerId });
+                });
+            })();
+        },
+        /** 非 primary 边(出边与入边);对方已软删除或不属于该 owner 的不返回。游标按 (direction, rel, id) 排序。 */
+        related(
+            ownerId: string,
+            id: string,
+            page: { cursor?: string | undefined; limit: number; rel?: ItemRel | undefined },
+        ): Page<{ item: Item; rel: ItemRel; direction: 'out' | 'in' }> {
+            const after = page.cursor ? decodeCursor(page.cursor, relatedCursor) : null;
+            const rows = sqlite
+                .prepare<Record<string, unknown>, Row & { rel: ItemRel; direction: 'out' | 'in' }>(
+                    `SELECT * FROM (
+                       SELECT ${COLUMNS}, e.rel AS rel, 'out' AS direction FROM item_edges e
+                       JOIN items i ON i.id = e.child_id
+                       WHERE e.parent_id = @id AND e.primary_edge = 0 AND i.owner_id = @ownerId AND i.deleted_at IS NULL
+                       UNION ALL
+                       SELECT ${COLUMNS}, e.rel AS rel, 'in' AS direction FROM item_edges e
+                       JOIN items i ON i.id = e.parent_id
+                       WHERE e.child_id = @id AND e.primary_edge = 0 AND i.owner_id = @ownerId AND i.deleted_at IS NULL
+                     ) WHERE (@rel IS NULL OR rel = @rel)
+                       AND (@d IS NULL OR (direction, rel, id) > (@d, @r, @i))
+                     ORDER BY direction, rel, id LIMIT @limit`,
+                )
+                .all({
+                    id,
+                    ownerId,
+                    rel: page.rel ?? null,
+                    d: after?.d ?? null,
+                    r: after?.r ?? null,
+                    i: after?.i ?? null,
+                    limit: page.limit + 1,
+                });
+            const entries = rows.slice(0, page.limit).map((row) => ({
+                item: present(row),
+                rel: row.rel,
+                direction: row.direction,
+            }));
+            const last = rows[page.limit - 1];
+            return {
+                items: entries,
+                nextCursor:
+                    rows.length > page.limit && last
+                        ? encodeCursor({ d: last.direction, r: last.rel, i: last.id })
+                        : null,
+            };
+        },
         counts(ownerId: string, id: string): ItemCounts | null {
             const row = q.get.get(ownerId, id);
             if (!row || row.deletedAt) return null;
