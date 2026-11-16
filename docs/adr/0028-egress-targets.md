@@ -1,6 +1,6 @@
 # ADR 0028 · 外连目标清单
 
-- 状态:已采纳(M5b PR 3);部分实现(M5b PR 6 `feat/egress-targets` 实现了清单、设置页与 `check:egress`;第 2 节的运行时一致性测试 `apps/server/src/egress.test.ts` 尚未实现,X 审查 #24–#36 时确认,待办)
+- 状态:已实现(M5b PR 3 采纳;PR 6 `feat/egress-targets` 实现清单、设置页与 `check:egress`;`test/egress-runtime` 实现第 2 节的运行时一致性测试 `apps/server/src/egress.test.ts`)
 - 日期:2026-11-13
 - 相关:开发计划第 10 节(零遥测)、ADR 0006(模型配置)、ADR 0011/0014/0022(邮件、渠道)、M5b 方案 PR 6
 - 依据:开发计划验收项 4——设置页的外连目标清单与实际外连一致。
@@ -32,11 +32,11 @@
 - `update-check`:**当前代码里没有更新检查,清单中不出现这一类**。将来加入时必须在同一个 PR 里登记(`check-egress` 会强制)。
 - `web.fetch` 之类由用户逐次审批、目的地由对话决定的工具调用不是固定目标,不列在清单里;设置页在清单下方用一句话说明,并且这类调用点在登记表里标 `dynamic`(第 3 节)。
 
-### 2. 一致性测试(`apps/server/src/egress.test.ts`,**尚未实现**)
+### 2. 一致性测试(`apps/server/src/egress.test.ts`)
 
-目前清单与代码的一致性只靠第 3 节的静态扫描与登记表约束;下面是计划中的运行时测试。
+清单与代码的一致性由第 3 节的静态扫描、登记表与下面的运行时测试共同约束。
 
-假端点下把每一类外连各走一遍(模型、嵌入、语音、IMAP/SMTP、微信 iLink、HTTP/SSE 类 MCP):用 `node --import` 式的 `fetch`/`net`/`tls` 钩子记录所有真实目的地(只记录 origin),断言每个目的地都能在 `GET /settings/egress-targets` 的 `origin` 中找到;反过来,清单中 `enabled` 的项必须至少被某个路径用到过(防止清单里留着不再使用的项)。
+假端点下把每一类外连各走一遍(模型、嵌入、语音、IMAP/SMTP、微信 iLink;当前 MCP 只有 stdio,断言其为 `local`,HTTP/SSE 类 MCP 出现时必须同 PR 加入):用钩子(`apps/server/test/egress-hook.mjs`:拦截 `fetch` 与 `net.Socket.connect`,并给 DNS 解析一个假地址,不让任何请求真的出去;邮件任务在真实的邮件子进程里跑,用 `node --import` 预加载同一个钩子)记录所有真实目的地(比较「是否一开始加密 + 主机 + 端口」),断言每个目的地都能在 `GET /settings/egress-targets` 的 `origin` 中找到;反过来,清单中 `enabled` 的项必须至少被某个路径用到过(防止清单里留着不再使用的项)。
 
 ### 3. `scripts/check-egress.mjs` 与登记表
 
@@ -64,7 +64,7 @@ README 与文档站首页的零遥测承诺指向这份清单(随 PR 9 的文档
 
 ## 实现 PR 的测试清单(PR 6)
 
-- 一致性测试(见第 2 节),覆盖第 1 节每个 `category` 中当前存在的类型。**(未实现,见状态。)**
+- 一致性测试(见第 2 节),覆盖第 1 节每个 `category` 中当前存在的类型。
 - `check-egress`:每种写法一个夹具文件(默认导入、`node:http2`、`fetch` 作默认参数、`require('net')`、`ws`、`node-fetch`、`axios`、`got`、MCP sse / streamableHttp)都会报错,普通字符串(`'tls'`、`'http'`)不误报;未登记的网络调用点失败;登记了但代码里没有的条目失败;`fixed` 的 `listedAs` 找不到符号失败;通过用例(使用夹具目录,不扫真实仓库)。
 - 清单不含路径、查询与凭据(脱敏用例);无法解析的地址被跳过。
 - stdio MCP 为 `local: true`、`origin: null`;停用的渠道 `enabled: false`。

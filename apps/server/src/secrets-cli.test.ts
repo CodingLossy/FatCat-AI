@@ -117,6 +117,8 @@ describe('secrets commands', () => {
         const alive = { processAlive: () => true };
         expect(run(['migrate'], {}, alive)).toBe(1);
         expect(err.join('\n')).toMatch(/server seems to be running.*Nothing was changed/s);
+        // 容器里残留的锁:报错里告诉用户确认服务器已停止后删除 server.lock
+        expect(err.join('\n')).toContain(`确认服务器已停止后删除 ${SERVER_LOCK_FILE}`);
         writeFileSync(join(dir, 'new.key'), `${'cd'.repeat(32)}\n`);
         const withKey = snapshot();
         expect(run(['rekey', '--new-key-file', join(dir, 'new.key')], {}, alive)).toBe(1);
