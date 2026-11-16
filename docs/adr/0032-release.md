@@ -28,3 +28,4 @@ ADR 0018 第 3 节的基线在发布时改为实测值(见该 ADR)。对话峰�
 
 - 误触发的概率低:PR 与 main 上的任何事件都不会推送;推送要么需要一个 tag,要么需要有人在 Actions 页面勾选 `push`。
 - 第一次真实推送还没有发生,所以 `publish` 任务的 QEMU 构建时间、GHCR 包的可见性(需要业主在包设置里改为 Public)和 provenance 附加都未验证,列入自检报告的业主清单。
+- `release.yml` 里的第三方 action(`docker/*`)目前按大版本 tag 引用。`publish` 任务有 `packages: write`,所以应当固定到 commit SHA(行尾注释版本号);本 PR 没有网络能力核对各个 action 的 SHA,留到 1.0.x 或发布前由有权限的人做,首次真实推送之前必须完成。

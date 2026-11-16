@@ -9,13 +9,14 @@
 
 ## 一、逐 PR 对照
 
-| PR  | 分支 / 编号                | 验收项(方案第 2 节)                                   | 结果                          | 依据                                                                                 |
-| --- | -------------------------- | ----------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------ |
-| 1   | `docs/m5c-plan`,#42        | 方案、渠道范围订正为「1.0 只含微信」                  | ✅ 待合并                     | PR 描述;`docs/plan` 第 16 节第 3 条                                                  |
-| 2   | `ci/openapi-and-scan`,#43  | 路由与 OpenAPI 覆盖测试、oasdiff 自测、CodeQL、ADR 30 | ✅ 待合并;CodeQL 首次运行通过 | `apps/server/src/openapi-coverage.test.ts`;`scripts/check-openapi-breaking.test.mjs` |
-| 3   | `feat/web-mobile`,#44      | 手机宽度可用,各宽度无横向滚动                         | ✅ 待合并;❌ 真机未验证       | `apps/web/e2e/mobile.e2e.ts`                                                         |
-| 4   | `docs/deploy-docker`,#46   | 2 GB 部署文档、Caddy、DNSPod 示例、部署冒烟           | ✅ 待合并;❌ 真实域名未验证   | `scripts/deploy-smoke.mjs` 12/12;CI `deploy smoke`                                   |
-| 5   | `release/v1.0-prep`(本 PR) | 见下                                                  | 见下                          | 见下                                                                                 |
+| PR  | 分支 / 编号                           | 验收项(方案第 2 节)                                                   | 结果                          | 依据                                                                                                      |
+| --- | ------------------------------------- | --------------------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 1   | `docs/m5c-plan`,#42                   | 方案、渠道范围订正为「1.0 只含微信」                                  | ✅ 待合并                     | PR 描述;`docs/plan` 第 16 节第 3 条                                                                       |
+| 2   | `ci/openapi-and-scan`,#43             | 路由与 OpenAPI 覆盖测试、oasdiff 自测、CodeQL、ADR 30                 | ✅ 待合并;CodeQL 首次运行通过 | `apps/server/src/openapi-coverage.test.ts`;`scripts/check-openapi-breaking.test.mjs`                      |
+| 3   | `feat/web-mobile`,#44                 | 手机宽度可用,各宽度无横向滚动                                         | ✅ 待合并;❌ 真机未验证       | `apps/web/e2e/mobile.e2e.ts`                                                                              |
+| 4   | `docs/deploy-docker`,#46              | 2 GB 部署文档、Caddy、DNSPod 示例、部署冒烟                           | ✅ 待合并;❌ 真实域名未验证   | `scripts/deploy-smoke.mjs` 12/12;CI `deploy smoke`                                                        |
+| 补  | `fix/secrets-migrated-backup-acl`,#45 | `secrets migrate` 生成的 `secrets.yaml.migrated` 明文收紧为仅当前用户 | ✅ 待合并;❌ Windows 未验证   | `packages/providers/src/secrets-migrate.test.ts`(restrict 钩子被调用、Unix 模式 0600、失败只警告);PR 描述 |
+| 5   | `release/v1.0-prep`(本 PR)            | 见下                                                                  | 见下                          | 见下                                                                                                      |
 
 ### 本 PR 的验收项(方案 PR 5)
 
@@ -92,6 +93,7 @@ RUNS=4 CHECK=1 pnpm perf:channel
 | 邮件 list → message 的「返回列表」焦点(e2e 没有邮件账号,只有代码与类型检查)                              | 真实邮箱           | 未验证       |
 | 真实验证器 App 的 TOTP 开启与登录;真实微信的收发与审批                                                   | 手机、微信账号     | 未验证       |
 | Windows 真机:`pnpm dev` 与数据目录                                                                       | Windows            | 未验证       |
+| Windows 上 `secrets migrate` 之后,`icacls <数据目录>\secrets.yaml.migrated` 只剩当前用户(#45)            | Windows 真机       | 未验证       |
 | README 快速开始:业主按文档完整走一遍                                                                     | 业主               | 未验证       |
 | 英文文档(部署指南、发布说明)校对                                                                         | 业主               | 未验证       |
 | **最终模型组合**                                                                                         | 业主               | **等待用户** |
