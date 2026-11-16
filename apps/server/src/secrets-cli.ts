@@ -58,7 +58,9 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
             if (pid !== null) {
                 io.err(
                     `Error: the server seems to be running (process ${pid}, see ${SERVER_LOCK_FILE} in the data directory). ` +
-                        `Stop it first, then run "secrets ${command}" again. Nothing was changed.`,
+                        `Stop it first, then run "secrets ${command}" again. Nothing was changed. ` +
+                        `If the server is already stopped (for example a stale ${SERVER_LOCK_FILE} left in a Docker volume), ` +
+                        `confirm the server has stopped and then delete ${SERVER_LOCK_FILE} / 确认服务器已停止后删除 ${SERVER_LOCK_FILE}。`,
                 );
                 return 1;
             }
