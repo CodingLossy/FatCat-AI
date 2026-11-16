@@ -38,6 +38,7 @@
   "devDependencies": {
     "@fatcat-ai/eval": "workspace:*",
     "@fatcat-ai/server": "workspace:*",
+    "@fatcat-ai/storage": "workspace:*",
     "@playwright/test": "^1.64.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

@@ -3,10 +3,12 @@
 
 // 条目索引 REST(ADR 0012 第 2 节):只读;已删除的条目只出现在 /items/changes 中。
 import { createRoute, z } from '@hono/zod-openapi';
-import type { ItemService } from '@fatcat-ai/items';
+import { buildAskContext, clean, type ItemService } from '@fatcat-ai/items';
 import {
     Id,
     Item,
+    ItemAskRequest,
+    ItemAskResponse,
     ItemChangesQuery,
     ItemChildrenQuery,
     ItemContent,
@@ -23,6 +25,7 @@ import { ToolDeniedError } from '@fatcat-ai/tools';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
+import { weakEtag } from './etag.js';
 
 const idParam = z.object({ id: Id });
 const tags = ['items'];
@@ -120,6 +123,22 @@ const relatedRoute = createRoute({
         ...authErrors,
     },
 });
+const askRoute = createRoute({
+    method: 'post',
+    path: '/items/{id}/ask',
+    tags,
+    summary: 'Start a session about an item or its subtree; returns a prefilled prompt (not sent)',
+    request: {
+        params: idParam,
+        body: { content: { 'application/json': { schema: ItemAskRequest } }, required: false },
+    },
+    responses: {
+        201: json(ItemAskResponse, 'Session created'),
+        400: problem('Invalid body'),
+        404: problem('Not found'),
+        ...authErrors,
+    },
+});
 const contentRoute = createRoute({
     method: 'get',
     path: '/items/{id}/content',
@@ -150,7 +169,14 @@ export function itemRoutes(deps: ItemRouteDeps) {
         if (!item || item.deletedAt) throw notFound('Item');
         return item;
     };
-    return router()
+    // 读接口加弱 ETag(ADR 0029 第 2 节);content、changes、sync 不加
+    const etagged = /^\/items\/(roots|search|[^/]+(\/(children|ancestors|counts|subtree|related))?)$/;
+    const app = router();
+    app.use(
+        '/items/*',
+        weakEtag((path) => etagged.test(path) && path !== '/items/changes'),
+    );
+    return app
         .openapi(rootsRoute, async (c) => {
             const ownerId = requireOwner(c);
             await items.syncIfStale(ownerId);
@@ -203,6 +229,24 @@ export function itemRoutes(deps: ItemRouteDeps) {
             const { id } = c.req.valid('param');
             live(ownerId, id);
             return c.json(repos.items.related(ownerId, id, c.req.valid('query')), 200);
+        })
+        .openapi(askRoute, (c) => {
+            const ownerId = requireOwner(c);
+            const { id } = c.req.valid('param');
+            const root = live(ownerId, id);
+            const { scope } = c.req.valid('json') ?? { scope: 'item' as const };
+            // 子树最多 3 层、每层 20 条;隐藏的历史版本不带入
+            const nodes = scope === 'subtree' ? repos.items.subtree(ownerId, id, 3, 20).nodes : [];
+            const entries = nodes
+                .filter((n) => (n.item.meta as { hidden?: unknown } | null)?.hidden !== true)
+                .map((n) => ({ item: n.item, depth: n.depth }));
+            const ask = buildAskContext(root, scope, entries);
+            // 会话从一开始就视为读过不可信内容(含邮件、联系人时);标题只用条目标题的前几个字,不含正文
+            const session = repos.sessions.create(ownerId, {
+                title: `关于「${clean(root.title, 30)}」`,
+                untrusted: ask.untrustedContentSeen,
+            });
+            return c.json({ sessionId: session.id, ...ask }, 201);
         })
         .openapi(contentRoute, async (c) => {
             const ownerId = requireOwner(c);

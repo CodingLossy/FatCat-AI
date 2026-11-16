@@ -31,5 +31,14 @@ export {
     type KnowledgeBaseOptions,
     MAX_CHUNKS_PER_FILE,
 } from './kb/index.js';
+export {
+    ASK_MAX_CHARS,
+    ASK_MAX_ENTRIES,
+    buildAskContext,
+    clean,
+    isUntrustedItem,
+    type AskContext,
+    type AskEntry,
+} from './ask.js';
 export { createItemTools } from './tools.js';
 export { MAX_DEPTH, MAX_ENTRIES_PER_ROOT, walk, type WalkEntry } from './walk.js';
