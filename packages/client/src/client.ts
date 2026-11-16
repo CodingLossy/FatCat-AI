@@ -73,6 +73,7 @@ import type {
     SecretsMigrateResponse,
     SecretsStatus,
     TimeZoneInfo,
+    EgressTargetList,
     ToolInfo,
     ToolRisk,
     UpdateSessionRequest,
@@ -194,6 +195,8 @@ export function createClient(options: ClientOptions) {
             update: (body: SettingsPatch) => t.json<Settings>('/settings', { method: 'PUT', body }),
             /** 可选时区与服务器时区(ADR 0023);老服务器返回 404。 */
             timeZones: () => t.json<TimeZoneInfo>('/settings/time-zones'),
+            /** 外连目标清单(ADR 0028),现算、只读;老服务器返回 404。 */
+            egressTargets: () => t.json<EgressTargetList>('/settings/egress-targets'),
         },
 
         /** 密钥加密存储(ADR 0026);老服务器返回 404。响应里没有任何密钥值。 */

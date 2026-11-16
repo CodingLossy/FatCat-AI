@@ -5,6 +5,7 @@ import { createRoute } from '@hono/zod-openapi';
 import { migrateSecrets, readSecretsStatus, type SecretStore, SecretsMigrateError } from '@fatcat-ai/providers';
 import {
     effectiveTimeZone,
+    EgressTargetList,
     SecretsMigrateRequest,
     SecretsMigrateResponse,
     SecretsStatus,
@@ -16,6 +17,7 @@ import {
 } from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
+import { listEgressTargets } from '../egress.js';
 import { ApiError } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
 
@@ -42,6 +44,15 @@ const timeZonesRoute = createRoute({
     tags: ['settings'],
     summary: "Time zones the server recognizes, and the server's own time zone (used when timeZone is null)",
     responses: { 200: json(TimeZoneInfo, 'Time zones'), ...authErrors },
+});
+
+const egressTargetsRoute = createRoute({
+    method: 'get',
+    path: '/settings/egress-targets',
+    tags: ['settings'],
+    summary:
+        'Where this server may connect to, computed from the current configuration (origins only; never credentials). Per-call destinations chosen in a conversation (web.fetch) are not listed',
+    responses: { 200: json(EgressTargetList, 'Egress targets'), ...authErrors },
 });
 
 const secretsStatusRoute = createRoute({
@@ -82,6 +93,22 @@ export function settingsRoutes(deps: {
         .openapi(timeZonesRoute, (c) => {
             requireOwner(c); // 服务器时区会透露部署位置,需要登录
             return c.json({ serverTimeZone: serverTimeZone(), supported: supportedTimeZones() }, 200);
+        })
+        .openapi(egressTargetsRoute, (c) => {
+            const ownerId = requireOwner(c);
+            return c.json(
+                listEgressTargets(
+                    {
+                        profiles: repos.modelProfiles.list(ownerId),
+                        voice: repos.settings.get(ownerId).voice,
+                        mailAccounts: repos.mail.list(ownerId),
+                        channels: repos.channels.list(ownerId),
+                        mcpServers: repos.mcpServers.list(ownerId),
+                    },
+                    deps.log,
+                ),
+                200,
+            );
         })
         .openapi(secretsStatusRoute, (c) => {
             requireOwner(c);
