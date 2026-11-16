@@ -11,7 +11,7 @@ An AI assistant that is truly your own: self-hostable, open source, bring-your-o
 - **BYO LLM**: any OpenAI-compatible endpoint (including Ollama / LM Studio / vLLM), plus native Anthropic / Gemini support. Confirmed working: DeepSeek (`https://api.deepseek.com/v1`) and OpenRouter (`https://openrouter.ai/api/v1`)
 - **Headless core**: every capability is exposed through the versioned `/api/v1` HTTP + WebSocket API; the Web UI, CLI and IM channels are all clients of it
 - **Local files, email, voice, scheduled tasks**, with risk-graded tools; dangerous actions require confirmation by default
-- **Channels**: WeCom (企业微信) and WeChat in 1.0
+- **Channels**: WeChat in 1.0 (WeCom is postponed, schedule to be set)
 - **Knowledge map**: mail, documents, novels, people and more in one item index you can drill into level by level
 - **Long-term memory**: typed, superseded rather than overwritten, with sources; answers carry trust labels (reliable, possibly stale, conflicted, inferred); credentials are always refused and sensitive data is redacted before it is stored; you can mark a memory helpful, out of date, wrong or not to be kept, and forget it at any time
 - **Lightweight**: runs comfortably on a 2 GB server
