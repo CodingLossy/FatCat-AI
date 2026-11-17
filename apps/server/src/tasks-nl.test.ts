@@ -60,12 +60,23 @@ describe('POST /tasks/propose 与 confirm', () => {
         expect((await post(`/tasks/${task.id}/confirm`, { version: task.updatedAt })).status).toBe(409);
     });
 
-    it('7 天前的草稿在下一次 propose 时被清理', async () => {
-        const { post, ownerId } = await setup(() => draftJson());
+    it('7 天前的草稿在下一次 propose 时被清理,新草稿保留;草稿被改过后用旧 version 确认 → 409', async () => {
+        const { post, req, ownerId } = await setup(() => draftJson());
         const first = TaskDraftResult.parse(await (await post('/tasks/propose', { text: 'a' })).json());
-        s.repos.tasks.update(ownerId, first.task.id, { name: 'old' });
-        expect(s.repos.tasks.pruneDrafts('2999-01-01T00:00:00.000Z')).toBe(1);
+        s.conn.sqlite
+            .prepare('UPDATE tasks SET updated_at = ? WHERE id = ?')
+            .run(new Date(Date.now() - 8 * 24 * 3600_000).toISOString(), first.task.id);
+        const second = TaskDraftResult.parse(await (await post('/tasks/propose', { text: 'b' })).json());
         expect(s.repos.tasks.get(ownerId, first.task.id)).toBeNull();
+        expect(s.repos.tasks.get(ownerId, second.task.id)).not.toBeNull();
+        // 草稿被 PATCH 后,用展示时的旧 version 确认被拒绝
+        await new Promise((r) => setTimeout(r, 5));
+        const patched = await req(`/tasks/${second.task.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ name: 'renamed' }),
+        });
+        expect(patched.status).toBe(200);
+        expect((await post(`/tasks/${second.task.id}/confirm`, { version: second.task.updatedAt })).status).toBe(409);
     });
 
     it('一次性时间过去、cron 非法、听不懂、缺字段:都不产生草稿', async () => {
