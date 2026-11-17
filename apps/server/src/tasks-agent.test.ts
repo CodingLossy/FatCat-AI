@@ -439,3 +439,66 @@ describe('M6 真机问题', () => {
         expect(prompt).toMatch(/Use only the tools this task actually needs/);
     });
 });
+
+describe('任务工具集 toolSet(ADR 0039 第 4 节)', () => {
+    const run = async (toolSet?: string[]) => {
+        const { steps, createTask, untilFinished, post, req } = await setup();
+        const res = await createTask({
+            outputs: [{ kind: 'conversation' }],
+            policy: {
+                maxAttempts: 1,
+                misfire: 'skip',
+                quietHours: null,
+                maxRuntimeMinutes: 10,
+                ...(toolSet ? { toolSet } : {}),
+            },
+        });
+        return { steps, res, untilFinished, post, req };
+    };
+
+    it('不填工具集时行为不变:模型拿到全部工具', async () => {
+        const { steps, res, untilFinished, post } = await run();
+        const task = Task.parse(await res.json());
+        const seen: ChatRequest[] = [];
+        steps.push(async function* (request) {
+            seen.push(request);
+            yield { type: 'text-delta', delta: 'ok' };
+            yield { type: 'finish', reason: 'stop' };
+        });
+        const started = TaskRun.parse(await (await post(`/tasks/${task.id}/run`)).json());
+        expect((await untilFinished(started.id)).status).toBe('succeeded');
+        expect(task.policy.toolSet).toBeUndefined();
+        expect((seen[0]?.tools ?? []).map((t) => t.name)).toContain('kb.search');
+    });
+
+    it('🔒 只把集合内的工具交给模型(名字与 . 结尾的前缀);集合外的硬调用按未知工具拒绝且不执行', async () => {
+        const { steps, res, untilFinished, post } = await run(['kb.search', 'web.']);
+        const task = Task.parse(await res.json());
+        const seen: ChatRequest[] = [];
+        steps.push(async function* (request) {
+            seen.push(request);
+            yield { type: 'tool-call', callId: 'c1', name: 'items.search', input: {} };
+            yield { type: 'finish', reason: 'tool-calls' };
+        });
+        steps.push(async function* (request) {
+            seen.push(request);
+            yield { type: 'text-delta', delta: 'done' };
+            yield { type: 'finish', reason: 'stop' };
+        });
+        const started = TaskRun.parse(await (await post(`/tasks/${task.id}/run`)).json());
+        expect((await untilFinished(started.id)).status).toBe('succeeded');
+        const names = (seen[0]?.tools ?? []).map((t) => t.name);
+        expect(names).toContain('kb.search');
+        expect(names.filter((n) => n.startsWith('web.')).length).toBeGreaterThan(0);
+        expect(names.every((n) => n === 'kb.search' || n.startsWith('web.'))).toBe(true);
+        expect(names).not.toContain('items.search');
+        expect(JSON.stringify(seen[1]?.messages)).toContain("unknown tool: items.search (not in this task's tool set)");
+    });
+
+    it('保存时拒绝不存在的工具或前缀;空数组也被拒绝', async () => {
+        for (const toolSet of [['nope.tool'], ['nope.'], []]) {
+            const { res } = await run(toolSet);
+            expect(res.status).toBe(400);
+        }
+    });
+});

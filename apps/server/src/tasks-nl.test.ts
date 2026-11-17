@@ -130,6 +130,19 @@ describe('确认卡片的提示码、时区与错误原因码', () => {
         }
     });
 
+    it('模型建议的工具集进草稿,不存在的名字被去掉;没有建议时草稿不带工具集', async () => {
+        const { post } = await setup(() => draftJson({ toolSet: ['kb.search', 'nope.tool', 'kb.search', 'web.'] }));
+        const res = await post('/tasks/propose', { text: 'x' });
+        expect(res.status).toBe(201);
+        expect(TaskDraftResult.parse(await res.json()).task.policy.toolSet).toEqual(['kb.search', 'web.']);
+    });
+
+    it('模型没有给工具集时草稿不带工具集', async () => {
+        const { post } = await setup(() => draftJson());
+        const res = await post('/tasks/propose', { text: 'x' });
+        expect(TaskDraftResult.parse(await res.json()).task.policy.toolSet).toBeUndefined();
+    });
+
     it('解析提示写明新邮件触发只带数量', () => {
         const prompt = parserPrompt('Asia/Shanghai', new Date('2026-11-17T00:00:00Z'));
         expect(prompt).toContain('ONLY the number of new messages');

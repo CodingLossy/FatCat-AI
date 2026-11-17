@@ -53,6 +53,14 @@ export const TaskAllowedTool = z.object({
 export type TaskAllowedTool = z.infer<typeof TaskAllowedTool>;
 
 /**
+ * 任务工具集的一项(ADR 0039 第 4 节):完整工具名(`kb.search`),或以 `.` 结尾的前缀(`web.` 匹配所有 `web.*`)。
+ * 工具集只缩小模型能用的工具,不放大授权。
+ */
+export function toolInSet(name: string, toolSet: readonly string[]): boolean {
+    return toolSet.some((entry) => (entry.endsWith('.') ? name.startsWith(entry) : name === entry));
+}
+
+/**
  * 输出去向。`conversation`:结果留在任务会话里(默认);`channel`:经 `channel.push` 推到主人自己绑定的渠道,
  * 每次都需要审批,不可预授权(ADR 0034 第 3 节)。
  */
@@ -71,6 +79,11 @@ export const TaskPolicy = z.object({
     maxRuntimeMinutes: z.number().int().min(1).max(120),
     /** 无人值守时直接执行的工具;默认空。不能含 external / dangerous 工具。 */
     allowedTools: z.array(TaskAllowedTool).max(20).optional(),
+    /**
+     * 任务可用的工具:工具名或以 `.` 结尾的前缀。缺省 = 不限制(现状);给出时运行只把集合内的工具交给模型,
+     * 集合外的硬调用按未知工具处理。只缩小范围,审批与预授权规则不变。
+     */
+    toolSet: z.array(z.string().trim().min(1).max(100)).min(1).max(30).optional(),
 });
 export type TaskPolicy = z.infer<typeof TaskPolicy>;
 
