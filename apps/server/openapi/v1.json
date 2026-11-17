@@ -24748,6 +24748,7 @@
                             ],
                             "enum": [
                               "root_revoked",
+                              "root_missing",
                               null
                             ]
                           },
@@ -25695,6 +25696,7 @@
                       ],
                       "enum": [
                         "root_revoked",
+                        "root_missing",
                         null
                       ]
                     },
@@ -26837,6 +26839,7 @@
                           ],
                           "enum": [
                             "root_revoked",
+                            "root_missing",
                             null
                           ]
                         },
@@ -27642,6 +27645,7 @@
                       ],
                       "enum": [
                         "root_revoked",
+                        "root_missing",
                         null
                       ]
                     },
@@ -28514,6 +28518,7 @@
                       ],
                       "enum": [
                         "root_revoked",
+                        "root_missing",
                         null
                       ]
                     },
@@ -29551,6 +29556,7 @@
                       ],
                       "enum": [
                         "root_revoked",
+                        "root_missing",
                         null
                       ]
                     },
