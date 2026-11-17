@@ -12,6 +12,7 @@ import { createProvider, Redactor, SecretStore } from '@fatcat-ai/providers';
 import { applyLegacyEnv, effectiveTimeZone, legacyEnvWarning } from '@fatcat-ai/shared';
 import { createRepositories, openStorage } from '@fatcat-ai/storage';
 import {
+    cheapProfile,
     createCheapComplete,
     createMailComplete,
     createSummarizer,
