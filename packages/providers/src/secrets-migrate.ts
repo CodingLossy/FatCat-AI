@@ -3,7 +3,7 @@
 
 // 明文 secrets.yaml → 加密文件的迁移、换主密钥、清理(ADR 0026 第 5、8 节)。只含文件层的纯逻辑;
 // 路由与命令行只是调用这里。任何一步失败都保留原文件,可重复执行;返回值与错误里没有密钥值。
-import { existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import type { PlaintextBackupAction, SecretsMigrateResponse, SecretsStatus, MasterKeySource } from '@fatcat-ai/shared';
 import {
@@ -246,6 +246,13 @@ function finish(
         rmSync(join(dataDir, SECRETS_ENC_FILE), { force: true });
         throw new SecretsMigrateError('write_failed', `cannot rename ${SECRETS_FILE}: ${code(error)}`);
     }
+    // 改名保留原权限(Windows 上是继承来的 ACL,Unix 上可能是 644),而这份明文要留到 `secrets cleanup`:立刻收紧。
+    try {
+        chmodSync(join(dataDir, migratedName), 0o600);
+    } catch {
+        // Windows 上 chmod 不改 ACL;失败不影响迁移,下面的 ACL 收紧会再报警告
+    }
+    tighten(join(dataDir, migratedName));
     const counts = { kept: 0, encrypted: 0, deleted: 0 };
     const dir = join(dataDir, SECRETS_BACKUP_DIR);
     for (const name of backupFiles(dataDir).plaintext) {
