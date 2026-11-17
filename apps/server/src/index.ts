@@ -11,11 +11,18 @@ import { createItemService, createKnowledgeBase } from '@fatcat-ai/items';
 import { createProvider, Redactor, SecretStore } from '@fatcat-ai/providers';
 import { applyLegacyEnv, effectiveTimeZone, legacyEnvWarning } from '@fatcat-ai/shared';
 import { createRepositories, openStorage } from '@fatcat-ai/storage';
-import { createMailComplete, createSummarizer, createToolRegistry, createTurnExtractor } from './agent-setup.js';
+import {
+    createCheapComplete,
+    createMailComplete,
+    createSummarizer,
+    createToolRegistry,
+    createTurnExtractor,
+} from './agent-setup.js';
 import { runInWorker } from '@fatcat-ai/mail';
 import { createApp } from './app.js';
 import { createMcpControl } from './mcp-setup.js';
 import { createMailService } from './mail-setup.js';
+import { createSleeper } from '@fatcat-ai/memory';
 import { createMemoryStack } from './memory-setup.js';
 import { scheduleDaily, startMaintenance } from './maintenance-setup.js';
 import { startScheduler } from './scheduler-setup.js';
@@ -222,7 +229,9 @@ const maintenance = startMaintenance({
     onError: (err) => logger.warn({ err }, 'memory maintenance failed'),
 });
 // 通用调度器(ADR 0033):内置的记忆维护任务每天 03:30(用户时区)运行,持久、有运行记录、错过的启动后补跑
+const sleeper = createSleeper({ repos, memory, complete: createCheapComplete(repos, providerFor, 4000) });
 const scheduler = startScheduler({
+    sleep: (ownerId) => sleeper.run(ownerId),
     repos,
     maintenance,
     timeZone: ownerTimeZone,

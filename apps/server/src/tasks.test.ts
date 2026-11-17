@@ -30,7 +30,13 @@ describe('/api/v1/tasks', () => {
         const call = await login();
         expect((await s.app.request('/api/v1/tasks')).status).toBe(401);
         const list = (await (await call('GET', '/tasks')).json()) as { items: unknown[] };
-        expect(list.items).toHaveLength(1);
+        expect(list.items).toHaveLength(2);
+        // 记忆整理默认关闭(ADR 0037)
+        expect(Task.parse(list.items[1])).toMatchObject({
+            action: { kind: 'system', key: 'memory.sleep' },
+            enabled: false,
+            nextRunAt: null,
+        });
         const task = Task.parse(list.items[0]);
         expect(task).toMatchObject({
             kind: 'system',

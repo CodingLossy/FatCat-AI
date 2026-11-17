@@ -19,6 +19,15 @@ export {
     MAX_ITEMS_PER_TURN,
     type TurnInfo,
 } from './extract.js';
+export {
+    createSleeper,
+    SLEEP_JOB,
+    SLEEP_LIMITS,
+    SLEEP_PROMPT_VERSION,
+    type Sleeper,
+    type SleepResult,
+    topicOf,
+} from './sleep.js';
 export { looksLikeInstruction } from './instructions.js';
 export { createMemoryContext, type MemoryContext, type MemoryContextInput } from './context.js';
 export { createDigestBuilder, DIGEST_DEBOUNCE_MS, DIGEST_MAX_ITEMS, type DigestBuilder } from './digest.js';
