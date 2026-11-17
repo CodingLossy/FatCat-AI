@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+#
+# 带 DNSPod(腾讯云 DNS)插件的 Caddy,用于 DNS-01 验证。这是单独的部署镜像,不属于本项目的依赖:
+# 插件 github.com/caddy-dns/tencentcloud(MIT)与它依赖的 github.com/libdns/tencentcloud(MIT)
+# 在构建时从 Go 模块代理下载,不进 pnpm-lock.yaml。版本固定在下面两个 ARG,升级时先看插件的更新记录。
+# 构建:docker build -f docker/caddy/Dockerfile.dnspod -t fatcat-ai-caddy-dnspod:local docker/caddy
+ARG CADDY_VERSION=2.11.9
+ARG DNS_PLUGIN_VERSION=v0.4.3
+
+FROM caddy:${CADDY_VERSION}-builder AS builder
+ARG CADDY_VERSION
+ARG DNS_PLUGIN_VERSION
+RUN xcaddy build v${CADDY_VERSION} --with github.com/caddy-dns/tencentcloud@${DNS_PLUGIN_VERSION}
+
+FROM caddy:${CADDY_VERSION}-alpine
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy

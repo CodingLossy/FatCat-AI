@@ -19,6 +19,10 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 
 ### M5c · Release prep (in progress)
 
+#### Added
+
+- Docker deployment guide for a 2 GB machine (`docs/deploy/docker.md`, English version pending proofreading): `docker/docker-compose.prod.yml` runs the app plus Caddy with automatic HTTPS (only Caddy publishes ports, 512 MiB app limit, master key from a Docker secret file), `docker/caddy/Caddyfile.example`, and an optional DNS-01 variant for DNSPod (Tencent Cloud DNS) built with a pinned community plugin (an example, not a project dependency). Includes hardening before going public, backup and restore, upgrade and troubleshooting. ADR 0031 records the reverse-proxy responsibilities and one known limitation: behind a proxy the login failure limiter counts all visitors as one source. A CI deployment smoke runs the production compose with an HTTP-only Caddy and checks `/healthz`, the setup code, WebSocket and chunk-by-chunk SSE without touching the internet.
+
 #### Changed
 
 - The Web UI now works on phone-sized screens (360 px and up, portrait and landscape). Below 720 px the sidebar becomes a drawer opened from a top bar (closed by a tap outside, Esc, or navigating); controls are at least 44 px tall and inputs use 16 px text so iOS does not zoom on focus; Mail shows the list and the open message as two screens with a "Back to list" button; the audit table scrolls inside its own container; the composer sticks to the bottom and respects safe areas. The page has `viewport-fit=cover` and a `theme-color`. No API changes. Real-device behaviour (iOS Safari, Android Chrome soft keyboard) is not verified yet.
@@ -276,6 +280,10 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 - 有意不改:令牌前缀 `aip_pat_`、Cookie `aip_session` / `aip_csrf` 与响应头 `X-AIP-Server-Version`,现有令牌与 API v1 客户端不受影响。
 
 ### M5c · 发布收尾(进行中)
+
+#### 新增
+
+- Docker 一键部署指南(`docs/deploy/docker.md`,英文版待校对):`docker/docker-compose.prod.yml` 同时跑应用与 Caddy(自动 HTTPS),只有 Caddy 发布端口,应用容器内存上限 512 MiB,主密钥用 Docker secret 文件传入;另有 `Caddyfile.example`、用于 DNS-01 的 DNSPod(腾讯云 DNS)变体(固定版本的社区插件,仅作示例,不是项目依赖)。指南包含公网暴露前的加固、备份恢复、升级和排错。ADR 0031 记录反向代理的责任划分与一条已知限制:经代理访问时登录失败限速把所有访客算作同一个来源。CI 新增不依赖域名的部署冒烟(HTTP 版 Caddy,检查 `/healthz`、设置码、WebSocket 与 SSE 逐块到达,不访问公网)。
 
 #### 变更
 

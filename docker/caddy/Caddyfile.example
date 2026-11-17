@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+#
+# 最简自动 HTTPS(HTTP-01 / TLS-ALPN-01):需要域名解析到本机公网 IP,且 80 与 443(TCP/UDP)能从公网访问。
+# 域名与邮箱来自 docker/.env 里的 FATCAT_AI_DOMAIN、ACME_EMAIL,不需要修改本文件。
+# 80/443 不通或服务器在内网时,改用 Caddyfile.dnspod.example(DNS-01)。
+{
+	email {$ACME_EMAIL}
+}
+
+{$FATCAT_AI_DOMAIN} {
+	# 静态资源压缩;/api/ 下不压缩,避免缓冲流式对话(SSE)
+	@static not path /api/*
+	encode @static zstd gzip
+
+	header {
+		-Server
+	}
+
+	# 应用自己已经加了安全响应头(HSTS、X-Content-Type-Options、X-Frame-Options、Referrer-Policy 等,ADR 0031),这里不重复添加。
+	# 应用不信任 X-Forwarded-For;Caddy 默认会覆盖传入的 X-Forwarded-* 头,不要改成 trusted_proxies。
+	reverse_proxy fatcat-ai:8787 {
+		# 立即转发每个数据块:SSE(/api/v1/runs/{id}/events 与流式对话)和 WebSocket(/api/v1/ws)都需要
+		flush_interval -1
+		# 应用容器重启时短暂重试,而不是立刻给浏览器 502
+		lb_try_duration 10s
+		lb_try_interval 500ms
+		health_uri /healthz
+		health_interval 30s
+	}
+}

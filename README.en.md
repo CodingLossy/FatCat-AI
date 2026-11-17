@@ -75,6 +75,8 @@ printf 'DEEPSEEK_API_KEY: "%s"\n' '<your key>' | \
 
 > Upgrading from AI-Personal: the compose service was renamed from `ai-personal` to `fatcat-ai`; the `ai-personal-data` volume is unchanged, so your data stays. Before upgrading, run `docker compose -f docker/docker-compose.yml down` with the old compose file, or start the new version with `docker compose -f docker/docker-compose.yml up -d --build --remove-orphans`. Otherwise the old container keeps running and holds port 8787, and the new one can't start.
 
+**Public deployment** (a 2 GB machine, automatic HTTPS with Caddy, a DNSPod example, backup and upgrade): see the [Docker deployment guide](docs/deploy/docker.en.md).
+
 It only listens on 127.0.0.1 by default; to reach it from other machines, put it behind a reverse proxy with HTTPS. Setting it up from another machine or through a proxy needs the one-time setup code printed in the startup log (`docker compose -f docker/docker-compose.yml logs`).
 
 ### 3. A full chat with curl (no Web UI)

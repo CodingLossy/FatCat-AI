@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+#
+# 仅供 CI 的部署冒烟(scripts/deploy-smoke.mjs),叠加在 docker-compose.prod.yml 上;不要用于生产。
+# 配合 FATCAT_AI_CADDYFILE=./caddy/Caddyfile.test 使用:Caddy 只监听 HTTP,不申请证书,不访问公网。
+services:
+  fatcat-ai:
+    environment:
+      # 冒烟走 HTTP,Secure Cookie 不会被回传
+      FATCAT_AI_COOKIE_SECURE: never
+      # 假模型端点的占位密钥
+      SMOKE_KEY: not-a-real-key
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'

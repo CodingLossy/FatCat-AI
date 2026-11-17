@@ -1,6 +1,7 @@
 # M5c 实施方案:安全扫描与 API 冻结复核、手机响应式、Docker 部署文档、发布收尾
 
 - 状态:草案,待业主确认第 5 节的问题
+- 进度:PR 4(`docs/deploy-docker`)已实现,见 ADR 0031 与 `docs/deploy/docker.md`
 - 日期:2026-11-16(America/Los_Angeles,业主所在时区)
 - 基线:`feat/channel-map`(M5b PR 9,#41,未合并)。本分支基于它;#39 已合并,#40、#41 合并后本 PR 只剩自己的差异
 - 依据:开发计划 M5c 一节(第 8 节)、第 11 节(安全与性能)、第 12 节(资源预算)、第 16 节;ADR 0010 第 10 节(oasdiff)、ADR 0018(内存预算);`docs/milestones/M5b-plan.md` 第 6 节(推迟项)
