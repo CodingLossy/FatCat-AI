@@ -1,0 +1,18 @@
+{
+  "manifestVersion": 1,
+  "id": "hello",
+  "version": "0.1.0",
+  "name": { "zh-CN": "你好示例", "en": "Hello example" },
+  "description": {
+    "zh-CN": "最小的示例插件:一个只读的问候工具。",
+    "en": "A minimal example plugin with one read-only greeting tool."
+  },
+  "author": "尹绪柏 (Theodore Yin)",
+  "license": "Apache-2.0",
+  "engines": { "fatcat": ">=1.1.0" },
+  "entry": { "type": "mcp-stdio", "main": "server.mjs" },
+  "permissions": {
+    "tools": [{ "name": "hello", "risk": "read" }]
+  },
+  "licensing": { "model": "free" }
+}

@@ -33,6 +33,8 @@ path = [
     "packages/plugin-sdk/**/*.json",
     "packages/client/**/*.md",
     "packages/client/**/*.json",
+    "examples/plugins/**/*.md",
+    "examples/plugins/**/*.json",
 ]
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 尹绪柏 (Theodore Yin)"

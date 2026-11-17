@@ -2,4 +2,5 @@
 # Copyright (C) 2026 尹绪柏 (Theodore Yin)
 packages:
   - 'apps/*'
+  - 'examples/plugins/*'
   - 'packages/*'
