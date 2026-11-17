@@ -22,9 +22,25 @@ FatCat-AI contains **no** analytics or crash-reporting code. It only connects to
 
 ## Quick start
 
-Requires Node.js 24 LTS or later and pnpm 10 (`corepack enable` provides it). With M1 you can stream chats from any OpenAI-compatible endpoint (including Ollama, DeepSeek and OpenRouter) and from the native Anthropic and Gemini APIs, resume a reply that is still streaming after a page refresh, have the assistant remember things you tell it (ordinary facts are saved at once and can be undone; sensitive ones or changes to your profile need your approval), and use it from the Web UI, the command line or curl.
+The fastest way is Docker (Docker 24 or later with Compose v2; a 2 GB machine is enough, idle use is about 110 MiB):
 
-### 1. Start
+```bash
+git clone https://github.com/CodingLossy/FatCat-AI.git
+cd FatCat-AI
+docker compose -f docker/docker-compose.yml up -d --build
+docker compose -f docker/docker-compose.yml logs fatcat-ai | grep -i 'setup code'   # the one-time setup code
+```
+
+1. **First sign-in.** Open <http://127.0.0.1:8787>, create the owner account when asked (1.0 has exactly one account) and paste the setup code from the log.
+2. **Add a model profile.** Settings → Model profiles. Use any OpenAI-compatible endpoint or a local Ollama. Keys are only read from environment variables or `secrets.yaml` in the data directory (see "Local development" and "Docker" below); the Web UI and the API never accept a plaintext key. Start chatting once it shows "Key: Set".
+3. **(Optional) Bind WeChat.** Settings → Channels, add a WeChat channel and scan the QR code (steps in "5. WeChat" below). 1.0 includes the WeChat channel only; WeCom is postponed with no date set.
+4. **Going public.** Do not expose port 8787 directly. Follow [docs/deploy/docker.md](docs/deploy/docker.md) (Caddy with automatic HTTPS, 2 GB sizing, a DNSPod example), and turn on two-step verification and secrets encryption first.
+
+> Prebuilt images (GHCR, amd64 / arm64) arrive with the official 1.0 release; until then build from source with `--build` as above.
+
+What follows is local development. It needs Node.js 24 LTS or later and pnpm 10 (`corepack enable` provides it). You can stream chats from any OpenAI-compatible endpoint (including Ollama, DeepSeek and OpenRouter) and from the native Anthropic and Gemini APIs, resume a reply that is still streaming after a page refresh, have the assistant remember things you tell it (ordinary facts are saved at once and can be undone; sensitive ones or changes to your profile need your approval), and use it from the Web UI, the command line or curl.
+
+### 1. Local development
 
 Model keys are only read from environment variables or a local file. The Web UI and the API never accept a plaintext key.
 

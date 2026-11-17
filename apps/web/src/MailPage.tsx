@@ -3,7 +3,7 @@
 
 // 最简邮件页(M3 方案 PR 4):账户、只读邮件列表与正文、草稿。邮件内容是不可信数据,一律按纯文本显示。
 import type { MailAccount, MailDraft, MailMessage } from '@fatcat-ai/shared';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
 import { navigate } from './router.js';
@@ -30,6 +30,17 @@ export function MailPage() {
     const [folder, setFolder] = useState<'inbox' | 'sent'>('inbox');
     const [messages, setMessages] = useState<MailMessage[]>([]);
     const [open, setOpen] = useState<MailMessage | null>(null);
+    // 手机上从邮件返回列表后,把焦点放回刚才打开的那一行
+    const listRef = useRef<HTMLUListElement>(null);
+    const backFocusId = useRef<string | null>(null);
+    useEffect(() => {
+        if (open !== null || backFocusId.current === null) return;
+        const id = backFocusId.current;
+        backFocusId.current = null;
+        [...(listRef.current?.querySelectorAll<HTMLElement>('[data-mail-id]') ?? [])]
+            .find((el) => el.dataset.mailId === id)
+            ?.focus();
+    }, [open]);
     const [drafts, setDrafts] = useState<MailDraft[]>([]);
     const [note, setNote] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -119,11 +130,12 @@ export function MailPage() {
                 </div>
             )}
             <div className={`mail-layout${open ? ' has-open' : ''}`}>
-                <ul className="list mail-list">
+                <ul className="list mail-list" ref={listRef}>
                     {messages.map((m) => (
                         <li key={m.id}>
                             <button
                                 type="button"
+                                data-mail-id={m.id}
                                 className={`link mail-row${open?.id === m.id ? ' active' : ''}${m.unread ? ' unread' : ''}`}
                                 onClick={() => void run(async () => setOpen(await api.mail.message(m.id)))}
                             >
@@ -145,7 +157,14 @@ export function MailPage() {
                 <section className="mail-view" aria-live="polite">
                     {open ? (
                         <>
-                            <button type="button" className="mail-back" onClick={() => setOpen(null)}>
+                            <button
+                                type="button"
+                                className="mail-back"
+                                onClick={() => {
+                                    backFocusId.current = open.id;
+                                    setOpen(null);
+                                }}
+                            >
                                 {t('mail.back')}
                             </button>
                             <h2>{open.subject || t('mail.noSubject')}</h2>

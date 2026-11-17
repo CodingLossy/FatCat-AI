@@ -21,10 +21,12 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 
 #### Added
 
+- Release preparation (ADR 0032). `.github/workflows/release.yml` builds the Docker image for `linux/amd64` and `linux/arm64` (each on a native runner, with a health check) on pull requests that touch the Dockerfile and on manual runs, and **pushes nothing by default**: only a `v*` tag or a manual run with `push` ticked publishes to GHCR (a manual run only gets the `sha-<7>` tag). Tag policy and the check that nothing was published are in `docs/release/image-tags.md` and `scripts/check-no-release.mjs`. A v1.0 release notes draft is in `docs/release/` (English pending proofreading; the recommended model combination is left blank for the owner). The README quick start now starts with Docker. `scripts/perf/chat-peak.mjs` measures the chat-time memory peak in the image. No tag, release or image has been published.
 - Docker deployment guide for a 2 GB machine (`docs/deploy/docker.md`, English version pending proofreading): `docker/docker-compose.prod.yml` runs the app plus Caddy with automatic HTTPS (only Caddy publishes ports, 512 MiB app limit, master key from a Docker secret file), `docker/caddy/Caddyfile.example`, and an optional DNS-01 variant for DNSPod (Tencent Cloud DNS) built with a pinned community plugin (an example, not a project dependency). Includes hardening before going public, backup and restore, upgrade and troubleshooting. ADR 0031 records the reverse-proxy responsibilities and one known limitation: behind a proxy the login failure limiter counts all visitors as one source. A CI deployment smoke runs the production compose with an HTTP-only Caddy and checks `/healthz`, the setup code, WebSocket and chunk-by-chunk SSE without touching the internet.
 
 #### Changed
 
+- The mobile drawer now also closes when you tap the link to the page you are already on, moves focus into the drawer when it opens and back to the Menu button when it closes with Esc or a tap outside; in Mail, "Back to list" returns focus to the message you had open.
 - The Web UI now works on phone-sized screens (360 px and up, portrait and landscape). Below 720 px the sidebar becomes a drawer opened from a top bar (closed by a tap outside, Esc, or navigating); controls are at least 44 px tall and inputs use 16 px text so iOS does not zoom on focus; Mail shows the list and the open message as two screens with a "Back to list" button; the audit table scrolls inside its own container; the composer sticks to the bottom and respects safe areas. The page has `viewport-fit=cover` and a `theme-color`. No API changes. Real-device behaviour (iOS Safari, Android Chrome soft keyboard) is not verified yet.
 
 ### M5b · Secrets, TOTP and the knowledge map (in progress)
@@ -287,6 +289,8 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 
 #### 变更
 
+- 手机抽屉:点指向当前页的链接也会关闭;打开时焦点移入抽屉,按 Esc 或点遮罩关闭时焦点回到「菜单」按钮;邮件里「返回列表」后焦点回到刚才打开的那封邮件。
+- **新增**:发布准备(ADR 0032)。`.github/workflows/release.yml` 在改动 Dockerfile 的 PR 和手动触发时,分别在原生 runner 上构建 `linux/amd64` 与 `linux/arm64` 镜像并做健康检查,**默认不推送**:只有 `v*` tag,或手动触发并勾选 `push` 才会推送到 GHCR(手动只得到 `sha-<7>` 标签)。标签策略与「确认没有发布」的核对见 `docs/release/image-tags.md` 与 `scripts/check-no-release.mjs`。`docs/release/` 里有 v1.0 发布说明草稿(英文待校对;推荐的模型组合留空等业主确认)。README 快速开始改为以 Docker 开头。新增 `scripts/perf/chat-peak.mjs`,在镜像里测对话时的内存峰值。没有打 tag、没有发 Release、没有推送镜像。
 - Web UI 适配手机尺寸(360 px 起,竖屏与横屏)。宽度小于 720 px 时侧栏变成顶栏打开的抽屉(点遮罩、按 Esc 或换页即关闭);控件高度不低于 44 px,输入框用 16 px 字号避免 iOS 聚焦时放大;邮件页改为「列表 → 邮件」两屏并带「返回列表」按钮;审计表在自己的容器里横向滚动;输入区贴底并避开安全区。页面加了 `viewport-fit=cover` 与 `theme-color`。不改任何接口。真机(iOS Safari、Android Chrome 软键盘)尚未验证。
 
 ### M5b · 密钥、TOTP 与知识地图(进行中)

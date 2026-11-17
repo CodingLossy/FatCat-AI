@@ -167,8 +167,14 @@ test('手机宽度:登录、发消息、设置、邮件、记忆、审计,各宽
     await expect(page.getByRole('link', { name: '新对话' })).toBeHidden();
     await page.getByRole('button', { name: '菜单' }).click();
     await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
+    await expect(page.getByRole('link', { name: '新对话' })).toBeFocused();
     await shot(page, 'drawer');
     await page.keyboard.press('Escape');
+    await expect(page.getByRole('link', { name: '新对话' })).toBeHidden();
+    await expect(page.getByRole('button', { name: '菜单' })).toBeFocused();
+    // 点指向当前页的链接(已经在首页,「新对话」就是当前页)也要关闭抽屉
+    await page.getByRole('button', { name: '菜单' }).click();
+    await page.getByRole('link', { name: '新对话' }).click();
     await expect(page.getByRole('link', { name: '新对话' })).toBeHidden();
 
     // 配置档
