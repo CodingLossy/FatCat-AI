@@ -17,6 +17,12 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - Environment variables now start with `FATCAT_AI_` instead of `AIP_` (for example `FATCAT_AI_PORT`, `FATCAT_AI_DATA_DIR`, `FATCAT_AI_TOKEN`). The old names still work for now and print a deprecation warning.
 - Unchanged on purpose: the `aip_pat_` token prefix, the `aip_session` / `aip_csrf` cookies and the `X-AIP-Server-Version` header, so existing tokens and API v1 clients keep working.
 
+### M5c · Release prep (in progress)
+
+#### Changed
+
+- The Web UI now works on phone-sized screens (360 px and up, portrait and landscape). Below 720 px the sidebar becomes a drawer opened from a top bar (closed by a tap outside, Esc, or navigating); controls are at least 44 px tall and inputs use 16 px text so iOS does not zoom on focus; Mail shows the list and the open message as two screens with a "Back to list" button; the audit table scrolls inside its own container; the composer sticks to the bottom and respects safe areas. The page has `viewport-fit=cover` and a `theme-color`. No API changes. Real-device behaviour (iOS Safari, Android Chrome soft keyboard) is not verified yet.
+
 ### M5b · Secrets, TOTP and the knowledge map (in progress)
 
 #### Added
@@ -268,6 +274,12 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 - Windows 上旧服务器仍在运行时,数据目录无法迁移(`EPERM` / `EBUSY`)。服务器会重试几秒,仍失败就提示先停止旧的 AI-Personal 服务器并退出,不移动也不删除任何文件。
 - 环境变量前缀由 `AIP_` 改为 `FATCAT_AI_`(如 `FATCAT_AI_PORT`、`FATCAT_AI_DATA_DIR`、`FATCAT_AI_TOKEN`);旧名暂时仍可用,并打印弃用警告。
 - 有意不改:令牌前缀 `aip_pat_`、Cookie `aip_session` / `aip_csrf` 与响应头 `X-AIP-Server-Version`,现有令牌与 API v1 客户端不受影响。
+
+### M5c · 发布收尾(进行中)
+
+#### 变更
+
+- Web UI 适配手机尺寸(360 px 起,竖屏与横屏)。宽度小于 720 px 时侧栏变成顶栏打开的抽屉(点遮罩、按 Esc 或换页即关闭);控件高度不低于 44 px,输入框用 16 px 字号避免 iOS 聚焦时放大;邮件页改为「列表 → 邮件」两屏并带「返回列表」按钮;审计表在自己的容器里横向滚动;输入区贴底并避开安全区。页面加了 `viewport-fit=cover` 与 `theme-color`。不改任何接口。真机(iOS Safari、Android Chrome 软键盘)尚未验证。
 
 ### M5b · 密钥、TOTP 与知识地图(进行中)
 

@@ -642,17 +642,11 @@ td .badge {
     min-width: 0;
 }
 
-@media (max-width: 720px) {
-    .shell {
-        flex-direction: column;
-    }
-
-    .sidebar {
-        width: 100%;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-        max-height: 40vh;
-    }
+/* 手机顶栏与侧栏抽屉:桌面宽度下顶栏与遮罩不显示 */
+.topbar,
+.sidebar-backdrop,
+.mail-back {
+    display: none;
 }
 
 .citations {
@@ -862,5 +856,238 @@ td .badge {
 
     .item-list {
         max-height: 50vh;
+    }
+}
+
+/* 手机适配(M5c PR 3):≤720px 时侧栏收成抽屉,触控目标至少 44px,输入框 16px 防止 iOS 聚焦时缩放,
+   长内容换行或在自己的容器里横向滚动,页面本身不横向滚动。 */
+.table-scroll {
+    overflow-x: auto;
+}
+
+@media (max-width: 720px) {
+    .layout {
+        min-height: 100dvh;
+    }
+
+    .shell {
+        flex-direction: column;
+    }
+
+    .topbar {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.4rem 0.8rem;
+        padding-top: max(0.4rem, env(safe-area-inset-top));
+        padding-left: max(0.8rem, env(safe-area-inset-left));
+        padding-right: max(0.8rem, env(safe-area-inset-right));
+        border-bottom: 1px solid var(--border);
+        background: var(--panel);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .topbar-title {
+        font-weight: 600;
+    }
+
+    .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: min(18rem, 85vw);
+        z-index: 31;
+        border-right: 1px solid var(--border);
+        overflow-y: auto;
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition:
+            transform 0.15s ease,
+            visibility 0.15s;
+        padding-top: max(0.8rem, env(safe-area-inset-top));
+        padding-bottom: max(0.8rem, env(safe-area-inset-bottom));
+    }
+
+    .sidebar.open {
+        transform: none;
+        visibility: visible;
+        box-shadow: 0 0 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        background: rgba(0, 0, 0, 0.4);
+    }
+
+    .session-list {
+        min-height: 8rem;
+    }
+
+    .sidebar-foot {
+        gap: 0;
+    }
+
+    .sidebar-foot a,
+    .sidebar-foot button,
+    .session-link,
+    .session-row button {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .sidebar {
+            transition: none;
+        }
+    }
+
+    /* 触控目标与输入框 */
+    button,
+    .button,
+    select,
+    input:not([type='checkbox']):not([type='radio']),
+    textarea {
+        min-height: 2.75rem;
+    }
+
+    button.link,
+    .tree-row button,
+    .mail-row {
+        min-height: 2.75rem;
+    }
+
+    .sidebar-foot a,
+    .sidebar-foot button,
+    .session-link {
+        min-height: 2.75rem;
+        width: 100%;
+    }
+
+    input,
+    select,
+    textarea {
+        font-size: 1rem;
+        max-width: 100%;
+    }
+
+    .page {
+        padding: 0.8rem 0.9rem;
+    }
+
+    .auth {
+        margin: 1.5rem auto;
+    }
+
+    /* 聊天:消息区占满,气泡更宽,输入区贴底并避开安全区 */
+    .messages {
+        padding: 0.6rem 0.7rem;
+    }
+
+    .message.user {
+        max-width: 92%;
+    }
+
+    .chat-head {
+        padding: 0.5rem 0.7rem 0;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .composer {
+        flex-wrap: wrap;
+        padding: 0.6rem 0.7rem;
+        padding-bottom: max(0.6rem, env(safe-area-inset-bottom));
+        position: sticky;
+        bottom: 0;
+        background: var(--bg);
+        border-top: 1px solid var(--border);
+    }
+
+    .composer textarea {
+        flex-basis: 100%;
+        resize: none;
+    }
+
+    .tool-card,
+    .approval-panel,
+    .card {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
+    .approval {
+        flex-wrap: wrap;
+    }
+
+    .approval-panel {
+        padding: 0.5rem 0.7rem;
+    }
+
+    pre,
+    .item-text {
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+    }
+
+    .code-block pre,
+    .markdown pre {
+        white-space: pre;
+        overflow-wrap: normal;
+    }
+
+    .markdown img,
+    .message-images img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .markdown table {
+        display: block;
+        overflow-x: auto;
+    }
+
+    /* 设置页:各分区的表单控件占满一行 */
+    .form label.inline {
+        margin-right: 0;
+    }
+
+    .row > input,
+    .row > select {
+        flex: 1 1 10rem;
+        min-width: 0;
+    }
+
+    fieldset {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    /* 邮件:列表 → 详情两屏;选中邮件后只显示详情,「返回列表」回到列表 */
+    .mail-layout.has-open .mail-list {
+        display: none;
+    }
+
+    .mail-layout:not(.has-open) .mail-view {
+        display: none;
+    }
+
+    .mail-back {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .mail-list {
+        max-height: none;
+    }
+
+    /* 审计表:单元格内长文本换行,表格在容器内横向滚动 */
+    .audit-table th,
+    .audit-table td {
+        overflow-wrap: anywhere;
+        min-width: 5rem;
     }
 }
