@@ -183,7 +183,7 @@
 - **统一事件流**:Agent 每一步(文本增量、工具调用、待审批、错误)都作为事件写入 SQLite 并推送到订阅的客户端,渠道适配器同样消费这些事件 → 天然支持断线续传、多端同步。
 - **统一条目索引(Item Index)**:邮件、文件/小说、人物、视频数据等各来源的「条目提供者(ItemProvider)」把内容登记到同一张 `items` 表,层级关系写入 `item_edges` 表;知识地图、搜索、「问 AI」都基于它(见 6.2)。
 - **工具审批**:工具声明 `risk: read | write | external | dangerous`;`write/external/dangerous` 默认需要用户在任一已登录客户端确认(IM 渠道里回复「确认」或点击卡片)。
-- **数据目录**:`~/.fatcat-ai/`(桌面)或 `/data`(Docker):`config.yaml`、`db.sqlite`、`files/`、`logs/`、`plugins/`。API Key 存系统钥匙串(桌面,Tauri keyring 插件)或加密存储(服务器,主密钥来自环境变量)。
+- **数据目录**:`~/.fatcat-ai/`(桌面)或 `/data`(Docker):`config.yaml`、`db.sqlite`、`files/`、`logs/`、`plugins/`(插件代码)、`plugin-data/`(各插件自己的数据,ADR 0040)。API Key 存系统钥匙串(桌面,Tauri keyring 插件)或加密存储(服务器,主密钥来自环境变量)。
 
 ---
 
@@ -469,12 +469,17 @@ CREATE INDEX idx_items_type ON items(owner_id, type, updated_at);
   - 生成日志(**已完成**,#43,迁移 0012):新增 `memory_extract_runs`(运行 id、会话 / run、配置档与模型、`prompt_version` = 提示词哈希、状态、写入 / 隔离 / 拒存计数、错误码),自动抽取与 sleep 都写这张表;`memory_sources` 加可为空的 `extract_run_id`;`GET /memory/{id}/sources` 返回这次运行的信息。只存 id、计数和错误码,不存正文或模型输出。
 - **验收**:任务在重启后持久;时区正确(用户时区可配);推送到渠道成功;无人值守任务中的高风险工具仍按策略审批(可设置「预授权」白名单)。
 
-### M7 · 插件系统与插件市场(约 2–3 周)
-- 插件形式:① MCP Server(任意语言,首选);② 原生 TS 插件(`@fatcat-ai/plugin-sdk`,Apache-2.0:注册工具、渠道、**知识地图条目提供者 `registerItemProvider`**(如「视频数据」)、设置页 UI 片段、定时任务模板)。
-- 清单 `plugin.json`:名称、版本、权限声明、入口、i18n 文案、最低核心版本。
-- 安装来源:npm 包、Git 仓库、本地目录;市场 = 一个公开的 GitHub 索引仓库(JSON 索引 + PR 审核),客户端从中浏览/搜索/安装。
-- 安全:安装时展示权限;原生插件运行在独立进程(子进程/worker + 受限 API),不直接拿到密钥;索引条目附校验和,可选 sigstore 签名。
-- **验收**:可从市场一键安装一个 MCP 插件和一个原生插件;卸载干净;越权调用被拦截。
+### M7 · 插件系统与插件市场(约 2–3 周;设计见 ADR 0040)
+- **插件形态(2026-11-17 修订)**:只有一种运行方式——带 `plugin.json` 的包,入口是一个用 stdio 说 MCP 的 JavaScript 进程。「原生 TS 插件」= 用 `@fatcat-ai/plugin-sdk`(Apache-2.0)写的 MCP Server,另外用到 `fatcat/*` 扩展方法(知识地图条目提供者 `registerItemProvider`、受控网络 `ctx.fetch`、设置表单、定时任务模板)。不再用 worker。Python / 二进制 MCP 服务器继续走 ADR 0013 的手动配置,标注「未隔离」,M7 不上架市场。插件注册渠道、插件 Web 脚本不在 M7。
+- 清单 `plugin.json`:`manifestVersion`、`id`、`version`、i18n 名称与描述、`license`、`engines.fatcat`(兼容的核心版本)、`entry`、`permissions`(`tools` 及风险级别、`net` 域名、`secrets` 名字、`items` 类别)、`settings`、`taskTemplates`、`licensing`(变现预留,M7 只接受 `free`)。
+- 权限:安装时整体授权;插件工具以 `plugin.<id>.<tool>` 走现有审批 / 预授权(ADR 0010、0039);能联网的插件其 `read` 工具按 `write` 审批;插件发起的 `fatcat/*` 请求按授权判定,未声明一律拒绝并记事件;`net.fetch` 经 net-guard 与域名匹配。
+- 隔离:每个插件一个子进程,Node 权限模型只允许读写自己的代码与数据目录(读不到 `secrets.yaml(.enc)`、`master.key`、`db.sqlite`);不继承主程序环境;密钥只能绑定 `env:` 引用,启动时经子进程环境传入。Node 24 不管网络,直接联网靠预加载拦截 + 市场审核两层(纵深防御,不是硬墙)。
+- 安装来源:本地目录、市场(原写的 npm 与 Git 去掉:会在授权前运行别人的代码)。市场 = 公开 GitHub 索引仓库(PR 审核)发布的 `index.json` + Ed25519 签名;包 sha256 写在签名索引里;`serial` 防回滚;任何下载或校验失败都不改动已安装的内容。
+- 卸载默认保留插件数据(可勾选删除);升级时新增权限要再次同意,健康检查失败自动回滚到旧版本与数据备份。
+- 数据库:迁移 0018 新增 `plugins`、`plugin_events` 两张表,不改已有表;含迁移的 PR 业主确认后合并。
+- 内存:主程序空闲 250 MiB 规则不变(插件管理代码按需加载);插件进程单独计算,每个 V8 堆 64 MiB、RSS 上限 128 MiB,按需启动、空闲 10 分钟停止、最多同时 3 个;2C2G 最坏约 1.2 GiB。
+- 实现拆分(ADR 0040 第 11 节):`feat/plugin-manifest` → `feat/plugin-runtime`(迁移 0018)→ `feat/plugin-capabilities` → `feat/plugin-market` → `feat/plugin-upgrade` → `docs/m7-wrapup`(自检)。「任务工具集声明」(ADR 0039 第 4 节)是独立小 PR,排在设计 PR 之后。
+- **验收**:可从市场一键安装一个打包的 MCP 插件和一个 SDK 插件;卸载干净;越权调用(读密钥文件、读其他插件数据、未声明的网络 / 工具 / 方法、启动子进程)被拦截;无插件时主程序空闲内存不变。
 
 ### M8 · 多智能体(约 2 周)
 - 「代理」=人格/系统提示 + 模型配置档 + 工具白名单 + 记忆分区。
@@ -781,4 +786,10 @@ Copyright (C) 2026 尹绪柏 (Theodore Yin). All rights reserved for commercial 
 - M5 拆成 M5a(渠道)、M5b(知识地图浏览器、人物、TOTP、密钥加密、外连目标清单)、M5c(复核已有的 oasdiff 检查、补 CodeQL/Semgrep、部署、发布);`degraded` 标记的 ADR 放在 M5a 开头,先于实现;用户时区设置与渠道注入评测放进 M5a。
 - 内存预算改为防退化(第 12 节):空闲上限 250 MiB、按渠道定增量、要能回落、CI 对比上一版本涨幅按 ADR 0018 > 10% 报警、> 20% 失败;内存预算 ADR 放进 M3.x,写清 20% 是失败还是报警以及何时删除 CI 里固定的 120 MiB 门禁,ADR 合并后再改 CI。
 - 第 13 节加入署名与仓库历史两条规则。
+- 第 16 节已定决策不变。
+
+### 2026-11-17(M7 设计,ADR 0040)
+- M7 插件形态统一为「子进程 + stdio MCP」,原生 TS 插件改为用 SDK 写的 MCP Server,不再用 worker;M7 只支持 JavaScript 入口。
+- 安装来源只保留本地目录与市场,去掉 npm 与 Git。
+- 新增 `plugin-data/` 数据目录;迁移 0018 新增 `plugins`、`plugin_events`。
 - 第 16 节已定决策不变。
