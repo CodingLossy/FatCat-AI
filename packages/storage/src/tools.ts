@@ -129,6 +129,9 @@ export function createToolRepositories(conn: Connection, now: () => Date) {
         approvalGet: sqlite.prepare<[string, string], ApprovalRow>(
             `SELECT ${APPROVAL_COLUMNS} FROM approval_requests WHERE owner_id = ? AND call_id = ?`,
         ),
+        approvalByRun: sqlite.prepare<[string, string], ApprovalRow>(
+            `SELECT ${APPROVAL_COLUMNS} FROM approval_requests WHERE owner_id = ? AND run_id = ? ORDER BY created_at, call_id`,
+        ),
         approvalDecide: sqlite.prepare<[ApprovalStatus, string, string, string]>(
             `UPDATE approval_requests SET status = ?, decided_at = ?
              WHERE owner_id = ? AND call_id = ? AND status = 'pending'`,
@@ -225,6 +228,10 @@ export function createToolRepositories(conn: Connection, now: () => Date) {
         get(ownerId: string, callId: string): ApprovalRequest | null {
             const row = q.approvalGet.get(ownerId, callId);
             return row ? toApproval(row) : null;
+        },
+        /** 某次运行的全部审批(不分页,按创建时间);任务运行用它判断审批结果。 */
+        listByRun(ownerId: string, runId: string): ApprovalRequest[] {
+            return q.approvalByRun.all(ownerId, runId).map(toApproval);
         },
         /** 只有 pending 的请求能被决定;返回 false 表示已被处理(竞争中的后到者)或不存在。 */
         decide(ownerId: string, callId: string, status: Exclude<ApprovalStatus, 'pending'>): boolean {
