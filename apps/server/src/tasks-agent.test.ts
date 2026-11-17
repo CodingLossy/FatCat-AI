@@ -159,6 +159,66 @@ describe('agent_prompt 任务', () => {
         expect(s.pushed).toEqual([]);
     });
 
+    it('🔒 审批结果按 runId 精确查询:别的审批再多也不会让被拒绝的运行记成成功', async () => {
+        const { steps, createTask, untilPending, untilFinished, post, ownerId } = await setup();
+        const task = Task.parse(await (await createTask()).json());
+        steps.push(callTool('channel.push', { text: 'x' }), answer('ok'));
+        const run = TaskRun.parse(await (await post(`/tasks/${task.id}/run`)).json());
+        const approval = await untilPending();
+        const other = s.repos.sessions.create(ownerId);
+        const message = s.repos.messages.append(ownerId, other.id, {
+            role: 'user',
+            parts: [{ type: 'text', text: 'hi' }],
+            status: 'complete',
+        });
+        const otherRun = s.repos.runs.create(ownerId, { sessionId: other.id, inputMessageId: message.id });
+        for (let i = 0; i < 60; i++) {
+            s.repos.approvals.create(ownerId, {
+                callId: `other-${i}`,
+                runId: otherRun.id,
+                sessionId: other.id,
+                toolName: 'calc',
+                risk: 'read',
+                summary: 'noise',
+                input: {},
+                preauthorizable: true,
+                expiresAt: new Date(Date.now() + 600_000),
+            });
+        }
+        await post(`/approvals/${approval.callId}`, { decision: 'reject' });
+        expect(await untilFinished(run.id)).toMatchObject({ status: 'failed', errorCode: 'approval_rejected' });
+        expect(s.pushed).toEqual([]);
+    });
+
+    it('🔒 绕过 API 把 external 工具写进白名单也不生效:mail.send 与 channel.push 仍各自生成待审批请求', async () => {
+        const { steps, createTask, untilPending, untilFinished, post, ownerId, channel } = await setup();
+        const created = Task.parse(await (await createTask()).json());
+        // 直接改库:API 会拒绝这样的白名单
+        s.repos.tasks.update(ownerId, created.id, {
+            policy: {
+                ...created.policy,
+                allowedTools: [{ tool: 'mail.send' }, { tool: 'channel.push' }],
+            },
+        });
+        steps.push(
+            callTool('mail.send', { draftId: 'no-such-draft' }),
+            callTool('channel.push', { text: 'x' }),
+            answer('done'),
+        );
+        const run = TaskRun.parse(await (await post(`/tasks/${created.id}/run`)).json());
+        const first = await untilPending();
+        expect(first.toolName).toBe('mail.send');
+        expect(s.pushed).toEqual([]);
+        await post(`/approvals/${first.callId}`, { decision: 'reject' });
+        const second = await untilPending();
+        expect(second.toolName).toBe('channel.push');
+        expect(s.pushed).toEqual([]);
+        await post(`/approvals/${second.callId}`, { decision: 'reject' });
+        await untilFinished(run.id);
+        expect(s.pushed).toEqual([]);
+        expect(channel.id).toBeTruthy();
+    });
+
     it('🔒 在聊天里调用 channel.push 失败(没有任务渠道);白名单里的 write 工具无人值守时直接执行,没列出的仍要审批', async () => {
         const { steps, req, post, createTask, untilPending, untilFinished } = await setup();
         // 普通会话里没有任务渠道

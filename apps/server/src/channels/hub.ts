@@ -533,7 +533,11 @@ export class ChannelHub {
         if (!channel?.enabled || !channel.binding || !rt?.adapter) {
             throw new Error('the channel is not running or has no bound owner account');
         }
-        const target = rt.target ?? { externalUserId: channel.binding.externalUserId };
+        // 只发给绑定的主人:rt.target 与绑定账号不一致时退回绑定账号
+        const target =
+            rt.target?.externalUserId === channel.binding.externalUserId
+                ? rt.target
+                : { externalUserId: channel.binding.externalUserId };
         await this.send(rt, target, markdown);
     }
 

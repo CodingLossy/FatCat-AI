@@ -144,6 +144,32 @@ describe('任务调度器(ADR 0033)', () => {
         expect(runsOf(denied.id)).toMatchObject([{ status: 'failed', errorCode: 'approval_rejected', attempt: 1 }]);
     });
 
+    it('等待重试期间:同一任务不重叠(手动返回 null、定时记 overlap),可取消,stop 后记为 cancelled', async () => {
+        const t = seed('wait', { kind: 'cron', expression: '0 12 * * *' }, policy({ maxAttempts: 3 }));
+        let n = 0;
+        const e = make({
+            wait: async () => {
+                n++;
+                throw new ExecutorError('timeout', true);
+            },
+        });
+        e.start();
+        const first = e.runNow(t.id)!;
+        await vi.advanceTimersByTimeAsync(1);
+        expect(runsOf(t.id)[0]).toMatchObject({ status: 'queued', errorCode: 'timeout' });
+        expect(e.runNow(t.id)).toBeNull();
+        expect(e.cancel(first.id)).toBe(true);
+        expect(runsOf(t.id)[0]).toMatchObject({ status: 'cancelled' });
+        await vi.advanceTimersByTimeAsync(10 * MIN);
+        expect(n).toBe(1);
+        // stop():等待中的记录标为 cancelled
+        const second = e.runNow(t.id)!;
+        await vi.advanceTimersByTimeAsync(1);
+        expect(repos.tasks.getRun(second.id)?.status).toBe('queued');
+        e.stop();
+        expect(repos.tasks.getRun(second.id)?.status).toBe('cancelled');
+    });
+
     it('系统忙(postponed)10 分钟后再试、不消耗重试次数,超过上限记 failed', async () => {
         const t = seed('busy', { kind: 'cron', expression: '0 12 * * *' }, policy({ maxAttempts: 1 }));
         let busy = true;
