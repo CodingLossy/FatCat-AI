@@ -14,7 +14,7 @@ An AI assistant that is truly your own: self-hostable, open source, bring-your-o
 - **Channels**: WeChat in 1.0 (WeCom is postponed, schedule to be set)
 - **Knowledge map**: mail, documents, novels, people and more in one item index you can drill into level by level
 - **Long-term memory**: typed, superseded rather than overwritten, with sources; answers carry trust labels (reliable, possibly stale, conflicted, inferred); credentials are always refused and sensitive data is redacted before it is stored; you can mark a memory helpful, out of date, wrong or not to be kept, and forget it at any time
-- **Lightweight**: runs comfortably on a 2 GB server
+- **Memory as needed**: positioned as a personal app like QQ or WeChat; memory use follows actual need, and CI only measures and reports it, with no memory gate
 
 ## Telemetry-free
 
@@ -22,7 +22,7 @@ FatCat-AI contains **no** analytics or crash-reporting code. It only connects to
 
 ## Quick start
 
-The fastest way is Docker (Docker 24 or later with Compose v2; a 2 GB machine is enough, idle use is about 110 MiB):
+The fastest way is Docker (Docker 24 or later with Compose v2; 2 GB or more is suggested; idle use is about 110 MiB with no channels, for reference only):
 
 ```bash
 git clone https://github.com/CodingLossy/FatCat-AI.git
@@ -34,7 +34,7 @@ docker compose -f docker/docker-compose.yml logs fatcat-ai | grep -i 'setup code
 1. **First sign-in.** Open <http://127.0.0.1:8787>, create the owner account when asked (1.0 has exactly one account) and paste the setup code from the log.
 2. **Add a model profile.** Settings → Model profiles. Use any OpenAI-compatible endpoint or a local Ollama. Keys are only read from environment variables or `secrets.yaml` in the data directory (see "Local development" and "Docker" below); the Web UI and the API never accept a plaintext key. Start chatting once it shows "Key: Set".
 3. **(Optional) Bind WeChat.** Settings → Channels, add a WeChat channel and scan the QR code (steps in "5. WeChat" below). 1.0 includes the WeChat channel only; WeCom is postponed with no date set.
-4. **Going public.** Do not expose port 8787 directly. Follow [docs/deploy/docker.md](docs/deploy/docker.md) (Caddy with automatic HTTPS, 2 GB sizing, a DNSPod example), and turn on two-step verification and secrets encryption first.
+4. **Going public.** Do not expose port 8787 directly. Follow [docs/deploy/docker.md](docs/deploy/docker.md) (Caddy with automatic HTTPS, memory sizing advice, a DNSPod example), and turn on two-step verification and secrets encryption first.
 
 > Prebuilt images (GHCR, amd64 / arm64) arrive with the official 1.0 release; until then build from source with `--build` as above.
 
@@ -104,7 +104,7 @@ printf 'DEEPSEEK_API_KEY: "%s"\n' '<your key>' | \
 
 > Upgrading from AI-Personal: the compose service was renamed from `ai-personal` to `fatcat-ai`; the `ai-personal-data` volume is unchanged, so your data stays. Before upgrading, run `docker compose -f docker/docker-compose.yml down` with the old compose file, or start the new version with `docker compose -f docker/docker-compose.yml up -d --build --remove-orphans`. Otherwise the old container keeps running and holds port 8787, and the new one can't start.
 
-**Public deployment** (a 2 GB machine, automatic HTTPS with Caddy, a DNSPod example, backup and upgrade): see the [Docker deployment guide](docs/deploy/docker.en.md).
+**Public deployment** (memory sizing advice, automatic HTTPS with Caddy, a DNSPod example, backup and upgrade): see the [Docker deployment guide](docs/deploy/docker.en.md).
 
 It only listens on 127.0.0.1 by default; to reach it from other machines, put it behind a reverse proxy with HTTPS. Setting it up from another machine or through a proxy needs the one-time setup code printed in the startup log (`docker compose -f docker/docker-compose.yml logs`).
 

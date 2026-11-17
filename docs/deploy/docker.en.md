@@ -2,18 +2,18 @@
 
 > Machine-translated from [docker.md](docker.md); **pending proofreading**.
 
-For a 2-core / 2 GB Linux machine running FatCat-AI with Docker Compose, with Caddy getting and renewing the HTTPS certificate automatically.
+For a Linux machine (2 cores / 2 GB or more suggested, not a hard requirement) running FatCat-AI with Docker Compose, with Caddy getting and renewing the HTTPS certificate automatically.
 
 > Every command here was run in a local container (see "What was verified" at the end). A real domain, a real DNS account and a real 2C2G machine were **not** used; check those yourself.
 
 ## 1. Prerequisites
 
-| Item        | Requirement                                                                                                                                                                                                           |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Machine     | Linux, 2 cores / 2 GB RAM / 10 GB+ disk, Docker Engine 24+ with Compose v2 (`docker compose version`)                                                                                                                 |
-| Domain      | A domain whose DNS you control, with A (and AAAA) records pointing to this machine's public IP                                                                                                                        |
-| Ports       | 80 and 443 (TCP), and 443/UDP (HTTP/3, optional), reachable from the internet. If 80 is blocked or the machine is on a private network, see section 7                                                                 |
-| First build | The first start builds the image on the machine (`pnpm build`), which may run out of memory on 2 GB: add 2 GB of temporary swap, or build elsewhere and import the image. Once an image is published, pull it instead |
+| Item        | Requirement                                                                                                                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Machine     | Linux, 2 cores / 2 GB+ RAM suggested / 10 GB+ disk, Docker Engine 24+ with Compose v2 (`docker compose version`)                                                                                                                                    |
+| Domain      | A domain whose DNS you control, with A (and AAAA) records pointing to this machine's public IP                                                                                                                                                      |
+| Ports       | 80 and 443 (TCP), and 443/UDP (HTTP/3, optional), reachable from the internet. If 80 is blocked or the machine is on a private network, see section 7                                                                                               |
+| First build | The first start builds the image on the machine (`pnpm build`), which may run out of memory on a small machine (for example 2 GB): add 2 GB of temporary swap, or build elsewhere and import the image. Once an image is published, pull it instead |
 
 ## 2. Get the code
 
@@ -79,13 +79,13 @@ printf 'DEEPSEEK_API_KEY: "%s"\n' 'your-key' | \
 
 > Known limitation (ADR 0031 section 3): the app does not trust `X-Forwarded-For`, so behind Caddy the password-login failure limiter counts all visitors as one source. Someone guessing passwords can lock you out for up to a minute at a time, but it does not make guessing easier; the TOTP limiter also counts per username.
 
-## 6. Sizing for a 2 GB machine
+## 6. Memory settings (protective defaults, adjust to your machine)
 
-| Part              | Limit                                              | Basis                                                                                                                                                                           |
-| ----------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| App container     | `mem_limit: 512m`, `memswap_limit: 512m` (no swap) | Idle ≤ 250 MiB, chat peak < 400 MiB (ADR 0018); Node heap cap 384 MiB in the image. Mail sync and document-parsing subprocesses count against the container limit               |
-| Caddy             | `mem_limit: 128m`                                  | About 11 MiB idle measured in a local container (`docker stats`); it grows with traffic and certificate work, so reserve 30–50 MiB. 2C2G numbers to be filled in before release |
-| System and caches | the remaining ~1.3 GB                              | Kernel, Docker daemon and file cache                                                                                                                                            |
+| Part              | Limit                                              | Basis                                                                                                                                                                                                                                                                             |
+| ----------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App container     | `mem_limit: 512m`, `memswap_limit: 512m` (no swap) | Protective default, not a promise (ADR 0041: memory is measured, not gated); raise `mem_limit` on a bigger machine; idle use is about 110 MiB with no channels; Node heap cap 384 MiB in the image. Mail sync and document-parsing subprocesses count against the container limit |
+| Caddy             | `mem_limit: 128m`                                  | About 11 MiB idle measured in a local container (`docker stats`); it grows with traffic and certificate work, so reserve 30–50 MiB. 2C2G numbers to be filled in before release                                                                                                   |
+| System and caches | the remaining memory                               | Kernel, Docker daemon and file cache                                                                                                                                                                                                                                              |
 
 - A container over its limit is killed and restarted by `restart: unless-stopped` instead of taking the machine down. Check: `docker inspect -f '{{.State.OOMKilled}} {{.RestartCount}}' $(docker compose -f docker-compose.prod.yml ps -q fatcat-ai)`.
 - If the machine runs other services, count their memory too; turn off mail sync before raising the limit.

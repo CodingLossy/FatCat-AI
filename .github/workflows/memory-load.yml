@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright (C) 2026 尹绪柏 (Theodore Yin)
-# 负载后的内存回落(ADR 0018 第 4 节规则 3、4)与渠道增量(第 5 节规则 5):1 万封合成邮件同步 3 次约 8 分钟,微信渠道 4×100 条消息约 27 分钟,
-# 所以只在 push 到 main 与手动触发时运行;PR 上只跑 ci.yml 中的空闲内存检查(规则 1、2)。
+# 负载后的内存回落与渠道增量的测量报告(ADR 0041,取代 ADR 0018 的门禁;只报告,不让任务失败):1 万封合成邮件同步 3 次约 8 分钟,微信渠道 4×100 条消息约 27 分钟,
+# 所以只在 push 到 main 与手动触发时运行;PR 上只跑 ci.yml 中的空闲内存报告。
 name: Memory under load
 
 on:
@@ -31,7 +31,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       # 构建好的服务器在 runner 上直接运行,Node 参数取自 docker/Dockerfile;本地假 IMAP,不连外网
-      - name: Sync 10,000 synthetic mails three times and check rollback
+      - name: Sync 10,000 synthetic mails three times and report memory
         run: CHECK=1 pnpm perf:mail-sync
 
   channel-wechat:
@@ -47,6 +47,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      # 假的 iLink 服务器 + 构建好的服务器;增量上限在 .github/memory-baseline.json 的 channelIncrementMiB
-      - name: Measure the channel increment, send 4 x 100 messages and check rollback
+      # 假的 iLink 服务器 + 构建好的服务器;参考值在 .github/memory-baseline.json 的 channelIncrementMiB,只用于对比
+      - name: Measure the channel increment, send 4 x 100 messages and report memory
         run: RUNS=4 CHECK=1 pnpm perf:channel

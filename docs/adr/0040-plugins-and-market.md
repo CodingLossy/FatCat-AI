@@ -393,7 +393,7 @@ ALTER TABLE tasks ADD COLUMN disabled_reason TEXT;
   - 插件页显示每个运行中插件最近一次的 RSS 读数。
   - 保留:空闲 10 分钟停止(第 4.1 节)、手动「停止」、5 分钟内崩溃 3 次停用。
 - **每个 PR 都测量并记录,只报告、不拦截**:涉及插件运行时的 PR(第 11 节 PR 2b 起)在 PR 描述里写:主程序在「无插件」与「启用示例插件」两种情况下的空闲 RSS、示例插件进程的空闲 RSS、连续 100 次工具调用后两者的 RSS。用 `scripts/perf/plugin.mjs`(`pnpm perf:plugin`)测量,结果只打印,CI 里不作为门禁。
-- 本 PR 不改 ADR 0018、CI 内存门禁、`.github/memory-baseline.json`、README 和 Docker 文档中关于 2 GB 服务器与 250 MiB 的表述;放开内存预算对这些文件的修改由业主安排的单独 PR 完成。
+- ADR 0018、CI 内存门禁、`.github/memory-baseline.json`、README 和 Docker 文档中关于 2 GB 服务器与 250 MiB 的表述,已由 ADR 0041 及其 PR 改为只测量、不设门禁。
 
 ## 9. API 与界面(`/api/v1` 增量,不破坏 ADR 0030 冻结的部分)
 

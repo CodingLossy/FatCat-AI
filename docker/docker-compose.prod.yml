@@ -19,7 +19,7 @@ services:
     # 发布镜像后可改为 ghcr.io/codinglossy/fatcat-ai:<标签>,并用 `docker compose pull` 代替 --build
     image: ${FATCAT_AI_IMAGE:-fatcat-ai:local}
     restart: unless-stopped
-    # 2 GB 机器:应用容器上限 512 MiB(空闲 ≤ 250 MiB、对话峰值 < 400 MiB,ADR 0018);
+    # 默认保护值:应用容器上限 512 MiB(不是承诺,内存更大的机器可调大;内存只测量不设门禁,ADR 0041);
     # 不设 swap 额外余量,超限时容器被杀并按 restart 策略重启,而不是拖垮整机
     mem_limit: 512m
     memswap_limit: 512m

@@ -4,6 +4,10 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Memory
+
+- Memory is now measured and reported, not gated (ADR 0041, which supersedes ADR 0018). CI no longer fails on idle memory, memory rollback after load or channel increments; the numbers are still written to the job summary. The README and the Docker guide no longer promise a 2 GB server; 2 GB is only a suggestion. `.github/memory-baseline.json` is kept as recorded reference values.
+
 ### Renamed to FatCat-AI
 
 The project was renamed from AI-Personal to FatCat-AI and moved to <https://github.com/CodingLossy/FatCat-AI> (ADR 0019).
@@ -289,6 +293,10 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 ---
 
 ## 中文摘要(未发布)
+
+### 内存
+
+- 内存改为只测量、只报告,不再设门禁(ADR 0041,取代 ADR 0018)。CI 不再因空闲内存、负载后回落或渠道增量而失败,数字仍写进 job summary。README 与 Docker 指南不再承诺 2 GB 服务器,2 GB 仅是建议。`.github/memory-baseline.json` 保留为记录值。
 
 ### 改名为 FatCat-AI
 
