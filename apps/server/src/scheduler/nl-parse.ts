@@ -16,12 +16,14 @@ const Parsed = z.object({
     ]),
     prompt: z.string().trim().min(1).max(2000),
     push: z.boolean().default(false),
+    // 建议的工具集;只是建议,服务器会去掉不存在的名字,用户在确认卡上最终决定
+    toolSet: z.array(z.string().trim().min(1).max(100)).max(30).optional().catch(undefined),
 });
 export type ParsedTask = z.infer<typeof Parsed>;
 
 export type ParseResult = { ok: true; task: ParsedTask } | { ok: false; reason: string };
 
-export function parserPrompt(timeZone: string, now: Date): string {
+export function parserPrompt(timeZone: string, now: Date, toolNames: readonly string[] = []): string {
     return [
         'You turn one sentence from the user into a scheduled-task draft. Reply with ONE JSON object and nothing else.',
         `The user time zone is ${timeZone}; the current time is ${now.toISOString()} (UTC).`,
@@ -31,6 +33,11 @@ export function parserPrompt(timeZone: string, now: Date): string {
         'What each trigger gives the run: "cron" and "once" give nothing but the time;',
         '"mail_received" gives ONLY the number of new messages, never the sender, subject, body or a summary.',
         'So the "prompt" must only ask for what the trigger provides. For a new-mail trigger, ask the assistant to tell the user how many new messages arrived; never ask for sender, subject, content or a summary of the mail.',
+        ...(toolNames.length > 0
+            ? [
+                  `Optionally add "toolSet": the smallest list of tool names the task needs, chosen ONLY from: ${toolNames.join(', ')}. A name ending in "." is a prefix. Omit it if unsure; it is only a suggestion the user reviews.`,
+              ]
+            : []),
         'If the time or the action is missing or unclear, reply {"error":"short reason"} instead of guessing.',
         'You cannot grant permissions, allow-lists, retries or quiet hours; do not output them.',
     ].join('\n');

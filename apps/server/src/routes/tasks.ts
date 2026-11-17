@@ -22,6 +22,7 @@ import {
     TaskRunPage,
     TaskSchedulePreview,
     TaskWebhookToken,
+    toolInSet,
     type Task as TaskDto,
     type TaskDraftNote,
     type TaskRun as TaskRunDto,
@@ -264,6 +265,9 @@ export function taskRoutes(deps: {
             message,
             { reason },
         );
+    /** 工具集的一项必须是已注册的工具名,或以 `.` 结尾且至少匹配一个已注册工具的前缀。 */
+    const toolSetEntryKnown = (entry: string): boolean =>
+        (deps.tools?.info() ?? []).some((tool) => toolInSet(tool.name, [entry]));
     /** 输出与白名单的校验(ADR 0034 第 3 节):渠道必须属于主人;白名单只能是存在且可预授权的工具。 */
     const checkOutputsAndPolicy = (
         ownerId: string,
@@ -275,7 +279,20 @@ export function taskRoutes(deps: {
                 throw invalid('The channel does not exist.', ['outputs', i, 'channelId'], 'task_channel_missing');
             }
         });
+        policy?.toolSet?.forEach((entry, i) => {
+            if (!toolSetEntryKnown(entry)) {
+                throw invalid('Unknown tool or prefix.', ['policy', 'toolSet', i], 'task_toolset_unknown');
+            }
+        });
         policy?.allowedTools?.forEach((entry, i) => {
+            // 预授权的工具不在工具集内就永远用不上:拒绝,免得用户以为它生效了
+            if (policy.toolSet && !toolInSet(entry.tool, policy.toolSet)) {
+                throw invalid(
+                    `${entry.tool} is not in the task's tool set, so this pre-authorization could never be used.`,
+                    ['policy', 'allowedTools', i, 'tool'],
+                    'task_preauth_outside_toolset',
+                );
+            }
             const tool = deps.tools?.get(entry.tool);
             if (!tool) throw invalid('Unknown tool.', ['policy', 'allowedTools', i, 'tool'], 'task_tool_unknown');
             if (!isPreauthorizable(tool)) {
@@ -387,7 +404,16 @@ export function taskRoutes(deps: {
             const timeZone = timeZoneOf(ownerId);
             let raw: string;
             try {
-                raw = await deps.complete(ownerId, parserPrompt(timeZone, new Date()), text, c.req.raw.signal);
+                raw = await deps.complete(
+                    ownerId,
+                    parserPrompt(
+                        timeZone,
+                        new Date(),
+                        (deps.tools?.info() ?? []).map((tool) => tool.name),
+                    ),
+                    text,
+                    c.req.raw.signal,
+                );
             } catch {
                 throw fail(400, 'validation_failed', 'The model could not be reached.', 'task_model_unreachable');
             }
@@ -440,12 +466,15 @@ export function taskRoutes(deps: {
                 );
                 notes.push({ code: 'mail_count_only' });
             }
-            // 解析器只给出这四项;策略一律取默认值,白名单为空
+            const suggested = [...new Set(p.toolSet ?? [])].filter(toolSetEntryKnown);
+            // 解析器只给出这几项(含建议的工具集);策略一律取默认值,白名单为空
             const policy = {
                 maxAttempts: 3,
                 misfire: trigger.kind === 'once' ? ('catchUp' as const) : ('skip' as const),
                 quietHours: null,
                 maxRuntimeMinutes: 10,
+                // 模型给的工具集只是建议:去掉不存在的名字与重复项,用户在确认卡上改
+                ...(suggested.length > 0 ? { toolSet: suggested } : {}),
             };
             repos.tasks.pruneDrafts(new Date(Date.now() - DRAFT_TTL_MS).toISOString());
             const draft = repos.tasks.createUser(

@@ -7,6 +7,7 @@ import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
 import { PreauthPicker } from './PreauthPicker.js';
 import { navigate } from './router.js';
+import { parseToolSet, withToolSet } from './toolset.js';
 import { formatInTimeZone } from './time-zone.js';
 
 /**
@@ -34,6 +35,8 @@ export function TasksPage() {
         allowed: [],
         missing: null,
     });
+    // 确认卡上的工具集文字(空 = 不限制)
+    const [draftToolSet, setDraftToolSet] = useState('');
     const [preauthEdit, setPreauthEdit] = useState<{
         id: string;
         allowed: TaskAllowedTool[];
@@ -116,7 +119,9 @@ export function TasksPage() {
         if (!nl.trim()) return;
         await act(async () => {
             setDraftAllowed({ allowed: [], missing: null });
-            setDraft(await api.tasks.propose(nl.trim()));
+            const proposed = await api.tasks.propose(nl.trim());
+            setDraftToolSet((proposed.task.policy.toolSet ?? []).join(', '));
+            setDraft(proposed);
             setNl('');
         });
     };
@@ -128,10 +133,15 @@ export function TasksPage() {
         }
         await act(async () => {
             let version = draft.task.updatedAt;
-            if (draftAllowed.allowed.length > 0) {
-                // 先把勾选的预授权写进草稿,再用新的版本号确认
+            const toolSet = parseToolSet(draftToolSet);
+            const toolSetChanged =
+                JSON.stringify(toolSet ?? null) !== JSON.stringify(draft.task.policy.toolSet ?? null);
+            if (draftAllowed.allowed.length > 0 || toolSetChanged) {
+                // 先把勾选的预授权与确认过的工具集写进草稿,再用新的版本号确认
+                const policy = withToolSet(draft.task.policy, toolSet);
                 const updated = await api.tasks.update(draft.task.id, {
-                    policy: { ...draft.task.policy, allowedTools: draftAllowed.allowed },
+                    policy:
+                        draftAllowed.allowed.length > 0 ? { ...policy, allowedTools: draftAllowed.allowed } : policy,
                 });
                 version = updated.updatedAt;
             }
@@ -265,6 +275,18 @@ export function TasksPage() {
                         initial={[]}
                         onChange={(allowed, missing) => setDraftAllowed({ allowed, missing })}
                     />
+                    <label className="toolset" data-testid="toolset-editor">
+                        {t('tasks.toolset.title')}
+                        <input
+                            value={draftToolSet}
+                            placeholder={t('tasks.toolset.placeholder')}
+                            aria-label={t('tasks.toolset.title')}
+                            onChange={(e) => setDraftToolSet(e.target.value)}
+                        />
+                    </label>
+                    <p className="small muted">
+                        {draft.task.policy.toolSet ? t('tasks.toolset.suggested') : t('tasks.toolset.hint')}
+                    </p>
                     <p className="muted small">{t('tasks.draftNotice')}</p>
                     <button type="button" onClick={() => void confirmDraft()}>
                         {t('tasks.draftConfirm')}

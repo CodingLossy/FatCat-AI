@@ -13,7 +13,13 @@ import type {
     Settings,
     Usage,
 } from '@fatcat-ai/shared';
-import { effectiveTimeZone, formatPromptTime, type PreauthConstraint, type Preauthorization } from '@fatcat-ai/shared';
+import {
+    effectiveTimeZone,
+    formatPromptTime,
+    toolInSet,
+    type PreauthConstraint,
+    type Preauthorization,
+} from '@fatcat-ai/shared';
 import { type ChatMessage, type ModelProvider, ProviderError, type ToolCall } from '@fatcat-ai/providers';
 import { type ModelProfileRecord, newId, type Repositories } from '@fatcat-ai/storage';
 import type { EventBus } from './bus.js';
@@ -144,6 +150,8 @@ export interface StartRunInput {
         allowedTools?: { tool: string; constraint?: PreauthConstraint }[];
         /** 不交给模型的工具名前缀(例如没有授权文件夹时的 `fs.`);模型硬调用也按未知工具处理。 */
         withholdToolPrefixes?: string[];
+        /** 任务声明的工具集(ADR 0039 第 4 节):给出时只有集合内的工具交给模型,集合外的硬调用按未知工具处理;只缩小。 */
+        toolSet?: string[];
     };
 }
 
@@ -679,7 +687,9 @@ export class RunManager {
                 let reason: string | null = null;
                 let usage: Usage | undefined;
                 const withheld = input.task?.withholdToolPrefixes ?? [];
-                const isWithheld = (name: string) => withheld.some((prefix) => name.startsWith(prefix));
+                const toolSet = input.task?.toolSet;
+                const isWithheld = (name: string) =>
+                    withheld.some((prefix) => name.startsWith(prefix)) || (toolSet ? !toolInSet(name, toolSet) : false);
                 const specs =
                     tools && tools.size > 0 && step < MAX_TOOL_STEPS
                         ? tools.specs().filter((spec) => !isWithheld(spec.name))
@@ -720,7 +730,10 @@ export class RunManager {
                     let output: unknown = null;
                     let error: string | undefined;
                     if (!tool) {
-                        error = `unknown tool: ${call.name}`;
+                        error =
+                            toolSet && !toolInSet(call.name, toolSet)
+                                ? `unknown tool: ${call.name} (not in this task's tool set)`
+                                : `unknown tool: ${call.name}`;
                         this.auditCall(ownerId, sessionId, run.runId, callId, call, null, 'denied', 'not_run', error);
                     } else {
                         const verdict = this.decideCall(tool, call.input, toolContext());

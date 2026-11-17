@@ -25862,6 +25862,16 @@
                                   ]
                                 },
                                 "maxItems": 20
+                              },
+                              "toolSet": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "minItems": 1,
+                                "maxItems": 30
                               }
                             },
                             "required": [
@@ -26533,6 +26543,16 @@
                           ]
                         },
                         "maxItems": 20
+                      },
+                      "toolSet": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "minItems": 1,
+                        "maxItems": 30
                       }
                     },
                     "required": [
@@ -26847,6 +26867,16 @@
                             ]
                           },
                           "maxItems": 20
+                        },
+                        "toolSet": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          "minItems": 1,
+                          "maxItems": 30
                         }
                       },
                       "required": [
@@ -28051,6 +28081,16 @@
                                 ]
                               },
                               "maxItems": 20
+                            },
+                            "toolSet": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "minItems": 1,
+                              "maxItems": 30
                             }
                           },
                           "required": [
@@ -28925,6 +28965,16 @@
                             ]
                           },
                           "maxItems": 20
+                        },
+                        "toolSet": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          "minItems": 1,
+                          "maxItems": 30
                         }
                       },
                       "required": [
@@ -29847,6 +29897,16 @@
                             ]
                           },
                           "maxItems": 20
+                        },
+                        "toolSet": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          "minItems": 1,
+                          "maxItems": 30
                         }
                       },
                       "required": [
@@ -30558,6 +30618,16 @@
                           ]
                         },
                         "maxItems": 20
+                      },
+                      "toolSet": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "minItems": 1,
+                        "maxItems": 30
                       }
                     },
                     "required": [
@@ -30928,6 +30998,16 @@
                             ]
                           },
                           "maxItems": 20
+                        },
+                        "toolSet": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          "minItems": 1,
+                          "maxItems": 30
                         }
                       },
                       "required": [

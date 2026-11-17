@@ -60,6 +60,10 @@ export function createAgentTaskExecutor(deps: AgentTaskDeps): Executor {
                 id: task.id,
                 // 没有授权文件夹时 fs 工具没有用处:不交给模型,免得它去乱试
                 ...(repos.fsRoots.list(task.ownerId).length === 0 ? { withholdToolPrefixes: ['fs.'] } : {}),
+                // 工具集只缩小;有渠道输出时 channel.push 必须在其中(每次推送仍需审批)
+                ...(task.policy.toolSet
+                    ? { toolSet: channel ? [...task.policy.toolSet, 'channel.push'] : task.policy.toolSet }
+                    : {}),
                 channelId: channel?.channelId,
                 allowedTools: (task.policy.allowedTools ?? []).map((a) => ({
                     tool: a.tool,
