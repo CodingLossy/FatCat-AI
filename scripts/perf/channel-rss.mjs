@@ -12,7 +12,7 @@
 //
 //   node scripts/perf/channel-rss.mjs                     # 测量并打印,不判定
 //   MESSAGES=20 RUNS=1 SETTLE_S=10 node scripts/perf/channel-rss.mjs
-//   CHECK=1 node scripts/perf/channel-rss.mjs             # 按规则 3、4、5 判定,不满足时退出码 1(CI 用)
+//   CHECK=1 node scripts/perf/channel-rss.mjs             # 按 ADR 0041 报告增量与回落(只打印并写进 job summary,退出码恒为 0;CI 用)
 import { execFileSync, spawn } from 'node:child_process';
 import { appendFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -84,10 +84,6 @@ function freePort() {
 
 const baseline = JSON.parse(readFileSync(join(root, '.github/memory-baseline.json'), 'utf8'));
 const incrementCap = baseline.channelIncrementMiB?.wechat;
-if (CHECK && !Number.isFinite(incrementCap)) {
-    console.error('channel-rss: .github/memory-baseline.json has no channelIncrementMiB.wechat');
-    process.exit(2);
-}
 
 const dir = mkdtempSync(join(tmpdir(), 'fatcat-channel-rss-'));
 const ilink = await startFakeIlink();
@@ -246,14 +242,14 @@ try {
     if (process.env.GITHUB_STEP_SUMMARY) {
         appendFileSync(
             process.env.GITHUB_STEP_SUMMARY,
-            `Channel wechat: +${increment} MiB idle (cap ${incrementCap ?? 'not set'}); settled ${settled.join(' / ')} MiB\n`,
+            `Channel wechat: +${increment} MiB idle (recorded reference ${incrementCap ?? 'not set'}, report only); settled ${settled.join(' / ')} MiB\n`,
         );
     }
     if (CHECK) {
         const { errors } = evaluateChannel({ idleWithout, idleWith, settled, incrementCap });
-        for (const e of errors) console.log(`::error::${e}`);
-        if (errors.length === 0) console.log(`ADR 0018 rules 3${settled.length >= 3 ? ', 4' : ''} and 5: passed`);
-        process.exitCode = errors.length > 0 ? 1 : 0;
+        // ADR 0041:只报告,不拦截。超出旧阈值时输出 notice,退出码仍为 0
+        for (const e of errors) console.log(`::notice::${e} (report only, ADR 0041)`);
+        if (errors.length === 0) console.log('Channel increment and rollback: within the old ADR 0018 thresholds');
     }
 } finally {
     await cleanup();

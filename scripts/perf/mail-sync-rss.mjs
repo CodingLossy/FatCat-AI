@@ -12,7 +12,7 @@
 //   node scripts/perf/mail-sync-rss.mjs            # 1 万封,3 次
 //   MAILS=2000 RUNS=1 SETTLE_S=10 node scripts/perf/mail-sync-rss.mjs
 //   NODE_FLAGS='--max-old-space-size=384' node scripts/perf/mail-sync-rss.mjs   # 换 Node 参数(如对比修复前)
-//   CHECK=1 node scripts/perf/mail-sync-rss.mjs   # 按 ADR 0018 规则 3、4 判定,不满足时退出码 1(CI 用)
+//   CHECK=1 node scripts/perf/mail-sync-rss.mjs   # 按 ADR 0041 报告回落与增长(只打印并写进 job summary,退出码恒为 0;CI 用)
 //
 // 连接已运行的服务器(例如 `pnpm dev`;建议用单独的数据目录,脚本会在其中建、删一个 perf 邮件账户):
 //   ATTACH=http://127.0.0.1:8787 FATCAT_AI_PERF_USER=owner FATCAT_AI_PERF_PASSWORD=... node scripts/perf/mail-sync-rss.mjs
@@ -20,7 +20,16 @@
 //   NODE_EXTRA_CA_CERTS=<证书> 与 FATCAT_AI_PERF_MAIL_PASSWORD=<任意值>。主进程 PID 按端口自动查找,也可用 SERVER_PID 指定。
 //   PowerShell 中先 `$env:ATTACH='http://127.0.0.1:8787'` 等再运行。
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync } from 'node:fs';
+import {
+    appendFileSync,
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readdirSync,
+    readFileSync,
+    readlinkSync,
+    rmSync,
+} from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -388,9 +397,15 @@ try {
         }
         if (results.length >= 3) errors.push(...evaluateCreep(results.map((r) => r.settled)));
         else console.log(`ADR 0018 rule 4: skipped (needs RUNS >= 3, got ${results.length})`);
-        for (const e of errors) console.log(`::error::${e}`);
-        if (errors.length === 0) console.log(`ADR 0018 ${results.length >= 3 ? 'rules 3 and 4' : 'rule 3'}: passed`);
-        process.exitCode = errors.length > 0 ? 1 : 0;
+        // ADR 0041:只报告,不拦截。超出旧阈值时输出 notice,退出码仍为 0
+        for (const e of errors) console.log(`::notice::${e} (report only, ADR 0041)`);
+        if (errors.length === 0) console.log('Memory rollback and creep: within the old ADR 0018 thresholds');
+        if (process.env.GITHUB_STEP_SUMMARY) {
+            appendFileSync(
+                process.env.GITHUB_STEP_SUMMARY,
+                `### Mail sync memory (${MAILS} mails x ${results.length})\n\nIdle ${idle.rss} MiB; settled ${results.map((r) => r.settled).join(' / ')} MiB; ${errors.length} note(s) over the old thresholds (report only)\n`,
+            );
+        }
     }
 } finally {
     await cleanup();

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// 对话峰值内存(M5c PR 5;开发计划第 11 节:对话峰值 < 400 MiB):在 Docker 镜像里跑若干轮含工具调用与长回复的对话,
+// 对话峰值内存(M5c PR 5;对话峰值只测量报告):在 Docker 镜像里跑若干轮含工具调用与长回复的对话,
 // 每 200 ms 读一次容器主进程的 VmRSS,报告峰值。模型是本脚本起的本地假端点(第一次请求返回 calc 工具调用,
 // 拿到工具结果后流式返回约 40 KiB 的长回复),不连外网;密钥是占位值。
 //
 //   docker run -d --name fc -p 127.0.0.1:8787:8787 -e PEAK_KEY=x --add-host host.docker.internal:host-gateway fatcat-ai:prep
 //   node scripts/perf/chat-peak.mjs http://127.0.0.1:8787 <设置码> fc
-//   环境变量:SESSIONS(默认 10)、TURNS(每个会话的轮数,默认 3)、CAP_MIB(默认 400,超过则退出码 1)
+//   环境变量:SESSIONS(默认 10)、TURNS(每个会话的轮数,默认 3)、CAP_MIB(默认 400,只作对照:超过时打印提示,不影响退出码;ADR 0041)
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
 
@@ -137,10 +137,9 @@ try {
         console.log('FAIL: not every turn finished with a tool call and a reply');
         failed = true;
     }
-    if (peak >= CAP_MIB) {
-        console.log(`FAIL: peak ${peak.toFixed(1)} MiB is not under ${CAP_MIB} MiB`);
-        failed = true;
-    }
+    // ADR 0041:峰值只报告,不拦截
+    if (peak >= CAP_MIB)
+        console.log(`NOTE: peak ${peak.toFixed(1)} MiB is not under the old ${CAP_MIB} MiB figure (report only)`);
 } finally {
     sampling = false;
     fake.close();
