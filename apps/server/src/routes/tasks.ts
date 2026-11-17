@@ -10,6 +10,7 @@ import {
     effectiveTimeZone,
     Id,
     PageQuery,
+    parseDomainScope,
     Task,
     TaskConfirm,
     TaskCreate,
@@ -291,6 +292,27 @@ export function taskRoutes(deps: {
                     ['policy', 'allowedTools', i, 'constraint'],
                     'task_tool_constraint_required',
                 );
+            }
+            const domain = entry.constraint?.domain;
+            if (domain !== undefined) {
+                const parsed = parseDomainScope(domain);
+                if ('problem' in parsed) {
+                    const codes = {
+                        empty: 'task_tool_constraint_required',
+                        protocol: 'task_domain_protocol',
+                        path: 'task_domain_path',
+                        port: 'task_domain_port',
+                        broad: 'task_domain_broad',
+                        invalid: 'task_domain_invalid',
+                    } as const;
+                    throw invalid(
+                        `Invalid domain "${domain}" (${parsed.problem}).`,
+                        ['policy', 'allowedTools', i, 'constraint', 'domain'],
+                        codes[parsed.problem],
+                    );
+                }
+                // 存规范值(小写、去末尾的点),运行时按它匹配
+                entry.constraint = { ...entry.constraint, domain: parsed.ok };
             }
         });
     };

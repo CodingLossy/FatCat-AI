@@ -299,6 +299,42 @@ describe('审批策略、预授权与过期(ADR 0010)', () => {
         await m.idle();
     });
 
+    it('库里存下的、缺了必填约束的预授权不生效(web.fetch 没有域名等于放行所有网站),带域名的照常生效', async () => {
+        const fetchLike = toolOf({
+            name: 'x.fetch',
+            risk: 'read',
+            approval: 'required',
+            requireConstraint: 'domain',
+            constraints: { domain: (input) => (input as { host: string }).host },
+        });
+        const m = manager({ tools: new ToolRegistry().register(fetchLike) });
+        const session = repos.sessions.create(ownerId);
+        repos.preauths.create(ownerId, {
+            toolName: 'x.fetch',
+            scope: 'always',
+            sessionId: session.id,
+            constraint: null,
+        });
+        steps = [callTool('x.fetch', { host: 'bbc.com' })];
+        const required = waitFor('approval-required');
+        const run1 = m.start({ ownerId, sessionId: session.id, profile, text: 'a' });
+        await required;
+        m.cancel(run1.runId);
+        await m.idle();
+        expect(saved).toEqual([]);
+
+        repos.preauths.create(ownerId, {
+            toolName: 'x.fetch',
+            scope: 'always',
+            sessionId: session.id,
+            constraint: { domain: 'bbc.com' },
+        });
+        steps = [callTool('x.fetch', { host: 'bbc.com' }), answer('ok')];
+        m.start({ ownerId, sessionId: session.id, profile, text: 'b' });
+        await m.idle();
+        expect(saved).toEqual([{ host: 'bbc.com' }]);
+    });
+
     it('越权:external 工具不能预授权;dangerous 工具默认被拒绝并审计', async () => {
         const external = toolOf({ name: 'x.send', risk: 'external' });
         const dangerous = toolOf({ name: 'x.shell', risk: 'dangerous' });

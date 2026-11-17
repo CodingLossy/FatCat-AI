@@ -30,6 +30,7 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 
 #### Fixed
 
+- Pre-authorized domains (ADR 0039): the task pre-authorization form now explains the matching rule (`example.com` matches only itself; `*.example.com` matches every subdomain but not `example.com`), offers to add `www.` or `*.` when you enter a bare domain, accepts several domains separated by commas, and reports a protocol, path, port or over-broad wildcard (`*.com`) in Chinese before saving. Stored pre-authorizations that lack the required domain are no longer honored.
 - File-change triggers: on Windows, deleting the watched directory made `fs.watch` fire endlessly and spin the CPU. The watcher now notices the directory is gone, stops, and logs one error. A task whose authorized directory was revoked now shows a warning on the Tasks page; authorizing the same folder again creates a new id, so pick the directory again in the task.
 - Missed runs are recorded once: with the "skip" policy (and for catch-ups older than 24 hours, including the built-in memory sleep task) a restart no longer adds the same "missed" row again.
 - Throttled event runs are recorded as `event` instead of `schedule`; when memory consolidation has used up today's quota, a manual run is recorded as skipped with the reason "Today's quota is used up".
@@ -303,6 +304,7 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 ### M6 · 定时任务与自动化(进行中)
 
 - 通用任务调度器(ADR 0033,迁移 0016):任务与运行记录存在数据库里,按用户时区排期,重启后仍然有效;每次运行只记录状态、错误码和时间(不存内容)。失败按 1、5、15 分钟重试;服务器关闭期间错过的触发按任务设置跳过或只补跑一次;任务可设静默时段;同时最多运行两个任务。记忆维护(衰减、分层、过期)现在是内置系统任务「记忆维护」,可以停用、立即运行或改时间。新增 Web 页面「任务」与 `/api/v1/tasks` 接口(客户端 SDK 同步)。自建任务、事件触发和自然语言创建在 M6 之后的改动中加入。
+- 预授权域名(ADR 0039):任务预授权表单说明匹配规则(`example.com` 只匹配它本身,`*.example.com` 匹配所有子域但不含 `example.com`),填裸域名时提示补上 `www.` 或 `*.`,可用逗号填多个;带协议、路径、端口或过宽的通配(`*.com`)时保存前给出中文报错。库里以前存下的、缺了域名的预授权不再生效。
 - 自建任务(ADR 0034):任务按时把一段提示词交给助手,在独立的会话里无人值守地运行;需要审批的操作照旧等你确认,30 分钟没人答复就拒绝。任务可以把结果推送到你自己的微信渠道:每次推送都需要你审批、不能预授权,目标渠道由任务配置决定,模型改不了。每个任务可以有一个可选的预授权白名单,让读 / 写类工具直接执行(默认为空;会对外发送或在本机之外执行的工具永远不能进白名单)。
 - 任务的事件触发(ADR 0035,迁移 0017):新邮件到达(只告诉任务来了几封)、授权目录里的文件变化(5 秒去抖)、或带任务专属令牌的 Webhook 调用都可以触发任务(令牌只存哈希;令牌缺失或错误一律返回同样的 401)。事件触发的任务每小时最多运行 12 次,任务正在运行时来的事件会被忽略,事件携带的内容只会作为不可信数据交给助手。
 - 用一句话创建任务(ADR 0036):在任务页输入「每天早上 8 点总结未读邮件」,模型只生成草稿并显示成卡片。草稿在你于已登录的网页里点「确认并启用」之前不会运行(访问令牌不能确认);一句话不能带白名单,也不能选推送目标,推送只会发到你自己已绑定的渠道,仍需逐次审批。

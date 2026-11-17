@@ -189,7 +189,23 @@ const zh = {
     'tasks.preauth.never':
         '发信、写文件、推送到渠道等会向外发送内容或改动数据的工具(例如 mail.send)不能预授权,每次都需要你批准。',
     'tasks.preauth.domain': '允许的域名',
-    'tasks.preauth.domainHint': '例如 news.example.com 或 *.example.com',
+    'tasks.preauth.domainHint': '例如 news.example.com, *.example.com',
+    'tasks.preauth.domainRule':
+        '匹配规则:example.com 只匹配它本身,不含 www.example.com 等子域;*.example.com 匹配所有子域,但不含 example.com 本身。可以用逗号分隔填多个。',
+    'tasks.preauth.bareHint': '你填的是 {domain}:它不会匹配 {www}。需要同时放行吗?',
+    'tasks.preauth.addWww': '加上 {www}',
+    'tasks.preauth.addWildcard': '加上 {wildcard}(所有子域)',
+    'tasks.preauth.problem.empty': '请填写域名。',
+    'tasks.preauth.problem.protocol': '「{value}」带了协议(http:// 或 https://),请只填域名,例如 news.example.com。',
+    'tasks.preauth.problem.path': '「{value}」带了路径或参数,请只填域名,例如 news.example.com。',
+    'tasks.preauth.problem.port': '「{value}」带了端口,预授权只按域名匹配,请去掉端口。',
+    'tasks.preauth.problem.broad': '「{value}」范围太大,通配符前至少要有两段,例如 *.example.com。',
+    'tasks.preauth.problem.invalid': '「{value}」不是合法的域名,请填写小写英文域名,例如 news.example.com。',
+    'tasks.reason.task_domain_protocol': '域名不能带协议(http:// 或 https://)。',
+    'tasks.reason.task_domain_path': '域名不能带路径或参数。',
+    'tasks.reason.task_domain_port': '域名不能带端口。',
+    'tasks.reason.task_domain_broad': '通配范围太大,至少要写成 *.example.com。',
+    'tasks.reason.task_domain_invalid': '域名写法不合法。',
     'tasks.preauth.path': '允许的路径前缀',
     'tasks.preauth.none': '没有可预授权的工具。',
     'tasks.preauth.edit': '预授权工具',
@@ -809,6 +825,27 @@ const en: Record<Key, string> = {
         'Tools that send content out or change data (for example mail.send) cannot be pre-authorized and always need your approval.',
     'tasks.preauth.domain': 'Allowed domain',
     'tasks.preauth.domainHint': 'For example news.example.com or *.example.com',
+    'tasks.preauth.domainRule':
+        'Matching: example.com matches only itself, not subdomains such as www.example.com; *.example.com matches every subdomain but not example.com itself. Separate several entries with commas.',
+    'tasks.preauth.bareHint': 'You entered {domain}, which does not match {www}. Allow it as well?',
+    'tasks.preauth.addWww': 'Add {www}',
+    'tasks.preauth.addWildcard': 'Add {wildcard} (all subdomains)',
+    'tasks.preauth.problem.empty': 'Enter a domain.',
+    'tasks.preauth.problem.protocol':
+        '"{value}" includes a protocol (http:// or https://). Enter only the domain, for example news.example.com.',
+    'tasks.preauth.problem.path':
+        '"{value}" includes a path or query. Enter only the domain, for example news.example.com.',
+    'tasks.preauth.problem.port':
+        '"{value}" includes a port. Pre-authorization matches by domain only; remove the port.',
+    'tasks.preauth.problem.broad':
+        '"{value}" is too broad. A wildcard needs at least two labels after it, for example *.example.com.',
+    'tasks.preauth.problem.invalid':
+        '"{value}" is not a valid domain. Use a lowercase ASCII domain, for example news.example.com.',
+    'tasks.reason.task_domain_protocol': 'The domain must not include a protocol (http:// or https://).',
+    'tasks.reason.task_domain_path': 'The domain must not include a path or query.',
+    'tasks.reason.task_domain_port': 'The domain must not include a port.',
+    'tasks.reason.task_domain_broad': 'The wildcard is too broad; use at least *.example.com.',
+    'tasks.reason.task_domain_invalid': 'The domain is not valid.',
     'tasks.preauth.path': 'Allowed path prefix',
     'tasks.preauth.none': 'No tools can be pre-authorized.',
     'tasks.preauth.edit': 'Pre-authorized tools',

@@ -34,11 +34,29 @@ describe('预授权选择器', () => {
 
     it('web.fetch 必须带域名,没填就报缺范围', () => {
         const picked = { 'web.fetch': { on: true, scope: ' ' }, 'kb.search': { on: true, scope: '' } };
-        expect(buildAllowedTools([fetchTool, kb], picked)).toEqual({ allowed: [], missing: 'web.fetch' });
+        expect(buildAllowedTools([fetchTool, kb], picked)).toEqual({
+            allowed: [],
+            problem: { tool: 'web.fetch', kind: 'missing' },
+        });
         const filled = { ...picked, 'web.fetch': { on: true, scope: ' News.Example.com ' } };
         expect(buildAllowedTools([fetchTool, kb], filled)).toEqual({
             allowed: [{ tool: 'web.fetch', constraint: { domain: 'news.example.com' } }, { tool: 'kb.search' }],
-            missing: null,
+            problem: null,
         });
+    });
+
+    it('域名可以填多个;带协议 / 路径 / 端口时报具体原因', () => {
+        const pick = (scope: string) => ({ 'web.fetch': { on: true, scope } });
+        expect(buildAllowedTools([fetchTool], pick('bbc.com, www.bbc.com')).allowed).toEqual([
+            { tool: 'web.fetch', constraint: { domain: 'bbc.com' } },
+            { tool: 'web.fetch', constraint: { domain: 'www.bbc.com' } },
+        ]);
+        for (const [value, kind] of [
+            ['https://bbc.com', 'protocol'],
+            ['bbc.com/news', 'path'],
+            ['bbc.com:443', 'port'],
+        ] as const) {
+            expect(buildAllowedTools([fetchTool], pick(value)).problem).toEqual({ tool: 'web.fetch', kind, value });
+        }
     });
 });
