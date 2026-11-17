@@ -14,7 +14,7 @@
 - **渠道**:1.0 支持微信(企业微信推迟,排期另定)
 - **知识地图**:邮件、文档、小说、人物等汇入统一条目索引,可逐层钻取浏览
 - **长期记忆**:有类型、可更替、带出处;回答时附可信度说明(可靠 / 可能过时 / 有冲突 / 推断);凭据一律拒存,敏感信息写入前脱敏;可以反馈「有用 / 过时 / 错误 / 不该记」,也可以随时忘记
-- **轻量**:2GB 内存的服务器即可常驻运行
+- **按需使用内存**:定位是像 QQ、微信那样的个人 app,内存按实际需要使用;CI 只测量报告,不设内存门禁
 
 ## 零遥测承诺
 
@@ -22,7 +22,7 @@ FatCat-AI **不包含任何**统计或崩溃上报代码。程序只会连接你
 
 ## 快速开始
 
-最快的方式是 Docker(需要 Docker 24 或更高,含 Compose v2;2 GB 内存的机器即可,空闲时约 110 MiB):
+最快的方式是 Docker(需要 Docker 24 或更高,含 Compose v2;机器内存建议 2 GB 以上,不配置渠道时空闲约 110 MiB,仅供参考):
 
 ```bash
 git clone https://github.com/CodingLossy/FatCat-AI.git
@@ -34,7 +34,7 @@ docker compose -f docker/docker-compose.yml logs fatcat-ai | grep -i 'setup code
 1. **首次登录**:打开 <http://127.0.0.1:8787>,按提示创建主人账户(1.0 只有一个账户),「设置码」填上一步日志里的那串字符。
 2. **添加模型配置档**:「设置 → 模型配置档」。可以用任何 OpenAI 兼容端点或本地 Ollama;密钥只从环境变量或数据目录里的 `secrets.yaml` 读取(见下面「本地开发」和「Docker」两节的写法),页面和 API 都不接收明文。看到「密钥: 已设置」后就可以对话。
 3. **(可选)绑定微信**:「设置 → 渠道」添加微信渠道并扫码,步骤见下面的「5. 接入微信」。1.0 只含微信渠道,企业微信推迟、排期另定。
-4. **要放到公网**:不要直接暴露 8787 端口。按 [docs/deploy/docker.md](docs/deploy/docker.md)(Caddy 自动 HTTPS、2 GB 内存、DNSPod 示例)部署,并先开启两步验证和密钥文件加密。
+4. **要放到公网**:不要直接暴露 8787 端口。按 [docs/deploy/docker.md](docs/deploy/docker.md)(Caddy 自动 HTTPS、内存配置建议、DNSPod 示例)部署,并先开启两步验证和密钥文件加密。
 
 > 预构建镜像(GHCR,amd64 / arm64)在 1.0 正式发布后提供;发布前请用上面的 `--build` 从源码构建。
 
@@ -104,7 +104,7 @@ printf 'DEEPSEEK_API_KEY: "%s"\n' '<你的密钥>' | \
 
 > 从 AI-Personal 升级:compose 服务名由 `ai-personal` 改为 `fatcat-ai`,数据卷 `ai-personal-data` 不变,数据不受影响。升级前先用旧版的 compose 文件执行 `docker compose -f docker/docker-compose.yml down`,或者升级后用 `docker compose -f docker/docker-compose.yml up -d --build --remove-orphans` 启动;否则旧容器会继续运行并占着 8787 端口,新容器无法启动。
 
-**公网部署**(2 GB 机器、Caddy 自动 HTTPS、DNSPod 示例、备份与升级)见 [Docker 一键部署指南](docs/deploy/docker.md)。
+**公网部署**(内存配置建议、Caddy 自动 HTTPS、DNSPod 示例、备份与升级)见 [Docker 一键部署指南](docs/deploy/docker.md)。
 
 默认只监听 127.0.0.1;从其他机器访问请经反向代理并启用 HTTPS。从其他机器或经过反向代理初始化时,需要启动日志里打印的一次性设置码(`docker compose -f docker/docker-compose.yml logs`)。
 

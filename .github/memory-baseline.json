@@ -2,7 +2,7 @@
   "idleRssMiB": 111,
   "commit": "e8d35f5",
   "measuredAt": "2026-11-16",
-  "note": "Idle RSS of the Docker image's main process, 10 s after start, no channels (ADR 0018 §3). v1.0 release measurement (M5c PR 5): 111.3 / 110.7 / 111.3 MiB over three fresh containers, so the baseline stays 111 (0% growth over the 0.0.0 value). Update on each release, or in a PR that changes memory on purpose, with the reason in the PR description. channelIncrementMiB.wechat is a cap, not a measurement; the v1.0 measurement was +12.5 MiB.",
+  "note": "Recorded reference values, NOT a gate (ADR 0041, which supersedes ADR 0018). idleRssMiB is the idle RSS of the Docker image's main process 10 s after start with no channels, from the v1.0 release measurement (111.3 / 110.7 / 111.3 MiB); CI reports the current value against it in the job summary and never fails on it. channelIncrementMiB.wechat is a recorded reference (the v1.0 measurement was +12.5 MiB; the old cap was 25), also report-only. Update on each release if you like; no reason is required.",
   "channelIncrementMiB": {
     "wechat": 25
   }

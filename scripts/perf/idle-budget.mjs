@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// 空闲内存预算检查(ADR 0018 第 2 节规则 1、2):参数是若干次 VmRSS 采样(KiB),取中位数,
-// 与 250 MiB 上限和 .github/memory-baseline.json 的基线比较。> 10% 报警,> 20% 或超过上限失败。
+// 空闲内存报告(ADR 0041,取代 ADR 0018 的门禁):参数是若干次 VmRSS 采样(KiB),取中位数,
+// 与 .github/memory-baseline.json 记录的参考值比较,把结果打印并写进 job summary。只报告,永远不让 CI 失败
+// (参数错误除外,退出码 2)。
 //
 //   node scripts/perf/idle-budget.mjs 113000 113400 112900
 import { appendFileSync, readFileSync } from 'node:fs';
 
-const CAP_MIB = 250;
-const WARN_RATIO = 1.1;
-const FAIL_RATIO = 1.2;
+const NOTE_RATIO = 1.1;
 
 const samples = process.argv.slice(2).map(Number);
 if (samples.length === 0 || samples.some((n) => !Number.isFinite(n) || n <= 0)) {
@@ -18,25 +17,15 @@ if (samples.length === 0 || samples.some((n) => !Number.isFinite(n) || n <= 0)) 
 }
 const sorted = [...samples].sort((a, b) => a - b);
 const rss = Math.round((sorted[Math.floor(sorted.length / 2)] / 1024) * 10) / 10;
-const { idleRssMiB: baseline } = JSON.parse(
+const { idleRssMiB: reference } = JSON.parse(
     readFileSync(new URL('../../.github/memory-baseline.json', import.meta.url)),
 );
-const growth = Math.round((rss / baseline - 1) * 1000) / 10;
-const line = `Idle RSS ${rss} MiB (median of ${samples.length}); baseline ${baseline} MiB (${growth >= 0 ? '+' : ''}${growth}%); cap ${CAP_MIB} MiB`;
+const growth = Math.round((rss / reference - 1) * 1000) / 10;
+const line = `Idle RSS ${rss} MiB (median of ${samples.length}); reference ${reference} MiB (${growth >= 0 ? '+' : ''}${growth}%); report only, not a gate`;
 console.log(line);
-if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`);
-
-let failed = false;
-if (rss > CAP_MIB) {
-    console.log(`::error::Idle RSS ${rss} MiB is over the ${CAP_MIB} MiB cap (ADR 0018 rule 1).`);
-    failed = true;
-}
-if (rss > baseline * FAIL_RATIO) {
+if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Idle memory\n\n${line}\n`);
+if (rss > reference * NOTE_RATIO) {
     console.log(
-        `::error::Idle RSS grew ${growth}% over the baseline (more than 20%, ADR 0018 rule 2). If this is intended, update .github/memory-baseline.json in this PR and give the reason in the PR description.`,
+        `::notice::Idle RSS is ${growth}% above the recorded reference. Memory is measured, not gated (ADR 0041); mention the reason in the PR if the growth is intended.`,
     );
-    failed = true;
-} else if (rss > baseline * WARN_RATIO) {
-    console.log(`::warning::Idle RSS grew ${growth}% over the baseline (more than 10%, ADR 0018 rule 2).`);
 }
-process.exit(failed ? 1 : 0);

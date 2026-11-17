@@ -161,7 +161,7 @@ jobs:
           LOGS="$(docker logs fatcat-ai 2>&1)"
           grep -q 'one-time setup code' <<<"$LOGS"
           test "$(docker inspect -f '{{.Config.User}}' fatcat-ai)" = "node"
-          # 空闲内存:启动后 10 秒起采样 3 次(间隔 5 秒)取中位数,按 ADR 0018 规则 1、2 检查(250 MiB 上限、相对基线)
+          # 空闲内存:启动后 10 秒起采样 3 次(间隔 5 秒)取中位数,只报告、写进 job summary,不设门禁(ADR 0041)
           sleep 10
           SAMPLES=""
           for i in 1 2 3; do

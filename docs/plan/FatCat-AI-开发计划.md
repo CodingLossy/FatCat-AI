@@ -12,7 +12,7 @@
 
 - **是什么**:一个可自托管的**开源**(AGPL-3.0,OSI 认证开源许可)个人 AI 助手框架;需要闭源/商业使用的组织可向作者购买商业许可。能读写本地文件、收发邮件、语音对话、定时任务,并能从网页/桌面/手机/企业微信/微信等渠道远程使用(QQ 在 1.0 之后接入)。所有内容(邮件、小说、人物、视频数据……)汇入统一条目索引,可通过**「知识地图」**逐层钻取浏览(1.0 为列表/树形分类浏览器,桌面版 M10 升级为粒子球钻取导航)。
 - **核心原则**:自带模型(BYO LLM:用户填 API Base URL + Key,兼容 OpenAI 协议即可)、本地优先、**零遥测**、权限显式授予、插件化(MCP 为一等公民)。
-- **推荐技术栈(结论)**:**TypeScript 单仓(pnpm monorepo)**——Node.js 核心服务 + React Web UI + **Tauri v2 桌面壳(Node 核心以 sidecar 方式运行)**。服务器端同一个核心直接用 Docker 跑,2GB 内存机器空闲上限 250 MiB(不配置渠道时,见第 12 节)。理由与取舍见第 3 节。
+- **推荐技术栈(结论)**:**TypeScript 单仓(pnpm monorepo)**——Node.js 核心服务 + React Web UI + **Tauri v2 桌面壳(Node 核心以 sidecar 方式运行)**。服务器端同一个核心直接用 Docker 跑,内存只测量、不设门禁(见第 12 节)。理由与取舍见第 3 节。
 - **路线**:
   - **阶段一 · 框架(headless 核心)**:M0 脚手架 → M1 对话核心 + BYO LLM + API v1 → M2 工具与本地文件 → M3 邮件 → M3.x 清理 → M4 语音 → M5a 渠道(微信;企业微信推迟)→ M5b 知识地图浏览器与安全加固 → M5c 部署与发布(发布 v1.0,单用户)→ M6 定时任务/自动化 → M7 插件系统与市场 → M8 多智能体 → M9 i18n 与文档站。
   - **阶段二 · 客户端**:M10 桌面应用(Tauri,含知识地图粒子球导航)→ M11 移动端(PWA → iOS/Android)。
@@ -73,7 +73,7 @@
 
 ### 3.1 评估维度
 1. **桌面打包**:安装包体积、启动速度、跨平台、签名/自动更新难度。
-2. **2GB 服务器常驻内存**:空闲 RSS、峰值。
+2. **常驻内存**:空闲 RSS、峰值(只作比较,不设门禁,见第 12 节)。
 3. **AI/Agent 生态**:LLM SDK、MCP SDK、Agent 框架成熟度。
 4. **插件生态覆盖**:社区插件作者最常用的语言、MCP Server 的主流实现语言。
 5. **本地 AI 能力**:本地语音、嵌入、文档解析。
@@ -86,7 +86,7 @@
 | Agent / LLM 生态 | 很强:Vercel AI SDK 7(ToolLoopAgent、工具审批、语音 API)、官方 MCP TS SDK(MCP 的参考实现)、OpenAI/Anthropic 官方 SDK | 最强:LangGraph、PydanticAI、LlamaIndex、官方各家 SDK、MCP Python SDK | 不错:Spring AI 2.0(2026-06 GA,含官方 MCP Java SDK 2.0)、LangChain4j;企业味重 |
 | 前后端同语言 | **是**:UI、核心、插件、类型共享 | 否:UI 仍需 TS | 否:UI 仍需 TS |
 | 桌面打包 | Tauri 壳(约 10MB)+ Node sidecar(SEA 或附带 node 二进制,约 40–70MB 压缩后);或 Electron(约 100–150MB) | Tauri 壳 + PyInstaller/Nuitka sidecar(含依赖常 60–200MB,一旦带上 torch 就是 GB 级);冷启动慢,杀软误报较多 | 需捆绑 JRE:jlink 精简后约 50–80MB,加 Spring Boot 常 ≥100MB;GraalVM Native Image 可缩小,但 Spring AI 反射/动态代理多,原生编译坑多、构建慢 |
-| 2GB 服务器空闲内存 | 约 80–150MB | 约 100–200MB(不加载本地模型) | 约 300–500MB(需 -Xmx512m 级别调优)|
+| 空闲内存 | 约 80–150MB | 约 100–200MB(不加载本地模型) | 约 300–500MB(需 -Xmx512m 级别调优)|
 | 插件生态覆盖 | npm 最大的包生态;MCP Server 主流语言之一;前端插件(UI 扩展)只能用 JS/TS | MCP Server 另一主流语言;数据/ML 脚本作者多 | Java 写个人工具插件的人很少 |
 | 本地 AI(语音/嵌入/解析)| 中:onnxruntime-node、sherpa-onnx(Node 绑定)、transformers.js;PDF/Office 解析库可用但弱于 Python | **最强**:faster-whisper、sentence-transformers、unstructured、docling 等 | 弱 |
 | 并发/IO(多渠道长连接)| 强(事件循环天然适合 IM 长轮询/WebSocket)| 强(asyncio)| 强(虚拟线程)|
@@ -109,7 +109,7 @@
 理由:
 1. **一门语言贯穿全部**:核心、Web UI、桌面前端、插件 SDK、类型定义共享(zod schema 一次定义,前后端/工具参数/配置校验通用)。对于主要靠 Claude Code 开发的一人项目,减少语言边界 = 减少 bug 和上下文切换。
 2. **桌面打包最轻**:Tauri 壳 ~10MB,Node sidecar 几十 MB,整体安装包目标 ≤ 80MB,远小于 Java(≥100MB)和 Electron。
-3. **2GB 服务器友好**:同一个 core 用 Docker(node:22/24-slim)部署,空闲 ~100–150MB,不用像 Java 那样卡 -Xmx。
+3. **内存占用低**:同一个 core 用 Docker(node:22/24-slim)部署,空闲 ~100–150MB,不用像 Java 那样卡 -Xmx。
 4. **插件生态覆盖面最大**:npm 生态 + MCP TS SDK 是 MCP 的参考实现;而且 **MCP 通过 stdio/HTTP 与语言无关**——Python 写的 MCP Server 照样能接,所以选 TS 并不排斥 Python 插件。
 5. **IM 渠道/长连接/流式输出**:Node 事件循环天然合适。
 6. **移动端**:同一套 React UI 先做 PWA;原生 iOS/Android 客户端(Tauri v2 mobile 或 Swift/Kotlin 原生)以后只需对接 API v1,选型可届时再定。
@@ -126,7 +126,7 @@
 
 **为什么不是 Python 核心 + Tauri**:它是第二候选,AI 库最强;但前端仍需 TS(两种语言)、PyInstaller sidecar 体积和启动慢、跨平台原生依赖维护成本高。若未来本地模型成为核心卖点,可通过上面的 Python worker 渐进引入,而不必重写核心。
 
-**为什么不是 Java(Spring AI)**:Spring AI 2.0 本身很成熟,但桌面需捆绑 JRE(≥100MB)、空闲内存高(2GB 机器上要压 -Xmx512m)、个人工具类插件作者极少使用 Java。
+**为什么不是 Java(Spring AI)**:Spring AI 2.0 本身很成熟,但桌面需捆绑 JRE(≥100MB)、空闲内存高(要压 -Xmx512m 级别)、个人工具类插件作者极少使用 Java。
 
 ### 3.5 具体选型清单
 
@@ -448,9 +448,9 @@ CREATE INDEX idx_items_type ON items(owner_id, type, updated_at);
 
 ### M5c · 部署与发布(约 0.5 周)
 - **冻结 `/api/v1` 前**:oasdiff 兼容性检查已在 CI 中(`openapi-compat` 任务,ADR 0010 第 10 节,PR 上比较基线与本分支的 `apps/server/openapi/v1.json`,破坏性修改直接失败);冻结前复核它覆盖 `/api/v1` 的全部路径;CI 补上 CodeQL 或 Semgrep(第 11 节)。
-- 远程:Docker 一键部署文档(2GB 机器配置建议、Caddy 自动 HTTPS、DNSPod DNS 验证示例);Web UI 响应式适配手机。
+- 远程:Docker 一键部署文档(内存配置建议、Caddy 自动 HTTPS、DNSPod DNS 验证示例);Web UI 响应式适配手机。
 - 发布:Docker 镜像(amd64/arm64)到 GHCR、v1.0 Release Notes、README 快速开始;按 ADR 0018 把内存基线更新为 v1.0 的实测值。
-- **验收**:在 2C2G 机器上 `docker compose up -d` 后,通过 HTTPS 域名登录使用;内存满足第 12 节的预算:不配置渠道时空闲 ≤ 250 MiB,每个渠道不超过 M5a 定的增量上限,长时间运行与万封同步后能回落,与上一版本相比涨幅不超过 20%;对话中峰值 < 400 MiB。
+- **验收**:在一台内存 2 GB 以上的机器上 `docker compose up -d` 后,通过 HTTPS 域名登录使用;内存数字按第 12 节只记录、不作为验收门槛。
 
 ---
 
@@ -477,7 +477,7 @@ CREATE INDEX idx_items_type ON items(owner_id, type, updated_at);
 - 安装来源:本地目录、市场(不支持 npm 与 Git)。市场 = 业主创建的 `CodingLossy/fatcat-plugins` 索引仓库(PR 审核,CI 重新下载核对 sha256,版本只能标 `yanked` 不能删)发布的 `index.json`;两对 Ed25519 密钥(主用 + 备用)签名,公钥内置,私钥业主离线保管,签名在本机做;`serial` 防回滚、`expiresAt` 防过期;设置里可关闭市场。下载或校验失败不改动已安装的内容。
 - 卸载默认保留插件数据(可勾选删除,提示不在自动备份里);引用该插件的定时任务改为停用(原因 `plugin_removed`);验收按安装前与卸载后的文件树和数据库行数快照。升级时新增权限要再次同意,健康检查失败自动回滚到旧版本与数据备份。
 - 数据库:迁移 0018 新增 `plugins`、`plugin_events`,`tasks` 加 `disabled_reason`;迁移单独一个 PR,业主确认后合并。
-- 内存(业主 2026-11-17 决定放开):不设插件内存预算、总数或总内存上限;V8 堆上限与内存阈值是单插件可选设置,默认不限;保留空闲停止、手动停止、5 分钟内崩溃 3 次停用;Windows 上内存读数由插件心跳自报。每个 PR 测量并记录内存,只报告不拦截。ADR 0018、CI 内存门禁、`memory-baseline.json`、README、Docker 文档与本计划第 12 节中 2 GB / 250 MiB 的表述由单独的 PR 修改。
+- 内存(业主 2026-11-17 决定放开):不设插件内存预算、总数或总内存上限;V8 堆上限与内存阈值是单插件可选设置,默认不限;保留空闲停止、手动停止、5 分钟内崩溃 3 次停用;Windows 上内存读数由插件心跳自报。每个 PR 测量并记录内存,只报告不拦截。ADR 0018、CI 内存门禁、`memory-baseline.json`、README、Docker 文档与本计划第 12 节中 2 GB / 250 MiB 的表述已由 ADR 0041 的 PR 改掉。
 - 实现拆分(ADR 0040 第 11 节):`feat/task-tool-set`(任务工具集声明,最先)→ `feat/plugin-manifest` → `feat/plugin-migration`(迁移 0018)→ `feat/plugin-runtime`(先做三平台实测)→ `feat/plugin-ui` → `feat/plugin-capabilities` → `feat/plugin-market` → `feat/plugin-upgrade` → `docs/m7-wrapup`(自检)。
 - **验收**:可从市场一键安装一个打包的 MCP 插件和一个 SDK 插件;卸载干净(快照一致);越权调用(读密钥文件与数据库、读其他插件数据、未声明的网络 / 工具 / 方法 / 内置模块、启动子进程)被拦截。
 
@@ -543,23 +543,21 @@ CREATE INDEX idx_items_type ON items(owner_id, type, updated_at);
 | 评测(Evals)| `packages/eval`:YAML 用例 + 断言(包含/正则/工具调用序列/LLM 评审)| 工具选择正确率、任务完成率、**提示注入抵抗**(邮件/网页/文件中藏指令)、记忆召回、中文能力 | 夜间对用户指定的 1–2 个模型跑;发布前对比基线不得退化 |
 | 记忆 | Vitest(单测 + 属性测试)+ 录制回放评测 | 凭据检测语料(正例召回 100%、误报 ≤5%)、脱敏、更替不变量(单值键最多 1 条 active、supersedes 无环)、级联删除清空来源/向量、FTS 回退、召回/更替/冲突/注入评测(≥30 条中文用例)、1 万条记忆 retrieve P95 <80ms | PR 必跑(回放模式)|
 | 知识地图 | Vitest(属性测试)+ Playwright | 树一致性/无环/计数校正、分页稳定、权限过滤、10 万条目查询 P95;分类浏览器下钻 E2E;M10 粒子球交互 E2E | PR 必跑(回放数据集)|
-| 性能 | 自研脚本 + autocannon | 空闲/峰值内存、长时间运行与万封同步后的内存回落、首 token 延迟开销、索引吞吐 | 内存预算 ADR 落地后:空闲内存每个 PR 跟上一版本对比,涨幅 > 10% 报警、> 20% 失败(ADR 0018);发布前跑全量与 2GB 预算检查 |
+| 性能 | 自研脚本 + autocannon | 空闲/峰值内存、长时间运行与万封同步后的内存回落、首 token 延迟开销、索引吞吐 | 内存只测量、不设门禁(ADR 0041):空闲内存每个 PR 在 job summary 里与记录值对比,发布前跑全量并记录检查 |
 | 安全 | CodeQL 或 Semgrep、pnpm audit | 依赖与代码扫描 | PR 必跑(M5c 接入)|
 
 评测原则:评测集随功能增长;每修一个 Agent 行为 bug,就加一条回归用例。
 
 ---
 
-## 12. 部署与资源预算(2GB 服务器)
+## 12. 部署与内存(只测量,不设门禁)
 
 - `docker compose`:`fatcat-ai`(单容器)+ 可选 `caddy`。不引入 Postgres/Redis/向量库等额外服务(SQLite + sqlite-vec 足够个人规模)。
-- 资源预算(业主 2026-11-10 改为防退化,不再卡死固定数字;细节见 ADR 0018;M3.x 起生效,CI 中固定的 120 MiB 门禁已删除):
-  - 服务端空闲上限 **250 MiB**(不配置渠道时);每开一个渠道另定增量上限,在 M5a 实测微信长轮询的开销后再定;
-  - 长时间运行和万封同步后,内存要能回落,不能持续上涨;
-  - CI 跟上一个版本对比,按 ADR 0018:空闲内存涨幅 **> 10% 报警,> 20% 失败**,代替原来固定的 120 MiB 门禁;
-  - 对话峰值 < 400 MiB;
-  - 桌面端和手机端在 M10、M11 单独定预算,不跟服务端共用这个数字。
-- 运行参数:Node 设置 `--max-old-space-size=384 --max-semi-space-size=8`(后者限制新生代,大批量写入后才能回落,见 ADR 0018);SQLite 页缓存 4 MiB;文件索引走 worker 并限制并发。
+- 内存(业主 2026-11-17 决定,ADR 0041 取代 ADR 0018):产品定位是像 QQ、微信那样的个人桌面 app,不再承诺「2GB 服务器常驻」,也不再有 250 MiB / 400 MiB / 涨幅 20% 这些门禁;
+  - 内存按实际需要使用,CI 与压测脚本继续测量(空闲、万封同步后的回落、渠道增量、对话峰值),结果写进 job summary,**不让检查失败**;
+  - `.github/memory-baseline.json` 保留为记录值(最近一次发布的实测),只用于报告对照;
+  - 桌面端和手机端(M10、M11)同样只测量。
+- 运行参数的默认保护值:Node 设置 `--max-old-space-size=384 --max-semi-space-size=8`(后者限制新生代,大批量写入后才能回落,见 ADR 0018 第 7 节);SQLite 页缓存 4 MiB;文件索引走 worker 并限制并发。部署到内存更大的机器时可放大。
 - 数据卷 `/data`;每日自动 SQLite 在线备份(保留 N 份);升级前自动备份。
 - 与业主现有服务共存:默认端口可配,避免与代理服务冲突;文档提供 Caddy + Let's Encrypt(DNSPod DNS-01)示例。
 
@@ -784,7 +782,7 @@ Copyright (C) 2026 尹绪柏 (Theodore Yin). All rights reserved for commercial 
 - 新增 M3.x 清理,在 M4 之前做。
 - M4 加入图片交给多模态模型(先写网关契约 ADR)。
 - M5 拆成 M5a(渠道)、M5b(知识地图浏览器、人物、TOTP、密钥加密、外连目标清单)、M5c(复核已有的 oasdiff 检查、补 CodeQL/Semgrep、部署、发布);`degraded` 标记的 ADR 放在 M5a 开头,先于实现;用户时区设置与渠道注入评测放进 M5a。
-- 内存预算改为防退化(第 12 节):空闲上限 250 MiB、按渠道定增量、要能回落、CI 对比上一版本涨幅按 ADR 0018 > 10% 报警、> 20% 失败;内存预算 ADR 放进 M3.x,写清 20% 是失败还是报警以及何时删除 CI 里固定的 120 MiB 门禁,ADR 合并后再改 CI。
+- 内存预算曾改为防退化(ADR 0018,250 MiB 上限、涨幅 > 20% 失败),2026-11-17 又由业主放开,改为只测量、不设门禁(ADR 0041,第 12 节)。
 - 第 13 节加入署名与仓库历史两条规则。
 - 第 16 节已定决策不变。
 
@@ -792,5 +790,5 @@ Copyright (C) 2026 尹绪柏 (Theodore Yin). All rights reserved for commercial 
 - M7 插件形态统一为「子进程 + stdio MCP」,原生 TS 插件改为用 SDK 写的 MCP Server,不再用 worker;M7 只支持 JavaScript 入口,只支持免费插件。
 - 安装来源只保留本地目录与市场,去掉 npm 与 Git。
 - 新增 `plugin-data/` 数据目录;迁移 0018 新增 `plugins`、`plugin_events`,`tasks` 加 `disabled_reason`。
-- 内存预算由业主放开(插件不设上限,只测量报告);第 12 节、ADR 0018 与 CI 中的 2 GB / 250 MiB 表述由单独的 PR 修改,本次未改。
+- 内存预算由业主放开(插件不设上限,只测量报告);第 12 节、CI、README 与 Docker 文档中的 2 GB / 250 MiB 表述已由 ADR 0041 的 PR 改掉。
 - 第 16 节已定决策不变。
