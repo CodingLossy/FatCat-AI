@@ -146,8 +146,11 @@ export function splitMessage(text: string, maxBytes: number): string[] {
 
 /** 条目标题与摘要都是不可信文本:去掉控制字符与双向控制符,折叠空白,按字符数截断(ADR 0029 第 5 节)。 */
 export function cleanMapText(text: string, max: number): string {
-    // eslint-disable-next-line no-control-regex
-    const cleaned = text.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, ' ');
+    const cleaned = text.replace(
+        // eslint-disable-next-line no-control-regex
+        /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g,
+        ' ',
+    );
     const flat = cleaned.replace(/\s+/g, ' ').trim();
     const chars = [...flat];
     return chars.length > max ? `${chars.slice(0, max).join('')}…` : flat;
