@@ -35,8 +35,9 @@ export function splitDomainScopes(raw: string): string[] {
  */
 export function matchesDomain(host: string, pattern: string): boolean {
     const h = host.toLowerCase().replace(/\.$/, '');
-    if (pattern.startsWith('*.')) return h.endsWith(pattern.slice(1));
-    return h === pattern;
+    const p = pattern.toLowerCase().replace(/\.$/, '');
+    if (p.startsWith('*.')) return h.endsWith(p.slice(1));
+    return h === p;
 }
 
 /** 填了裸域名(没有 www. 前缀、不是 *. 通配)时,返回建议补上的两个写法;否则返回 null。 */

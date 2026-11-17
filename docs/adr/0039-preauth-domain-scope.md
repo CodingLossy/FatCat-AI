@@ -19,6 +19,8 @@
 
 - Web:输入时即时显示中文报错,有问题时不能保存。
 - 服务器:任务白名单里的 `*.com` 返回 400 `task_domain_broad`;带协议 / 路径 / 端口的写法本来就过不了 `PreauthConstraint` 的 schema(小写主机名正则),同样返回 400。聊天里「记住这个决定」走 `web.fetch` 的 `normalizeConstraint.domain`,用同一个解析函数。契约不变(只在校验上更严,没有新增字段)。
+- 已知限制:`*.co.uk`、`*.com.cn` 这类公共后缀下的通配能通过 `broad` 检查(只要求两段),本 PR 不带公共后缀名单;后续如需要再加。
+- 服务器保存任务白名单时把域名写回规范值(小写、去末尾的点);`matchesDomain` 对旧数据里的大小写和末尾的点也按规范值比较。
 - 不支持 IDN 原文(中文域名):请填 punycode,与 `fetchHost` 取到的 `URL.hostname` 一致。
 
 ## 3. 库里已存下的无约束条目

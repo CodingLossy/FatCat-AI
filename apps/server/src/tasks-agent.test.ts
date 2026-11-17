@@ -360,6 +360,13 @@ describe('M6 真机问题', () => {
         for (const domain of ['https://news.example.com', 'news.example.com/a', 'news.example.com:8080']) {
             expect((await createTask({ policy: policy({ domain }) })).status).toBe(400);
         }
+        // 直接调 API 传大写 / 末尾带点:不会存下一条永远匹配不上的条目(被拒绝,或存规范值)
+        for (const domain of ['BBC.com', 'bbc.com.']) {
+            const res = await createTask({ policy: policy({ domain }) });
+            if (res.status === 201) {
+                expect(Task.parse(await res.json()).policy.allowedTools?.[0]?.constraint?.domain).toBe('bbc.com');
+            } else expect(res.status).toBe(400);
+        }
         const broad = await createTask({ policy: policy({ domain: '*.com' }) });
         expect(broad.status).toBe(400);
         expect(((await broad.json()) as { reason?: string }).reason).toBe('task_domain_broad');

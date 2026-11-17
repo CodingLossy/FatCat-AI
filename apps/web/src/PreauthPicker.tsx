@@ -112,7 +112,8 @@ export function PreauthPicker({
                                                     onClick={() => setScope(`${entry.scope.trim()}, ${bare.www}`)}
                                                 >
                                                     {t('tasks.preauth.addWww', { www: bare.www })}
-                                                </button>{' '}
+                                                </button>
+                                                {' / '}
                                                 <button
                                                     type="button"
                                                     className="link"

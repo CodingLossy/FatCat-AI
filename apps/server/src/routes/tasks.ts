@@ -311,6 +311,8 @@ export function taskRoutes(deps: {
                         codes[parsed.problem],
                     );
                 }
+                // 存规范值(小写、去末尾的点),运行时按它匹配
+                entry.constraint = { ...entry.constraint, domain: parsed.ok };
             }
         });
     };

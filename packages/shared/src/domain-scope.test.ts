@@ -14,6 +14,9 @@ describe('预授权域名范围', () => {
         // 后缀必须在点边界上
         expect(matchesDomain('evilbbc.com', '*.bbc.com')).toBe(false);
         expect(matchesDomain('WWW.BBC.COM.', '*.bbc.com')).toBe(true);
+        // 旧数据里大小写或末尾带点的写法也按规范值比较
+        expect(matchesDomain('bbc.com', 'BBC.com.')).toBe(true);
+        expect(matchesDomain('www.bbc.com', '*.BBC.com')).toBe(true);
     });
 
     it('规范化合法写法,并对带协议 / 路径 / 端口 / 过宽的通配给出原因', () => {
