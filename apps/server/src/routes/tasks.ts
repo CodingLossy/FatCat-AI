@@ -287,6 +287,9 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler; to
                 }
                 checkTrigger(ownerId, body.trigger);
             }
+            if (task.trigger.kind === 'webhook' && body.trigger && body.trigger.kind !== 'webhook') {
+                repos.tasks.deleteWebhookToken(task.id);
+            }
             const updated = repos.tasks.update(ownerId, task.id, {
                 ...body,
                 // 重新启用已完成的一次性任务没有意义;改了触发器的任务回到 active

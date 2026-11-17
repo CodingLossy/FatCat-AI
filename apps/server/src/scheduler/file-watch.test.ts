@@ -69,4 +69,38 @@ describe('文件变化监听(ADR 0035 第 2 节)', () => {
         expect(closed).toEqual([s.dir]);
         w.stop();
     });
+
+    it('🔒 授权目录被撤销后,即使监听还开着也不再触发任务,并关闭监听', async () => {
+        const ownerId = s.repos.owners.create({ username: 'o', passwordHash: 'x' }).id;
+        const root = s.repos.fsRoots.create(ownerId, { path: s.dir, label: 'r' });
+        s.repos.tasks.createUser(ownerId, {
+            name: 'w',
+            trigger: { kind: 'file_changed', rootId: root.id },
+            action: { kind: 'agent_prompt', prompt: 'p' },
+            outputs: [{ kind: 'conversation' }],
+            policy: { maxAttempts: 1, misfire: 'skip', quietHours: null, maxRuntimeMinutes: 5 },
+        });
+        const closed: string[] = [];
+        let listener: (e: string, n: string) => void = () => {};
+        const fakeWatch = ((path: string, _o: unknown, l: (e: string, n: string) => void) => {
+            listener = l;
+            return Object.assign(new EventEmitter(), { close: () => closed.push(path) });
+        }) as unknown as typeof watch;
+        const calls: string[] = [];
+        const w = createFileWatcher({
+            repos: s.repos,
+            watchFn: fakeWatch,
+            onError: (e) => {
+                throw e;
+            },
+            onChange: (_t, note) => calls.push(note),
+        });
+        w.sync();
+        s.repos.fsRoots.delete(ownerId, root.id);
+        listener('change', 'secret.txt');
+        await vi.advanceTimersByTimeAsync(6000);
+        expect(calls).toEqual([]);
+        expect(closed).toEqual([s.dir]);
+        w.stop();
+    });
 });

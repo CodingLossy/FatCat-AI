@@ -183,6 +183,7 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
              ON CONFLICT(task_id) DO UPDATE SET token_hash = excluded.token_hash, created_at = excluded.created_at,
                last_used_at = NULL`,
         ),
+        tokenDelete: sqlite.prepare(`DELETE FROM task_webhook_tokens WHERE task_id = ?`),
         tokenUsed: sqlite.prepare(`UPDATE task_webhook_tokens SET last_used_at = ? WHERE task_id = ?`),
         prune: sqlite.prepare(
             `DELETE FROM task_runs WHERE task_id = ? AND id NOT IN (
@@ -352,6 +353,10 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
         },
         setWebhookTokenHash(taskId: string, hash: string): void {
             q.tokenSet.run(taskId, hash, iso());
+        },
+        /** 触发器不再是 webhook 时调用:旧令牌作废,以后改回 webhook 也不会复活。 */
+        deleteWebhookToken(taskId: string): void {
+            q.tokenDelete.run(taskId);
         },
         touchWebhookToken(taskId: string): void {
             q.tokenUsed.run(iso(), taskId);

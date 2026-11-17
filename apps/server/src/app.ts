@@ -331,7 +331,15 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         .route('/', taskRoutes({ repos, scheduler, tools: deps.runs.tools }))
         .route('/', memoryRoutes({ repos, memory: deps.memory, detectCredential }))
         .route('/', toolRoutes({ repos, runs: deps.runs, redact: deps.redact ?? ((text) => text) }))
-        .route('/', fsRoutes({ repos, items: deps.items, redact: deps.redact ?? ((text) => text) }))
+        .route(
+            '/',
+            fsRoutes({
+                repos,
+                items: deps.items,
+                redact: deps.redact ?? ((text) => text),
+                onRootsChanged: () => scheduler.syncWatchers(),
+            }),
+        )
         .route('/', itemRoutes({ repos, items: deps.items }))
         .route(
             '/',
