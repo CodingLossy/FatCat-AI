@@ -74,11 +74,23 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Self-test the comparison (a breaking change must fail, an added endpoint must pass)
+        run: node --test scripts/check-openapi-breaking.test.mjs
+      - name: The one-off exception list must be empty once the API is frozen
+        run: |
+          test -f .github/oasdiff-err-ignore.txt || { echo "::error::.github/oasdiff-err-ignore.txt is missing"; exit 1; }
+          if grep -vE '^\s*(#|$)' .github/oasdiff-err-ignore.txt; then
+            echo "::warning::.github/oasdiff-err-ignore.txt has entries; each needs the owner's approval in this PR."
+          fi
       - name: Compare apps/server/openapi/v1.json with the base branch
         run: |
           set -euo pipefail
           if ! git cat-file -e "origin/${{ github.base_ref }}:apps/server/openapi/v1.json" 2>/dev/null; then
-            echo "The base branch has no OpenAPI document; nothing to compare."
+            # 只会出现在第一个引入文档的 PR 里;其他情况下基线一定有文档,这里不静默通过
+            echo "::warning::The base branch has no OpenAPI document; nothing to compare. Say so in the PR description."
             exit 0
           fi
           git show "origin/${{ github.base_ref }}:apps/server/openapi/v1.json" > "$RUNNER_TEMP/base.json"

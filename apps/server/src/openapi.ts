@@ -11,8 +11,8 @@ import { createLogger } from './log.js';
 import { createMemoryStack } from './memory-setup.js';
 import { SERVER_VERSION } from './version.js';
 
-/** 用内存数据库组装一个应用实例,只为读取路由定义;不发任何网络请求。 */
-export async function buildOpenApiDocument(): Promise<unknown> {
+/** 用内存数据库组装一个应用实例交给 fn,只为读取路由定义与文档;不发任何网络请求。 */
+export async function withDocApp<T>(fn: (app: ReturnType<typeof createApp>) => T): Promise<T> {
     const conn = openDatabase(':memory:');
     try {
         await migrate(conn.sqlite, migrations);
@@ -37,12 +37,18 @@ export async function buildOpenApiDocument(): Promise<unknown> {
                 },
             }),
         });
-        return app.getOpenAPI31Document({
-            openapi: '3.1.0',
-            info: { title: 'FatCat-AI API', version: SERVER_VERSION, license: { name: 'AGPL-3.0-only' } },
-            security: [{ bearer: [] }, { session: [] }],
-        });
+        return fn(app);
     } finally {
         conn.close();
     }
+}
+
+export async function buildOpenApiDocument(): Promise<unknown> {
+    return withDocApp((app) =>
+        app.getOpenAPI31Document({
+            openapi: '3.1.0',
+            info: { title: 'FatCat-AI API', version: SERVER_VERSION, license: { name: 'AGPL-3.0-only' } },
+            security: [{ bearer: [] }, { session: [] }],
+        }),
+    );
 }
