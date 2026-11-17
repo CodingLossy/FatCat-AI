@@ -50,7 +50,7 @@ describe('migration 0015', () => {
                 )
                 .run();
             const result = await migrate(conn.sqlite, migrations, { backupDir: join(dir, 'backups') });
-            expect(result.applied).toEqual([15]);
+            expect(result.applied).toEqual([15, 16]);
             expect(conn.sqlite.pragma('foreign_key_check')).toEqual([]);
             const row = conn.sqlite.prepare('SELECT id, second_factor_at AS f FROM auth_sessions').get();
             expect(row).toEqual({ id: 's', f: null });

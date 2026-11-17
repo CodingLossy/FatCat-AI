@@ -587,6 +587,30 @@ td .badge {
     border-bottom: 1px solid var(--border);
 }
 
+.task-card {
+    margin-bottom: 1rem;
+}
+
+.task-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.task-toggle {
+    margin-left: auto;
+}
+
+.task-edit {
+    margin-top: 0.6rem;
+}
+
+.task-edit input {
+    width: 100%;
+    max-width: 24rem;
+}
+
 .items-layout {
     display: grid;
     grid-template-columns: minmax(14rem, 1fr) 2fr;

@@ -75,10 +75,7 @@ describe('定时任务按用户时区排期(ADR 0023 第 5 节)', () => {
             onError: (e) => {
                 throw e;
             },
-            schedule: false,
-            timeZone: 'UTC',
         });
-        expect(scheduler.nextRun()).toBeNull();
         const now = new Date();
         expect(await scheduler.runner.run('memory.decay', owner.id)).toBe('done');
         expect(await scheduler.runner.run('memory.decay', owner.id)).toBe('already_done');
@@ -91,6 +88,5 @@ describe('定时任务按用户时区排期(ADR 0023 第 5 节)', () => {
         // 换回同一天的时区:日期键已标记完成,不补跑
         repos.settings.update(owner.id, { timeZone: other });
         expect(await scheduler.runner.run('memory.decay', owner.id)).toBe('already_done');
-        scheduler.stop();
     });
 });

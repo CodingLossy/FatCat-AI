@@ -101,6 +101,10 @@ import type {
     MailMessage,
     MailPreset,
     MailSyncResult,
+    Task,
+    TaskPatch,
+    TaskRun,
+    TaskSchedulePreview,
 } from '@fatcat-ai/shared';
 import { RunStream, type StreamOptions } from './run-stream.js';
 import { Transport, type TransportOptions } from './transport.js';
@@ -485,6 +489,22 @@ export function createClient(options: ClientOptions) {
             wechatLogin: (id: string) =>
                 t.json<WechatLoginStart>(`/channels/${enc(id)}/wechat/login`, { method: 'POST' }),
             wechatLoginState: (id: string) => t.json<WechatLoginState>(`/channels/${enc(id)}/wechat/login`),
+        },
+
+        tasks: {
+            /** 定时任务(ADR 0033):内置系统任务与(之后的)用户任务;运行记录只含元数据。 */
+            list: () => t.json<Page<Task>>('/tasks'),
+            get: (id: string) => t.json<Task>(`/tasks/${enc(id)}`),
+            update: (id: string, body: TaskPatch) => t.json<Task>(`/tasks/${enc(id)}`, { method: 'PATCH', body }),
+            remove: (id: string) => t.json<void>(`/tasks/${enc(id)}`, { method: 'DELETE' }),
+            /** 立即运行一次;已有排队或运行中的记录时服务器返回 409。 */
+            run: (id: string) => t.json<TaskRun>(`/tasks/${enc(id)}/run`, { method: 'POST' }),
+            runs: (id: string, params: PageParams = {}) =>
+                t.json<Page<TaskRun>>(`/tasks/${enc(id)}/runs`, { query: { ...params } }),
+            cancelRun: (runId: string) => t.json<TaskRun>(`/task-runs/${enc(runId)}/cancel`, { method: 'POST' }),
+            /** 校验 cron 表达式并返回用户时区下接下来几次的触发时刻。 */
+            schedulePreview: (expression: string, count = 3) =>
+                t.json<TaskSchedulePreview>('/tasks/schedule-preview', { query: { expression, count } }),
         },
 
         preauthorizations: {
