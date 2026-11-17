@@ -27,6 +27,8 @@ export interface TaskRecord {
     outputs: TaskOutput[];
     policy: TaskPolicy;
     systemKey: string | null;
+    /** 被系统停用的原因(目前只有 'plugin_removed',ADR 0040 第 6.1 节);用户重新启用时清空。 */
+    disabledReason: string | null;
     /** 最近一次已触发(入队)的计划时刻;用来判断服务器关闭期间错过了哪些触发。 */
     lastFiredAt: string | null;
     createdAt: string;
@@ -65,6 +67,8 @@ export interface TaskPatchInput {
     outputs?: TaskOutput[] | undefined;
     action?: TaskAction | undefined;
     status?: TaskRecord['status'] | undefined;
+    /** 系统停用时写原因;重新启用(enabled: true)而没有给原因时自动清空。 */
+    disabledReason?: string | null | undefined;
 }
 
 interface TaskRow {
@@ -79,6 +83,7 @@ interface TaskRow {
     outputsJson: string;
     policyJson: string;
     systemKey: string | null;
+    disabledReason: string | null;
     lastFiredAt: string | null;
     createdAt: string;
     updatedAt: string;
@@ -99,7 +104,7 @@ interface RunRow {
 }
 
 const TASK_SELECT = `SELECT id, owner_id AS ownerId, name, kind, status, enabled, trigger_json AS triggerJson,
-    action_json AS actionJson, outputs_json AS outputsJson, policy_json AS policyJson, system_key AS systemKey, last_fired_at AS lastFiredAt,
+    action_json AS actionJson, outputs_json AS outputsJson, policy_json AS policyJson, system_key AS systemKey, disabled_reason AS disabledReason, last_fired_at AS lastFiredAt,
     created_at AS createdAt, updated_at AS updatedAt FROM tasks`;
 const RUN_SELECT = `SELECT id, task_id AS taskId, trigger_reason AS trigger, scheduled_for AS scheduledFor, status,
     attempt, error_code AS errorCode, session_id AS sessionId, started_at AS startedAt, finished_at AS finishedAt, created_at AS createdAt
@@ -120,6 +125,7 @@ function toTask(row: TaskRow): TaskRecord {
         outputs: JSON.parse(row.outputsJson) as TaskOutput[],
         policy: JSON.parse(row.policyJson) as TaskPolicy,
         systemKey: row.systemKey,
+        disabledReason: row.disabledReason,
         lastFiredAt: row.lastFiredAt,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -150,7 +156,8 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
         pruneDrafts: sqlite.prepare(`DELETE FROM tasks WHERE status = 'draft' AND kind = 'user' AND updated_at < ?`),
         update: sqlite.prepare(
             `UPDATE tasks SET name = @name, status = @status, enabled = @enabled, trigger_json = @trigger,
-               action_json = @action, outputs_json = @outputs, policy_json = @policy, updated_at = @at WHERE id = @id`,
+               action_json = @action, outputs_json = @outputs, policy_json = @policy, disabled_reason = @reason,
+               updated_at = @at WHERE id = @id`,
         ),
         setRunSession: sqlite.prepare(`UPDATE task_runs SET session_id = ?, run_id = ? WHERE id = ?`),
         fired: sqlite.prepare(`UPDATE tasks SET last_fired_at = ? WHERE id = ?`),
@@ -276,6 +283,12 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
                 action: JSON.stringify(patch.action ?? task.action),
                 outputs: JSON.stringify(patch.outputs ?? task.outputs),
                 policy: JSON.stringify(patch.policy ?? task.policy),
+                reason:
+                    patch.disabledReason !== undefined
+                        ? patch.disabledReason
+                        : patch.enabled === true
+                          ? null
+                          : task.disabledReason,
                 at: iso(),
             });
             return toTask(q.getById.get(id)!);

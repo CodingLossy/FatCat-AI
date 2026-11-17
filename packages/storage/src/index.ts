@@ -44,6 +44,17 @@ export type {
     SessionSummary,
 } from './memory.js';
 export type { SystemTaskSeed, TaskPatchInput, TaskRecord, TaskRepository, TaskRunRecord } from './tasks.js';
+export {
+    PLUGIN_EVENT_KINDS,
+    PLUGIN_STATES,
+    type NewPlugin,
+    type PluginEventKind,
+    type PluginEventRecord,
+    type PluginPatch,
+    type PluginRecord,
+    type PluginRepository,
+    type PluginState,
+} from './plugins.js';
 export type { ChannelPairingRecord, ChannelRecord, ChannelRepository } from './channels.js';
 export type { ModelProfileRecord } from './profiles.js';
 export type { NewApprovalRequest, NewAuditEntry } from './tools.js';
