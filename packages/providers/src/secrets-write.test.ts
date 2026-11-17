@@ -105,13 +105,14 @@ describe('writeSecretsKey', () => {
         expect(store.resolve('file:T')).toBeNull();
     });
 
-    it('restricts the backup first, then secrets.yaml, and both files already exist at each call', () => {
+    it('restricts backups/ itself first, then the backup, then secrets.yaml, and each already exists at its call', () => {
         writeFileSync(file(), 'A: 1\n');
         const calls: { path: string; existed: boolean }[] = [];
         writeSecretsKey(dir, 'B', '2', at(0), {
             restrict: (path) => calls.push({ path, existed: existsSync(path) }),
         });
         expect(calls).toEqual([
+            { path: join(dir, 'backups'), existed: true },
             { path: join(dir, 'backups', 'secrets-20261111T080000Z.yaml'), existed: true },
             { path: file(), existed: true },
         ]);
@@ -212,6 +213,37 @@ describe('restrictToCurrentUser', () => {
             onWarning: (message) => warnings.push(message),
         });
         expect(warnings[0]).toContain('USERNAME');
+    });
+
+    it('on win32 grants a directory (OI)(CI)F so files created later inherit only the current user', () => {
+        const calls: unknown[][] = [];
+        restrictToCurrentUser('C:\\Users\\me\\.fatcat-ai\\backups', {
+            platform: 'win32',
+            username: 'theodore',
+            domain: '',
+            isDirectory: true,
+            execFile: (file, args) => {
+                calls.push([file, args]);
+            },
+        });
+        expect(calls).toEqual([
+            ['icacls', ['C:\\Users\\me\\.fatcat-ai\\backups', '/inheritance:r', '/grant:r', 'theodore:(OI)(CI)F']],
+        ]);
+    });
+
+    it('on other platforms chmods a directory to 700 and leaves files alone', () => {
+        const modes: [string, number][] = [];
+        restrictToCurrentUser('/data/backups', {
+            platform: 'linux',
+            isDirectory: true,
+            chmod: (path, mode) => modes.push([path, mode]),
+        });
+        restrictToCurrentUser('/data/secrets.yaml', {
+            platform: 'linux',
+            isDirectory: false,
+            chmod: (path, mode) => modes.push([path, mode]),
+        });
+        expect(modes).toEqual([['/data/backups', 0o700]]);
     });
 
     it('does not call icacls on other platforms', () => {

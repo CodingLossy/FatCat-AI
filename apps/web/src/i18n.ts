@@ -200,6 +200,7 @@ const zh = {
     'tasks.error.over_budget': '今天的名额已用完',
     'tasks.warning.root_revoked':
         '授权目录已撤销,这个触发器不会再触发。重新授权同一个文件夹会生成新的编号,请重新选择目录。',
+    'tasks.warning.root_missing': '监听的文件夹在磁盘上不存在,已暂停监听;把文件夹建回原位后会自动恢复(最多约一分钟)。',
     'tasks.error.internal': '内部错误',
     'tool.remember': '记住这个决定',
     'tool.rememberOnce': '仅本次',
@@ -759,6 +760,8 @@ const en: Record<Key, string> = {
     'tasks.error.over_budget': "Today's quota is used up",
     'tasks.warning.root_revoked':
         'The authorized directory was revoked, so this trigger will not fire. Authorizing the same folder again creates a new id; pick the directory again.',
+    'tasks.warning.root_missing':
+        'The watched folder does not exist on disk, so watching is paused. Recreate it at the same path and watching resumes automatically (within about a minute).',
     'tasks.error.internal': 'Internal error',
     'tool.remember': 'Remember this decision',
     'tool.rememberOnce': 'Just this once',

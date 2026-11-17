@@ -139,4 +139,39 @@ describe('文件变化监听(ADR 0035 第 2 节)', () => {
         expect(calls).toEqual([]);
         w.stop();
     });
+
+    it('目录被删掉后定期 sync 只记一次错误且不抛;目录回来后重新监听', () => {
+        const ownerId = s.repos.owners.create({ username: 'o', passwordHash: 'x' }).id;
+        const root = s.repos.fsRoots.create(ownerId, { path: s.dir, label: 'r' });
+        s.repos.tasks.createUser(ownerId, {
+            name: 'w',
+            trigger: { kind: 'file_changed', rootId: root.id },
+            action: { kind: 'agent_prompt', prompt: 'p' },
+            outputs: [{ kind: 'conversation' }],
+            policy: { maxAttempts: 1, misfire: 'skip', quietHours: null, maxRuntimeMinutes: 5 },
+        });
+        let opened = 0;
+        const fakeWatch = (() => {
+            opened++;
+            return Object.assign(new EventEmitter(), { close: () => {} });
+        }) as unknown as typeof watch;
+        const errors: string[] = [];
+        let exists = false;
+        const w = createFileWatcher({
+            repos: s.repos,
+            watchFn: fakeWatch,
+            existsFn: () => exists,
+            onError: (e) => errors.push((e as Error).message),
+            onChange: () => {},
+        });
+        w.sync();
+        w.sync();
+        expect(opened).toBe(0);
+        expect(errors).toHaveLength(1);
+        exists = true;
+        w.sync();
+        w.sync(); // 已在监听:不重复打开
+        expect(opened).toBe(1);
+        w.stop();
+    });
 });
