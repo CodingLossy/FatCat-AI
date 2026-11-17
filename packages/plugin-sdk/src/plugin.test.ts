@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { PassThrough } from 'node:stream';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { definePlugin, type Plugin } from './index.js';
 
 interface Reply {
@@ -200,5 +200,69 @@ describe('plugin SDK', () => {
         );
         await open.call(1, 'tools/call', { name: 'peek' });
         expect(seen).toEqual(['k', undefined, '/data']);
+    });
+
+    it('never reads FATCAT_AI_* variables and honours the declared secret names', async () => {
+        const seen: (string | undefined)[] = [];
+        open = harness(
+            (plugin) => {
+                plugin.registerTool({
+                    name: 'peek',
+                    description: 'Peek',
+                    handler: (_args, ctx) => {
+                        seen.push(ctx.secret('FATCAT_AI_TOKEN'), ctx.secret('AIP_TOKEN'), ctx.secret('OTHER'));
+                        return 'ok';
+                    },
+                });
+            },
+            { FATCAT_AI_TOKEN: 't', AIP_TOKEN: 't', OTHER: 'o' },
+        );
+        await open.call(1, 'tools/call', { name: 'peek' });
+        expect(seen).toEqual([undefined, undefined, 'o']);
+
+        const restricted = definePlugin({ name: 'x', version: '1.0.0', secrets: ['ALLOWED'] });
+        let got: (string | undefined)[] = [];
+        restricted.registerTool({
+            name: 'peek',
+            description: 'Peek',
+            handler: (_args, ctx) => {
+                got = [ctx.secret('ALLOWED'), ctx.secret('OTHER')];
+                return 'ok';
+            },
+        });
+        const input = new PassThrough();
+        const output = new PassThrough();
+        const done = restricted.run({ input, output, env: { ALLOWED: 'a', OTHER: 'o' } });
+        input.write(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'peek' } })}\n`);
+        await new Promise((resolve) => output.once('data', resolve));
+        input.end();
+        await done;
+        expect(got).toEqual(['a', undefined]);
+    });
+});
+
+describe('heartbeat', () => {
+    it('repeats on the interval and stops after the host closes stdin', async () => {
+        vi.useFakeTimers();
+        try {
+            const input = new PassThrough();
+            const output = new PassThrough();
+            let data = '';
+            output.on('data', (chunk: Buffer) => (data += chunk.toString()));
+            const beats = (): number => data.split('\n').filter((l) => l.includes('fatcat/heartbeat')).length;
+            const plugin = definePlugin({ name: 'x', version: '1.0.0' });
+            const done = plugin.run({ input, output, env: {}, heartbeatMs: 30_000, rss: () => 1 });
+            input.write(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} })}\n`);
+            await vi.advanceTimersByTimeAsync(0);
+            expect(beats()).toBe(1);
+            await vi.advanceTimersByTimeAsync(30_000);
+            expect(beats()).toBe(2);
+            input.end();
+            await done;
+            await vi.advanceTimersByTimeAsync(120_000);
+            expect(beats()).toBe(2);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });

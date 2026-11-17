@@ -13,6 +13,7 @@ import {
     ItemsOpenResult,
     ItemsRootsParams,
     ItemsUpsertResult,
+    isOwnEnvName,
     NetFetchResult,
     PluginToolName,
     PLUGIN_RPC_ERRORS,
@@ -27,6 +28,8 @@ export interface PluginOptions {
     /** 出现在 MCP `serverInfo` 里;通常与 plugin.json 的 id、version 一致。 */
     name: string;
     version: string;
+    /** 清单里声明的密钥名;给出后 `ctx.secret` 只允许读这些名字。 */
+    secrets?: string[];
 }
 
 export interface ToolResult {
@@ -148,6 +151,8 @@ export function definePlugin(options: PluginOptions): Plugin {
                     connection.notify(FATCAT_METHODS.log, { level, message, ...(fields ? { fields } : {}) });
                 },
                 secret(name) {
+                    if (isOwnEnvName(name)) return undefined;
+                    if (options.secrets && !options.secrets.includes(name)) return undefined;
                     const value = env[name];
                     return value === undefined || value === '' ? undefined : value;
                 },
