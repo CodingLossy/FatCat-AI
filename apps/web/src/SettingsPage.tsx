@@ -416,6 +416,21 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                 </label>
                 {note ? <p className="small muted">{note}</p> : null}
             </section>
+            {settings.network ? (
+                <section className="card form" aria-label={t('settings.network')}>
+                    <h2>{t('settings.network')}</h2>
+                    <label className="inline">
+                        <input
+                            type="checkbox"
+                            name="allowFakeIp"
+                            checked={settings.network.allowFakeIp}
+                            onChange={(e) => void update({ network: { allowFakeIp: e.target.checked } })}
+                        />{' '}
+                        {t('settings.allowFakeIp')}
+                    </label>
+                    <p className="small muted">{t('settings.allowFakeIpRisk')}</p>
+                </section>
+            ) : null}
             <section className="card form" aria-label={t('settings.voice')}>
                 <h2>{t('settings.voice')}</h2>
                 <label>

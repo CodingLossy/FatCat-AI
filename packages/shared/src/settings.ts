@@ -11,6 +11,16 @@ export type Locale = z.infer<typeof Locale>;
 export const Theme = z.enum(['system', 'light', 'dark']);
 
 /** GET / PUT /api/v1/settings。PUT 接受部分字段并与现有设置合并。 */
+/** 网络相关设置(ADR 0038)。自 M6 真机修复起提供。 */
+export const NetworkSettings = z.object({
+    /**
+     * 允许 web.fetch 访问 198.18.0.0/15。Clash 等代理的 fake-IP 模式会把所有域名解析到这个段;
+     * 默认关闭,因为该段本属保留地址(基准测试),开启后仍拦截回环、私网、链路本地与云元数据。
+     */
+    allowFakeIp: z.boolean(),
+});
+export type NetworkSettings = z.infer<typeof NetworkSettings>;
+
 export const Settings = z.object({
     defaultChatProfileId: Id.nullable(),
     /** 上下文压缩等廉价任务用的配置档;为 null 时回退到 chat 配置档(ADR 0006)。 */
@@ -38,6 +48,8 @@ export const Settings = z.object({
     voice: VoiceSettings,
     /** 用户时区;null 表示跟随服务器(ADR 0023)。自 M5a PR 4 起提供,旧服务器不返回。 */
     timeZone: TimeZoneName.nullable().optional(),
+    /** 网络设置;旧服务器不返回,按全部默认处理。 */
+    network: NetworkSettings.optional(),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -45,6 +57,7 @@ export const SettingsPatch = Settings.partial().extend({
     memory: Settings.shape.memory.partial().optional(),
     knowledgeBase: Settings.shape.knowledgeBase.partial().optional(),
     voice: Settings.shape.voice.partial().optional(),
+    network: NetworkSettings.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof SettingsPatch>;
 
@@ -57,4 +70,5 @@ export const DEFAULT_SETTINGS: Settings = {
     knowledgeBase: { chunkChars: 1000 },
     voice: DEFAULT_VOICE_SETTINGS,
     timeZone: null,
+    network: { allowFakeIp: false },
 };

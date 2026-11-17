@@ -30,7 +30,7 @@ import type { Repositories, TaskRecord, TaskRunRecord } from '@fatcat-ai/storage
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
 import type { Scheduler } from '../scheduler-setup.js';
-import { nextTriggerTime, previewCron, validateCron } from '../scheduler/time.js';
+import { cronProblem, nextTriggerTime, previewCron } from '../scheduler/time.js';
 import { parseDraft, parserPrompt, type TaskComplete } from '../scheduler/nl-parse.js';
 import { authErrors, json, problem, router } from './common.js';
 
@@ -178,10 +178,27 @@ const cancelRoute = createRoute({
     },
 });
 
+/** cron 问题码 → 给客户端本地化用的稳定原因码。 */
+const cronReason = (code: 'fields' | 'never' | 'interval' | 'invalid') =>
+    code === 'invalid' ? 'task_cron_invalid' : `task_cron_${code}`;
+
 export const hashToken = (token: string): string => createHash('sha256').update(token).digest('hex');
 
 export function toTaskRun(run: TaskRunRecord): TaskRunDto {
     return { ...run };
+}
+
+/** 在运行记录上补上「等待批准」:运行中且任务会话里有待批审批时,给出数量与最早的过期时刻。 */
+function withApproval(repos: Repositories, ownerId: string, run: TaskRunRecord): TaskRunDto {
+    const dto = toTaskRun(run);
+    if (run.status !== 'running' || !run.sessionId) return dto;
+    const agentRun = repos.runs.activeInSession(ownerId, run.sessionId);
+    const pending = agentRun
+        ? repos.approvals.listByRun(ownerId, agentRun.id).filter((a) => a.status === 'pending')
+        : [];
+    if (pending.length === 0) return dto;
+    const expiresAt = pending.map((a) => a.expiresAt).sort()[0]!;
+    return { ...dto, waitingApproval: { count: pending.length, expiresAt } };
 }
 
 const DRAFT_TTL_MS = 7 * 24 * 3600_000;
@@ -222,7 +239,7 @@ export function taskRoutes(deps: {
             warning: rootGone ? 'root_revoked' : rootMissing ? 'root_missing' : null,
             timeZone: timeZoneOf(task.ownerId),
             nextRunAt: next ? next.toISOString() : null,
-            lastRun: last ? toTaskRun(last) : null,
+            lastRun: last ? withApproval(repos, task.ownerId, last) : null,
             createdAt: task.createdAt,
             updatedAt: task.updatedAt,
         };
@@ -267,14 +284,22 @@ export function taskRoutes(deps: {
                     'task_tool_not_allowed',
                 );
             }
+            // 必须带约束的工具(web.fetch 要带域名)不带约束就等于放行所有目标:拒绝
+            if (tool.requireConstraint && !entry.constraint?.[tool.requireConstraint]) {
+                throw invalid(
+                    `${tool.name} can only be allow-listed with a ${tool.requireConstraint} constraint.`,
+                    ['policy', 'allowedTools', i, 'constraint'],
+                    'task_tool_constraint_required',
+                );
+            }
         });
     };
     /** 触发器的校验:cron / 一次性 / 事件触发器引用的账户与目录必须属于主人。 */
     const checkTrigger = (ownerId: string, trigger: TaskDto['trigger']) => {
         const timeZone = timeZoneOf(ownerId);
         if (trigger.kind === 'cron') {
-            const error = validateCron(trigger.expression, timeZone);
-            if (error) throw invalid(error, ['trigger', 'expression'], 'task_cron_invalid');
+            const problem = cronProblem(trigger.expression, timeZone);
+            if (problem) throw invalid(problem.message, ['trigger', 'expression'], cronReason(problem.code));
         } else if (trigger.kind === 'once') {
             if (!nextTriggerTime(trigger, timeZone, new Date()))
                 throw invalid('The time is in the past.', ['trigger', 'at'], 'task_time_past');
@@ -312,10 +337,8 @@ export function taskRoutes(deps: {
             const ownerId = requireOwner(c);
             const { expression, count } = c.req.valid('query');
             const timeZone = timeZoneOf(ownerId);
-            const error = validateCron(expression, timeZone);
-            if (error) {
-                throw invalid(error, ['expression'], 'task_cron_invalid');
-            }
+            const problem = cronProblem(expression, timeZone);
+            if (problem) throw invalid(problem.message, ['expression'], cronReason(problem.code));
             const times = previewCron(expression, timeZone, new Date(), count).map((d) => d.toISOString());
             return c.json({ timeZone, times }, 200);
         })
@@ -504,12 +527,19 @@ export function taskRoutes(deps: {
             return c.json(toTaskRun(run), 202);
         })
         .openapi(runsRoute, (c) => {
-            const task = taskOr404(requireOwner(c), c.req.valid('param').id);
+            const ownerId = requireOwner(c);
+            const task = taskOr404(ownerId, c.req.valid('param').id);
             const { cursor, limit } = c.req.valid('query');
             const page = repos.tasks.listRuns(task.id, { cursor, limit });
-            return c.json({ items: page.items.map(toTaskRun), nextCursor: page.nextCursor }, 200);
+            return c.json(
+                { items: page.items.map((r) => withApproval(repos, ownerId, r)), nextCursor: page.nextCursor },
+                200,
+            );
         })
-        .openapi(runGetRoute, (c) => c.json(toTaskRun(runOr404(requireOwner(c), c.req.valid('param').id)), 200))
+        .openapi(runGetRoute, (c) => {
+            const ownerId = requireOwner(c);
+            return c.json(withApproval(repos, ownerId, runOr404(ownerId, c.req.valid('param').id)), 200);
+        })
         .openapi(cancelRoute, (c) => {
             const run = runOr404(requireOwner(c), c.req.valid('param').id);
             if (!scheduler.engine.cancel(run.id)) {

@@ -36,6 +36,10 @@ export const ProviderErrorCode = z.enum([
     'bad_request',
     'upstream_error',
     'network_error',
+    /** 模型把工具调用写成了正文里无法解析的标记(例如 DeepSeek 的 DSML)。 */
+    'malformed_tool_call',
+    /** 模型没有给出任何可展示的回答。 */
+    'empty_response',
 ]);
 export type ProviderErrorCode = z.infer<typeof ProviderErrorCode>;
 

@@ -84,6 +84,10 @@ export type TaskRunTrigger = z.infer<typeof TaskRunTrigger>;
 export const TaskErrorCode = z.enum([
     'timeout',
     'model_error',
+    /** 模型没有给出可展示的回答(空回答,或只有工具调用)。 */
+    'empty_answer',
+    /** 模型把工具调用写成了无法解析的正文标记。 */
+    'tool_call_malformed',
     'approval_rejected',
     'approval_expired',
     'output_failed',
@@ -114,6 +118,14 @@ export const TaskRun = z.object({
     startedAt: IsoDateTime.nullable(),
     finishedAt: IsoDateTime.nullable(),
     createdAt: IsoDateTime,
+    /**
+     * 运行正停在工具审批上时给出待批数量与最早的过期时刻(无人批准就会过期并按拒绝处理);
+     * 没有待批审批时为 null。旧服务器不返回。
+     */
+    waitingApproval: z
+        .object({ count: z.number().int().min(1), expiresAt: IsoDateTime })
+        .nullable()
+        .optional(),
 });
 export type TaskRun = z.infer<typeof TaskRun>;
 

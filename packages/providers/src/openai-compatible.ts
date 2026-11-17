@@ -13,6 +13,7 @@ import {
     sseData,
     toWireToolName,
 } from './http.js';
+import { DsmlScanner, parseDsmlCalls } from './dsml.js';
 import { type Redactor, sanitizeUpstreamText } from './redact.js';
 import {
     type ChatChunk,
@@ -149,6 +150,8 @@ export function createOpenAICompatibleProvider(options: OpenAICompatibleOptions)
             const pending = new Map<number, PendingToolCall>();
             let finish: FinishReason | null = null;
             let usage: Usage | undefined;
+            // DeepSeek 有时把工具调用写成正文里的 DSML 标记:截下来,不当正文展示
+            const dsml = new DsmlScanner();
 
             const res = await http.post(`${base}/chat/completions`, headers(), body, signal);
             if (!res.body) throw new ProviderError('upstream_error', 'upstream returned an empty body');
@@ -180,7 +183,10 @@ export function createOpenAICompatibleProvider(options: OpenAICompatibleOptions)
                 const choice = json.choices?.[0];
                 if (!choice) continue;
                 const content = choice.delta?.content;
-                if (typeof content === 'string' && content.length > 0) yield { type: 'text-delta', delta: content };
+                if (typeof content === 'string' && content.length > 0) {
+                    const safe = dsml.push(content);
+                    if (safe) yield { type: 'text-delta', delta: safe };
+                }
                 for (const call of choice.delta?.tool_calls ?? []) {
                     const index = call.index ?? 0;
                     const entry = pending.get(index) ?? { id: '', name: '', args: '' };
@@ -192,6 +198,23 @@ export function createOpenAICompatibleProvider(options: OpenAICompatibleOptions)
                 finish = mapFinish(choice.finish_reason) ?? finish;
             }
 
+            const rest = dsml.end();
+            if (rest.text) yield { type: 'text-delta', delta: rest.text };
+            const textCalls = rest.markup && pending.size === 0 ? parseDsmlCalls(rest.markup) : [];
+            if (rest.markup && pending.size === 0 && (!textCalls || toolNames.size === 0)) {
+                throw new ProviderError(
+                    'malformed_tool_call',
+                    'the model wrote a tool call as plain text that could not be parsed into a tool call',
+                );
+            }
+            for (const [index, call] of (textCalls ?? []).entries()) {
+                yield {
+                    type: 'tool-call',
+                    callId: `dsml_${index}`,
+                    name: toolNames.get(call.name) ?? call.name,
+                    input: call.input,
+                };
+            }
             for (const [index, call] of [...pending.entries()].sort((a, b) => a[0] - b[0])) {
                 yield {
                     type: 'tool-call',
@@ -202,7 +225,7 @@ export function createOpenAICompatibleProvider(options: OpenAICompatibleOptions)
             }
             yield {
                 type: 'finish',
-                reason: finish ?? (pending.size > 0 ? 'tool-calls' : 'stop'),
+                reason: finish ?? (pending.size > 0 || (textCalls?.length ?? 0) > 0 ? 'tool-calls' : 'stop'),
                 ...(usage ? { usage } : {}),
             };
         });

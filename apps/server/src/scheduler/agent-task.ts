@@ -23,6 +23,7 @@ function wrap(prompt: string, channelOutput: boolean, eventNote?: string): strin
         channelOutput
             ? 'When the result is ready, send it once with the channel.push tool (one message), then stop.'
             : 'Write the result as your final answer.',
+        'Use only the tools this task actually needs. Do not call tools that are unrelated to the task (for example, do not list mail, files or items for a news summary). If a tool you need is not available, say so in your answer.',
         'Task:',
         prompt,
         ...(eventNote
@@ -57,6 +58,8 @@ export function createAgentTaskExecutor(deps: AgentTaskDeps): Executor {
             text: wrap(task.action.prompt, channel !== undefined, eventNote),
             task: {
                 id: task.id,
+                // 没有授权文件夹时 fs 工具没有用处:不交给模型,免得它去乱试
+                ...(repos.fsRoots.list(task.ownerId).length === 0 ? { withholdToolPrefixes: ['fs.'] } : {}),
                 channelId: channel?.channelId,
                 allowedTools: (task.policy.allowedTools ?? []).map((a) => ({
                     tool: a.tool,
@@ -70,13 +73,24 @@ export function createAgentTaskExecutor(deps: AgentTaskDeps): Executor {
         try {
             const status = await waitForRun(repos, task.ownerId, started.runId, signal);
             if (status === 'cancelled') throw new ExecutorError('cancelled');
-            if (status !== 'succeeded') throw new ExecutorError('model_error', true);
+            if (status !== 'succeeded') {
+                // 模型给出的内容不可用时不重试:重试只会得到同样的结果
+                const providerCode = (repos.runs.error(started.runId) as { providerCode?: string } | null)
+                    ?.providerCode;
+                if (providerCode === 'empty_response') throw new ExecutorError('empty_answer');
+                if (providerCode === 'malformed_tool_call') throw new ExecutorError('tool_call_malformed');
+                throw new ExecutorError('model_error', true);
+            }
             // 审批没有通过(被拒绝或到期)时,运行本身仍会「成功」结束:按审批状态记成相应错误码,不重试
             const approvals = repos.approvals.listByRun(task.ownerId, started.runId);
             if (approvals.some((a) => a.status === 'rejected')) throw new ExecutorError('approval_rejected');
             if (approvals.some((a) => a.status === 'expired')) throw new ExecutorError('approval_expired');
             if (channel && !approvals.some((a) => a.toolName === 'channel.push' && a.status === 'approved')) {
                 throw new ExecutorError('output_failed');
+            }
+            // 没有渠道输出时,最终回答就是任务的结果:只有工具调用、没有文字的运行不算成功
+            if (!channel && !hasFinalText(repos, task.ownerId, started.assistantMessageId)) {
+                throw new ExecutorError('empty_answer');
             }
             return 'succeeded';
         } finally {
@@ -98,4 +112,11 @@ function waitForRun(repos: Repositories, ownerId: string, runId: string, signal:
         timer.unref?.();
         check();
     });
+}
+
+/** 助手消息的最后一个文字段是否有内容(工具调用之后必须有文字回答)。 */
+function hasFinalText(repos: Repositories, ownerId: string, messageId: string): boolean {
+    const parts = repos.messages.get(ownerId, messageId)?.parts ?? [];
+    const last = parts.at(-1);
+    return last?.type === 'text' && last.text.trim() !== '';
 }

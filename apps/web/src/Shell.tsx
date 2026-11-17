@@ -43,6 +43,11 @@ export function Shell({
     const { t } = useI18n();
     const route = useRoute();
     const [sessions, setSessions] = useState<Session[]>([]);
+    const [approvalCount, setApprovalCount] = useState(0);
+    // 页面标题带上待批数量,切到别的标签页也能看到
+    useEffect(() => {
+        document.title = approvalCount > 0 ? `(${approvalCount}) FatCat-AI` : 'FatCat-AI';
+    }, [approvalCount]);
     const [sessionError, setSessionError] = useState<string | null>(null);
     const [pending, setPending] = useState<{ kind: 'one'; id: string } | { kind: 'all' } | null>(null);
     // 手机宽度:侧栏收成抽屉。记下打开时所在的路由:换页后两者不相等,抽屉自动关闭;按 Esc 也会关闭。
@@ -215,6 +220,14 @@ export function Shell({
                     </Link>
                     <Link to={{ name: 'tasks' }} className={route.name === 'tasks' ? 'active' : ''}>
                         {t('nav.tasks')}
+                        {approvalCount > 0 ? (
+                            <span
+                                className="badge badge-alert"
+                                aria-label={t('approvals.waiting', { n: approvalCount })}
+                            >
+                                {approvalCount}
+                            </span>
+                        ) : null}
                     </Link>
                     <Link to={{ name: 'memory' }} className={route.name === 'memory' ? 'active' : ''}>
                         {t('nav.memory')}
@@ -231,7 +244,7 @@ export function Shell({
                 </div>
             </aside>
             <main className="content">
-                <ApprovalPanel currentSessionId={activeId} />
+                <ApprovalPanel currentSessionId={activeId} onCount={setApprovalCount} />
                 {route.name === 'settings' ? (
                     <SettingsPage settings={settings} onSettings={onSettings} />
                 ) : route.name === 'memory' ? (

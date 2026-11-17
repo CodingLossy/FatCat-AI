@@ -32,6 +32,25 @@ describe('/api/v1/settings', () => {
         expect((await s.app.request('/api/v1/settings')).status).toBe(401);
     });
 
+    it('网络(ADR 0038):允许 fake-IP 段默认关闭,可打开,只合并给出的键', async () => {
+        s = await createTestServer();
+        const res = await s.app.request('/api/v1/auth/setup', jsonBody({ username: 'owner', password: TEST_PASSWORD }));
+        const { cookie, csrf } = sessionFrom(res);
+        const put = (body: unknown) =>
+            s.app.request('/api/v1/settings', {
+                method: 'PUT',
+                headers: { cookie, 'content-type': 'application/json', 'X-CSRF-Token': csrf },
+                body: JSON.stringify(body),
+            });
+        const initial = await s.app.request('/api/v1/settings', { headers: { cookie } });
+        expect(Settings.parse(await initial.json()).network).toEqual({ allowFakeIp: false });
+        expect(await (await put({ network: { allowFakeIp: true } })).json()).toMatchObject({
+            network: { allowFakeIp: true },
+        });
+        expect(await (await put({ theme: 'dark' })).json()).toMatchObject({ network: { allowFakeIp: true } });
+        expect((await put({ network: { allowFakeIp: 'yes' } })).status).toBe(400);
+    });
+
     it('时区(ADR 0023):接受 IANA 名与 UTC,null 恢复跟随服务器,不合法的返回 400,变化时通知重新排期', async () => {
         const changed: string[] = [];
         s = await createTestServer({}, { onTimeZoneChanged: (_ownerId, tz) => changed.push(tz) });

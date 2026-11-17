@@ -7,7 +7,7 @@ import type { MetaResponse } from '@fatcat-ai/shared';
 export function Footer({ meta }: { meta: MetaResponse | null }) {
     return (
         <footer className="footer">
-            <span>FatCat-AI {meta ? `v${meta.serverVersion}` : ''}</span>
+            <span>FatCat-AI {meta?.serverVersion ? `v${meta.serverVersion}` : ''}</span>
             <span> · </span>
             <span>{meta?.license ?? 'AGPL-3.0-only'}</span>
             {meta?.sourceUrl ? (

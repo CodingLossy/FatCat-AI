@@ -9,22 +9,29 @@ export const MIN_INTERVAL_MS = 60_000;
 /** 可重试失败的间隔:第 1、2、3 次重试分别等 1、5、15 分钟,之后保持 15 分钟。 */
 const RETRY_MINUTES = [1, 5, 15];
 
-/** 5 段 cron 的校验:返回 null 表示合法,否则是一行原因。最小间隔 1 分钟,不接受秒级与别名。 */
-export function validateCron(expression: string, timeZone: string): string | null {
+export type CronProblem = { code: 'fields' | 'never' | 'interval' | 'invalid'; message: string };
+
+/** 5 段 cron 的校验:返回 null 表示合法,否则给出稳定的问题码(界面据此本地化)和英文说明。最小间隔 1 分钟,不接受秒级与别名。 */
+export function cronProblem(expression: string, timeZone: string): CronProblem | null {
     const fields = expression.trim().split(/\s+/);
-    if (fields.length !== 5) return 'a cron expression must have exactly 5 fields';
+    if (fields.length !== 5) return { code: 'fields', message: 'a cron expression must have exactly 5 fields' };
     try {
         const cron = new Cron(expression, { timezone: timeZone, paused: true });
         const runs = cron.nextRuns(3, new Date('2026-01-01T00:00:00Z'));
-        if (runs.length === 0) return 'the expression never fires';
+        if (runs.length === 0) return { code: 'never', message: 'the expression never fires' };
         for (let i = 1; i < runs.length; i++) {
             if (runs[i]!.getTime() - runs[i - 1]!.getTime() < MIN_INTERVAL_MS)
-                return 'the minimum interval is 1 minute';
+                return { code: 'interval', message: 'the minimum interval is 1 minute' };
         }
         return null;
     } catch (error) {
-        return error instanceof Error ? error.message : 'invalid cron expression';
+        return { code: 'invalid', message: error instanceof Error ? error.message : 'invalid cron expression' };
     }
+}
+
+/** 同 cronProblem,只返回一行英文原因(null 表示合法)。 */
+export function validateCron(expression: string, timeZone: string): string | null {
+    return cronProblem(expression, timeZone)?.message ?? null;
 }
 
 /** 触发器在 after 之后(不含)的下一次时刻;once 在 at 已过或已触发时为 null。 */
