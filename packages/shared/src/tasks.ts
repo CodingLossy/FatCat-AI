@@ -8,7 +8,7 @@ import { Id, IsoDateTime } from './common.js';
 import { PreauthConstraint } from './tools.js';
 import { pageOf } from './pagination.js';
 
-/** 触发器。M6 PR 2:cron 与一次性;事件触发(新邮件、文件变化、Webhook)随 PR 4 加入。 */
+/** 触发器:cron、一次性,以及事件(新邮件、文件变化、Webhook)。事件触发器没有「下一次时刻」。 */
 export const TaskTrigger = z.discriminatedUnion('kind', [
     z.object({
         kind: z.literal('cron'),
@@ -16,6 +16,12 @@ export const TaskTrigger = z.discriminatedUnion('kind', [
         expression: z.string().trim().min(1).max(100),
     }),
     z.object({ kind: z.literal('once'), at: IsoDateTime }),
+    /** 邮件同步到新邮件时触发;只按账户匹配,不看邮件内容(ADR 0035)。不给 accountId 表示任意账户。 */
+    z.object({ kind: z.literal('mail_received'), accountId: Id.optional() }),
+    /** 已授权目录(fs_roots)内有文件变化时触发,5 秒去抖(ADR 0035)。 */
+    z.object({ kind: z.literal('file_changed'), rootId: Id }),
+    /** 外部系统调用 POST /hooks/{任务 id}(任务专属令牌)时触发(ADR 0035)。 */
+    z.object({ kind: z.literal('webhook') }),
 ]);
 export type TaskTrigger = z.infer<typeof TaskTrigger>;
 
@@ -165,4 +171,8 @@ export const TaskSchedulePreview = z.object({
     timeZone: z.string(),
     times: z.array(IsoDateTime),
 });
+/** `POST /tasks/{id}/webhook-token`:令牌明文只出现在这个响应里,服务器只存哈希。 */
+export const TaskWebhookToken = z.object({ token: z.string(), url: z.string() });
+export type TaskWebhookToken = z.infer<typeof TaskWebhookToken>;
+
 export type TaskSchedulePreview = z.infer<typeof TaskSchedulePreview>;

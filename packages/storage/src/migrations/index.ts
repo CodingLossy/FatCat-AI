@@ -18,6 +18,7 @@ import { migration0013 } from './0013_message_attachments.js';
 import { migration0014 } from './0014_channels.js';
 import { migration0015 } from './0015_totp.js';
 import { migration0016 } from './0016_tasks.js';
+import { migration0017 } from './0017_task_webhooks.js';
 
 /** 按 id 顺序排列的全部迁移;新增迁移追加在末尾,已发布的迁移不得修改。 */
 export const migrations: readonly Migration[] = [
@@ -37,4 +38,5 @@ export const migrations: readonly Migration[] = [
     migration0014,
     migration0015,
     migration0016,
+    migration0017,
 ];

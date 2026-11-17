@@ -3,6 +3,7 @@
 
 // 定时任务的 REST(ADR 0033 第 7 节):都需要登录并按 ownerId 取数据,别人的任务一律 404。
 // PR 2 只有内置系统任务;用户自建任务的 POST /tasks 随 PR 3(动作与输出)加入。
+import { createHash, randomBytes } from 'node:crypto';
 import { createRoute, z } from '@hono/zod-openapi';
 import {
     effectiveTimeZone,
@@ -15,6 +16,7 @@ import {
     TaskRun,
     TaskRunPage,
     TaskSchedulePreview,
+    TaskWebhookToken,
     type Task as TaskDto,
     type TaskRun as TaskRunDto,
 } from '@fatcat-ai/shared';
@@ -92,6 +94,19 @@ const deleteRoute = createRoute({
         ...authErrors,
     },
 });
+const webhookTokenRoute = createRoute({
+    method: 'post',
+    path: '/tasks/{id}/webhook-token',
+    tags,
+    summary: 'Create or replace the webhook token of a webhook-triggered task; the plain token appears only here',
+    request: { params: idParam },
+    responses: {
+        201: json(TaskWebhookToken, 'Token'),
+        404: problem('Not found'),
+        409: problem('The task does not use a webhook trigger'),
+        ...authErrors,
+    },
+});
 const runRoute = createRoute({
     method: 'post',
     path: '/tasks/{id}/run',
@@ -134,6 +149,8 @@ const cancelRoute = createRoute({
         ...authErrors,
     },
 });
+
+export const hashToken = (token: string): string => createHash('sha256').update(token).digest('hex');
 
 export function toTaskRun(run: TaskRunRecord): TaskRunDto {
     return { ...run };
@@ -190,6 +207,25 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler; to
             }
         });
     };
+    /** 触发器的校验:cron / 一次性 / 事件触发器引用的账户与目录必须属于主人。 */
+    const checkTrigger = (ownerId: string, trigger: TaskDto['trigger']) => {
+        const timeZone = timeZoneOf(ownerId);
+        if (trigger.kind === 'cron') {
+            const error = validateCron(trigger.expression, timeZone);
+            if (error) throw invalid(error, ['trigger', 'expression']);
+        } else if (trigger.kind === 'once') {
+            if (!nextTriggerTime(trigger, timeZone, new Date()))
+                throw invalid('The time is in the past.', ['trigger', 'at']);
+        } else if (trigger.kind === 'mail_received') {
+            if (trigger.accountId && !repos.mail.get(ownerId, trigger.accountId)) {
+                throw invalid('The mail account does not exist.', ['trigger', 'accountId']);
+            }
+        } else if (trigger.kind === 'file_changed') {
+            if (!repos.fsRoots.list(ownerId).some((r) => r.id === trigger.rootId)) {
+                throw invalid('The directory is not an authorized directory.', ['trigger', 'rootId']);
+            }
+        }
+    };
     const runOr404 = (ownerId: string, id: string) => {
         const run = repos.tasks.getRun(id);
         if (!run || !repos.tasks.get(ownerId, run.taskId)) throw notFound('Task run');
@@ -218,13 +254,7 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler; to
         .openapi(createTaskRoute, (c) => {
             const ownerId = requireOwner(c);
             const body = c.req.valid('json');
-            const timeZone = timeZoneOf(ownerId);
-            if (body.trigger.kind === 'cron') {
-                const error = validateCron(body.trigger.expression, timeZone);
-                if (error) throw invalid(error, ['trigger', 'expression']);
-            } else if (!nextTriggerTime(body.trigger, timeZone, new Date())) {
-                throw invalid('The time is in the past.', ['trigger', 'at']);
-            }
+            checkTrigger(ownerId, body.trigger);
             const policy = body.policy ?? {
                 maxAttempts: 3,
                 misfire: body.trigger.kind === 'once' ? ('catchUp' as const) : ('skip' as const),
@@ -234,6 +264,7 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler; to
             checkOutputsAndPolicy(ownerId, body.outputs, policy);
             const task = repos.tasks.createUser(ownerId, { ...body, policy });
             scheduler.engine.rescheduleAll();
+            scheduler.syncWatchers();
             return c.json(toTask(task), 201);
         })
         .openapi(getRoute, (c) => c.json(toTask(taskOr404(requireOwner(c), c.req.valid('param').id)), 200))
@@ -252,20 +283,12 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler; to
             checkOutputsAndPolicy(ownerId, body.outputs, body.policy);
             if (body.trigger) {
                 if (task.kind === 'system' && body.trigger.kind !== 'cron') {
-                    throw new ApiError(400, 'validation_failed', 'Bad Request', 'System tasks use cron triggers.');
+                    throw invalid('System tasks use cron triggers.', ['trigger']);
                 }
-                if (body.trigger.kind === 'cron') {
-                    const error = validateCron(body.trigger.expression, timeZoneOf(ownerId));
-                    if (error) {
-                        throw new ApiError(400, 'validation_failed', 'Bad Request', error, {
-                            issues: [{ path: ['trigger', 'expression'], message: error }],
-                        });
-                    }
-                } else if (!nextTriggerTime(body.trigger, timeZoneOf(ownerId), new Date())) {
-                    throw new ApiError(400, 'validation_failed', 'Bad Request', 'The time is in the past.', {
-                        issues: [{ path: ['trigger', 'at'], message: 'must be in the future' }],
-                    });
-                }
+                checkTrigger(ownerId, body.trigger);
+            }
+            if (task.trigger.kind === 'webhook' && body.trigger && body.trigger.kind !== 'webhook') {
+                repos.tasks.deleteWebhookToken(task.id);
             }
             const updated = repos.tasks.update(ownerId, task.id, {
                 ...body,
@@ -273,6 +296,7 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler; to
                 ...(body.trigger && task.status === 'completed' ? { status: 'active' as const } : {}),
             })!;
             scheduler.engine.rescheduleAll();
+            scheduler.syncWatchers();
             return c.json(toTask(updated), 200);
         })
         .openapi(deleteRoute, (c) => {
@@ -288,7 +312,17 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler; to
             }
             repos.tasks.delete(ownerId, task.id);
             scheduler.engine.rescheduleAll();
+            scheduler.syncWatchers();
             return c.body(null, 204);
+        })
+        .openapi(webhookTokenRoute, (c) => {
+            const task = taskOr404(requireOwner(c), c.req.valid('param').id);
+            if (task.trigger.kind !== 'webhook') {
+                throw new ApiError(409, 'conflict', 'Conflict', 'The task does not use a webhook trigger.');
+            }
+            const token = `fcwh_${randomBytes(24).toString('base64url')}`;
+            repos.tasks.setWebhookTokenHash(task.id, hashToken(token));
+            return c.json({ token, url: `/hooks/${task.id}` }, 201);
         })
         .openapi(runRoute, (c) => {
             const task = taskOr404(requireOwner(c), c.req.valid('param').id);

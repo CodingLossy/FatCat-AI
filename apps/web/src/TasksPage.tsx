@@ -17,7 +17,14 @@ export function TasksPage() {
     const [open, setOpen] = useState<string | null>(null);
     const [runs, setRuns] = useState<TaskRun[]>([]);
     const [channels, setChannels] = useState<Channel[]>([]);
-    const [form, setForm] = useState<{ name: string; cron: string; prompt: string; channelId: string } | null>(null);
+    const [form, setForm] = useState<{
+        name: string;
+        trigger: 'cron' | 'mail_received' | 'webhook';
+        cron: string;
+        prompt: string;
+        channelId: string;
+    } | null>(null);
+    const [token, setToken] = useState<{ id: string; token: string; url: string } | null>(null);
     const [editing, setEditing] = useState<{
         id: string;
         expression: string;
@@ -48,7 +55,7 @@ export function TasksPage() {
         await act(async () => {
             await api.tasks.create({
                 name: form.name,
-                trigger: { kind: 'cron', expression: form.cron },
+                trigger: form.trigger === 'cron' ? { kind: 'cron', expression: form.cron } : { kind: form.trigger },
                 action: { kind: 'agent_prompt', prompt: form.prompt },
                 outputs: form.channelId ? [{ kind: 'channel', channelId: form.channelId }] : [{ kind: 'conversation' }],
             });
@@ -127,7 +134,13 @@ export function TasksPage() {
     const trigger = (task: Task) =>
         task.trigger.kind === 'cron'
             ? `cron ${task.trigger.expression}`
-            : `${t('tasks.once')} ${when(task.trigger.at)}`;
+            : task.trigger.kind === 'once'
+              ? `${t('tasks.once')} ${when(task.trigger.at)}`
+              : task.trigger.kind === 'mail_received'
+                ? t('tasks.triggerMail')
+                : task.trigger.kind === 'webhook'
+                  ? t('tasks.triggerWebhook')
+                  : t('tasks.triggerFile');
 
     return (
         <div className="page">
@@ -189,7 +202,7 @@ export function TasksPage() {
             ) : (
                 <button
                     type="button"
-                    onClick={() => setForm({ name: '', cron: '0 8 * * *', prompt: '', channelId: '' })}
+                    onClick={() => setForm({ name: '', trigger: 'cron', cron: '0 8 * * *', prompt: '', channelId: '' })}
                 >
                     {t('tasks.new')}
                 </button>
@@ -228,6 +241,18 @@ export function TasksPage() {
                                 {t('tasks.editSchedule')}
                             </button>
                         ) : null}
+                        {task.trigger.kind === 'webhook' ? (
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    void act(async () =>
+                                        setToken({ id: task.id, ...(await api.tasks.webhookToken(task.id)) }),
+                                    )
+                                }
+                            >
+                                {t('tasks.webhookToken')}
+                            </button>
+                        ) : null}
                         {task.kind === 'user' ? (
                             <button type="button" onClick={() => void act(() => api.tasks.remove(task.id))}>
                                 {t('tasks.delete')}
@@ -237,6 +262,11 @@ export function TasksPage() {
                             {open === task.id ? t('tasks.hideRuns') : t('tasks.showRuns')}
                         </button>
                     </div>
+                    {token?.id === task.id ? (
+                        <p className="small">
+                            {t('tasks.webhookShown')} <code>{token.token}</code> · POST {token.url}
+                        </p>
+                    ) : null}
                     {editing?.id === task.id ? (
                         <form className="task-edit" onSubmit={(e) => void save(e)}>
                             <label>

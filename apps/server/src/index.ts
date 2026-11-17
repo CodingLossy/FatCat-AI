@@ -273,6 +273,7 @@ const mail = createMailService({
     secrets,
     redact: (text) => redactor.redact(text),
     onError: (err, { accountId }) => logger.warn({ err, mailAccount: accountId }, 'mail sync failed'),
+    onNewMail: ({ ownerId, accountId, added }) => scheduler.mailReceived(ownerId, accountId, added),
 });
 mail.start();
 

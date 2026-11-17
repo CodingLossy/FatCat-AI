@@ -34,6 +34,8 @@ export interface MailServiceOptions {
     runner?: MailJobRunner;
     now?: () => Date;
     onError?: (error: unknown, context: { accountId: string }) => void;
+    /** 同步到新邮件后调用(只带数量,不带内容;定时任务的「新邮件」触发器用它,ADR 0035)。 */
+    onNewMail?: (event: { ownerId: string; accountId: string; added: number }) => void;
 }
 
 class MailSyncError extends Error {}
@@ -87,6 +89,13 @@ export function createMailService(options: MailServiceOptions): MailService {
             const counts = repos.mail.applySync(accountId, folders);
             const more = output.folders.some((f) => f.more);
             repos.mail.recordSync(accountId, { ok: true, intervalMinutes: account.syncIntervalMinutes, soon: more });
+            if (counts.added > 0) {
+                try {
+                    options.onNewMail?.({ ownerId, accountId, added: counts.added });
+                } catch (error) {
+                    options.onError?.(error, { accountId });
+                }
+            }
             return { ok: true, error: null, ...counts, more };
         } catch (error) {
             const text = message(error);

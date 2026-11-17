@@ -49,7 +49,8 @@ import { attachmentRoutes, UPLOAD_OVERHEAD_BYTES } from './routes/attachments.js
 import { type AttachmentFiles, createMemoryAttachmentFiles } from './attachment-files.js';
 import { tokenRoutes } from './routes/tokens.js';
 import { channelRoutes } from './routes/channels.js';
-import { taskRoutes } from './routes/tasks.js';
+import { hashToken, taskRoutes } from './routes/tasks.js';
+import { timingSafeEqual } from 'node:crypto';
 import { startScheduler, type Scheduler } from './scheduler-setup.js';
 import { startMaintenance } from './maintenance-setup.js';
 import { ChannelHub } from './channels/hub.js';
@@ -238,6 +239,28 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         return defaultLimit(c, next);
     });
     app.use('/api/v1/*', authMiddleware({ repos, now }));
+    // Webhook 触发器(ADR 0035 第 4 节):不走会话认证,走任务专属令牌;体积上限 64 KiB;
+    // 令牌不对、任务不存在、任务不是 Webhook 触发的,一律同样的 401
+    app.post(
+        '/hooks/:taskId',
+        bodyLimit({ maxSize: 64 * 1024, onError: (c) => c.json({ error: 'payload_too_large' }, 413) }),
+        async (c) => {
+            const task = repos.tasks.getById(c.req.param('taskId'));
+            const given = /^Bearer (\S+)$/.exec(c.req.header('authorization') ?? '')?.[1] ?? '';
+            const stored = task && task.trigger.kind === 'webhook' ? repos.tasks.webhookTokenHash(task.id) : null;
+            const actual = Buffer.from(hashToken(given));
+            const expected = Buffer.from(stored ?? hashToken('no-token'));
+            const ok = actual.length === expected.length && timingSafeEqual(actual, expected) && stored !== null;
+            if (!task || !ok) return c.json({ error: 'unauthorized' }, 401);
+            repos.tasks.touchWebhookToken(task.id);
+            const body = (await c.req.text()).slice(0, 4000);
+            const result = scheduler.engine.fireEvent(
+                task.id,
+                body ? `Webhook body: ${body}` : 'Webhook called without a body.',
+            );
+            return c.json({ result }, result === 'throttled' ? 429 : 202);
+        },
+    );
 
     app.get('/healthz', (c) => c.json<HealthResponse>({ status: 'ok' }));
 
@@ -308,7 +331,15 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         .route('/', taskRoutes({ repos, scheduler, tools: deps.runs.tools }))
         .route('/', memoryRoutes({ repos, memory: deps.memory, detectCredential }))
         .route('/', toolRoutes({ repos, runs: deps.runs, redact: deps.redact ?? ((text) => text) }))
-        .route('/', fsRoutes({ repos, items: deps.items, redact: deps.redact ?? ((text) => text) }))
+        .route(
+            '/',
+            fsRoutes({
+                repos,
+                items: deps.items,
+                redact: deps.redact ?? ((text) => text),
+                onRootsChanged: () => scheduler.syncWatchers(),
+            }),
+        )
         .route('/', itemRoutes({ repos, items: deps.items }))
         .route(
             '/',
