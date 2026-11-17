@@ -48,7 +48,7 @@
    `packages/plugin-sdk`、`packages/client`、`packages/shared` 用 `Apache-2.0`。YAML / Shell / Dockerfile 用 `#`,CSS 用 `/* */`,HTML 用 `<!-- -->`;年份为首次创建年份。JSON / Markdown 由 `REUSE.toml` 统一声明。各 `package.json` 写 `"license"` 与 `"author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>"`。
 
 6. **API 稳定性**:`/api/v1` 与 WebSocket 协议 v1 发布后只做向后兼容的增量修改;破坏性修改必须走 `/api/v2` 并写 ADR。Web UI 只能使用公开 API,禁止内部捷径。
-7. **不确定时**:选择更简单、更安全(默认拒绝 / 默认需审批)的方案,并在 PR 中列出待业主决定的问题。**不要推翻第 16 节已定决策**:AGPL-3.0-only + 商业许可 + CLA;SDK 与 shared 为 Apache-2.0;1.0 只做企业微信 + 微信(QQ 以后);1.0 仅单用户(表结构预留 `ownerId`);不做付费代码签名;知识地图 1.0 为列表 / 树形浏览器,粒子球导航在 M10。
+7. **不确定时**:选择更简单、更安全(默认拒绝 / 默认需审批)的方案,并在 PR 中列出待业主决定的问题。**不要推翻第 16 节已定决策**:AGPL-3.0-only + 商业许可 + CLA;SDK 与 shared 为 Apache-2.0;1.0 只含微信渠道(企业微信推迟、排期另定;QQ 以后);1.0 仅单用户(表结构预留 `ownerId`);不做付费代码签名;知识地图 1.0 为列表 / 树形浏览器,粒子球导航在 M10。
 8. **文档同步**:用户可见的变化同步更新文档站与 CHANGELOG;中英文都要更新(英文可先由模型翻译,标注待校对)。
 9. **署名**:提交说明和 PR 里不加 `Co-Authored-By` 之类的 AI 署名;提交作者一律为 `尹绪柏 (Theodore Yin) <x19169738916@163.com>`。
 10. **仓库历史已重写(2026-11-10)**:开新会话前先同步到新的 `main`:先用 `git status` 确认工作区干净(有未提交的改动先保存或提交到自己的分支),再 `git switch main && git pull --ff-only`;快进失败说明是旧克隆,重新克隆即可,不要强推。不要从旧克隆推送 `main`、`docs/m3-wrapup`、`docs/memory-plan-tdam`。
