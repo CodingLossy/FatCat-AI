@@ -321,7 +321,7 @@ export class TaskEngine {
         );
         timeout.unref?.();
         try {
-            const executor = task.action.kind === 'system' ? this.options.executors[task.action.key] : undefined;
+            const executor = this.options.executors[task.action.kind === 'system' ? task.action.key : task.action.kind];
             if (!executor) throw new ExecutorError('config_error');
             const result = await Promise.race([
                 executor({ task, run: started, signal: controller.signal }),

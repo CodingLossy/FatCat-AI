@@ -9,6 +9,7 @@ import {
     Id,
     PageQuery,
     Task,
+    TaskCreate,
     TaskPage,
     TaskPatch,
     TaskRun,
@@ -17,6 +18,7 @@ import {
     type Task as TaskDto,
     type TaskRun as TaskRunDto,
 } from '@fatcat-ai/shared';
+import { isPreauthorizable, type ToolRegistry } from '@fatcat-ai/tools';
 import type { Repositories, TaskRecord, TaskRunRecord } from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
@@ -46,6 +48,15 @@ const previewRoute = createRoute({
         }),
     },
     responses: { 200: json(TaskSchedulePreview, 'Next fire times'), 400: problem('Invalid expression'), ...authErrors },
+});
+const createTaskRoute = createRoute({
+    method: 'post',
+    path: '/tasks',
+    tags,
+    summary:
+        'Create a task that hands a prompt to the Agent on a schedule. Anything that sends or writes still needs approval',
+    request: { body: { content: { 'application/json': { schema: TaskCreate } }, required: true } },
+    responses: { 201: json(Task, 'Created'), 400: problem('Invalid request'), ...authErrors },
 });
 const getRoute = createRoute({
     method: 'get',
@@ -125,10 +136,10 @@ const cancelRoute = createRoute({
 });
 
 export function toTaskRun(run: TaskRunRecord): TaskRunDto {
-    return { ...run, trigger: run.trigger, startedAt: run.startedAt, finishedAt: run.finishedAt };
+    return { ...run };
 }
 
-export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler }) {
+export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler; tools?: ToolRegistry | undefined }) {
     const { repos, scheduler } = deps;
     const timeZoneOf = (ownerId: string) => effectiveTimeZone(repos.settings.get(ownerId).timeZone);
     const taskOr404 = (ownerId: string, id: string) => {
@@ -147,12 +158,37 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler }) 
             enabled: task.enabled,
             trigger: task.trigger,
             action: task.action,
+            outputs: task.outputs,
             policy: task.policy,
             nextRunAt: next ? next.toISOString() : null,
             lastRun: last ? toTaskRun(last) : null,
             createdAt: task.createdAt,
             updatedAt: task.updatedAt,
         };
+    };
+    const invalid = (message: string, path: (string | number)[]) =>
+        new ApiError(400, 'validation_failed', 'Bad Request', message, { issues: [{ path, message }] });
+    /** 输出与白名单的校验(ADR 0034 第 3 节):渠道必须属于主人;白名单只能是存在且可预授权的工具。 */
+    const checkOutputsAndPolicy = (
+        ownerId: string,
+        outputs: TaskDto['outputs'] | undefined,
+        policy: TaskDto['policy'] | undefined,
+    ) => {
+        outputs?.forEach((output, i) => {
+            if (output.kind === 'channel' && !repos.channels.get(ownerId, output.channelId)) {
+                throw invalid('The channel does not exist.', ['outputs', i, 'channelId']);
+            }
+        });
+        policy?.allowedTools?.forEach((entry, i) => {
+            const tool = deps.tools?.get(entry.tool);
+            if (!tool) throw invalid('Unknown tool.', ['policy', 'allowedTools', i, 'tool']);
+            if (!isPreauthorizable(tool)) {
+                throw invalid(
+                    `${tool.name} sends or runs things outside this machine and always needs approval; it cannot be allow-listed.`,
+                    ['policy', 'allowedTools', i, 'tool'],
+                );
+            }
+        });
     };
     const runOr404 = (ownerId: string, id: string) => {
         const run = repos.tasks.getRun(id);
@@ -179,6 +215,27 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler }) 
             const times = previewCron(expression, timeZone, new Date(), count).map((d) => d.toISOString());
             return c.json({ timeZone, times }, 200);
         })
+        .openapi(createTaskRoute, (c) => {
+            const ownerId = requireOwner(c);
+            const body = c.req.valid('json');
+            const timeZone = timeZoneOf(ownerId);
+            if (body.trigger.kind === 'cron') {
+                const error = validateCron(body.trigger.expression, timeZone);
+                if (error) throw invalid(error, ['trigger', 'expression']);
+            } else if (!nextTriggerTime(body.trigger, timeZone, new Date())) {
+                throw invalid('The time is in the past.', ['trigger', 'at']);
+            }
+            const policy = body.policy ?? {
+                maxAttempts: 3,
+                misfire: body.trigger.kind === 'once' ? ('catchUp' as const) : ('skip' as const),
+                quietHours: null,
+                maxRuntimeMinutes: 10,
+            };
+            checkOutputsAndPolicy(ownerId, body.outputs, policy);
+            const task = repos.tasks.createUser(ownerId, { ...body, policy });
+            scheduler.engine.rescheduleAll();
+            return c.json(toTask(task), 201);
+        })
         .openapi(getRoute, (c) => c.json(toTask(taskOr404(requireOwner(c), c.req.valid('param').id)), 200))
         .openapi(patchRoute, (c) => {
             const ownerId = requireOwner(c);
@@ -187,6 +244,12 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler }) 
             if (task.kind === 'system' && body.name !== undefined) {
                 throw new ApiError(400, 'validation_failed', 'Bad Request', 'System tasks cannot be renamed.');
             }
+            if (task.kind === 'system' && (body.action || body.outputs)) {
+                throw invalid('System tasks cannot change their action or outputs.', [
+                    body.action ? 'action' : 'outputs',
+                ]);
+            }
+            checkOutputsAndPolicy(ownerId, body.outputs, body.policy);
             if (body.trigger) {
                 if (task.kind === 'system' && body.trigger.kind !== 'cron') {
                     throw new ApiError(400, 'validation_failed', 'Bad Request', 'System tasks use cron triggers.');

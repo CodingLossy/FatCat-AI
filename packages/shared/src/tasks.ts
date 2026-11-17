@@ -5,6 +5,7 @@
 // 客户端必须把未知的 kind 当作「不认识的任务」显示,不能报错(ADR 0004)。
 import { z } from 'zod';
 import { Id, IsoDateTime } from './common.js';
+import { PreauthConstraint } from './tools.js';
 import { pageOf } from './pagination.js';
 
 /** 触发器。M6 PR 2:cron 与一次性;事件触发(新邮件、文件变化、Webhook)随 PR 4 加入。 */
@@ -18,9 +19,13 @@ export const TaskTrigger = z.discriminatedUnion('kind', [
 ]);
 export type TaskTrigger = z.infer<typeof TaskTrigger>;
 
-/** 动作。PR 2 只有内置系统任务;`agent_prompt` 与 `tool_chain` 随 PR 3 加入。 */
+/**
+ * 动作:`system` 内置任务;`agent_prompt` 把一段提示词交给 Agent,在独立的任务会话里无人值守地运行(ADR 0034)。
+ * `tool_chain` 尚未提供。
+ */
 export const TaskAction = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('system'), key: z.string().min(1).max(64) }),
+    z.object({ kind: z.literal('agent_prompt'), prompt: z.string().trim().min(1).max(2000) }),
 ]);
 export type TaskAction = z.infer<typeof TaskAction>;
 
@@ -34,6 +39,23 @@ export const TaskQuietHours = z.object({
 });
 export type TaskQuietHours = z.infer<typeof TaskQuietHours>;
 
+/** 任务级预授权白名单的一项:只能是 read / write 级别的工具,可带 ADR 0010 的约束。默认整个白名单为空。 */
+export const TaskAllowedTool = z.object({
+    tool: z.string().min(1).max(100),
+    constraint: PreauthConstraint.optional(),
+});
+export type TaskAllowedTool = z.infer<typeof TaskAllowedTool>;
+
+/**
+ * 输出去向。`conversation`:结果留在任务会话里(默认);`channel`:经 `channel.push` 推到主人自己绑定的渠道,
+ * 每次都需要审批,不可预授权(ADR 0034 第 3 节)。
+ */
+export const TaskOutput = z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('conversation') }),
+    z.object({ kind: z.literal('channel'), channelId: Id }),
+]);
+export type TaskOutput = z.infer<typeof TaskOutput>;
+
 export const TaskPolicy = z.object({
     /** 可重试失败的最大尝试次数(含第一次)。 */
     maxAttempts: z.number().int().min(1).max(5),
@@ -41,6 +63,8 @@ export const TaskPolicy = z.object({
     misfire: z.enum(['skip', 'catchUp']),
     quietHours: TaskQuietHours.nullable(),
     maxRuntimeMinutes: z.number().int().min(1).max(120),
+    /** 无人值守时直接执行的工具;默认空。不能含 external / dangerous 工具。 */
+    allowedTools: z.array(TaskAllowedTool).max(20).optional(),
 });
 export type TaskPolicy = z.infer<typeof TaskPolicy>;
 
@@ -78,6 +102,8 @@ export const TaskRun = z.object({
     status: TaskRunStatus,
     attempt: z.number().int().min(1),
     errorCode: TaskErrorCode.nullable(),
+    /** 任务会话(agent_prompt 的运行在这里);没有时为 null。 */
+    sessionId: Id.nullable(),
     startedAt: IsoDateTime.nullable(),
     finishedAt: IsoDateTime.nullable(),
     createdAt: IsoDateTime,
@@ -92,6 +118,7 @@ export const Task = z.object({
     enabled: z.boolean(),
     trigger: TaskTrigger,
     action: TaskAction,
+    outputs: z.array(TaskOutput),
     policy: TaskPolicy,
     /** 下一次排定的运行时刻;停用、已完成或没有下一次时为 null。 */
     nextRunAt: IsoDateTime.nullable(),
@@ -101,6 +128,21 @@ export const Task = z.object({
 });
 export type Task = z.infer<typeof Task>;
 
+/** `POST /tasks`:新建用户任务。policy 可省略(用默认值:最多 3 次尝试、cron 跳过错过、一次性补跑、最长 10 分钟)。 */
+export const TaskCreate = z
+    .object({
+        name: z.string().trim().min(1).max(80),
+        trigger: TaskTrigger,
+        action: z.object({ kind: z.literal('agent_prompt'), prompt: z.string().trim().min(1).max(2000) }),
+        outputs: z
+            .array(TaskOutput)
+            .max(3)
+            .default([{ kind: 'conversation' }]),
+        policy: TaskPolicy.optional(),
+    })
+    .strict();
+export type TaskCreate = z.infer<typeof TaskCreate>;
+
 /** `PATCH /tasks/{id}`:至少给一个字段。系统任务只能改 enabled、trigger(cron)与 policy。 */
 export const TaskPatch = z
     .object({
@@ -108,6 +150,8 @@ export const TaskPatch = z
         enabled: z.boolean().optional(),
         trigger: TaskTrigger.optional(),
         policy: TaskPolicy.optional(),
+        outputs: z.array(TaskOutput).max(3).optional(),
+        action: z.object({ kind: z.literal('agent_prompt'), prompt: z.string().trim().min(1).max(2000) }).optional(),
     })
     .strict()
     .refine((v) => Object.keys(v).length > 0, { message: 'at least one field is required' });

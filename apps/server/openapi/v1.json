@@ -24537,8 +24537,68 @@
                                   "kind",
                                   "key"
                                 ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "agent_prompt"
+                                    ]
+                                  },
+                                  "prompt": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "prompt"
+                                ]
                               }
                             ]
+                          },
+                          "outputs": {
+                            "type": "array",
+                            "items": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "conversation"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "channel"
+                                      ]
+                                    },
+                                    "channelId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "channelId"
+                                  ]
+                                }
+                              ]
+                            }
                           },
                           "policy": {
                             "type": "object",
@@ -24587,6 +24647,40 @@
                                 "type": "integer",
                                 "minimum": 1,
                                 "maximum": 120
+                              },
+                              "allowedTools": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "tool": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "constraint": {
+                                      "type": "object",
+                                      "properties": {
+                                        "pathPrefix": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 4096
+                                        },
+                                        "domain": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 253,
+                                          "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": [
+                                    "tool"
+                                  ]
+                                },
+                                "maxItems": 20
                               }
                             },
                             "required": [
@@ -24670,6 +24764,13 @@
                                   null
                                 ]
                               },
+                              "sessionId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                              },
                               "startedAt": {
                                 "type": [
                                   "string",
@@ -24697,6 +24798,7 @@
                               "status",
                               "attempt",
                               "errorCode",
+                              "sessionId",
                               "startedAt",
                               "finishedAt",
                               "createdAt"
@@ -24719,6 +24821,7 @@
                           "enabled",
                           "trigger",
                           "action",
+                          "outputs",
                           "policy",
                           "nextRunAt",
                           "lastRun",
@@ -24737,6 +24840,926 @@
                   "required": [
                     "items",
                     "nextCursor"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF token missing or invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Create a task that hands a prompt to the Agent on a schedule. Anything that sends or writes still needs approval",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "trigger": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "cron"
+                            ]
+                          },
+                          "expression": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "expression"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "once"
+                            ]
+                          },
+                          "at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "at"
+                        ]
+                      }
+                    ]
+                  },
+                  "action": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "agent_prompt"
+                        ]
+                      },
+                      "prompt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "prompt"
+                    ]
+                  },
+                  "outputs": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "conversation"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "channel"
+                              ]
+                            },
+                            "channelId": {
+                              "type": "string",
+                              "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "channelId"
+                          ]
+                        }
+                      ]
+                    },
+                    "maxItems": 3,
+                    "default": [
+                      {
+                        "kind": "conversation"
+                      }
+                    ]
+                  },
+                  "policy": {
+                    "type": "object",
+                    "properties": {
+                      "maxAttempts": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5
+                      },
+                      "misfire": {
+                        "type": "string",
+                        "enum": [
+                          "skip",
+                          "catchUp"
+                        ]
+                      },
+                      "quietHours": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "start": {
+                            "type": "string",
+                            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                          },
+                          "end": {
+                            "type": "string",
+                            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                          },
+                          "behavior": {
+                            "type": "string",
+                            "enum": [
+                              "defer",
+                              "skip"
+                            ],
+                            "default": "defer"
+                          }
+                        },
+                        "required": [
+                          "start",
+                          "end"
+                        ]
+                      },
+                      "maxRuntimeMinutes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 120
+                      },
+                      "allowedTools": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "tool": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "constraint": {
+                              "type": "object",
+                              "properties": {
+                                "pathPrefix": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 4096
+                                },
+                                "domain": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 253,
+                                  "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "tool"
+                          ]
+                        },
+                        "maxItems": 20
+                      }
+                    },
+                    "required": [
+                      "maxAttempts",
+                      "misfire",
+                      "quietHours",
+                      "maxRuntimeMinutes"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "trigger",
+                  "action"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "user",
+                        "system"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "active",
+                        "completed"
+                      ]
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "trigger": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "cron"
+                              ]
+                            },
+                            "expression": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "expression"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "once"
+                              ]
+                            },
+                            "at": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "at"
+                          ]
+                        }
+                      ]
+                    },
+                    "action": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "system"
+                              ]
+                            },
+                            "key": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "key"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "agent_prompt"
+                              ]
+                            },
+                            "prompt": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "prompt"
+                          ]
+                        }
+                      ]
+                    },
+                    "outputs": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "conversation"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "channel"
+                                ]
+                              },
+                              "channelId": {
+                                "type": "string",
+                                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "channelId"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "policy": {
+                      "type": "object",
+                      "properties": {
+                        "maxAttempts": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        "misfire": {
+                          "type": "string",
+                          "enum": [
+                            "skip",
+                            "catchUp"
+                          ]
+                        },
+                        "quietHours": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "start": {
+                              "type": "string",
+                              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                            },
+                            "end": {
+                              "type": "string",
+                              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                            },
+                            "behavior": {
+                              "type": "string",
+                              "enum": [
+                                "defer",
+                                "skip"
+                              ],
+                              "default": "defer"
+                            }
+                          },
+                          "required": [
+                            "start",
+                            "end"
+                          ]
+                        },
+                        "maxRuntimeMinutes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 120
+                        },
+                        "allowedTools": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "tool": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "constraint": {
+                                "type": "object",
+                                "properties": {
+                                  "pathPrefix": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 4096
+                                  },
+                                  "domain": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 253,
+                                    "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "tool"
+                            ]
+                          },
+                          "maxItems": 20
+                        }
+                      },
+                      "required": [
+                        "maxAttempts",
+                        "misfire",
+                        "quietHours",
+                        "maxRuntimeMinutes"
+                      ]
+                    },
+                    "nextRunAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "lastRun": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                        },
+                        "taskId": {
+                          "type": "string",
+                          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                        },
+                        "trigger": {
+                          "type": "string",
+                          "enum": [
+                            "schedule",
+                            "catch_up",
+                            "manual",
+                            "event",
+                            "retry"
+                          ]
+                        },
+                        "scheduledFor": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "succeeded",
+                            "failed",
+                            "blocked",
+                            "skipped",
+                            "cancelled"
+                          ]
+                        },
+                        "attempt": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "errorCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "timeout",
+                            "model_error",
+                            "approval_rejected",
+                            "approval_expired",
+                            "output_failed",
+                            "config_error",
+                            "throttled",
+                            "cancelled",
+                            "postponed",
+                            "missed",
+                            "quiet_hours",
+                            "overlap",
+                            "queue_full",
+                            "internal",
+                            null
+                          ]
+                        },
+                        "sessionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        },
+                        "finishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "taskId",
+                        "trigger",
+                        "scheduledFor",
+                        "status",
+                        "attempt",
+                        "errorCode",
+                        "sessionId",
+                        "startedAt",
+                        "finishedAt",
+                        "createdAt"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "kind",
+                    "status",
+                    "enabled",
+                    "trigger",
+                    "action",
+                    "outputs",
+                    "policy",
+                    "nextRunAt",
+                    "lastRun",
+                    "createdAt",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
                   ]
                 }
               }
@@ -25415,8 +26438,68 @@
                             "kind",
                             "key"
                           ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "agent_prompt"
+                              ]
+                            },
+                            "prompt": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "prompt"
+                          ]
                         }
                       ]
+                    },
+                    "outputs": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "conversation"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "channel"
+                                ]
+                              },
+                              "channelId": {
+                                "type": "string",
+                                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "channelId"
+                            ]
+                          }
+                        ]
+                      }
                     },
                     "policy": {
                       "type": "object",
@@ -25465,6 +26548,40 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 120
+                        },
+                        "allowedTools": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "tool": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "constraint": {
+                                "type": "object",
+                                "properties": {
+                                  "pathPrefix": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 4096
+                                  },
+                                  "domain": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 253,
+                                    "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "tool"
+                            ]
+                          },
+                          "maxItems": 20
                         }
                       },
                       "required": [
@@ -25548,6 +26665,13 @@
                             null
                           ]
                         },
+                        "sessionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                        },
                         "startedAt": {
                           "type": [
                             "string",
@@ -25575,6 +26699,7 @@
                         "status",
                         "attempt",
                         "errorCode",
+                        "sessionId",
                         "startedAt",
                         "finishedAt",
                         "createdAt"
@@ -25597,6 +26722,7 @@
                     "enabled",
                     "trigger",
                     "action",
+                    "outputs",
                     "policy",
                     "nextRunAt",
                     "lastRun",
@@ -26027,6 +27153,40 @@
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 120
+                      },
+                      "allowedTools": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "tool": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "constraint": {
+                              "type": "object",
+                              "properties": {
+                                "pathPrefix": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 4096
+                                },
+                                "domain": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 253,
+                                  "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "tool"
+                          ]
+                        },
+                        "maxItems": 20
                       }
                     },
                     "required": [
@@ -26034,6 +27194,67 @@
                       "misfire",
                       "quietHours",
                       "maxRuntimeMinutes"
+                    ]
+                  },
+                  "outputs": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "conversation"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "channel"
+                              ]
+                            },
+                            "channelId": {
+                              "type": "string",
+                              "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "channelId"
+                          ]
+                        }
+                      ]
+                    },
+                    "maxItems": 3
+                  },
+                  "action": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "agent_prompt"
+                        ]
+                      },
+                      "prompt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "prompt"
                     ]
                   }
                 },
@@ -26141,8 +27362,68 @@
                             "kind",
                             "key"
                           ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "agent_prompt"
+                              ]
+                            },
+                            "prompt": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "prompt"
+                          ]
                         }
                       ]
+                    },
+                    "outputs": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "conversation"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "channel"
+                                ]
+                              },
+                              "channelId": {
+                                "type": "string",
+                                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "channelId"
+                            ]
+                          }
+                        ]
+                      }
                     },
                     "policy": {
                       "type": "object",
@@ -26191,6 +27472,40 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 120
+                        },
+                        "allowedTools": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "tool": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "constraint": {
+                                "type": "object",
+                                "properties": {
+                                  "pathPrefix": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 4096
+                                  },
+                                  "domain": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 253,
+                                    "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "tool"
+                            ]
+                          },
+                          "maxItems": 20
                         }
                       },
                       "required": [
@@ -26274,6 +27589,13 @@
                             null
                           ]
                         },
+                        "sessionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                        },
                         "startedAt": {
                           "type": [
                             "string",
@@ -26301,6 +27623,7 @@
                         "status",
                         "attempt",
                         "errorCode",
+                        "sessionId",
                         "startedAt",
                         "finishedAt",
                         "createdAt"
@@ -26323,6 +27646,7 @@
                     "enabled",
                     "trigger",
                     "action",
+                    "outputs",
                     "policy",
                     "nextRunAt",
                     "lastRun",
@@ -27236,6 +28560,13 @@
                         null
                       ]
                     },
+                    "sessionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                    },
                     "startedAt": {
                       "type": [
                         "string",
@@ -27263,6 +28594,7 @@
                     "status",
                     "attempt",
                     "errorCode",
+                    "sessionId",
                     "startedAt",
                     "finishedAt",
                     "createdAt"
@@ -27782,6 +29114,13 @@
                               null
                             ]
                           },
+                          "sessionId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                          },
                           "startedAt": {
                             "type": [
                               "string",
@@ -27809,6 +29148,7 @@
                           "status",
                           "attempt",
                           "errorCode",
+                          "sessionId",
                           "startedAt",
                           "finishedAt",
                           "createdAt"
@@ -28216,6 +29556,13 @@
                         null
                       ]
                     },
+                    "sessionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                    },
                     "startedAt": {
                       "type": [
                         "string",
@@ -28243,6 +29590,7 @@
                     "status",
                     "attempt",
                     "errorCode",
+                    "sessionId",
                     "startedAt",
                     "finishedAt",
                     "createdAt"
@@ -28637,6 +29985,13 @@
                         null
                       ]
                     },
+                    "sessionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                    },
                     "startedAt": {
                       "type": [
                         "string",
@@ -28664,6 +30019,7 @@
                     "status",
                     "attempt",
                     "errorCode",
+                    "sessionId",
                     "startedAt",
                     "finishedAt",
                     "createdAt"

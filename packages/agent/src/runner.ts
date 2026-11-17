@@ -13,7 +13,7 @@ import type {
     Settings,
     Usage,
 } from '@fatcat-ai/shared';
-import { effectiveTimeZone, formatPromptTime } from '@fatcat-ai/shared';
+import { effectiveTimeZone, formatPromptTime, type PreauthConstraint, type Preauthorization } from '@fatcat-ai/shared';
 import { type ChatMessage, type ModelProvider, ProviderError, type ToolCall } from '@fatcat-ai/providers';
 import { type ModelProfileRecord, newId, type Repositories } from '@fatcat-ai/storage';
 import type { EventBus } from './bus.js';
@@ -134,6 +134,15 @@ export interface StartRunInput {
     inputMessageId?: string;
     /** 重新生成时被替代的助手消息。 */
     replacesMessageId?: string;
+    /**
+     * 这次运行由定时任务发起(ADR 0034):allowedTools 是任务级预授权白名单(只对这一次运行生效,
+     * 仍受 isPreauthorizable 限制:external / dangerous 工具永远要审批);channelId 是任务配置的输出渠道。
+     */
+    task?: {
+        id: string;
+        channelId?: string | undefined;
+        allowedTools?: { tool: string; constraint?: PreauthConstraint }[];
+    };
 }
 
 export interface StartedRun {
@@ -171,6 +180,8 @@ export class RunManager {
     private readonly approvals = new Map<string, { ownerId: string; resolve: (r: Resolution) => void }>();
     private readonly persistIntervalMs: number;
     private readonly now: () => number;
+    /** 由定时任务发起的运行:runId → 任务信息(运行结束时移除)。 */
+    private readonly taskRuns = new Map<string, NonNullable<StartRunInput['task']>>();
 
     /** 正在进行的运行数(维护任务据此推迟,ADR 0007 第 5.7 节)。 */
     get activeRuns(): number {
@@ -231,9 +242,13 @@ export class RunManager {
         });
 
         const controller = new AbortController();
+        if (input.task) this.taskRuns.set(created.runId, input.task);
         const done = this.execute(input, created, controller.signal)
             .catch((error: unknown) => this.options.onError?.(error, { runId: created.runId }))
-            .finally(() => this.active.delete(created.runId));
+            .finally(() => {
+                this.active.delete(created.runId);
+                this.taskRuns.delete(created.runId);
+            });
         this.active.set(created.runId, { controller, done });
         return {
             runId: created.runId,
@@ -403,7 +418,23 @@ export class RunManager {
     }
 
     private decideCall(tool: ToolDefinition, input: unknown, context: ToolContext) {
-        const preauths = this.options.repos.preauths.forTool(context.ownerId, tool.name, context.sessionId);
+        const stored = this.options.repos.preauths.forTool(context.ownerId, tool.name, context.sessionId);
+        // 任务级白名单:合成「只在本会话有效」的预授权;decide 对 external / dangerous 工具不看预授权,所以白名单绕不过审批
+        const task = this.taskRuns.get(context.runId);
+        const preauths: Preauthorization[] = [
+            ...stored,
+            ...(task?.allowedTools ?? [])
+                .filter((a) => a.tool === tool.name)
+                .map((a, i) => ({
+                    id: `task-${task!.id}-${i}`,
+                    toolName: a.tool,
+                    scope: 'session' as const,
+                    sessionId: context.sessionId,
+                    constraint: a.constraint ?? null,
+                    createdAt: new Date(this.now()).toISOString(),
+                    lastUsedAt: null,
+                })),
+        ];
         return decide(tool, input, context, preauths, {
             enableDangerous: this.options.tools?.options.enableDangerous,
             disableConditional: this.options.disableConditional?.(context.ownerId),
@@ -439,7 +470,12 @@ export class RunManager {
             sessionId,
             decision,
             outcome,
-            summary: (via ? `${summary.slice(0, 400)} (via channel ${via.channelId})` : summary).slice(0, 500),
+            summary: (via
+                ? `${summary.slice(0, 400)} (via channel ${via.channelId})`
+                : this.taskRuns.has(runId)
+                  ? `${summary.slice(0, 400)} (via task ${this.taskRuns.get(runId)!.id})`
+                  : summary
+            ).slice(0, 500),
             inputDigest: inputDigest(call.input, this.redact),
             error: error ? this.redact(error).slice(0, 2000) : null,
         });
@@ -564,6 +600,7 @@ export class RunManager {
             userMessageId: run.userMessageId,
             assistantMessageId: run.assistantMessageId,
             untrustedContentSeen,
+            ...(input.task ? { task: { id: input.task.id, channelId: input.task.channelId } } : {}),
         });
 
         emit({

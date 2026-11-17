@@ -19,6 +19,7 @@ import { createMailService } from './mail-setup.js';
 import { createMemoryStack } from './memory-setup.js';
 import { scheduleDaily, startMaintenance } from './maintenance-setup.js';
 import { startScheduler } from './scheduler-setup.js';
+import { createChannelPushTool } from './scheduler/channel-push-tool.js';
 import { createAttachmentFiles, createImageLoader, sweepAttachments } from './attachment-files.js';
 import { itemProviders } from './memory-provider.js';
 import { createEmbeddingService } from './embeddings.js';
@@ -195,6 +196,7 @@ const runs = new RunManager({
             secret: (ref) => secrets.resolve(ref),
             complete: createMailComplete(repos, providerFor),
         },
+        [createChannelPushTool((ownerId, channelId, text) => channels.push(ownerId, channelId, text))],
     ),
     memoryContext: (input) => memoryStack.context(input),
     redact: (text) => redactor.redact(text),
@@ -224,6 +226,7 @@ const scheduler = startScheduler({
     repos,
     maintenance,
     timeZone: ownerTimeZone,
+    agent: { runs, secrets },
     onError: (err) => logger.warn({ err }, 'scheduled task failed'),
 });
 // 图片附件的清理:每天与记忆维护同一时间,删除 24 小时内未被引用的附件与孤立文件(ADR 0020 第 3 节)
@@ -236,7 +239,7 @@ const sweepJob = scheduleDaily(() => {
 }, ownerTimeZone());
 // IM 渠道(ADR 0022):1.0 只有微信 iLink(ADR 0024);每天清理 3 天前的去重记录
 const wechat = new WechatChannels({ repos, secrets, logger });
-const channels = new ChannelHub({
+const channels: ChannelHub = new ChannelHub({
     repos,
     runs,
     bus,

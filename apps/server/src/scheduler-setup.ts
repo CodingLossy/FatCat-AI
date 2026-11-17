@@ -4,9 +4,13 @@
 // 把通用调度器(ADR 0033)接到服务器:内置系统任务、动作表、主人的时区。
 import type { TaskPolicy } from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
+import type { RunManager } from '@fatcat-ai/agent';
 import type { MaintenanceScheduler } from './maintenance-setup.js';
 import { MAINTENANCE_CRON } from './maintenance-setup.js';
+import { resolveProfile } from './routes/sessions.js';
+import { createAgentTaskExecutor } from './scheduler/agent-task.js';
 import { TaskEngine, type Executor } from './scheduler/engine.js';
+import type { SecretStore } from '@fatcat-ai/providers';
 
 export const MAINTENANCE_TASK_KEY = 'memory.maintenance';
 
@@ -25,6 +29,8 @@ export function startScheduler(options: {
     maintenance: MaintenanceScheduler;
     timeZone: () => string;
     onError: (error: unknown) => void;
+    /** 给了才能运行 agent_prompt 任务(ADR 0034);没有时这类任务记 config_error。 */
+    agent?: { runs: RunManager; secrets: SecretStore };
     /** 为 false 时只建任务不排期(测试中使用)。 */
     schedule?: boolean;
 }): Scheduler {
@@ -35,6 +41,14 @@ export function startScheduler(options: {
             return Object.values(result).includes('postponed') ? 'postponed' : 'succeeded';
         },
     };
+    if (options.agent) {
+        executors.agent_prompt = createAgentTaskExecutor({
+            repos,
+            runs: options.agent.runs,
+            resolveProfile,
+            secrets: options.agent.secrets,
+        });
+    }
     const engine = new TaskEngine({ repos, executors, timeZone: options.timeZone, onError: options.onError });
     const scheduler: Scheduler = {
         engine,

@@ -21,7 +21,8 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 
 #### Added
 
-- General task scheduler (ADR 0033, migration 0016): tasks and run records are stored in the database, scheduled in your time zone, and kept across restarts. Each run is recorded with its status, error code and times only (no content). Failed runs retry after 1, 5 and 15 minutes; runs missed while the server was off are skipped or caught up once, per task; tasks can have quiet hours; at most two tasks run at once. The memory maintenance (decay, tiering, expiry) now runs as the built-in system task "Memory maintenance" and can be disabled, run now, or moved to another time. New Web page "Tasks" and `/api/v1/tasks` endpoints (also in the client SDK). Your own tasks, event triggers and push to WeChat or mail come in later M6 changes.
+- General task scheduler (ADR 0033, migration 0016): tasks and run records are stored in the database, scheduled in your time zone, and kept across restarts. Each run is recorded with its status, error code and times only (no content). Failed runs retry after 1, 5 and 15 minutes; runs missed while the server was off are skipped or caught up once, per task; tasks can have quiet hours; at most two tasks run at once. The memory maintenance (decay, tiering, expiry) now runs as the built-in system task "Memory maintenance" and can be disabled, run now, or moved to another time. New Web page "Tasks" and `/api/v1/tasks` endpoints (also in the client SDK). Event triggers and natural-language creation come in later M6 changes.
+- Your own tasks (ADR 0034): a task hands a prompt to the assistant on a schedule and runs unattended in its own conversation. Anything that needs approval still waits for you and is refused if nobody answers within 30 minutes. A task can push its result to your own WeChat channel; every push needs your approval and cannot be pre-authorized, and the model cannot choose the target. An optional per-task allow-list lets read/write tools run without asking (empty by default; tools that send or run things outside this machine can never be on it).
 
 ### M5c · Release prep (in progress)
 
@@ -289,7 +290,8 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 
 ### M6 · 定时任务与自动化(进行中)
 
-- 通用任务调度器(ADR 0033,迁移 0016):任务与运行记录存在数据库里,按用户时区排期,重启后仍然有效;每次运行只记录状态、错误码和时间(不存内容)。失败按 1、5、15 分钟重试;服务器关闭期间错过的触发按任务设置跳过或只补跑一次;任务可设静默时段;同时最多运行两个任务。记忆维护(衰减、分层、过期)现在是内置系统任务「记忆维护」,可以停用、立即运行或改时间。新增 Web 页面「任务」与 `/api/v1/tasks` 接口(客户端 SDK 同步)。自建任务、事件触发和推送到微信或邮件在 M6 之后的改动中加入。
+- 通用任务调度器(ADR 0033,迁移 0016):任务与运行记录存在数据库里,按用户时区排期,重启后仍然有效;每次运行只记录状态、错误码和时间(不存内容)。失败按 1、5、15 分钟重试;服务器关闭期间错过的触发按任务设置跳过或只补跑一次;任务可设静默时段;同时最多运行两个任务。记忆维护(衰减、分层、过期)现在是内置系统任务「记忆维护」,可以停用、立即运行或改时间。新增 Web 页面「任务」与 `/api/v1/tasks` 接口(客户端 SDK 同步)。自建任务、事件触发和自然语言创建在 M6 之后的改动中加入。
+- 自建任务(ADR 0034):任务按时把一段提示词交给助手,在独立的会话里无人值守地运行;需要审批的操作照旧等你确认,30 分钟没人答复就拒绝。任务可以把结果推送到你自己的微信渠道:每次推送都需要你审批、不能预授权,目标渠道由任务配置决定,模型改不了。每个任务可以有一个可选的预授权白名单,让读 / 写类工具直接执行(默认为空;会对外发送或在本机之外执行的工具永远不能进白名单)。
 
 ### M5c · 发布收尾(进行中)
 
