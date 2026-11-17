@@ -200,6 +200,9 @@ export function taskRoutes(deps: {
     const toTask = (task: TaskRecord): TaskDto => {
         const next = task.enabled && task.status === 'active' ? scheduler.engine.nextRun(task.id) : null;
         const last = repos.tasks.lastRun(task.id);
+        const trigger = task.trigger;
+        const rootGone =
+            trigger.kind === 'file_changed' && !repos.fsRoots.list(task.ownerId).some((r) => r.id === trigger.rootId);
         return {
             id: task.id,
             name: task.name,
@@ -210,6 +213,7 @@ export function taskRoutes(deps: {
             action: task.action,
             outputs: task.outputs,
             policy: task.policy,
+            warning: rootGone ? 'root_revoked' : null,
             nextRunAt: next ? next.toISOString() : null,
             lastRun: last ? toTaskRun(last) : null,
             createdAt: task.createdAt,

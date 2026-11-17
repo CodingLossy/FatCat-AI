@@ -197,6 +197,9 @@ const zh = {
     'tasks.error.quiet_hours': '静默时段',
     'tasks.error.overlap': '上一次还没结束',
     'tasks.error.queue_full': '队列已满',
+    'tasks.error.over_budget': '今天的名额已用完',
+    'tasks.warning.root_revoked':
+        '授权目录已撤销,这个触发器不会再触发。重新授权同一个文件夹会生成新的编号,请重新选择目录。',
     'tasks.error.internal': '内部错误',
     'tool.remember': '记住这个决定',
     'tool.rememberOnce': '仅本次',
@@ -753,6 +756,9 @@ const en: Record<Key, string> = {
     'tasks.error.quiet_hours': 'Quiet hours',
     'tasks.error.overlap': 'Previous run still going',
     'tasks.error.queue_full': 'Queue full',
+    'tasks.error.over_budget': "Today's quota is used up",
+    'tasks.warning.root_revoked':
+        'The authorized directory was revoked, so this trigger will not fire. Authorizing the same folder again creates a new id; pick the directory again.',
     'tasks.error.internal': 'Internal error',
     'tool.remember': 'Remember this decision',
     'tool.rememberOnce': 'Just this once',

@@ -69,6 +69,25 @@ describe('/api/v1/tasks', () => {
         expect((await call('GET', '/tasks/01ARZ3NDEKTSV4RRFFQ69G5FAV')).status).toBe(404);
     });
 
+    it('文件变化任务引用的授权目录被撤销后,任务带 root_revoked 警告', async () => {
+        const call = await login();
+        const owner = s.repos.owners.ids()[0]!;
+        const root = s.repos.fsRoots.create(owner, { path: s.dir, label: 'r' });
+        const created = Task.parse(
+            await (
+                await call('POST', '/tasks', {
+                    name: 'w',
+                    trigger: { kind: 'file_changed', rootId: root.id },
+                    action: { kind: 'agent_prompt', prompt: 'p' },
+                })
+            ).json(),
+        );
+        expect(created.warning ?? null).toBeNull();
+        s.repos.fsRoots.delete(owner, root.id);
+        const after = Task.parse(await (await call('GET', `/tasks/${created.id}`)).json());
+        expect(after).toMatchObject({ status: 'active', enabled: true, warning: 'root_revoked' });
+    });
+
     it('手动运行写运行记录,可分页读取;预览返回用户时区下的未来触发时刻', async () => {
         const call = await login();
         const { items } = (await (await call('GET', '/tasks')).json()) as { items: Array<{ id: string }> };

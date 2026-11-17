@@ -103,4 +103,40 @@ describe('文件变化监听(ADR 0035 第 2 节)', () => {
         expect(closed).toEqual([s.dir]);
         w.stop();
     });
+    it('🔒 Windows:根目录被删掉后不停的 rename 事件只记一次错误、关闭监听、不触发任务', async () => {
+        const ownerId = s.repos.owners.create({ username: 'o', passwordHash: 'x' }).id;
+        const root = s.repos.fsRoots.create(ownerId, { path: s.dir, label: 'r' });
+        s.repos.tasks.createUser(ownerId, {
+            name: 'w',
+            trigger: { kind: 'file_changed', rootId: root.id },
+            action: { kind: 'agent_prompt', prompt: 'p' },
+            outputs: [{ kind: 'conversation' }],
+            policy: { maxAttempts: 1, misfire: 'skip', quietHours: null, maxRuntimeMinutes: 5 },
+        });
+        const closed: string[] = [];
+        let listener: (e: string, n: string) => void = () => {};
+        const fakeWatch = ((path: string, _o: unknown, l: (e: string, n: string) => void) => {
+            listener = l;
+            return Object.assign(new EventEmitter(), { close: () => closed.push(path) });
+        }) as unknown as typeof watch;
+        const errors: string[] = [];
+        const calls: string[] = [];
+        let exists = true;
+        const w = createFileWatcher({
+            repos: s.repos,
+            watchFn: fakeWatch,
+            existsFn: () => exists,
+            onError: (e) => errors.push((e as Error).message),
+            onChange: (_t, note) => calls.push(note),
+        });
+        w.sync();
+        listener('rename', 'a.txt'); // 目录还在:正常
+        exists = false;
+        for (let i = 0; i < 1000; i++) listener('rename', s.dir); // 之后的事件风暴
+        await vi.advanceTimersByTimeAsync(6000);
+        expect(errors).toHaveLength(1);
+        expect(closed).toEqual([s.dir]);
+        expect(calls).toEqual([]);
+        w.stop();
+    });
 });

@@ -8,8 +8,8 @@ import type { TaskErrorCode, TaskRunTrigger } from '@fatcat-ai/shared';
 import type { Repositories, TaskRecord, TaskRunRecord } from '@fatcat-ai/storage';
 import { inQuietHours, nextTriggerTime, quietEnd, retryDelayMs } from './time.js';
 
-/** 动作执行结果:postponed 表示「系统忙,稍后再试」(不消耗重试次数)。 */
-export type ExecutorResult = 'succeeded' | 'postponed';
+/** 动作执行结果:postponed 表示「系统忙,稍后再试」(不消耗重试次数);skipped 表示这次没做事,带原因码。 */
+export type ExecutorResult = 'succeeded' | 'postponed' | { status: 'skipped'; code: TaskErrorCode };
 
 export class ExecutorError extends Error {
     constructor(
@@ -139,7 +139,7 @@ export class TaskEngine {
         const recent = (this.eventTimes.get(taskId) ?? []).filter((t) => now.getTime() - t < 3_600_000);
         if (recent.length >= this.eventsPerHour) {
             this.eventTimes.set(taskId, recent);
-            this.recordSkipped(task, now, 'throttled');
+            this.recordSkipped(task, now, 'throttled', 'event');
             return 'throttled';
         }
         const busy =
@@ -295,7 +295,7 @@ export class TaskEngine {
         const now = this.now();
         if (quiet && inQuietHours(now, quiet, tz)) {
             if (quiet.behavior === 'skip') {
-                this.recordSkipped(task, scheduledFor, 'quiet_hours');
+                this.recordSkipped(task, scheduledFor, 'quiet_hours', reason);
             } else if (!this.deferred.has(task.id)) {
                 // 推迟到静默结束后:同一任务多次合并为一次
                 const wait = Math.max(quietEnd(now, quiet, tz).getTime() - now.getTime(), 0);
@@ -318,10 +318,17 @@ export class TaskEngine {
         this.enqueue(task, scheduledFor, reason);
     }
 
-    private recordSkipped(task: TaskRecord, scheduledFor: Date, code: TaskErrorCode): void {
+    private recordSkipped(
+        task: TaskRecord,
+        scheduledFor: Date,
+        code: TaskErrorCode,
+        trigger: TaskRunTrigger = 'schedule',
+    ): void {
+        // 错过的触发要把 last_fired_at 推进到现在(这一次错过已经处理完),否则每次重启都会重复记 missed
+        if (code === 'missed') this.options.repos.tasks.markFired(task.id, this.now().toISOString());
         const run = this.options.repos.tasks.createRun({
             taskId: task.id,
-            trigger: 'schedule',
+            trigger,
             scheduledFor: scheduledFor.toISOString(),
             status: 'skipped',
         });
@@ -336,7 +343,7 @@ export class TaskEngine {
             [...this.waiting.values()].some((w) => w.run.taskId === task.id);
         if (busyWithTask) {
             if (reason === 'manual') return null;
-            this.recordSkipped(task, scheduledFor, 'overlap');
+            this.recordSkipped(task, scheduledFor, 'overlap', reason);
             return null;
         }
         if (this.queue.length >= this.queueLimit) {
@@ -390,7 +397,10 @@ export class TaskEngine {
                 ),
             ]);
             if (result === 'postponed') this.postpone(task, started);
-            else {
+            else if (typeof result === 'object') {
+                this.postponed.delete(started.id);
+                this.finish(started, 'skipped', result.code);
+            } else {
                 this.postponed.delete(started.id);
                 this.finish(started, 'succeeded', null);
             }
