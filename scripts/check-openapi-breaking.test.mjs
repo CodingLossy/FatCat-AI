@@ -21,7 +21,7 @@ const available = bin
     ? spawnSync(bin, ['--version']).status === 0
     : spawnSync('docker', ['version', '--format', '{{.Server.Version}}']).status === 0;
 
-/** 返回 oasdiff 的结果:退出码 0 = 通过,1 = 有破坏性变更;参数或文件出错时是其他非 0 值(见 expectBreaking)。 */
+/** 返回 oasdiff 的结果:退出码 0 = 通过,1 = 有破坏性变更;参数或文件出错时是其他非 0 值(见 expectStatus)。 */
 function diff(mutate) {
     const dir = mkdtempSync(join(tmpdir(), 'oasdiff-'));
     const doc = JSON.parse(readFileSync(basePath, 'utf8'));
