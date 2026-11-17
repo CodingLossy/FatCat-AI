@@ -64,6 +64,8 @@ export class TaskEngine {
     private readonly queue: Pending[] = [];
     private readonly running = new Map<string, { controller: AbortController; run: TaskRunRecord }>();
     private readonly timers = new Set<ReturnType<typeof setTimeout>>();
+    /** 等待重试 / 推迟的记录(不在队列也不在运行中):算「同一任务忙」,可以取消。 */
+    private readonly waiting = new Map<string, { timer: ReturnType<typeof setTimeout>; run: TaskRunRecord }>();
     private readonly deferred = new Map<string, ReturnType<typeof setTimeout>>();
     private readonly postponed = new Map<string, number>();
     private tick: ReturnType<typeof setTimeout> | null = null;
@@ -116,6 +118,14 @@ export class TaskEngine {
 
     /** 取消排队中或运行中的记录;返回是否找到。 */
     cancel(runId: string): boolean {
+        const wait = this.waiting.get(runId);
+        if (wait) {
+            clearTimeout(wait.timer);
+            this.waiting.delete(runId);
+            this.postponed.delete(runId);
+            this.finish(wait.run, 'cancelled', 'cancelled');
+            return true;
+        }
         const queued = this.queue.findIndex((p) => p.run.id === runId);
         if (queued >= 0) {
             const [pending] = this.queue.splice(queued, 1);
@@ -136,6 +146,11 @@ export class TaskEngine {
         if (this.tick) clearTimeout(this.tick);
         for (const t of this.timers) clearTimeout(t);
         for (const t of this.deferred.values()) clearTimeout(t);
+        for (const { timer, run } of this.waiting.values()) {
+            clearTimeout(timer);
+            this.finish(run, 'cancelled', 'cancelled');
+        }
+        this.waiting.clear();
         this.timers.clear();
         this.deferred.clear();
         for (const { run } of this.queue.splice(0)) this.finish(run, 'cancelled', 'cancelled');
@@ -280,7 +295,8 @@ export class TaskEngine {
         const { repos } = this.options;
         const busyWithTask =
             this.queue.some((p) => p.task.id === task.id) ||
-            [...this.running.values()].some((r) => r.run.taskId === task.id);
+            [...this.running.values()].some((r) => r.run.taskId === task.id) ||
+            [...this.waiting.values()].some((w) => w.run.taskId === task.id);
         if (busyWithTask) {
             if (reason === 'manual') return null;
             this.recordSkipped(task, scheduledFor, 'overlap');
@@ -351,7 +367,7 @@ export class TaskEngine {
             const retryable = cause instanceof ExecutorError ? cause.retryable : false;
             if (!(cause instanceof ExecutorError)) this.options.onError(cause);
             if (code === 'cancelled') this.finish(started, 'cancelled', 'cancelled');
-            else if (retryable && started.attempt < task.policy.maxAttempts) this.retry(task, started);
+            else if (retryable && started.attempt < task.policy.maxAttempts) this.retry(task, started, code);
             else this.finish(started, 'failed', code);
         } finally {
             clearTimeout(timeout);
@@ -372,8 +388,8 @@ export class TaskEngine {
         this.requeueLater(task, run, this.postponeMs, 'postponed');
     }
 
-    private retry(task: TaskRecord, run: TaskRunRecord): void {
-        this.requeueLater(task, run, retryDelayMs(run.attempt), 'timeout', run.attempt + 1);
+    private retry(task: TaskRecord, run: TaskRunRecord, why: TaskErrorCode): void {
+        this.requeueLater(task, run, retryDelayMs(run.attempt), why, run.attempt + 1);
     }
 
     private requeueLater(
@@ -386,7 +402,7 @@ export class TaskEngine {
         const waiting = this.options.repos.tasks.updateRun(run.id, { status: 'queued', errorCode: why, attempt })!;
         this.options.onRunChanged?.(waiting);
         const timer = setTimeout(() => {
-            this.timers.delete(timer);
+            this.waiting.delete(waiting.id);
             if (this.stopped) return;
             const fresh = this.options.repos.tasks.getById(task.id);
             if (!fresh || !fresh.enabled) {
@@ -397,7 +413,7 @@ export class TaskEngine {
             this.pump();
         }, delayMs);
         timer.unref?.();
-        this.timers.add(timer);
+        this.waiting.set(waiting.id, { timer, run: waiting });
     }
 
     private finish(run: TaskRunRecord, status: TaskRunRecord['status'], errorCode: TaskErrorCode | null): void {
