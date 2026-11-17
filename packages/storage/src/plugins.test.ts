@@ -63,6 +63,14 @@ describe('migration 0018 与插件仓储', () => {
             expect(tasks.list('o').map((t) => t.id)).toEqual(['t1']);
             expect(tasks.list('o')[0]!.disabledReason).toBeNull();
 
+            // 旧版本不能直接打开已迁移的库;文档不得再写成「能启动」
+            await expect(
+                migrate(
+                    conn.sqlite,
+                    migrations.filter((m) => m.id <= 17),
+                ),
+            ).rejects.toThrow('database has migration 18 (plugins) unknown to this version');
+
             // 备份是迁移前的库:没有新表,仍能按旧迁移集打开
             const old = openDatabase(result.backupPath!);
             try {

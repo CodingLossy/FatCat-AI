@@ -6,7 +6,8 @@ import type { Migration } from '../migrate.js';
 /**
  * 插件(ADR 0040 第 7 节):新增 plugins、plugin_events 两张表,并给 tasks 加一个可为空的列 disabled_reason。
  * 不改其他已有表和已有数据。
- * 回滚 = 回退到迁移前的自动备份;旧代码不读这些表和列,所以不回退数据库直接换回旧版本也能启动。
+ * 回滚:旧版本不能直接打开已迁移的库(会报 unknown to this version)。唯一办法是停服务,
+ * 用 backups/ 里的 db-…-pre-0018.sqlite 恢复再运行旧版本;备份之后写入的数据会丢失。
  */
 export const migration0018: Migration = {
     id: 18,
