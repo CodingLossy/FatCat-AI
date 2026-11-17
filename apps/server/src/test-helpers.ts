@@ -84,6 +84,7 @@ export interface TestServerOptions {
     authNow?: () => Date;
     challenges?: AppDeps['challenges'];
     totpLimiter?: AppDeps['totpLimiter'];
+    taskComplete?: AppDeps['taskComplete'];
 }
 
 export async function createTestServer(
@@ -186,6 +187,7 @@ export async function createTestServer(
         ...(options.now ? { now: options.now } : {}),
     });
     const app = createApp({
+        taskComplete: options.taskComplete ?? createMailComplete(repos, providerFor),
         channels,
         wechat,
         mcp,

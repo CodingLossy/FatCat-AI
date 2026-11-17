@@ -51,6 +51,7 @@ import { tokenRoutes } from './routes/tokens.js';
 import { channelRoutes } from './routes/channels.js';
 import { hashToken, taskRoutes } from './routes/tasks.js';
 import { timingSafeEqual } from 'node:crypto';
+import type { TaskComplete } from './scheduler/nl-parse.js';
 import { startScheduler, type Scheduler } from './scheduler-setup.js';
 import { startMaintenance } from './maintenance-setup.js';
 import { ChannelHub } from './channels/hub.js';
@@ -100,6 +101,8 @@ export interface AppDeps {
     onTimeZoneChanged?: (ownerId: string, timeZone: string) => void;
     /** 通用任务调度器(ADR 0033);不给时建一个不排期的(只适合测试与导出 OpenAPI 文档)。 */
     scheduler?: Scheduler;
+    /** 自然语言创建任务用的补全(ADR 0036);不给则 /tasks/propose 报错。 */
+    taskComplete?: TaskComplete;
     /** IM 渠道的运行器(ADR 0022);不给时按需创建(没有注册任何适配器,只适合测试与导出 OpenAPI 文档)。 */
     channels?: ChannelHub;
     /** 微信 iLink 的扫码授权与适配器工厂;测试时可指向假的 iLink 服务器。 */
@@ -328,7 +331,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         )
         .route('/', runRoutes(runDeps))
         .route('/', channelRoutes({ repos, hub: channels, wechat }))
-        .route('/', taskRoutes({ repos, scheduler, tools: deps.runs.tools }))
+        .route('/', taskRoutes({ repos, scheduler, tools: deps.runs.tools, complete: deps.taskComplete }))
         .route('/', memoryRoutes({ repos, memory: deps.memory, detectCredential }))
         .route('/', toolRoutes({ repos, runs: deps.runs, redact: deps.redact ?? ((text) => text) }))
         .route(
