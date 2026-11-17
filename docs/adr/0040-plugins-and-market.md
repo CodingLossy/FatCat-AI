@@ -145,7 +145,7 @@ M7 没有、因此一律拒绝的能力:读写用户文件夹(ADR 0011 的授权
 
 Node 24 的权限模型管文件、子进程、worker、addon、WASI,**不管网络**。所以「声明了 `net` 才能联网」在 M7 由三层共同保证,而不是一道硬墙:
 
-1. **运行时预加载**(`--import` 主程序自带的预加载脚本,在插件代码之前运行):删除全局 `fetch`、`WebSocket`、`EventSource`;用模块解析钩子拒绝 `node:net`、`node:tls`、`node:http`、`node:https`、`node:http2`、`node:dgram`、`node:dns`、`node:child_process`、`node:worker_threads`、`node:inspector`;`process.binding` 置为抛错。SDK 的 `ctx.fetch` 走 `fatcat/net.fetch`。
+1. **运行时预加载**(`--import` 主程序自带的预加载脚本,在插件代码之前运行):删除全局 `fetch`、`WebSocket`、`EventSource`;用同步模块钩子(`module.registerHooks`,同时覆盖 ESM `import`、CJS `require` 以及 `module.createRequire` 得到的 `require`)拒绝 `node:net`、`node:tls`、`node:http`、`node:https`、`node:http2`、`node:dgram`、`node:dns`、`node:child_process`、`node:worker_threads`、`node:inspector`;`process.binding` 与 `process.dlopen` 置为抛错(后者另有权限模型不给 `--allow-addons` 兜底)。PR 2 的越权用例对 `import`、`require`、`createRequire`、`process.binding`、`process.dlopen` 各加一条。SDK 的 `ctx.fetch` 走 `fatcat/net.fetch`。
 2. **市场审核**:索引仓库的 CI 对包做静态检查(打包产物里不得出现上述模块名、`process.binding`、`eval` / `new Function` 动态拼接这些名字),人工审核 PR(第 5.2 节)。
 3. **将来的硬隔离**:Node 的网络权限(`--allow-net`)进入 LTS 后,运行时检测到就启用,上面第 1 层变为后备。
 
@@ -171,7 +171,7 @@ Node 24 的权限模型管文件、子进程、worker、addon、WASI,**不管网
 - `spawn` 用 `shell: false`,stdio 三条管道,其余文件描述符不继承;`cwd` 为插件数据目录;子进程优先级调低一档(`os.setPriority`,Windows 同样有效),对话优先。
 - 目录:代码在 `<数据目录>/plugins/<id>/<version>/`(只读),数据在 `<数据目录>/plugin-data/<id>/`(读写)。两者都不在 `secrets.yaml`、`secrets.yaml.enc`、`master.key`、`db.sqlite`、`backups/`、`logs/` 的路径之下,权限模型拒绝读取这些文件。
 - 已知的 Node 权限模型限制:**符号链接会被跟随到允许范围之外**。对策:安装时拒绝包含符号链接或硬链接的包(第 5.4 节);每次启动前检查插件数据目录,发现符号链接就拒绝启动并提示用户(插件自己不能建符号链接,检查是防用户或别的程序放进去)。越权用例覆盖这一条(第 11 节 PR 2)。
-- 进程退出:工具注销,状态 `stopped`;非正常退出 5 分钟内超过 3 次则状态 `error`,不再自动拉起,用户手动启用即可重试。服务器关闭时先发 `SIGTERM`(Windows 为 `kill()`),5 秒后强杀。
+- 进程退出:工具注销,状态 `stopped`;非正常退出 5 分钟内超过 3 次则状态 `error`,不再自动拉起,用户手动启用即可重试。停止插件时(空闲停止、停用、服务器关闭):先关闭子进程的 stdin(MCP stdio 约定的关闭方式,插件应随之退出),等 5 秒;仍未退出时 Linux / macOS 发 `SIGTERM` 再等 2 秒后 `SIGKILL`,Windows 直接 `kill()`(Windows 上 `kill()` 就是立即结束进程,没有「先通知再等待」的效果,所以优雅退出只靠关闭 stdin 这一步)。
 
 ### 4.2 环境变量
 
@@ -180,7 +180,7 @@ Node 24 的权限模型管文件、子进程、worker、addon、WASI,**不管网
 ### 4.3 密钥:只用 `env:` 引用,经启动环境传入
 
 - 清单声明密钥**名字**;用户在插件设置里把每个名字绑定到一个 `env:<变量名>` 引用(只接受 `env:`,不接受 `file:`,也不接受明文值)。数据库只存 `{ "WEATHER_API_KEY": "env:MY_WEATHER_KEY" }`。
-- 启动子进程时,主程序从**自己的**进程环境读出 `MY_WEATHER_KEY` 的值,以声明的名字 `WEATHER_API_KEY` 放进子进程环境。这就是受控通道:值只在启动那一刻经操作系统的进程环境传递,不经 RPC、不落盘、不进日志。
+- 启动子进程时,主程序从**自己的**进程环境读出 `MY_WEATHER_KEY` 的值,以声明的名字 `WEATHER_API_KEY` 放进子进程环境。这就是受控通道:值只在启动那一刻经操作系统的进程环境传递,不经 RPC、不落盘、不进日志。主程序记录启动失败或崩溃时只写插件 id、退出码与 stderr 末尾,**不记录 spawn 的参数与环境**;stderr 末尾在写入日志与 `plugin_events` 前按已绑定的密钥值做替换脱敏。PR 2 加测试:插件启动失败、崩溃、把密钥打印到 stderr 三种情况下,日志与 `plugin_events` 中都不出现密钥值。
 - 主程序环境里没有对应变量时:`required` 的密钥让启动失败(状态 `error`,提示缺哪个变量名);可选的不传。
 - 改绑定后重启插件生效。卸载时绑定随插件行删除,环境变量本身不动。
 - 不支持 `file:`(即 `secrets.yaml`)的理由:让插件密钥与模型、渠道密钥分开,插件出问题时影响面只是部署者为它单独设的那几个环境变量。
@@ -344,7 +344,7 @@ CREATE INDEX idx_plugin_events_owner_at ON plugin_events(owner_id, at, id);
 
 - **主程序**:空闲 250 MiB 上限与基线规则(ADR 0018)**不变**。插件管理代码与 MCP 客户端一样按需 `import()`:没有启用任何插件时不加载,CI 的空闲门禁测的仍是无插件的情况。启用插件时主程序侧的增量(管理器、RPC 路由、每个连接的缓冲)单独测,上限写进 `.github/memory-baseline.json` 的 `pluginHostIncrementMiB`,初值按实测 × 1.5 向上取整到 5 MiB(预计 ≤ 10 MiB)。
 - **插件进程**单独计算,不计入主程序:
-  - 每个插件:V8 老生代 64 MiB、新生代半空间 2 MiB(启动参数,Node 自己强制);RSS 上限 **128 MiB**,Linux 上每 30 秒读 `/proc/<pid>/status` 的 `VmRSS`,连续两次超限则停止进程并记 `crashed`;Windows 只依赖 V8 堆上限(不引入依赖去读其他进程内存),文档写明。
+  - 每个插件:V8 老生代 64 MiB、新生代半空间 2 MiB(启动参数,Node 自己强制);RSS 上限 **128 MiB**,Linux 上每 30 秒读 `/proc/<pid>/status` 的 `VmRSS`,连续两次超限则停止进程并记 `crashed`;Windows 只依赖 V8 堆上限(不引入依赖去读其他进程内存),属于已知限制,文档写明;PR 2 在 Windows 真机上量一次插件进程的空闲 RSS 与 100 次调用后的 RSS,写回本节。
   - 一个空的 Node MCP 进程实测约 40–50 MiB RSS(PR 2 测量后写入本节)。
   - **按需启动,空闲停止**:插件在第一次被调用(工具调用、知识地图展开)时启动,空闲 10 分钟后停止;冷启动约 0.3–0.5 秒。**同时运行的插件进程最多 3 个**(`plugins.maxRunning`,可设 1–8),超出时停止最久未用的一个。(问题 5)
 - **2C2G 机器上的影响**:最坏情况下主程序对话峰值 400 MiB + 3 个插件 × 128 MiB = 784 MiB,加上系统与 Caddy 约 400 MiB,合计约 1.2 GiB,低于 2 GiB 并留有余量;常见情况(1 个插件在跑)约主程序 120 MiB + 插件 50 MiB。CPU:插件进程优先级调低一档,两个核上对话不被插件挤占。把 `maxRunning` 调高时设置页提示每多一个约多占 128 MiB。
@@ -408,4 +408,4 @@ CREATE INDEX idx_plugin_events_owner_at ON plugin_events(owner_id, at, id);
 - 主程序空闲内存不变;插件进程有单独上限和数量上限。
 - 新增两张表(迁移 0018),无已有表改动。
 - 不新增运行时依赖:Ed25519、gzip 用 `node:crypto` / `node:zlib`,tar 读取器与版本范围解析自写。
-- 已知限制:插件直接联网只能纵深防御(第 3.4 节);Windows 上插件 RSS 不做强制上限;M7 不支持非 JS 插件、插件渠道、插件 UI 脚本。
+- 已知限制:插件直接联网只能纵深防御(第 3.4 节);Windows 上插件 RSS 不做强制上限(未在真机验证,PR 2 实测);Windows 上停止插件没有 `SIGTERM` 那样的通知,只能靠关闭 stdin;M7 不支持非 JS 插件、插件渠道、插件 UI 脚本。
