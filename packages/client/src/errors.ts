@@ -46,6 +46,7 @@ export async function errorFromResponse(res: Response): Promise<FatCatApiError> 
         ...(typeof b.detail === 'string' ? { detail: b.detail } : {}),
         ...(Array.isArray(b.issues) ? { issues: b.issues } : {}),
         ...(typeof b.providerCode === 'string' ? { providerCode: b.providerCode } : {}),
+        ...(typeof b.reason === 'string' ? { reason: b.reason } : {}),
     };
     return new FatCatApiError(problem);
 }

@@ -128,6 +128,21 @@ describe('请求与鉴权', () => {
         expect((await res.arrayBuffer()).byteLength).toBe(3);
     });
 
+    it('保留服务器给的 reason 码', async () => {
+        const problem = {
+            title: 'Bad Request',
+            status: 400,
+            code: 'validation_failed',
+            requestId: 'r',
+            reason: 'task_time_past',
+        };
+        const f = fakeFetch([new Response(JSON.stringify(problem), { status: 400 })]);
+        const e = await createClient({ baseUrl: 'http://h', token: 'aip_pat_x', fetch: f.fn })
+            .sessions.create()
+            .catch((x: unknown) => x);
+        expect((e as FatCatApiError).problem.reason).toBe('task_time_past');
+    });
+
     it('非 2xx 转为 FatCatApiError(保留 problem 字段),无正文时合成', async () => {
         const problem = { title: 'Conflict', status: 409, code: 'conflict', requestId: 'r1', detail: 'busy' };
         const f = fakeFetch([

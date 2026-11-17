@@ -22,6 +22,7 @@ import {
     TaskSchedulePreview,
     TaskWebhookToken,
     type Task as TaskDto,
+    type TaskDraftNote,
     type TaskRun as TaskRunDto,
 } from '@fatcat-ai/shared';
 import { isPreauthorizable, type ToolRegistry } from '@fatcat-ai/tools';
@@ -219,14 +220,32 @@ export function taskRoutes(deps: {
             outputs: task.outputs,
             policy: task.policy,
             warning: rootGone ? 'root_revoked' : rootMissing ? 'root_missing' : null,
+            timeZone: timeZoneOf(task.ownerId),
             nextRunAt: next ? next.toISOString() : null,
             lastRun: last ? toTaskRun(last) : null,
             createdAt: task.createdAt,
             updatedAt: task.updatedAt,
         };
     };
-    const invalid = (message: string, path: (string | number)[]) =>
-        new ApiError(400, 'validation_failed', 'Bad Request', message, { issues: [{ path, message }] });
+    const invalid = (message: string, path: (string | number)[], reason?: string) =>
+        new ApiError(400, 'validation_failed', 'Bad Request', message, {
+            issues: [{ path, message }],
+            ...(reason ? { reason } : {}),
+        });
+    /** 没有 issues 的业务错误;`reason` 是给客户端本地化用的稳定码。 */
+    const fail = (
+        status: 400 | 409 | 403,
+        code: 'validation_failed' | 'conflict' | 'forbidden',
+        message: string,
+        reason: string,
+    ) =>
+        new ApiError(
+            status,
+            code,
+            status === 400 ? 'Bad Request' : status === 403 ? 'Forbidden' : 'Conflict',
+            message,
+            { reason },
+        );
     /** 输出与白名单的校验(ADR 0034 第 3 节):渠道必须属于主人;白名单只能是存在且可预授权的工具。 */
     const checkOutputsAndPolicy = (
         ownerId: string,
@@ -235,16 +254,17 @@ export function taskRoutes(deps: {
     ) => {
         outputs?.forEach((output, i) => {
             if (output.kind === 'channel' && !repos.channels.get(ownerId, output.channelId)) {
-                throw invalid('The channel does not exist.', ['outputs', i, 'channelId']);
+                throw invalid('The channel does not exist.', ['outputs', i, 'channelId'], 'task_channel_missing');
             }
         });
         policy?.allowedTools?.forEach((entry, i) => {
             const tool = deps.tools?.get(entry.tool);
-            if (!tool) throw invalid('Unknown tool.', ['policy', 'allowedTools', i, 'tool']);
+            if (!tool) throw invalid('Unknown tool.', ['policy', 'allowedTools', i, 'tool'], 'task_tool_unknown');
             if (!isPreauthorizable(tool)) {
                 throw invalid(
                     `${tool.name} sends or runs things outside this machine and always needs approval; it cannot be allow-listed.`,
                     ['policy', 'allowedTools', i, 'tool'],
+                    'task_tool_not_allowed',
                 );
             }
         });
@@ -254,17 +274,25 @@ export function taskRoutes(deps: {
         const timeZone = timeZoneOf(ownerId);
         if (trigger.kind === 'cron') {
             const error = validateCron(trigger.expression, timeZone);
-            if (error) throw invalid(error, ['trigger', 'expression']);
+            if (error) throw invalid(error, ['trigger', 'expression'], 'task_cron_invalid');
         } else if (trigger.kind === 'once') {
             if (!nextTriggerTime(trigger, timeZone, new Date()))
-                throw invalid('The time is in the past.', ['trigger', 'at']);
+                throw invalid('The time is in the past.', ['trigger', 'at'], 'task_time_past');
         } else if (trigger.kind === 'mail_received') {
             if (trigger.accountId && !repos.mail.get(ownerId, trigger.accountId)) {
-                throw invalid('The mail account does not exist.', ['trigger', 'accountId']);
+                throw invalid(
+                    'The mail account does not exist.',
+                    ['trigger', 'accountId'],
+                    'task_mail_account_missing',
+                );
             }
         } else if (trigger.kind === 'file_changed') {
             if (!repos.fsRoots.list(ownerId).some((r) => r.id === trigger.rootId)) {
-                throw invalid('The directory is not an authorized directory.', ['trigger', 'rootId']);
+                throw invalid(
+                    'The directory is not an authorized directory.',
+                    ['trigger', 'rootId'],
+                    'task_root_unauthorized',
+                );
             }
         }
     };
@@ -286,9 +314,7 @@ export function taskRoutes(deps: {
             const timeZone = timeZoneOf(ownerId);
             const error = validateCron(expression, timeZone);
             if (error) {
-                throw new ApiError(400, 'validation_failed', 'Bad Request', error, {
-                    issues: [{ path: ['expression'], message: error }],
-                });
+                throw invalid(error, ['expression'], 'task_cron_invalid');
             }
             const times = previewCron(expression, timeZone, new Date(), count).map((d) => d.toISOString());
             return c.json({ timeZone, times }, 200);
@@ -312,32 +338,43 @@ export function taskRoutes(deps: {
         .openapi(proposeRoute, async (c) => {
             const ownerId = requireOwner(c);
             const { text } = c.req.valid('json');
-            if (!deps.complete) throw new ApiError(400, 'validation_failed', 'Bad Request', 'No model is configured.');
+            if (!deps.complete) throw fail(400, 'validation_failed', 'No model is configured.', 'task_no_model');
             const timeZone = timeZoneOf(ownerId);
             let raw: string;
             try {
                 raw = await deps.complete(ownerId, parserPrompt(timeZone, new Date()), text, c.req.raw.signal);
             } catch {
-                throw new ApiError(400, 'validation_failed', 'Bad Request', 'The model could not be reached.');
+                throw fail(400, 'validation_failed', 'The model could not be reached.', 'task_model_unreachable');
             }
             const parsed = parseDraft(raw);
             if (!parsed.ok) {
                 // 固定的几句提示,不回显模型的原文
-                const hint =
-                    parsed.reason === 'not_json' || parsed.reason === 'invalid'
-                        ? 'I could not understand that. Please say when it should run and what it should do.'
-                        : 'Something is missing, for example the time or what to do. Please add it and try again.';
-                throw new ApiError(400, 'validation_failed', 'Bad Request', hint);
+                if (parsed.reason === 'not_json' || parsed.reason === 'invalid') {
+                    throw fail(
+                        400,
+                        'validation_failed',
+                        'I could not understand that. Please say when it should run and what it should do.',
+                        'task_not_understood',
+                    );
+                }
+                throw fail(
+                    400,
+                    'validation_failed',
+                    'Something is missing, for example the time or what to do. Please add it and try again.',
+                    'task_missing_info',
+                );
             }
             const { task: p } = parsed;
             let trigger: TaskDto['trigger'];
             if (p.trigger.kind === 'once') {
                 const at = Date.parse(p.trigger.at);
-                if (Number.isNaN(at)) throw invalid('The time is not understood.', ['trigger', 'at']);
+                if (Number.isNaN(at))
+                    throw invalid('The time is not understood.', ['trigger', 'at'], 'task_time_unclear');
                 trigger = { kind: 'once', at: new Date(at).toISOString() };
             } else trigger = p.trigger;
             checkTrigger(ownerId, trigger);
             const warnings: string[] = [];
+            const notes: TaskDraftNote[] = [];
             const outputs: TaskDto['outputs'] = [{ kind: 'conversation' }];
             if (p.push) {
                 const channel = repos.channels.list(ownerId).find((ch) => ch.enabled && ch.binding);
@@ -346,7 +383,17 @@ export function taskRoutes(deps: {
                     warnings.push(
                         `The result will be pushed to the channel "${channel.label}" (each push needs your approval).`,
                     );
-                } else warnings.push('No bound channel is available, so the result stays in the task conversation.');
+                    notes.push({ code: 'push_channel', channel: channel.label });
+                } else {
+                    warnings.push('No bound channel is available, so the result stays in the task conversation.');
+                    notes.push({ code: 'no_channel' });
+                }
+            }
+            if (trigger.kind === 'mail_received') {
+                warnings.push(
+                    'This trigger only provides the number of new messages, not their sender, subject or content.',
+                );
+                notes.push({ code: 'mail_count_only' });
             }
             // 解析器只给出这四项;策略一律取默认值,白名单为空
             const policy = {
@@ -361,18 +408,23 @@ export function taskRoutes(deps: {
                 { name: p.name, trigger, action: { kind: 'agent_prompt', prompt: p.prompt }, outputs, policy },
                 true,
             );
-            return c.json({ task: toTask(draft), warnings }, 201);
+            return c.json({ task: toTask(draft), warnings, notes, timeZone }, 201);
         })
         .openapi(confirmRoute, (c) => {
             const auth = c.get('auth');
             const ownerId = requireOwner(c);
             if (auth?.kind !== 'session') {
-                throw new ApiError(403, 'forbidden', 'Forbidden', 'Confirming a task needs a logged-in session.');
+                throw fail(
+                    403,
+                    'forbidden',
+                    'Confirming a task needs a logged-in session.',
+                    'task_confirm_needs_session',
+                );
             }
             const task = taskOr404(ownerId, c.req.valid('param').id);
-            if (task.status !== 'draft') throw new ApiError(409, 'conflict', 'Conflict', 'The task is not a draft.');
+            if (task.status !== 'draft') throw fail(409, 'conflict', 'The task is not a draft.', 'task_not_draft');
             if (task.updatedAt !== c.req.valid('json').version) {
-                throw new ApiError(409, 'conflict', 'Conflict', 'The draft changed after it was shown.');
+                throw fail(409, 'conflict', 'The draft changed after it was shown.', 'task_draft_changed');
             }
             // 确认时再校验一遍(草稿期间渠道或目录可能已被删除;一次性时刻可能已过)
             checkTrigger(ownerId, task.trigger);
@@ -388,20 +440,22 @@ export function taskRoutes(deps: {
             const task = taskOr404(ownerId, c.req.valid('param').id);
             const body = c.req.valid('json');
             if (task.kind === 'system' && body.name !== undefined) {
-                throw new ApiError(400, 'validation_failed', 'Bad Request', 'System tasks cannot be renamed.');
+                throw fail(400, 'validation_failed', 'System tasks cannot be renamed.', 'task_system_rename');
             }
             if (task.kind === 'system' && (body.action || body.outputs)) {
-                throw invalid('System tasks cannot change their action or outputs.', [
-                    body.action ? 'action' : 'outputs',
-                ]);
+                throw invalid(
+                    'System tasks cannot change their action or outputs.',
+                    [body.action ? 'action' : 'outputs'],
+                    'task_system_action',
+                );
             }
             if (task.status === 'draft' && body.enabled === true) {
-                throw new ApiError(409, 'conflict', 'Conflict', 'A draft must be confirmed before it can be enabled.');
+                throw fail(409, 'conflict', 'A draft must be confirmed before it can be enabled.', 'task_draft_enable');
             }
             checkOutputsAndPolicy(ownerId, body.outputs, body.policy);
             if (body.trigger) {
                 if (task.kind === 'system' && body.trigger.kind !== 'cron') {
-                    throw invalid('System tasks use cron triggers.', ['trigger']);
+                    throw invalid('System tasks use cron triggers.', ['trigger'], 'task_system_trigger');
                 }
                 checkTrigger(ownerId, body.trigger);
             }
@@ -421,11 +475,11 @@ export function taskRoutes(deps: {
             const ownerId = requireOwner(c);
             const task = taskOr404(ownerId, c.req.valid('param').id);
             if (task.kind === 'system') {
-                throw new ApiError(
+                throw fail(
                     409,
                     'conflict',
-                    'Conflict',
                     'System tasks cannot be deleted; disable them instead.',
+                    'task_system_delete',
                 );
             }
             repos.tasks.delete(ownerId, task.id);
@@ -436,7 +490,7 @@ export function taskRoutes(deps: {
         .openapi(webhookTokenRoute, (c) => {
             const task = taskOr404(requireOwner(c), c.req.valid('param').id);
             if (task.trigger.kind !== 'webhook') {
-                throw new ApiError(409, 'conflict', 'Conflict', 'The task does not use a webhook trigger.');
+                throw fail(409, 'conflict', 'The task does not use a webhook trigger.', 'task_not_webhook');
             }
             const token = `fcwh_${randomBytes(24).toString('base64url')}`;
             repos.tasks.setWebhookTokenHash(task.id, hashToken(token));
@@ -444,9 +498,9 @@ export function taskRoutes(deps: {
         })
         .openapi(runRoute, (c) => {
             const task = taskOr404(requireOwner(c), c.req.valid('param').id);
-            if (task.status === 'draft') throw new ApiError(409, 'conflict', 'Conflict', 'Confirm the draft first.');
+            if (task.status === 'draft') throw fail(409, 'conflict', 'Confirm the draft first.', 'task_run_draft');
             const run = scheduler.engine.runNow(task.id);
-            if (!run) throw new ApiError(409, 'conflict', 'Conflict', 'The task is already queued or running.');
+            if (!run) throw fail(409, 'conflict', 'The task is already queued or running.', 'task_run_busy');
             return c.json(toTaskRun(run), 202);
         })
         .openapi(runsRoute, (c) => {
@@ -459,7 +513,7 @@ export function taskRoutes(deps: {
         .openapi(cancelRoute, (c) => {
             const run = runOr404(requireOwner(c), c.req.valid('param').id);
             if (!scheduler.engine.cancel(run.id)) {
-                throw new ApiError(409, 'conflict', 'Conflict', 'The run has already finished.');
+                throw fail(409, 'conflict', 'The run has already finished.', 'task_run_finished');
             }
             return c.json(toTaskRun(repos.tasks.getRun(run.id) ?? run), 200);
         });

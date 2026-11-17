@@ -129,6 +129,8 @@ export const Task = z.object({
     policy: TaskPolicy,
     /** 任务本身有问题的提示码:root_revoked = 文件变化触发器引用的授权目录已被撤销;root_missing = 授权还在但磁盘上的目录不存在(目录回来后会自动恢复监听)。没有问题时为 null。 */
     warning: z.enum(['root_revoked', 'root_missing']).nullable().optional(),
+    /** 任务按哪个时区解释 cron 与「下一次」(IANA 名,例如 Asia/Shanghai);旧服务器可能没有。 */
+    timeZone: z.string().optional(),
     /** 下一次排定的运行时刻;停用、已完成或没有下一次时为 null。 */
     nextRunAt: IsoDateTime.nullable(),
     lastRun: TaskRun.nullable(),
@@ -184,8 +186,23 @@ export type TaskSchedulePreview = z.infer<typeof TaskSchedulePreview>;
 export const TaskPropose = z.object({ text: z.string().trim().min(1).max(500) }).strict();
 export type TaskPropose = z.infer<typeof TaskPropose>;
 
-/** 草稿与提示:`warnings` 是人话(例如「没有已绑定的微信渠道,结果只留在会话里」)。 */
-export const TaskDraftResult = z.object({ task: Task, warnings: z.array(z.string()) });
+/**
+ * 确认卡片上的提示码,客户端据此显示本地化文字:`push_channel`(`channel` 是渠道名)、`no_channel`、
+ * `mail_count_only`(新邮件触发只带新邮件数量,不带发件人、主题或正文)。
+ */
+export const TaskDraftNote = z.object({
+    code: z.enum(['push_channel', 'no_channel', 'mail_count_only']),
+    channel: z.string().optional(),
+});
+export type TaskDraftNote = z.infer<typeof TaskDraftNote>;
+
+/** 草稿与提示:`warnings` 是英文说明(兼容旧客户端);`notes` 是同样内容的提示码;`timeZone` 是 cron 与时刻所用的时区。 */
+export const TaskDraftResult = z.object({
+    task: Task,
+    warnings: z.array(z.string()),
+    notes: z.array(TaskDraftNote).optional(),
+    timeZone: z.string().optional(),
+});
 export type TaskDraftResult = z.infer<typeof TaskDraftResult>;
 
 /** `POST /tasks/{id}/confirm`:`version` 是确认卡片上展示的草稿的 `updatedAt`,不一致则 409。 */

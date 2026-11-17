@@ -15,7 +15,7 @@ export class ApiError extends Error {
         readonly code: ErrorCode,
         readonly title: string,
         readonly detail?: string,
-        readonly extra: Partial<Pick<ProblemDetails, 'issues' | 'providerCode'>> & {
+        readonly extra: Partial<Pick<ProblemDetails, 'issues' | 'providerCode' | 'reason'>> & {
             headers?: Record<string, string>;
         } = {},
     ) {
@@ -36,6 +36,7 @@ export function problemResponse(c: Context<AppEnv>, error: ApiError): Response {
         ...(error.detail ? { detail: error.detail } : {}),
         ...(error.extra.issues ? { issues: error.extra.issues } : {}),
         ...(error.extra.providerCode ? { providerCode: error.extra.providerCode } : {}),
+        ...(error.extra.reason ? { reason: error.extra.reason } : {}),
     };
     return new Response(JSON.stringify(body), {
         status: error.status,
