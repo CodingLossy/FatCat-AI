@@ -148,7 +148,9 @@ export function TasksPage() {
     const name = (task: Task) =>
         task.action.kind === 'system' && task.action.key === 'memory.maintenance'
             ? t('tasks.system.memory.maintenance')
-            : task.name;
+            : task.action.kind === 'system' && task.action.key === 'memory.sleep'
+              ? t('tasks.system.memory.sleep')
+              : task.name;
     const detail = (task: Task) =>
         task.action.kind === 'agent_prompt' ? (
             <p className="small">

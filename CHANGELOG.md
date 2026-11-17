@@ -25,6 +25,7 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - Your own tasks (ADR 0034): a task hands a prompt to the assistant on a schedule and runs unattended in its own conversation. Anything that needs approval still waits for you and is refused if nobody answers within 30 minutes. A task can push its result to your own WeChat channel; every push needs your approval and cannot be pre-authorized, and the model cannot choose the target. An optional per-task allow-list lets read/write tools run without asking (empty by default; tools that send or run things outside this machine can never be on it).
 - Event triggers for tasks (ADR 0035, migration 0017): run a task when new mail arrives (it only learns how many), when files change in an authorized directory (5 s debounce), or when a webhook is called with a per-task token (only a hash is stored; wrong or missing tokens all get the same 401). Events run a task at most 12 times per hour, are ignored while the task is already running, and what they carry reaches the assistant only as untrusted data.
 - Create a task from one sentence (ADR 0036): type e.g. "every day at 8 am summarize my unread mail" on the Tasks page; the model only produces a draft, shown as a card. A draft never runs: nothing happens until you press "Confirm and enable" in a logged-in browser session (access tokens cannot confirm). The sentence can never add an allow-list or choose where results are sent; a push only goes to your own bound channel and still needs approval each time.
+- Memory consolidation (ADR 0037, off by default): an optional daily system task (04:00) merges three or more scattered memories on the same topic into one higher-level memory. The originals are kept; credentials are still refused and instruction-like text goes to quarantine. At most 10 model calls and 20 new memories per run, once a day. Turn it on in the Tasks page.
 
 ### M5c · Release prep (in progress)
 
@@ -296,6 +297,7 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 - 自建任务(ADR 0034):任务按时把一段提示词交给助手,在独立的会话里无人值守地运行;需要审批的操作照旧等你确认,30 分钟没人答复就拒绝。任务可以把结果推送到你自己的微信渠道:每次推送都需要你审批、不能预授权,目标渠道由任务配置决定,模型改不了。每个任务可以有一个可选的预授权白名单,让读 / 写类工具直接执行(默认为空;会对外发送或在本机之外执行的工具永远不能进白名单)。
 - 任务的事件触发(ADR 0035,迁移 0017):新邮件到达(只告诉任务来了几封)、授权目录里的文件变化(5 秒去抖)、或带任务专属令牌的 Webhook 调用都可以触发任务(令牌只存哈希;令牌缺失或错误一律返回同样的 401)。事件触发的任务每小时最多运行 12 次,任务正在运行时来的事件会被忽略,事件携带的内容只会作为不可信数据交给助手。
 - 用一句话创建任务(ADR 0036):在任务页输入「每天早上 8 点总结未读邮件」,模型只生成草稿并显示成卡片。草稿在你于已登录的网页里点「确认并启用」之前不会运行(访问令牌不能确认);一句话不能带白名单,也不能选推送目标,推送只会发到你自己已绑定的渠道,仍需逐次审批。
+- 记忆整理(ADR 0037,默认关闭):可选的每日系统任务(04:00),把同一话题下 3 条以上零散记忆合成一条更高层的记忆,原条目保留;凭据仍然拒存,指令性文字进隔离区。每次最多 10 次模型调用、新增 20 条,每天一次。在任务页打开。
 
 ### M5c · 发布收尾(进行中)
 

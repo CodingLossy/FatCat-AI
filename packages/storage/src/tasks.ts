@@ -53,6 +53,8 @@ export interface SystemTaskSeed {
     trigger: TaskTrigger;
     action: TaskAction;
     policy: TaskPolicy;
+    /** 新建时是否启用;默认启用。已存在的任务不受影响。 */
+    enabled?: boolean;
 }
 
 export interface TaskPatchInput {
@@ -226,7 +228,7 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
                 ownerId,
                 name: seed.name,
                 kind: 'system',
-                enabled: 1,
+                enabled: seed.enabled === false ? 0 : 1,
                 trigger: JSON.stringify(seed.trigger),
                 action: JSON.stringify(seed.action),
                 policy: JSON.stringify(seed.policy),

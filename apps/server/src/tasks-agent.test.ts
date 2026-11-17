@@ -89,7 +89,7 @@ describe('POST /tasks 的校验', () => {
         expect(ok.status).toBe(201);
         expect(Task.parse(await ok.json())).toMatchObject({ kind: 'user', outputs: [{ kind: 'conversation' }] });
         const listed = (await (await req('/tasks')).json()) as { items: unknown[] };
-        expect(listed.items).toHaveLength(2); // 系统任务 + 新任务
+        expect(listed.items).toHaveLength(3); // 两个系统任务 + 新任务
 
         expect(
             (await createTask({ outputs: [{ kind: 'channel', channelId: '01ARZ3NDEKTSV4RRFFQ69G5FAV' }] })).status,
