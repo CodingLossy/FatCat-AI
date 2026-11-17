@@ -313,12 +313,12 @@ export function taskRoutes(deps: {
             }
             const parsed = parseDraft(raw);
             if (!parsed.ok) {
-                throw new ApiError(
-                    400,
-                    'validation_failed',
-                    'Bad Request',
-                    `I could not understand that (${parsed.reason}). Please rephrase.`,
-                );
+                // 固定的几句提示,不回显模型的原文
+                const hint =
+                    parsed.reason === 'not_json' || parsed.reason === 'invalid'
+                        ? 'I could not understand that. Please say when it should run and what it should do.'
+                        : 'Something is missing, for example the time or what to do. Please add it and try again.';
+                throw new ApiError(400, 'validation_failed', 'Bad Request', hint);
             }
             const { task: p } = parsed;
             let trigger: TaskDto['trigger'];
@@ -332,8 +332,12 @@ export function taskRoutes(deps: {
             const outputs: TaskDto['outputs'] = [{ kind: 'conversation' }];
             if (p.push) {
                 const channel = repos.channels.list(ownerId).find((ch) => ch.enabled && ch.binding);
-                if (channel) outputs[0] = { kind: 'channel', channelId: channel.id };
-                else warnings.push('No bound channel is available, so the result stays in the task conversation.');
+                if (channel) {
+                    outputs[0] = { kind: 'channel', channelId: channel.id };
+                    warnings.push(
+                        `The result will be pushed to the channel "${channel.label}" (each push needs your approval).`,
+                    );
+                } else warnings.push('No bound channel is available, so the result stays in the task conversation.');
             }
             // 解析器只给出这四项;策略一律取默认值,白名单为空
             const policy = {

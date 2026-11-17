@@ -197,11 +197,9 @@ export function TasksPage() {
                         <strong>{draft.task.name}</strong> · {trigger(draft.task)}
                     </p>
                     <p className="muted">{draft.task.action.kind === 'agent_prompt' ? draft.task.action.prompt : ''}</p>
-                    <p className={draft.task.outputs.some((o) => o.kind === 'channel') ? 'warn' : 'muted'}>
-                        {draft.task.outputs.some((o) => o.kind === 'channel')
-                            ? t('tasks.draftPush')
-                            : t('tasks.outputConversation')}
-                    </p>
+                    {draft.task.outputs.some((o) => o.kind === 'channel') ? null : (
+                        <p className="muted">{t('tasks.outputConversation')}</p>
+                    )}
                     {draft.warnings.map((w) => (
                         <p key={w} className="warn">
                             {w}
