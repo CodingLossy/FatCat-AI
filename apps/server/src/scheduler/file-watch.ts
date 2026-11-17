@@ -3,7 +3,7 @@
 
 // 「文件变化」触发器(ADR 0035 第 2 节):只监听已授权目录;每个目录一个 fs.watch,按任务去抖并合并路径。
 // 不加依赖;fs.watch 的 recursive 在 Windows 与 macOS 上原生支持,Linux 上 Node 24 也支持。
-import { watch, type FSWatcher } from 'node:fs';
+import { existsSync, watch, type FSWatcher } from 'node:fs';
 import type { Repositories, TaskRecord } from '@fatcat-ai/storage';
 
 export const MAX_WATCHED_ROOTS = 20;
@@ -24,11 +24,20 @@ export function createFileWatcher(options: {
     debounceMs?: number;
     /** 测试用:替换 fs.watch。 */
     watchFn?: typeof watch;
+    /** 测试用:替换目录存在性检查。 */
+    existsFn?: (path: string) => boolean;
 }): FileWatcher {
     const watchFn = options.watchFn ?? watch;
+    const existsFn = options.existsFn ?? existsSync;
     const watchers = new Map<
         string,
-        { watcher: FSWatcher; names: Set<string>; timer: ReturnType<typeof setTimeout> | null; taskIds: Set<string> }
+        {
+            watcher: FSWatcher;
+            names: Set<string>;
+            timer: ReturnType<typeof setTimeout> | null;
+            taskIds: Set<string>;
+            dead: boolean;
+        }
     >();
 
     function close(path: string): void {
@@ -64,7 +73,16 @@ export function createFileWatcher(options: {
                 }
                 try {
                     const entry = {
-                        watcher: watchFn(path, { recursive: true, persistent: false }, (_event, name) => {
+                        watcher: watchFn(path, { recursive: true, persistent: false }, (event, name) => {
+                            if (entry.dead) return;
+                            // Windows 上整个根目录被删掉后,fs.watch 不报 error,而是不停发 rename(文件名就是根目录自己):
+                            // 发现根目录已经不在就关闭监听、只记一次错误,不再触发任务。
+                            if (event === 'rename' && !existsFn(path)) {
+                                entry.dead = true;
+                                close(path);
+                                options.onError(new Error('watched directory no longer exists; stopped watching it'));
+                                return;
+                            }
                             if (entry.names.size < MAX_NAMES && name) entry.names.add(String(name).slice(0, 200));
                             if (entry.timer) return;
                             entry.timer = setTimeout(() => {
@@ -92,6 +110,7 @@ export function createFileWatcher(options: {
                         names: new Set<string>(),
                         timer: null as ReturnType<typeof setTimeout> | null,
                         taskIds: ids,
+                        dead: false,
                     };
                     entry.watcher.on('error', (error) => {
                         options.onError(error);

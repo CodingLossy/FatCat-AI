@@ -15,6 +15,9 @@ import type { SecretStore } from '@fatcat-ai/providers';
 
 export const MAINTENANCE_TASK_KEY = 'memory.maintenance';
 export const SLEEP_TASK_KEY = 'memory.sleep';
+
+const isOverBudget = (result: unknown): boolean =>
+    typeof result === 'object' && result !== null && (result as { status?: unknown }).status === 'over_budget';
 /** 每天 04:00(用户时区),在维护任务(03:30)之后。 */
 export const SLEEP_CRON = '0 4 * * *';
 
@@ -53,7 +56,9 @@ export function startScheduler(options: {
     };
     executors[SLEEP_TASK_KEY] = async ({ task }) => {
         if (!options.sleep) throw new ExecutorError('config_error');
-        await options.sleep(task.ownerId);
+        const result = await options.sleep(task.ownerId);
+        // 今天的名额用完了:记为跳过并给原因,手动运行时才看得到
+        if (isOverBudget(result)) return { status: 'skipped', code: 'over_budget' };
         return 'succeeded';
     };
     if (options.agent) {

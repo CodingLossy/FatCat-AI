@@ -24741,6 +24741,16 @@
                               "maxRuntimeMinutes"
                             ]
                           },
+                          "warning": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "root_revoked",
+                              null
+                            ]
+                          },
                           "nextRunAt": {
                             "type": [
                               "string",
@@ -24811,6 +24821,7 @@
                                   "quiet_hours",
                                   "overlap",
                                   "queue_full",
+                                  "over_budget",
                                   "internal",
                                   null
                                 ]
@@ -25677,6 +25688,16 @@
                         "maxRuntimeMinutes"
                       ]
                     },
+                    "warning": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "root_revoked",
+                        null
+                      ]
+                    },
                     "nextRunAt": {
                       "type": [
                         "string",
@@ -25747,6 +25768,7 @@
                             "quiet_hours",
                             "overlap",
                             "queue_full",
+                            "over_budget",
                             "internal",
                             null
                           ]
@@ -26808,6 +26830,16 @@
                             "maxRuntimeMinutes"
                           ]
                         },
+                        "warning": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "root_revoked",
+                            null
+                          ]
+                        },
                         "nextRunAt": {
                           "type": [
                             "string",
@@ -26878,6 +26910,7 @@
                                 "quiet_hours",
                                 "overlap",
                                 "queue_full",
+                                "over_budget",
                                 "internal",
                                 null
                               ]
@@ -27602,6 +27635,16 @@
                         "maxRuntimeMinutes"
                       ]
                     },
+                    "warning": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "root_revoked",
+                        null
+                      ]
+                    },
                     "nextRunAt": {
                       "type": [
                         "string",
@@ -27672,6 +27715,7 @@
                             "quiet_hours",
                             "overlap",
                             "queue_full",
+                            "over_budget",
                             "internal",
                             null
                           ]
@@ -28463,6 +28507,16 @@
                         "maxRuntimeMinutes"
                       ]
                     },
+                    "warning": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "root_revoked",
+                        null
+                      ]
+                    },
                     "nextRunAt": {
                       "type": [
                         "string",
@@ -28533,6 +28587,7 @@
                             "quiet_hours",
                             "overlap",
                             "queue_full",
+                            "over_budget",
                             "internal",
                             null
                           ]
@@ -29489,6 +29544,16 @@
                         "maxRuntimeMinutes"
                       ]
                     },
+                    "warning": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "root_revoked",
+                        null
+                      ]
+                    },
                     "nextRunAt": {
                       "type": [
                         "string",
@@ -29559,6 +29624,7 @@
                             "quiet_hours",
                             "overlap",
                             "queue_full",
+                            "over_budget",
                             "internal",
                             null
                           ]
@@ -30969,6 +31035,7 @@
                         "quiet_hours",
                         "overlap",
                         "queue_full",
+                        "over_budget",
                         "internal",
                         null
                       ]
@@ -31523,6 +31590,7 @@
                               "quiet_hours",
                               "overlap",
                               "queue_full",
+                              "over_budget",
                               "internal",
                               null
                             ]
@@ -31965,6 +32033,7 @@
                         "quiet_hours",
                         "overlap",
                         "queue_full",
+                        "over_budget",
                         "internal",
                         null
                       ]
@@ -32394,6 +32463,7 @@
                         "quiet_hours",
                         "overlap",
                         "queue_full",
+                        "over_budget",
                         "internal",
                         null
                       ]

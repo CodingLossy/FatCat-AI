@@ -27,6 +27,12 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - Create a task from one sentence (ADR 0036): type e.g. "every day at 8 am summarize my unread mail" on the Tasks page; the model only produces a draft, shown as a card. A draft never runs: nothing happens until you press "Confirm and enable" in a logged-in browser session (access tokens cannot confirm). The sentence can never add an allow-list or choose where results are sent; a push only goes to your own bound channel and still needs approval each time.
 - Memory consolidation (ADR 0037, off by default): an optional daily system task (04:00) merges three or more scattered memories on the same topic into one higher-level memory. The originals are kept; credentials are still refused and instruction-like text goes to quarantine. At most 10 model calls and 20 new memories per run, once a day. Turn it on in the Tasks page.
 
+#### Fixed
+
+- File-change triggers: on Windows, deleting the watched directory made `fs.watch` fire endlessly and spin the CPU. The watcher now notices the directory is gone, stops, and logs one error. A task whose authorized directory was revoked now shows a warning on the Tasks page; authorizing the same folder again creates a new id, so pick the directory again in the task.
+- Missed runs are recorded once: with the "skip" policy (and for catch-ups older than 24 hours, including the built-in memory sleep task) a restart no longer adds the same "missed" row again.
+- Throttled event runs are recorded as `event` instead of `schedule`; when memory consolidation has used up today's quota, a manual run is recorded as skipped with the reason "Today's quota is used up".
+
 ### M5c · Release prep (in progress)
 
 #### Added
@@ -298,6 +304,12 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 - 任务的事件触发(ADR 0035,迁移 0017):新邮件到达(只告诉任务来了几封)、授权目录里的文件变化(5 秒去抖)、或带任务专属令牌的 Webhook 调用都可以触发任务(令牌只存哈希;令牌缺失或错误一律返回同样的 401)。事件触发的任务每小时最多运行 12 次,任务正在运行时来的事件会被忽略,事件携带的内容只会作为不可信数据交给助手。
 - 用一句话创建任务(ADR 0036):在任务页输入「每天早上 8 点总结未读邮件」,模型只生成草稿并显示成卡片。草稿在你于已登录的网页里点「确认并启用」之前不会运行(访问令牌不能确认);一句话不能带白名单,也不能选推送目标,推送只会发到你自己已绑定的渠道,仍需逐次审批。
 - 记忆整理(ADR 0037,默认关闭):可选的每日系统任务(04:00),把同一话题下 3 条以上零散记忆合成一条更高层的记忆,原条目保留;凭据仍然拒存,指令性文字进隔离区。每次最多 10 次模型调用、新增 20 条,每天一次。在任务页打开。
+
+#### 修复
+
+- 文件变化触发器:在 Windows 上删除被监听的目录会让 `fs.watch` 不停触发、CPU 空转。现在监听器发现目录已不存在就停止并只记一条错误。授权目录被撤销后,任务页会给出警告;重新授权同一个文件夹会生成新的编号,需要在任务里重新选择目录。
+- 错过的触发只记一次:错过策略为「跳过」(以及超过 24 小时的补跑,含内置的记忆整理任务)时,重启不再重复记同一条「错过」。
+- 被限流的事件触发记为 `event`(原来写成 `schedule`);记忆整理今天的名额用完时,手动运行会记为跳过并提示「今天的名额已用完」。
 
 ### M5c · 发布收尾(进行中)
 

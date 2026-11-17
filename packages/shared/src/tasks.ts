@@ -95,6 +95,7 @@ export const TaskErrorCode = z.enum([
     'quiet_hours',
     'overlap',
     'queue_full',
+    'over_budget',
     'internal',
 ]);
 export type TaskErrorCode = z.infer<typeof TaskErrorCode>;
@@ -126,6 +127,8 @@ export const Task = z.object({
     action: TaskAction,
     outputs: z.array(TaskOutput),
     policy: TaskPolicy,
+    /** 任务本身有问题的提示码:root_revoked = 文件变化触发器引用的授权目录已被撤销(或不存在)。没有问题时为 null。 */
+    warning: z.enum(['root_revoked']).nullable().optional(),
     /** 下一次排定的运行时刻;停用、已完成或没有下一次时为 null。 */
     nextRunAt: IsoDateTime.nullable(),
     lastRun: TaskRun.nullable(),

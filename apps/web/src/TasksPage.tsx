@@ -300,6 +300,10 @@ export function TasksPage() {
                                 ? `${t(`tasks.status.${task.lastRun.status}`)} (${when(task.lastRun.createdAt)})`
                                 : t('tasks.none')}
                         </p>
+                        {task.warning ? <p className="small error">{t(`tasks.warning.${task.warning}`)}</p> : null}
+                        {task.lastRun?.errorCode === 'over_budget' ? (
+                            <p className="small muted">{t('tasks.error.over_budget')}</p>
+                        ) : null}
                         {detail(task)}
                         <div className="row">
                             <button type="button" onClick={() => void act(() => api.tasks.run(task.id))}>

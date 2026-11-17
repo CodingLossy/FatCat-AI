@@ -95,6 +95,40 @@ describe('任务调度器(ADR 0033)', () => {
         expect(runsOf(t.id)).toMatchObject([{ status: 'skipped', errorCode: 'missed' }]);
     });
 
+    it('错过策略 skip:连续重启两次只记一条 missed(超出 24 小时窗口的 catchUp 也一样)', () => {
+        const skip = seed('skip2', { kind: 'cron', expression: '*/5 * * * *' }, policy({ misfire: 'skip' }));
+        const old = seed('old2', { kind: 'cron', expression: '0 3 * * *' }, policy({ misfire: 'catchUp' }));
+        repos.tasks.markFired(skip.id, '2026-11-16T08:00:00.000Z');
+        repos.tasks.markFired(old.id, '2026-11-10T03:00:00.000Z');
+        const executors = { skip2: async () => 'succeeded' as const, old2: async () => 'succeeded' as const };
+        make(executors).start();
+        engine?.stop();
+        make(executors).start();
+        expect(runsOf(skip.id).filter((r) => r.errorCode === 'missed')).toHaveLength(1);
+        expect(runsOf(old.id).filter((r) => r.errorCode === 'missed')).toHaveLength(1);
+    });
+
+    it('事件触发超过每小时上限:限流记录的 trigger 是 event', () => {
+        const t = seed('ev', { kind: 'cron', expression: '0 3 * * *' }, policy());
+        const e = make({ ev: async () => 'succeeded' }, { eventsPerHour: 1 });
+        e.start();
+        e.fireEvent(t.id);
+        expect(e.fireEvent(t.id)).toBe('throttled');
+        expect(runsOf(t.id).find((r) => r.errorCode === 'throttled')).toMatchObject({
+            trigger: 'event',
+            status: 'skipped',
+        });
+    });
+
+    it('执行器返回 skipped 时记为跳过并带原因码', async () => {
+        const t = seed('sk', { kind: 'cron', expression: '0 3 * * *' }, policy());
+        const e = make({ sk: async () => ({ status: 'skipped', code: 'over_budget' }) });
+        e.start();
+        e.runNow(t.id);
+        await vi.advanceTimersByTimeAsync(10);
+        expect(runsOf(t.id)[0]).toMatchObject({ status: 'skipped', errorCode: 'over_budget' });
+    });
+
     it('一次性任务:到点运行一次后标为已完成;启动时已过期按错过策略', async () => {
         const once = seed('once', { kind: 'once', at: '2026-11-16T10:30:00.000Z' }, policy());
         const past = seed('past', { kind: 'once', at: '2026-11-16T09:00:00.000Z' }, policy({ misfire: 'catchUp' }));
