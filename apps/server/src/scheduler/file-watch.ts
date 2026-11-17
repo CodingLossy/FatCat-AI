@@ -39,6 +39,8 @@ export function createFileWatcher(options: {
             dead: boolean;
         }
     >();
+    /** 已经报过「目录不在」的路径:定期 sync 时不重复记错误;目录回来(或任务不再需要)后清掉。 */
+    const missing = new Set<string>();
 
     function close(path: string): void {
         const entry = watchers.get(path);
@@ -61,12 +63,22 @@ export function createFileWatcher(options: {
                 wanted.set(root.path, ids);
             }
             for (const path of [...watchers.keys()]) if (!wanted.has(path)) close(path);
+            for (const path of [...missing]) if (!wanted.has(path)) missing.delete(path);
             for (const [path, ids] of wanted) {
                 const existing = watchers.get(path);
                 if (existing) {
                     existing.taskIds = ids;
                     continue;
                 }
+                // 目录不在(被删掉了):只记一次;定期 sync 发现它回来后会在下面重新监听
+                if (!existsFn(path)) {
+                    if (!missing.has(path)) {
+                        missing.add(path);
+                        options.onError(new Error('watched directory does not exist; will resume when it is back'));
+                    }
+                    continue;
+                }
+                missing.delete(path);
                 if (watchers.size >= MAX_WATCHED_ROOTS) {
                     options.onError(new Error(`too many watched directories (max ${MAX_WATCHED_ROOTS})`));
                     continue;
@@ -79,6 +91,7 @@ export function createFileWatcher(options: {
                             // 发现根目录已经不在就关闭监听、只记一次错误,不再触发任务。
                             if (event === 'rename' && !existsFn(path)) {
                                 entry.dead = true;
+                                missing.add(path);
                                 close(path);
                                 options.onError(new Error('watched directory no longer exists; stopped watching it'));
                                 return;

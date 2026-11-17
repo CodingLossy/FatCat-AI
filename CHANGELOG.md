@@ -32,6 +32,8 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - File-change triggers: on Windows, deleting the watched directory made `fs.watch` fire endlessly and spin the CPU. The watcher now notices the directory is gone, stops, and logs one error. A task whose authorized directory was revoked now shows a warning on the Tasks page; authorizing the same folder again creates a new id, so pick the directory again in the task.
 - Missed runs are recorded once: with the "skip" policy (and for catch-ups older than 24 hours, including the built-in memory sleep task) a restart no longer adds the same "missed" row again.
 - Throttled event runs are recorded as `event` instead of `schedule`; when memory consolidation has used up today's quota, a manual run is recorded as skipped with the reason "Today's quota is used up".
+- File-change triggers: when the watched folder is deleted on disk but still authorized, the task now shows a "folder missing, watching paused" warning (`root_missing`), and watching resumes within about a minute after the folder is recreated, without restarting the server.
+- Secrets: the `backups/` directory itself is now restricted to the current user (Windows ACL, `chmod 700` elsewhere) when a secrets backup is made, not only the files inside it.
 
 ### M5c · Release prep (in progress)
 

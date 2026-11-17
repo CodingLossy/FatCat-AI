@@ -3,6 +3,7 @@
 
 import { execFileSync } from 'node:child_process';
 import {
+    chmodSync,
     closeSync,
     existsSync,
     fsyncSync,
@@ -115,6 +116,14 @@ function quoteValue(value: string): string {
     throw new SecretsWriteError('secret value cannot contain both quote characters');
 }
 
+function isDirectoryPath(path: string): boolean {
+    try {
+        return statSync(path).isDirectory();
+    } catch {
+        return false;
+    }
+}
+
 /** 测试里替换 icacls;生产用 execFileSync,不经过 shell。 */
 export type AclExec = (file: string, args: readonly string[], options: { shell: false; windowsHide: true }) => unknown;
 
@@ -125,6 +134,10 @@ export interface RestrictAclOptions {
     /** 默认读 USERDOMAIN;授权给 DOMAIN\\user,避免同名本地账号被误授权。 */
     domain?: string;
     execFile?: AclExec;
+    /** 测试用:替换 chmod。 */
+    chmod?: (path: string, mode: number) => void;
+    /** 默认用 stat 判断;目录在 Windows 上授权 (OI)(CI)F,让以后新建的文件继承。 */
+    isDirectory?: boolean;
     onWarning?: (message: string) => void;
 }
 
@@ -133,7 +146,19 @@ export interface RestrictAclOptions {
  * icacls 失败时只记警告,不抛错,文件保留(ADR 0022 第 9 节)。
  */
 export function restrictToCurrentUser(path: string, options: RestrictAclOptions = {}): void {
-    if ((options.platform ?? process.platform) !== 'win32') return;
+    const isDir = options.isDirectory ?? isDirectoryPath(path);
+    if ((options.platform ?? process.platform) !== 'win32') {
+        // 非 Windows:文件的 600 由写入时的 mode 保证;目录收紧为 700(已存在的目录 mkdir 不会改权限)
+        if (isDir) {
+            try {
+                (options.chmod ?? chmodSync)(path, 0o700);
+            } catch (error) {
+                const code = (error as NodeJS.ErrnoException).code ?? 'error';
+                options.onWarning?.(`could not restrict ${basename(path)} to the current user (chmod ${code})`);
+            }
+        }
+        return;
+    }
     const username = options.username ?? process.env.USERNAME ?? '';
     const fileName = basename(path);
     if (!username) {
@@ -143,10 +168,14 @@ export function restrictToCurrentUser(path: string, options: RestrictAclOptions 
     const domain = options.domain ?? process.env.USERDOMAIN;
     const principal = domain ? `${domain}\\${username}` : username;
     try {
-        (options.execFile ?? execFileSync)('icacls', [path, '/inheritance:r', '/grant:r', `${principal}:F`], {
-            shell: false,
-            windowsHide: true,
-        });
+        (options.execFile ?? execFileSync)(
+            'icacls',
+            [path, '/inheritance:r', '/grant:r', `${principal}:${isDir ? '(OI)(CI)F' : 'F'}`],
+            {
+                shell: false,
+                windowsHide: true,
+            },
+        );
     } catch (error) {
         const code = (error as NodeJS.ErrnoException).code ?? 'error';
         options.onWarning?.(`could not restrict ${fileName} to the current user (icacls ${code}); the file was kept`);
@@ -276,6 +305,8 @@ export function backupSecrets(
 ): string {
     const dir = join(dataDir, SECRETS_BACKUP_DIR);
     mkdirSync(dir, { recursive: true, mode: 0o700 });
+    // backups/ 目录本身也要收紧:否则它继承数据目录的权限(Windows 上 Authenticated Users 可修改)
+    tighten(dir);
     const ext = encrypted ? '.yaml.enc' : '.yaml';
     let name = `secrets-${backupStamp(now)}${ext}`;
     for (let n = 2; existsSync(join(dir, name)); n++) name = `secrets-${backupStamp(now)}-${n}${ext}`;

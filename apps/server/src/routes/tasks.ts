@@ -4,6 +4,7 @@
 // 定时任务的 REST(ADR 0033 第 7 节):都需要登录并按 ownerId 取数据,别人的任务一律 404。
 // PR 2 只有内置系统任务;用户自建任务的 POST /tasks 随 PR 3(动作与输出)加入。
 import { createHash, randomBytes } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { createRoute, z } from '@hono/zod-openapi';
 import {
     effectiveTimeZone,
@@ -201,8 +202,12 @@ export function taskRoutes(deps: {
         const next = task.enabled && task.status === 'active' ? scheduler.engine.nextRun(task.id) : null;
         const last = repos.tasks.lastRun(task.id);
         const trigger = task.trigger;
-        const rootGone =
-            trigger.kind === 'file_changed' && !repos.fsRoots.list(task.ownerId).some((r) => r.id === trigger.rootId);
+        const root =
+            trigger.kind === 'file_changed'
+                ? repos.fsRoots.list(task.ownerId).find((r) => r.id === trigger.rootId)
+                : undefined;
+        const rootGone = trigger.kind === 'file_changed' && !root;
+        const rootMissing = root !== undefined && !existsSync(root.path);
         return {
             id: task.id,
             name: task.name,
@@ -213,7 +218,7 @@ export function taskRoutes(deps: {
             action: task.action,
             outputs: task.outputs,
             policy: task.policy,
-            warning: rootGone ? 'root_revoked' : null,
+            warning: rootGone ? 'root_revoked' : rootMissing ? 'root_missing' : null,
             nextRunAt: next ? next.toISOString() : null,
             lastRun: last ? toTaskRun(last) : null,
             createdAt: task.createdAt,

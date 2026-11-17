@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
+import { mkdirSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { Task, TaskRun, TaskRunPage, TaskSchedulePreview } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
@@ -86,6 +88,29 @@ describe('/api/v1/tasks', () => {
         s.repos.fsRoots.delete(owner, root.id);
         const after = Task.parse(await (await call('GET', `/tasks/${created.id}`)).json());
         expect(after).toMatchObject({ status: 'active', enabled: true, warning: 'root_revoked' });
+    });
+
+    it('授权还在但磁盘上的目录被删掉后,任务带 root_missing 警告,目录建回后警告消失', async () => {
+        const call = await login();
+        const owner = s.repos.owners.ids()[0]!;
+        const dir = join(s.dir, 'watched');
+        mkdirSync(dir);
+        const root = s.repos.fsRoots.create(owner, { path: dir, label: 'r' });
+        const created = Task.parse(
+            await (
+                await call('POST', '/tasks', {
+                    name: 'w',
+                    trigger: { kind: 'file_changed', rootId: root.id },
+                    action: { kind: 'agent_prompt', prompt: 'p' },
+                })
+            ).json(),
+        );
+        const warningOf = async () => Task.parse(await (await call('GET', `/tasks/${created.id}`)).json()).warning;
+        expect(await warningOf()).toBeNull();
+        rmSync(dir, { recursive: true });
+        expect(await warningOf()).toBe('root_missing');
+        mkdirSync(dir);
+        expect(await warningOf()).toBeNull();
     });
 
     it('手动运行写运行记录,可分页读取;预览返回用户时区下的未来触发时刻', async () => {

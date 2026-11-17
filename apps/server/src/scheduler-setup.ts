@@ -125,6 +125,8 @@ export function startScheduler(options: {
             let created = false;
             for (const ownerId of repos.owners.ids()) created = scheduler.ensureSystemTasks(ownerId) || created;
             if (created) engine.rescheduleAll();
+            // 被监听的目录删掉后又建回来:重新建立监听(没有变化时 sync 什么也不做)
+            files.sync();
         }, 60_000);
         watcher.unref?.();
     }
