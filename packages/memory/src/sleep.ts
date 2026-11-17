@@ -135,18 +135,29 @@ export function createSleeper(options: SleepOptions) {
                     { text, memType: 'semantic', domain: domains.size === 1 ? sources[0]!.domain : 'general' },
                     { origin: 'consolidated', untrusted: true, extractRunId: runId },
                 );
-                outcomes.push(result.outcome);
-                if ((result.outcome === 'created' || result.outcome === 'merged') && result.id) {
+                // 只有真正新建的产物,或合并进已有的 consolidated 条目(且不是来源本身)才建 derived 边并计入 written;
+                // 合并到来源或别的非整理记忆、冲突、更替都不动它们,按 skipped 处理(下次来源仍可被选中)
+                const target = result.id ? repos.memories.get(ownerId, result.id) : null;
+                const usable =
+                    result.outcome === 'created' ||
+                    (result.outcome === 'merged' &&
+                        target?.origin === 'consolidated' &&
+                        !sources.some((m) => m.id === result.id));
+                if (usable && result.id) {
+                    outcomes.push('written');
                     repos.items.relate(
                         ownerId,
                         result.id,
                         'derived',
                         sources.map((m) => m.id),
                     );
-                }
+                } else
+                    outcomes.push(
+                        result.outcome === 'quarantined' || result.outcome === 'refused' ? result.outcome : 'skipped',
+                    );
             }
             const counts = {
-                written: outcomes.filter((o) => o !== 'quarantined' && o !== 'refused').length,
+                written: outcomes.filter((o) => o === 'written').length,
                 quarantined: outcomes.filter((o) => o === 'quarantined').length,
                 refused: outcomes.filter((o) => o === 'refused').length,
             };

@@ -83,6 +83,34 @@ describe('memory.sleep', () => {
         expect(calls).toBe(0);
     });
 
+    it('高敏感度与隔离区(已撤回)的同话题条目不参与:模型调用 0 次', async () => {
+        const secret = seed('x.priv', 3, {});
+        for (const id of secret)
+            conn.sqlite.prepare('UPDATE memory_facts SET sensitivity = 1 WHERE item_id = ?').run(id);
+        const gone = seed('x.gone', 3);
+        for (const id of gone) repos.memories.update(ownerId, id, { retract: true });
+        let calls = 0;
+        const result = await sleeper(() => {
+            calls++;
+            return Promise.resolve('{"text":"x"}');
+        }).run(ownerId);
+        expect(result.status).toBe('nothing');
+        expect(calls).toBe(0);
+    });
+
+    it('🔒 模型输出与某条来源完全相同(被去重合并):不建 derived 边、不计 written,来源之后仍可再次被选中', async () => {
+        const ids = seed('x.dup', 3);
+        const sourceText = repos.memories.get(ownerId, ids[0]!)!.text;
+        const result = await sleeper(merged(sourceText)).run(ownerId);
+        expect(result).toMatchObject({ status: 'done', written: 0 });
+        expect(repos.memories.list(ownerId, 50).some((m) => m.origin === 'consolidated')).toBe(false);
+        for (const id of ids) {
+            expect(repos.items.related(ownerId, id, { limit: 5, rel: 'derived' }).items).toHaveLength(0);
+        }
+        conn.sqlite.prepare('DELETE FROM jobs_state').run();
+        expect((await sleeper(merged()).run(ownerId)).status).toBe('done');
+    });
+
     it('🔒 产物含凭据 → 拒存;含指令 → 进隔离区;模型报错 → 不影响其它簇', async () => {
         seed('x.a', 3);
         seed('x.b', 3);
@@ -93,7 +121,7 @@ describe('memory.sleep', () => {
             () => Promise.reject(new Error('boom')),
         ];
         const result = await sleeper(() => outputs.shift()!()).run(ownerId);
-        expect(result).toMatchObject({ status: 'done', written: 0 });
+        expect(result).toMatchObject({ status: 'done', written: 0, quarantined: 1, refused: 2 });
         expect(repos.memories.list(ownerId, 50).some((m) => m.origin === 'consolidated')).toBe(false);
     });
 

@@ -229,7 +229,15 @@ const maintenance = startMaintenance({
     onError: (err) => logger.warn({ err }, 'memory maintenance failed'),
 });
 // 通用调度器(ADR 0033):内置的记忆维护任务每天 03:30(用户时区)运行,持久、有运行记录、错过的启动后补跑
-const sleeper = createSleeper({ repos, memory, complete: createCheapComplete(repos, providerFor, 4000) });
+const sleeper = createSleeper({
+    repos,
+    memory,
+    complete: createCheapComplete(repos, providerFor, 4000),
+    modelOf: (ownerId) => {
+        const profile = cheapProfile(repos, ownerId);
+        return profile ? { profileId: profile.id, model: profile.model } : null;
+    },
+});
 const scheduler = startScheduler({
     sleep: (ownerId) => sleeper.run(ownerId),
     repos,

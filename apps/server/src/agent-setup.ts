@@ -225,7 +225,7 @@ export function createMemoryTools(stack: Pick<MemoryStack, 'memory' | 'retriever
 
 /** 用 cheap 配置档(没有则用 chat 配置档)做一次非流式补全,最多返回 maxChars 个字符。 */
 /** cheap 任务用的配置档:cheap 配置档,没有则用默认对话配置档。 */
-function cheapProfile(repos: Repositories, ownerId: string): ModelProfileRecord | null {
+export function cheapProfile(repos: Repositories, ownerId: string): ModelProfileRecord | null {
     const settings = repos.settings.get(ownerId);
     return (
         selectProfile(repos.modelProfiles.list(ownerId), 'cheap', {
