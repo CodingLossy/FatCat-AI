@@ -8,11 +8,12 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 const IMAGE = 'tufin/oasdiff:v1.35.0';
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url));
 const basePath = join(root, 'apps/server/openapi/v1.json');
 const bin = process.env.OASDIFF_BIN;
 
@@ -20,7 +21,7 @@ const available = bin
     ? spawnSync(bin, ['--version']).status === 0
     : spawnSync('docker', ['version', '--format', '{{.Server.Version}}']).status === 0;
 
-/** 返回 oasdiff 的退出码;0 = 通过,非 0 = 有破坏性变更。 */
+/** 返回 oasdiff 的结果:退出码 0 = 通过,1 = 有破坏性变更;参数或文件出错时是其他非 0 值(见 expectBreaking)。 */
 function diff(mutate) {
     const dir = mkdtempSync(join(tmpdir(), 'oasdiff-'));
     const doc = JSON.parse(readFileSync(basePath, 'utf8'));
@@ -44,40 +45,47 @@ function diff(mutate) {
     const r = bin
         ? spawnSync(bin, args, { encoding: 'utf8' })
         : spawnSync('docker', ['run', '--rm', '-v', `${dir}:/specs:ro`, IMAGE, ...args], { encoding: 'utf8' });
-    return r.status;
+    return { status: r.status, stderr: r.stderr ?? '', stdout: r.stdout ?? '' };
 }
+
+function expectStatus(r, expected) {
+    assert.equal(r.status, expected, `oasdiff exited ${r.status}\n${r.stdout}\n${r.stderr}`);
+}
+
+// 在 CI 里不允许跳过:没有 docker 也没有 OASDIFF_BIN 等于自测没做
+if (process.env.CI && !available) throw new Error('oasdiff is unavailable in CI: the self-test cannot be skipped');
 
 const opts = { skip: available ? false : 'neither docker nor OASDIFF_BIN is available' };
 
 test('the committed document diffed against itself passes', opts, () => {
-    assert.equal(
+    expectStatus(
         diff(() => undefined),
         0,
     );
 });
 
 test('removing a required response property fails', opts, () => {
-    assert.notEqual(
+    expectStatus(
         diff((doc) => {
             const schema = doc.paths['/api/v1/meta'].get.responses['200'].content['application/json'].schema;
             delete schema.properties.serverVersion;
             schema.required = schema.required.filter((k) => k !== 'serverVersion');
         }),
-        0,
+        1,
     );
 });
 
 test('removing an operation fails', opts, () => {
-    assert.notEqual(
+    expectStatus(
         diff((doc) => {
             delete doc.paths['/api/v1/auth/status'];
         }),
-        0,
+        1,
     );
 });
 
 test('adding a new endpoint passes (backwards-compatible increment)', opts, () => {
-    assert.equal(
+    expectStatus(
         diff((doc) => {
             doc.paths['/api/v1/zz-selftest'] = {
                 get: { responses: { 200: { description: 'ok' } } },
