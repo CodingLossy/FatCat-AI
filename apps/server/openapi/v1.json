@@ -288,6 +288,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -387,6 +391,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -486,6 +494,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -693,6 +705,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -792,6 +808,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -891,6 +911,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -1069,6 +1093,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -1168,6 +1196,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -1267,6 +1299,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -1408,6 +1444,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -1507,6 +1547,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -1659,6 +1703,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -1758,6 +1806,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -1857,6 +1909,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -1956,6 +2012,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -2112,6 +2172,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -2211,6 +2275,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -2310,6 +2378,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -2409,6 +2481,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -2549,6 +2625,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -2648,6 +2728,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -2747,6 +2831,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -2846,6 +2934,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -3005,6 +3097,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -3104,6 +3200,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -3203,6 +3303,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -3302,6 +3406,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -3414,6 +3522,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -3513,6 +3625,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -3651,6 +3767,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -3750,6 +3870,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -3921,6 +4045,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -4020,6 +4148,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -4201,6 +4333,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -4300,6 +4436,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -4399,6 +4539,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -4522,6 +4666,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -4621,6 +4769,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -4720,6 +4872,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -4970,6 +5126,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -5069,6 +5229,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -5398,6 +5562,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -5497,6 +5665,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -5596,6 +5768,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -5839,6 +6015,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -5938,6 +6118,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -6037,6 +6221,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -6370,6 +6558,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -6469,6 +6661,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -6568,6 +6764,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -6667,6 +6867,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -6788,6 +6992,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -6887,6 +7095,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -6986,6 +7198,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -7174,6 +7390,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -7273,6 +7493,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -7372,6 +7596,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -7566,6 +7794,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -7665,6 +7897,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -7793,6 +8029,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -7892,6 +8132,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -8135,6 +8379,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -8234,6 +8482,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -8584,6 +8836,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -8683,6 +8939,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -8782,6 +9042,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -8916,6 +9180,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -9015,6 +9283,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -9211,6 +9483,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -9310,6 +9586,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -9482,6 +9762,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -9581,6 +9865,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -9680,6 +9968,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -9875,6 +10167,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -9974,6 +10270,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -10073,6 +10373,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -10172,6 +10476,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -10396,6 +10704,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -10495,6 +10807,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -10594,6 +10910,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -10795,6 +11115,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -10894,6 +11218,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -10993,6 +11321,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -11103,6 +11435,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -11202,6 +11538,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -11396,6 +11736,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -11495,6 +11839,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -11594,6 +11942,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -11810,6 +12162,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -11909,6 +12265,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -12008,6 +12368,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -12107,6 +12471,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -12228,6 +12596,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -12327,6 +12699,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -12426,6 +12802,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -12794,6 +13174,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -12893,6 +13277,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -12992,6 +13380,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -13516,6 +13908,10 @@
                                     "upstream_error",
                                     "network_error"
                                   ]
+                                },
+                                "reason": {
+                                  "type": "string",
+                                  "maxLength": 64
                                 }
                               },
                               "required": [
@@ -13697,6 +14093,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -13796,6 +14196,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -13895,6 +14299,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -13994,6 +14402,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -14093,6 +14505,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -14591,6 +15007,10 @@
                                     "upstream_error",
                                     "network_error"
                                   ]
+                                },
+                                "reason": {
+                                  "type": "string",
+                                  "maxLength": 64
                                 }
                               },
                               "required": [
@@ -14772,6 +15192,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -14871,6 +15295,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -14970,6 +15398,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -15069,6 +15501,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -15257,6 +15693,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -15356,6 +15796,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -15455,6 +15899,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -15554,6 +16002,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -15653,6 +16105,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -15784,6 +16240,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -15883,6 +16343,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -15982,6 +16446,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -16144,6 +16612,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -16243,6 +16715,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -16342,6 +16818,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -16441,6 +16921,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -16540,6 +17024,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -16639,6 +17127,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -16738,6 +17230,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -16837,6 +17333,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -16936,6 +17436,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -17101,6 +17605,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -17200,6 +17708,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -17299,6 +17811,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -17398,6 +17914,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -17497,6 +18017,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -17596,6 +18120,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -17695,6 +18223,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -17877,6 +18409,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -17976,6 +18512,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -18075,6 +18615,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -18567,6 +19111,10 @@
                                     "upstream_error",
                                     "network_error"
                                   ]
+                                },
+                                "reason": {
+                                  "type": "string",
+                                  "maxLength": 64
                                 }
                               },
                               "required": [
@@ -18719,6 +19267,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -18818,6 +19370,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -18917,6 +19473,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -19058,6 +19618,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -19157,6 +19721,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -19256,6 +19824,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -19355,6 +19927,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -19842,6 +20418,10 @@
                                     "upstream_error",
                                     "network_error"
                                   ]
+                                },
+                                "reason": {
+                                  "type": "string",
+                                  "maxLength": 64
                                 }
                               },
                               "required": [
@@ -20023,6 +20603,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -20122,6 +20706,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -20221,6 +20809,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -20320,6 +20912,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -20525,6 +21121,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -20624,6 +21224,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -20836,6 +21440,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -20935,6 +21543,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -21034,6 +21646,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -21232,6 +21848,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -21331,6 +21951,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -21430,6 +22054,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -21650,6 +22278,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -21749,6 +22381,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -21848,6 +22484,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -21947,6 +22587,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -22068,6 +22712,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -22167,6 +22815,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -22266,6 +22918,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -22410,6 +23066,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -22509,6 +23169,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -22608,6 +23272,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -22707,6 +23375,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -22830,6 +23502,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -22929,6 +23605,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -23028,6 +23708,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -23224,6 +23908,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -23323,6 +24011,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -23422,6 +24114,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -23573,6 +24269,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -23672,6 +24372,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -23771,6 +24475,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -23870,6 +24578,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -23969,6 +24681,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -24115,6 +24831,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -24214,6 +24934,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -24313,6 +25037,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -24412,6 +25140,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -24752,6 +25484,9 @@
                               null
                             ]
                           },
+                          "timeZone": {
+                            "type": "string"
+                          },
                           "nextRunAt": {
                             "type": [
                               "string",
@@ -24995,6 +25730,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -25094,6 +25833,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -25700,6 +26443,9 @@
                         null
                       ]
                     },
+                    "timeZone": {
+                      "type": "string"
+                    },
                     "nextRunAt": {
                       "type": [
                         "string",
@@ -25930,6 +26676,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -26029,6 +26779,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -26128,6 +26882,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -26286,6 +27044,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -26385,6 +27147,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -26484,6 +27250,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -26843,6 +27613,9 @@
                             null
                           ]
                         },
+                        "timeZone": {
+                          "type": "string"
+                        },
                         "nextRunAt": {
                           "type": [
                             "string",
@@ -26988,6 +27761,31 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "notes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string",
+                            "enum": [
+                              "push_channel",
+                              "no_channel",
+                              "mail_count_only"
+                            ]
+                          },
+                          "channel": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code"
+                        ]
+                      }
+                    },
+                    "timeZone": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -27085,6 +27883,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -27184,6 +27986,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -27283,6 +28089,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -27649,6 +28459,9 @@
                         null
                       ]
                     },
+                    "timeZone": {
+                      "type": "string"
+                    },
                     "nextRunAt": {
                       "type": [
                         "string",
@@ -27879,6 +28692,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -27978,6 +28795,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -28077,6 +28898,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -28176,6 +29001,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -28522,6 +29351,9 @@
                         null
                       ]
                     },
+                    "timeZone": {
+                      "type": "string"
+                    },
                     "nextRunAt": {
                       "type": [
                         "string",
@@ -28752,6 +29584,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -28851,6 +29687,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -28950,6 +29790,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -29560,6 +30404,9 @@
                         null
                       ]
                     },
+                    "timeZone": {
+                      "type": "string"
+                    },
                     "nextRunAt": {
                       "type": [
                         "string",
@@ -29790,6 +30637,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -29889,6 +30740,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -29988,6 +30843,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -30087,6 +30946,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -30208,6 +31071,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -30307,6 +31174,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -30406,6 +31277,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -30505,6 +31380,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -30647,6 +31526,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -30746,6 +31629,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -30845,6 +31732,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -30944,6 +31835,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -31176,6 +32071,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -31275,6 +32174,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -31374,6 +32277,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -31473,6 +32380,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -31744,6 +32655,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -31843,6 +32758,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -31942,6 +32861,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -32174,6 +33097,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -32273,6 +33200,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -32372,6 +33303,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -32604,6 +33539,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -32703,6 +33642,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -32802,6 +33745,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -32901,6 +33848,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -33197,6 +34148,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -33296,6 +34251,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -33529,6 +34488,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -33628,6 +34591,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -33727,6 +34694,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -34044,6 +35015,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -34143,6 +35118,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -34242,6 +35221,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -34592,6 +35575,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -34691,6 +35678,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -34790,6 +35781,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -34940,6 +35935,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -35039,6 +36038,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -35509,6 +36512,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -35608,6 +36615,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -35755,6 +36766,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -35854,6 +36869,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -35953,6 +36972,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -36052,6 +37075,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -36228,6 +37255,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -36327,6 +37358,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -36494,6 +37529,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -36593,6 +37632,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -36692,6 +37735,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -36873,6 +37920,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -36972,6 +38023,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -37071,6 +38126,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -37170,6 +38229,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -37432,6 +38495,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -37531,6 +38598,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -37630,6 +38701,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -37924,6 +38999,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -38023,6 +39102,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -38122,6 +39205,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -38398,6 +39485,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -38497,6 +39588,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -38596,6 +39691,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -38901,6 +40000,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -39000,6 +40103,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -39099,6 +40206,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -39198,6 +40309,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -39332,6 +40447,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -39431,6 +40550,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -39530,6 +40653,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -39760,6 +40887,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -39859,6 +40990,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -40126,6 +41261,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -40225,6 +41364,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -40324,6 +41467,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -40526,6 +41673,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -40625,6 +41776,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -40724,6 +41879,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -40823,6 +41982,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -41023,6 +42186,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -41122,6 +42289,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -41245,6 +42416,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -41344,6 +42519,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -41443,6 +42622,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -41750,6 +42933,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -41849,6 +43036,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -41948,6 +43139,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -42111,6 +43306,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -42210,6 +43409,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -42381,6 +43584,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -42480,6 +43687,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -42579,6 +43790,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -42678,6 +43893,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -42853,6 +44072,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -42952,6 +44175,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -43051,6 +44278,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -43150,6 +44381,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -43271,6 +44506,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -43370,6 +44609,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -43469,6 +44712,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -43703,6 +44950,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -43802,6 +45053,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -44078,6 +45333,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -44177,6 +45436,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -44276,6 +45539,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -44533,6 +45800,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -44632,6 +45903,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -44731,6 +46006,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -44843,6 +46122,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -44942,6 +46225,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -45169,6 +46456,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -45268,6 +46559,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -45367,6 +46662,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -45682,6 +46981,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -45781,6 +47084,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -45880,6 +47187,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -45979,6 +47290,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -46224,6 +47539,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -46323,6 +47642,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -46422,6 +47745,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -46574,6 +47901,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -46673,6 +48004,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -46772,6 +48107,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -47051,6 +48390,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -47150,6 +48493,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -47249,6 +48596,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -47348,6 +48699,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -47656,6 +49011,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -47755,6 +49114,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -47854,6 +49217,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -47953,6 +49320,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -48124,6 +49495,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -48223,6 +49598,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -48322,6 +49701,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -48421,6 +49804,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -48570,6 +49957,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -48669,6 +50060,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -48768,6 +50163,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -48867,6 +50266,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -49097,6 +50500,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -49196,6 +50603,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -49472,6 +50883,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -49571,6 +50986,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -49670,6 +51089,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -49769,6 +51192,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -50020,6 +51447,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -50119,6 +51550,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -50218,6 +51653,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -50317,6 +51756,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -50438,6 +51881,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -50537,6 +51984,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -50636,6 +52087,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -50795,6 +52250,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -50894,6 +52353,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -50993,6 +52456,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -51204,6 +52671,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -51303,6 +52774,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -51599,6 +53074,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -51698,6 +53177,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -52102,6 +53585,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -52201,6 +53688,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -52300,6 +53791,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -52589,6 +54084,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -52688,6 +54187,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -52787,6 +54290,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -53191,6 +54698,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -53290,6 +54801,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -53389,6 +54904,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -53488,6 +55007,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -53609,6 +55132,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -53708,6 +55235,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -53807,6 +55338,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -54029,6 +55564,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -54128,6 +55667,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -54227,6 +55770,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -54401,6 +55948,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -54500,6 +56051,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -54599,6 +56154,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -54764,6 +56323,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -54863,6 +56426,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -54962,6 +56529,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -55337,6 +56908,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -55436,6 +57011,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -55756,6 +57335,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -55855,6 +57438,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -55954,6 +57541,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -56097,6 +57688,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -56196,6 +57791,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -56295,6 +57894,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -56447,6 +58050,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -56546,6 +58153,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -56645,6 +58256,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -56744,6 +58359,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -57001,6 +58620,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -57100,6 +58723,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -57357,6 +58984,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -57456,6 +59087,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -57555,6 +59190,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -57852,6 +59491,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -57951,6 +59594,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -58050,6 +59697,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -58149,6 +59800,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -58270,6 +59925,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -58369,6 +60028,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [
@@ -58468,6 +60131,10 @@
                         "upstream_error",
                         "network_error"
                       ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
                     }
                   },
                   "required": [

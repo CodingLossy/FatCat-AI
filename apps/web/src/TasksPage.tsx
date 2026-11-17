@@ -5,6 +5,7 @@ import type { Channel, Task, TaskDraftResult, TaskRun } from '@fatcat-ai/shared'
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { formatInTimeZone } from './time-zone.js';
 
 /**
  * 任务页(ADR 0033):列出定时任务(现在只有内置的系统任务)、启用 / 停用、修改 cron 时间、立即运行、
@@ -31,6 +32,7 @@ export function TasksPage() {
         id: string;
         expression: string;
         preview: string[];
+        timeZone?: string;
         error: string | null;
     } | null>(null);
 
@@ -129,7 +131,9 @@ export function TasksPage() {
     const previewCron = async (expression: string) => {
         try {
             const result = await api.tasks.schedulePreview(expression, 3);
-            setEditing((old) => (old ? { ...old, expression, preview: result.times, error: null } : old));
+            setEditing((old) =>
+                old ? { ...old, expression, preview: result.times, timeZone: result.timeZone, error: null } : old,
+            );
         } catch (e) {
             setEditing((old) => (old ? { ...old, expression, preview: [], error: errorText(e) } : old));
         }
@@ -144,7 +148,12 @@ export function TasksPage() {
         });
     };
 
-    const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(locale) : t('tasks.none'));
+    /** 按任务时区显示时刻;浏览器时区不同时附本地时间(例如手机在北京、任务按洛杉矶算)。 */
+    const when = (iso: string | null, timeZone?: string) => {
+        if (!iso) return t('tasks.none');
+        const { main, local } = formatInTimeZone(iso, timeZone, locale);
+        return local ? `${main} (${t('tasks.localTime', { time: local })})` : main;
+    };
     const name = (task: Task) =>
         task.action.kind === 'system' && task.action.key === 'memory.maintenance'
             ? t('tasks.system.memory.maintenance')
@@ -160,9 +169,9 @@ export function TasksPage() {
         ) : null;
     const trigger = (task: Task) =>
         task.trigger.kind === 'cron'
-            ? `cron ${task.trigger.expression}`
+            ? `cron ${task.trigger.expression}${task.timeZone ? ` (${t('tasks.timeZoneLabel', { tz: task.timeZone })})` : ''}`
             : task.trigger.kind === 'once'
-              ? `${t('tasks.once')} ${when(task.trigger.at)}`
+              ? `${t('tasks.once')} ${when(task.trigger.at, task.timeZone)}`
               : task.trigger.kind === 'mail_received'
                 ? t('tasks.triggerMail')
                 : task.trigger.kind === 'webhook'
@@ -200,11 +209,21 @@ export function TasksPage() {
                     {draft.task.outputs.some((o) => o.kind === 'channel') ? null : (
                         <p className="muted">{t('tasks.outputConversation')}</p>
                     )}
-                    {draft.warnings.map((w) => (
-                        <p key={w} className="warn">
-                            {w}
+                    {/* 新服务器给提示码(本地化);旧服务器只有英文 warnings,回退显示 */}
+                    {(draft.notes ?? []).map((n) => (
+                        <p key={n.code} className="warn">
+                            {n.code === 'push_channel'
+                                ? t('tasks.note.push_channel', { name: n.channel ?? '' })
+                                : t(`tasks.note.${n.code}`)}
                         </p>
                     ))}
+                    {draft.notes === undefined
+                        ? draft.warnings.map((w) => (
+                              <p key={w} className="warn">
+                                  {w}
+                              </p>
+                          ))
+                        : null}
                     <p className="muted small">{t('tasks.draftNotice')}</p>
                     <button type="button" onClick={() => void confirmDraft()}>
                         {t('tasks.draftConfirm')}
@@ -295,7 +314,8 @@ export function TasksPage() {
                             </label>
                         </div>
                         <p className="small muted">
-                            {trigger(task)} · {t('tasks.next')}: {when(task.nextRunAt)} · {t('tasks.last')}:{' '}
+                            {trigger(task)} · {t('tasks.next')}: {when(task.nextRunAt, task.timeZone)} ·{' '}
+                            {t('tasks.last')}:{' '}
                             {task.lastRun
                                 ? `${t(`tasks.status.${task.lastRun.status}`)} (${when(task.lastRun.createdAt)})`
                                 : t('tasks.none')}
@@ -355,7 +375,7 @@ export function TasksPage() {
                                 {editing.preview.length > 0 ? (
                                     <p className="small">
                                         {t('tasks.preview')}:{' '}
-                                        {editing.preview.map((p) => new Date(p).toLocaleString(locale)).join(' · ')}
+                                        {editing.preview.map((p) => when(p, editing.timeZone)).join(' · ')}
                                     </p>
                                 ) : null}
                                 <div className="row">

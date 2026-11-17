@@ -4,6 +4,7 @@
 // 自然语言创建任务(ADR 0036):草稿永远不会运行,只有会话确认才生效;含注入用例。
 import { TaskDraftResult } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
+import { parserPrompt } from './scheduler/nl-parse.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 let s: TestServer;
@@ -94,6 +95,44 @@ describe('POST /tasks/propose 与 confirm', () => {
             expect((await post('/tasks/propose', { text: 'x' })).status, String(n)).toBe(400);
         }
         expect(s.repos.tasks.list(ownerId).filter((t) => t.status === 'draft')).toHaveLength(0);
+    });
+});
+
+describe('确认卡片的提示码、时区与错误原因码', () => {
+    it('草稿带任务时区;新邮件触发带 mail_count_only;没有渠道时带 no_channel', async () => {
+        const { post } = await setup((text) =>
+            text === 'mail'
+                ? draftJson({ trigger: { kind: 'mail_received' }, prompt: 'Tell me how many new messages arrived.' })
+                : draftJson({ push: true }),
+        );
+        const mail = TaskDraftResult.parse(await (await post('/tasks/propose', { text: 'mail' })).json());
+        expect(mail.notes).toEqual([{ code: 'mail_count_only' }]);
+        expect(mail.timeZone).toBeTruthy();
+        expect(mail.task.timeZone).toBe(mail.timeZone);
+        const push = TaskDraftResult.parse(await (await post('/tasks/propose', { text: 'push' })).json());
+        expect(push.notes).toEqual([{ code: 'no_channel' }]);
+    });
+
+    it('含糊输入与过去的时间返回稳定的 reason,客户端据此本地化', async () => {
+        const cases = [
+            ['{"error":"no time given"}', 'task_missing_info'],
+            ['sorry I cannot', 'task_not_understood'],
+            [draftJson({ trigger: { kind: 'once', at: '2020-01-01T00:00:00Z' } }), 'task_time_past'],
+            [draftJson({ trigger: { kind: 'cron', expression: '* * * * * *' } }), 'task_cron_invalid'],
+        ] as const;
+        let i = 0;
+        const { post } = await setup(() => cases[i++]![0]);
+        for (const [, reason] of cases) {
+            const res = await post('/tasks/propose', { text: 'x' });
+            expect(res.status).toBe(400);
+            expect(((await res.json()) as { reason?: string }).reason).toBe(reason);
+        }
+    });
+
+    it('解析提示写明新邮件触发只带数量', () => {
+        const prompt = parserPrompt('Asia/Shanghai', new Date('2026-11-17T00:00:00Z'));
+        expect(prompt).toContain('ONLY the number of new messages');
+        expect(prompt).toContain('never ask for sender, subject');
     });
 });
 

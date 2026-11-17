@@ -54,6 +54,8 @@ export const ProblemDetails = z.object({
     requestId: z.string(),
     issues: z.array(ValidationIssue).optional(),
     providerCode: ProviderErrorCode.optional(),
+    /** 稳定的原因码(例如任务相关的 `task_time_past`);客户端据此显示本地化文字,`detail` 仍是英文说明。 */
+    reason: z.string().max(64).optional(),
 });
 export type ProblemDetails = z.infer<typeof ProblemDetails>;
 
