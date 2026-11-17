@@ -285,6 +285,14 @@ export function taskRoutes(deps: {
             }
         });
         policy?.allowedTools?.forEach((entry, i) => {
+            // 预授权的工具不在工具集内就永远用不上:拒绝,免得用户以为它生效了
+            if (policy.toolSet && !toolInSet(entry.tool, policy.toolSet)) {
+                throw invalid(
+                    `${entry.tool} is not in the task's tool set, so this pre-authorization could never be used.`,
+                    ['policy', 'allowedTools', i, 'tool'],
+                    'task_preauth_outside_toolset',
+                );
+            }
             const tool = deps.tools?.get(entry.tool);
             if (!tool) throw invalid('Unknown tool.', ['policy', 'allowedTools', i, 'tool'], 'task_tool_unknown');
             if (!isPreauthorizable(tool)) {

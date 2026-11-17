@@ -190,6 +190,8 @@ const zh = {
     'tasks.toolset.suggested':
         '这是模型根据你的话建议的工具集,请检查:任务需要的工具不在里面时,运行会因为「未知工具」失败。清空表示不限制。',
     'tasks.reason.task_toolset_unknown': '工具集里有不存在的工具名或前缀。',
+    'tasks.reason.task_preauth_outside_toolset':
+        '勾选了预授权的工具不在「任务可用的工具」里,这条预授权永远用不上。请把它加进工具集,或取消预授权。',
     'tasks.preauth.title': '预授权的工具',
     'tasks.preauth.hint':
         '无人值守时这些只读工具可以直接运行,不用等你批准。没勾选的工具会停下来等批准,到期就按拒绝处理。',
@@ -832,6 +834,8 @@ const en: Record<Key, string> = {
     'tasks.toolset.suggested':
         'The model suggested this tool set from your sentence; please check it. If the task needs a tool that is not listed, the run fails with "unknown tool". Clear it for no limit.',
     'tasks.reason.task_toolset_unknown': 'The tool set contains a tool name or prefix that does not exist.',
+    'tasks.reason.task_preauth_outside_toolset':
+        'A pre-authorized tool is not in "Tools this task may use", so that pre-authorization could never be used. Add it to the tool set or uncheck it.',
     'tasks.preauth.title': 'Pre-authorized tools',
     'tasks.preauth.hint':
         'These read-only tools may run unattended without waiting for you. Tools left unchecked stop and wait for approval, and count as rejected on expiry.',

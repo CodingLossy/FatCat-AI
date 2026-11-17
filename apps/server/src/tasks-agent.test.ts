@@ -501,4 +501,32 @@ describe('任务工具集 toolSet(ADR 0039 第 4 节)', () => {
             expect(res.status).toBe(400);
         }
     });
+
+    it('🔒 预授权的工具必须在工具集内:集合外返回 400,集合内 201;PATCH 不带 toolSet 会清掉它', async () => {
+        const { createTask, req } = await setup();
+        const policy = (allowedTools: unknown[], toolSet: string[]) => ({
+            maxAttempts: 1,
+            misfire: 'skip',
+            quietHours: null,
+            maxRuntimeMinutes: 10,
+            toolSet,
+            allowedTools,
+        });
+        const base = { outputs: [{ kind: 'conversation' }] };
+        const outside = await createTask({ ...base, policy: policy([{ tool: 'items.search' }], ['kb.search']) });
+        expect(outside.status).toBe(400);
+        expect(((await outside.json()) as { reason?: string }).reason).toBe('task_preauth_outside_toolset');
+        const inside = await createTask({ ...base, policy: policy([{ tool: 'kb.search' }], ['kb.search']) });
+        expect(inside.status).toBe(201);
+        const task = Task.parse(await inside.json());
+        expect(task.policy.toolSet).toEqual(['kb.search']);
+        const cleared = await req(`/tasks/${task.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                policy: { maxAttempts: 1, misfire: 'skip', quietHours: null, maxRuntimeMinutes: 10 },
+            }),
+        });
+        expect(cleared.status).toBe(200);
+        expect(Task.parse(await cleared.json()).policy.toolSet).toBeUndefined();
+    });
 });
