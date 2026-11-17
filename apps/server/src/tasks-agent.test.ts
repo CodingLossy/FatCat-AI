@@ -4,6 +4,7 @@
 // agent_prompt 任务、channel.push 与任务级白名单(ADR 0034),含越权用例。
 import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
 import { ApprovalRequest, pageOf, Task, TaskRun } from '@fatcat-ai/shared';
+import { ProviderError } from '@fatcat-ai/providers';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
@@ -333,5 +334,94 @@ describe('Webhook 触发器(ADR 0035)', () => {
         expect(
             (await createTask({ trigger: { kind: 'mail_received' }, outputs: [{ kind: 'conversation' }] })).status,
         ).toBe(201);
+    });
+});
+
+describe('M6 真机问题', () => {
+    const conversationTask = (createTask: (e?: Record<string, unknown>) => Response | Promise<Response>) =>
+        Promise.resolve(createTask({ outputs: [{ kind: 'conversation' }] })).then(async (r) =>
+            Task.parse(await r.json()),
+        );
+
+    it('🔒 web.fetch 进白名单必须带域名:不带域名返回 400,等于放行所有网站', async () => {
+        const { createTask } = await setup();
+        const policy = (constraint?: unknown) => ({
+            maxAttempts: 1,
+            misfire: 'skip',
+            quietHours: null,
+            maxRuntimeMinutes: 5,
+            allowedTools: [{ tool: 'web.fetch', ...(constraint ? { constraint } : {}) }],
+        });
+        const bad = await createTask({ policy: policy() });
+        expect(bad.status).toBe(400);
+        expect(((await bad.json()) as { reason?: string }).reason).toBe('task_tool_constraint_required');
+        expect((await createTask({ policy: policy({ domain: 'news.example.com' }) })).status).toBe(201);
+    });
+
+    it('运行停在审批上时,任务的运行记录显示等待批准的数量与过期时间;批准后恢复', async () => {
+        const { steps, createTask, untilPending, untilFinished, post, req } = await setup();
+        const task = await conversationTask(createTask);
+        steps.push(callTool('web.fetch', { url: 'http://example.test/' }), answer('done'));
+        const run = TaskRun.parse(await (await post(`/tasks/${task.id}/run`)).json());
+        const approval = await untilPending();
+        const runs = (await (await req(`/tasks/${task.id}/runs`)).json()) as { items: TaskRun[] };
+        expect(runs.items[0]?.waitingApproval).toEqual({ count: 1, expiresAt: approval.expiresAt });
+        expect(runs.items[0]?.sessionId).not.toBeNull();
+        const listed = (await (await req('/tasks')).json()) as { items: Task[] };
+        expect(listed.items.find((t) => t.id === task.id)?.lastRun?.waitingApproval?.count).toBe(1);
+        await post(`/approvals/${approval.callId}`, { decision: 'reject' });
+        const finished = await untilFinished(run.id);
+        expect(finished.errorCode).toBe('approval_rejected');
+        const after = (await (await req(`/tasks/${task.id}/runs`)).json()) as { items: TaskRun[] };
+        expect(after.items[0]?.waitingApproval ?? null).toBeNull();
+    });
+
+    it('最终回答为空或只有工具调用,不记成功:empty_answer,不重试', async () => {
+        const { steps, createTask, untilFinished, post } = await setup();
+        const task = await conversationTask(createTask);
+        steps.push(async function* () {
+            yield { type: 'finish', reason: 'stop' };
+        });
+        const run = TaskRun.parse(await (await post(`/tasks/${task.id}/run`)).json());
+        expect(await untilFinished(run.id)).toMatchObject({ status: 'failed', errorCode: 'empty_answer', attempt: 1 });
+
+        // 调用过工具但最后没有文字结论
+        steps.push(callTool('calc', { expression: '1+1' }), async function* () {
+            yield { type: 'finish', reason: 'stop' };
+        });
+        const run2 = TaskRun.parse(await (await post(`/tasks/${task.id}/run`)).json());
+        expect(await untilFinished(run2.id)).toMatchObject({ status: 'failed', errorCode: 'empty_answer' });
+    });
+
+    it('模型把工具调用写成无法解析的文字:tool_call_malformed,不当正文展示', async () => {
+        const { steps, createTask, untilFinished, post, ownerId } = await setup();
+        const task = await conversationTask(createTask);
+        steps.push(async function* () {
+            yield* [] as ChatChunk[];
+            throw new ProviderError('malformed_tool_call', 'unparseable');
+        });
+        const run = TaskRun.parse(await (await post(`/tasks/${task.id}/run`)).json());
+        const finished = await untilFinished(run.id);
+        expect(finished).toMatchObject({ status: 'failed', errorCode: 'tool_call_malformed' });
+        const messages = s.repos.messages.listBefore(ownerId, finished.sessionId!, 99);
+        expect(JSON.stringify(messages)).not.toContain('DSML');
+    });
+
+    it('没有授权文件夹时不把 fs 工具交给模型;任务提示要求只用相关工具', async () => {
+        const { steps, createTask, untilFinished, post } = await setup();
+        const task = await conversationTask(createTask);
+        const seen: ChatRequest[] = [];
+        steps.push(async function* (request) {
+            seen.push(request);
+            yield { type: 'text-delta', delta: 'ok' };
+            yield { type: 'finish', reason: 'stop' };
+        });
+        const run = TaskRun.parse(await (await post(`/tasks/${task.id}/run`)).json());
+        expect((await untilFinished(run.id)).status).toBe('succeeded');
+        const names = (seen[0]?.tools ?? []).map((t) => t.name);
+        expect(names.length).toBeGreaterThan(0);
+        expect(names.filter((n) => n.startsWith('fs.'))).toEqual([]);
+        const prompt = JSON.stringify(seen[0]?.messages);
+        expect(prompt).toMatch(/Use only the tools this task actually needs/);
     });
 });

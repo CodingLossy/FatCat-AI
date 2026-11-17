@@ -118,7 +118,8 @@ describe('确认卡片的提示码、时区与错误原因码', () => {
             ['{"error":"no time given"}', 'task_missing_info'],
             ['sorry I cannot', 'task_not_understood'],
             [draftJson({ trigger: { kind: 'once', at: '2020-01-01T00:00:00Z' } }), 'task_time_past'],
-            [draftJson({ trigger: { kind: 'cron', expression: '* * * * * *' } }), 'task_cron_invalid'],
+            [draftJson({ trigger: { kind: 'cron', expression: '* * * * * *' } }), 'task_cron_fields'],
+            [draftJson({ trigger: { kind: 'cron', expression: '99 * * * *' } }), 'task_cron_invalid'],
         ] as const;
         let i = 0;
         const { post } = await setup(() => cases[i++]![0]);

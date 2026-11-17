@@ -179,6 +179,22 @@ const zh = {
     'tasks.trigger.retry': '重试',
     'tasks.status.queued': '排队中',
     'tasks.status.running': '运行中',
+    'tasks.status.waiting': '等待批准',
+    'tasks.waiting': '等待批准({n} 项),{time} 前不批准将按拒绝处理',
+    'tasks.openSession': '打开对话',
+    'tasks.approveNow': '去批准',
+    'tasks.preauth.title': '预授权的工具',
+    'tasks.preauth.hint':
+        '无人值守时这些只读工具可以直接运行,不用等你批准。没勾选的工具会停下来等批准,到期就按拒绝处理。',
+    'tasks.preauth.never':
+        '发信、写文件、推送到渠道等会向外发送内容或改动数据的工具(例如 mail.send)不能预授权,每次都需要你批准。',
+    'tasks.preauth.domain': '允许的域名',
+    'tasks.preauth.domainHint': '例如 news.example.com 或 *.example.com',
+    'tasks.preauth.path': '允许的路径前缀',
+    'tasks.preauth.none': '没有可预授权的工具。',
+    'tasks.preauth.edit': '预授权工具',
+    'tasks.preauth.save': '保存预授权',
+    'tasks.preauth.needScope': '请为 {tool} 填写范围。',
     'tasks.status.succeeded': '成功',
     'tasks.status.failed': '失败',
     'tasks.status.blocked': '等待审批被拒绝',
@@ -186,6 +202,8 @@ const zh = {
     'tasks.status.cancelled': '已取消',
     'tasks.error.timeout': '超时',
     'tasks.error.model_error': '模型出错',
+    'tasks.error.empty_answer': '模型没有给出回答(空回答,或只调用了工具没有写结论)。可以换个提示词或模型后再试。',
+    'tasks.error.tool_call_malformed': '模型把工具调用写成了无法识别的文字,没有真正执行。可以重试,或换一个模型。',
     'tasks.error.approval_rejected': '审批被拒绝',
     'tasks.error.approval_expired': '审批过期',
     'tasks.error.output_failed': '输出失败',
@@ -213,10 +231,15 @@ const zh = {
     'tasks.reason.task_missing_info': '信息不完整,例如缺少时间或要做的事。请补充后再试。',
     'tasks.reason.task_time_unclear': '没有听懂时间,请换个说法。',
     'tasks.reason.task_time_past': '这个时间已经过去了。',
-    'tasks.reason.task_cron_invalid': 'cron 表达式有误({detail})。',
+    'tasks.reason.task_cron_invalid':
+        'cron 表达式无法解析,请检查各段的取值范围(分 0-59、时 0-23、日 1-31、月 1-12、周 0-7)。',
     'tasks.reason.task_channel_missing': '所选渠道不存在。',
     'tasks.reason.task_tool_unknown': '不认识这个工具。',
     'tasks.reason.task_tool_not_allowed': '这个工具会向本机之外发送内容或执行操作,每次都需要审批,不能加入白名单。',
+    'tasks.reason.task_tool_constraint_required': '这个工具必须限定范围才能预授权(例如 web.fetch 要填写域名)。',
+    'tasks.reason.task_cron_fields': 'cron 表达式必须正好有 5 段(分 时 日 月 周)。',
+    'tasks.reason.task_cron_never': '这个 cron 表达式永远不会触发。',
+    'tasks.reason.task_cron_interval': '触发间隔不能短于 1 分钟。',
     'tasks.reason.task_mail_account_missing': '所选邮箱账户不存在。',
     'tasks.reason.task_root_unauthorized': '这个目录不是已授权的目录。',
     'tasks.reason.task_confirm_needs_session': '确认任务需要用网页登录的会话,访问令牌不行。',
@@ -282,6 +305,9 @@ const zh = {
     'approvals.waiting': '{n} 个操作等待你的批准',
     'approvals.openSession': '打开所在会话',
     'approvals.expires': '{time} 过期',
+    'approvals.banner': '有 {n} 个操作正在等你批准,不批准会一直停着',
+    'approvals.review': '查看并批准',
+    'approvals.hide': '收起',
     'fsRoots.title': '授权目录',
     'fsRoots.hint':
         '文件工具(列出、读取、搜索、写入、移动)只能访问这些文件夹。服务器会解析链接与短文件名后保存真实路径;不能授权整个磁盘。',
@@ -458,6 +484,10 @@ const zh = {
     'mail.sentCopyDuplicate':
         '注意:这个邮箱的服务器本身会保存发出的邮件,再由 FatCat-AI 保存一份,「已发送」里每封会出现两份。',
     'settings.autoExtract': '自动抽取记忆(每轮结束后用廉价模型从你的消息与最终回答中抽取,每天最多 {n} 次)',
+    'settings.network': '网络',
+    'settings.allowFakeIp': '允许 fake-IP 段 198.18.0.0/15(web.fetch)',
+    'settings.allowFakeIpRisk':
+        '用 Clash 等代理的 fake-IP 模式时,所有域名都会被解析到这个段,web.fetch 会因此被当成内网地址拦截。开启后只放行这一段,回环、私网、链路本地和云元数据地址仍然拦截。风险:如果没有开代理,恶意域名可以解析到本机局域网里这个段的设备;只在确实使用 fake-IP 代理时开启。默认关闭。',
     'memory.autoExtractOn': '自动抽取已开启:每轮对话结束后会用廉价模型从你的消息与最终回答中抽取记忆。',
     'memory.autoExtractOff': '一键关闭自动抽取',
     'memory.autoExtractStopped': '自动抽取已关闭,已有的记忆不受影响。可以在设置中重新打开。',
@@ -768,6 +798,22 @@ const en: Record<Key, string> = {
     'tasks.trigger.retry': 'Retry',
     'tasks.status.queued': 'Queued',
     'tasks.status.running': 'Running',
+    'tasks.status.waiting': 'Waiting for approval',
+    'tasks.waiting': 'Waiting for approval ({n}); treated as rejected if not approved before {time}',
+    'tasks.openSession': 'Open conversation',
+    'tasks.approveNow': 'Approve',
+    'tasks.preauth.title': 'Pre-authorized tools',
+    'tasks.preauth.hint':
+        'These read-only tools may run unattended without waiting for you. Tools left unchecked stop and wait for approval, and count as rejected on expiry.',
+    'tasks.preauth.never':
+        'Tools that send content out or change data (for example mail.send) cannot be pre-authorized and always need your approval.',
+    'tasks.preauth.domain': 'Allowed domain',
+    'tasks.preauth.domainHint': 'For example news.example.com or *.example.com',
+    'tasks.preauth.path': 'Allowed path prefix',
+    'tasks.preauth.none': 'No tools can be pre-authorized.',
+    'tasks.preauth.edit': 'Pre-authorized tools',
+    'tasks.preauth.save': 'Save',
+    'tasks.preauth.needScope': 'Enter a scope for {tool}.',
     'tasks.status.succeeded': 'Succeeded',
     'tasks.status.failed': 'Failed',
     'tasks.status.blocked': 'Blocked (approval not granted)',
@@ -775,6 +821,10 @@ const en: Record<Key, string> = {
     'tasks.status.cancelled': 'Cancelled',
     'tasks.error.timeout': 'Timed out',
     'tasks.error.model_error': 'Model error',
+    'tasks.error.empty_answer':
+        'The model gave no answer (empty, or it only called tools and wrote no conclusion). Try a different prompt or model.',
+    'tasks.error.tool_call_malformed':
+        'The model wrote its tool call as text that could not be understood, so nothing ran. Retry or switch model.',
     'tasks.error.approval_rejected': 'Approval rejected',
     'tasks.error.approval_expired': 'Approval expired',
     'tasks.error.output_failed': 'Output failed',
@@ -812,6 +862,11 @@ const en: Record<Key, string> = {
     'tasks.reason.task_tool_unknown': 'Unknown tool.',
     'tasks.reason.task_tool_not_allowed':
         'This tool sends or runs things outside this machine and always needs approval; it cannot be allow-listed.',
+    'tasks.reason.task_tool_constraint_required':
+        'This tool can only be allow-listed with a scope (for example web.fetch needs a domain).',
+    'tasks.reason.task_cron_fields': 'A cron expression must have exactly 5 fields (minute hour day month weekday).',
+    'tasks.reason.task_cron_never': 'This cron expression never fires.',
+    'tasks.reason.task_cron_interval': 'The interval cannot be shorter than 1 minute.',
     'tasks.reason.task_mail_account_missing': 'The selected mail account does not exist.',
     'tasks.reason.task_root_unauthorized': 'The directory is not an authorized directory.',
     'tasks.reason.task_confirm_needs_session':
@@ -881,6 +936,9 @@ const en: Record<Key, string> = {
     'approvals.waiting': '{n} action(s) waiting for your approval',
     'approvals.openSession': 'Open its session',
     'approvals.expires': 'Expires at {time}',
+    'approvals.banner': '{n} action(s) are waiting for your approval and will stay stuck until you answer',
+    'approvals.review': 'Review and approve',
+    'approvals.hide': 'Hide',
     'fsRoots.title': 'Authorized folders',
     'fsRoots.hint':
         'The file tools (list, read, search, write, move) can only access these folders. The server resolves links and short names and stores the real path; a whole drive cannot be authorized.',
@@ -1073,6 +1131,10 @@ const en: Record<Key, string> = {
         'Note: this mail server already saves sent mail by itself. With FatCat-AI saving a copy too, every message will appear twice in Sent.',
     'settings.autoExtract':
         'Extract memories automatically (after each turn, the cheap model reads your message and the final answer; at most {n} times a day)',
+    'settings.network': 'Network',
+    'settings.allowFakeIp': 'Allow the fake-IP range 198.18.0.0/15 (web.fetch)',
+    'settings.allowFakeIpRisk':
+        'With the fake-IP mode of proxies such as Clash, every domain resolves into this range, so web.fetch blocks it as an internal address. Turning this on allows only this range; loopback, private, link-local and cloud-metadata addresses stay blocked. Risk: without such a proxy, a malicious domain could point at a device in this range on your network. Turn it on only if you really use a fake-IP proxy. Off by default.',
     'memory.autoExtractOn':
         'Automatic extraction is on: after each turn the cheap model extracts memories from your message and the final answer.',
     'memory.autoExtractOff': 'Turn off automatic extraction',

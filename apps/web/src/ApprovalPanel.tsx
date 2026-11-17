@@ -16,7 +16,14 @@ const POLL_MS = 15_000;
  * 全局审批面板(ADR 0010 第 5 节):列出其他会话中等待批准的工具调用。当前打开的会话已在聊天卡片中显示,这里不重复。
  * 通过 WebSocket 事件即时刷新,另有低频轮询兜底。
  */
-export function ApprovalPanel({ currentSessionId }: { currentSessionId: string | null }) {
+export function ApprovalPanel({
+    currentSessionId,
+    onCount,
+}: {
+    currentSessionId: string | null;
+    /** 全部待批数量变化时通知外层(侧栏角标与页面标题用)。 */
+    onCount?: (n: number) => void;
+}) {
     const { t } = useI18n();
     const [pending, setPending] = useState<ApprovalRequest[]>([]);
     const [open, setOpen] = useState(false);
@@ -55,14 +62,19 @@ export function ApprovalPanel({ currentSessionId }: { currentSessionId: string |
         };
     }, [reload]);
 
+    useEffect(() => onCount?.(pending.length), [pending.length, onCount]);
+
     const others = pending.filter((a) => a.sessionId !== currentSessionId);
     if (others.length === 0) return null;
 
     return (
         <div className="approval-panel" role="region" aria-label={t('approvals.title')}>
-            <button type="button" className="link" onClick={() => setOpen(!open)}>
-                {t('approvals.waiting', { n: others.length })}
-            </button>
+            <div className="approval-banner" role="status">
+                <strong>{t('approvals.banner', { n: others.length })}</strong>
+                <button type="button" onClick={() => setOpen(!open)}>
+                    {open ? t('approvals.hide') : t('approvals.review')}
+                </button>
+            </div>
             {open ? (
                 <ul className="list">
                     {others.map((a) => (

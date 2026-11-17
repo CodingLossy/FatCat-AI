@@ -286,7 +286,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -389,7 +391,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -492,7 +496,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -703,7 +709,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -806,7 +814,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -909,7 +919,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -1091,7 +1103,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -1194,7 +1208,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -1297,7 +1313,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -1442,7 +1460,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -1545,7 +1565,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -1701,7 +1723,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -1804,7 +1828,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -1907,7 +1933,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -2010,7 +2038,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -2170,7 +2200,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -2273,7 +2305,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -2376,7 +2410,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -2479,7 +2515,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -2623,7 +2661,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -2726,7 +2766,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -2829,7 +2871,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -2932,7 +2976,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -3095,7 +3141,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -3198,7 +3246,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -3301,7 +3351,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -3404,7 +3456,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -3520,7 +3574,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -3623,7 +3679,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -3765,7 +3823,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -3868,7 +3928,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -4043,7 +4105,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -4146,7 +4210,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -4331,7 +4397,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -4434,7 +4502,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -4537,7 +4607,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -4664,7 +4736,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -4767,7 +4841,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -4870,7 +4946,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -5124,7 +5202,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -5227,7 +5307,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -5560,7 +5642,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -5663,7 +5747,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -5766,7 +5852,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -6013,7 +6101,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -6116,7 +6206,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -6219,7 +6311,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -6556,7 +6650,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -6659,7 +6755,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -6762,7 +6860,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -6865,7 +6965,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -6990,7 +7092,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -7093,7 +7197,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -7196,7 +7302,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -7285,6 +7393,8 @@
                             "bad_request",
                             "upstream_error",
                             "network_error",
+                            "malformed_tool_call",
+                            "empty_response",
                             "key_missing"
                           ]
                         },
@@ -7388,7 +7498,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -7491,7 +7603,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -7594,7 +7708,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -7792,7 +7908,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -7895,7 +8013,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -8027,7 +8147,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -8130,7 +8252,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -8277,6 +8401,17 @@
                         "null"
                       ],
                       "maxLength": 64
+                    },
+                    "network": {
+                      "type": "object",
+                      "properties": {
+                        "allowFakeIp": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "allowFakeIp"
+                      ]
                     }
                   },
                   "required": [
@@ -8377,7 +8512,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -8480,7 +8617,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -8608,6 +8747,14 @@
                       "null"
                     ],
                     "maxLength": 64
+                  },
+                  "network": {
+                    "type": "object",
+                    "properties": {
+                      "allowFakeIp": {
+                        "type": "boolean"
+                      }
+                    }
                   }
                 }
               }
@@ -8734,6 +8881,17 @@
                         "null"
                       ],
                       "maxLength": 64
+                    },
+                    "network": {
+                      "type": "object",
+                      "properties": {
+                        "allowFakeIp": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "allowFakeIp"
+                      ]
                     }
                   },
                   "required": [
@@ -8834,7 +8992,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -8937,7 +9097,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -9040,7 +9202,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -9178,7 +9342,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -9281,7 +9447,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -9481,7 +9649,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -9584,7 +9754,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -9760,7 +9932,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -9863,7 +10037,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -9966,7 +10142,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -10165,7 +10343,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -10268,7 +10448,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -10371,7 +10553,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -10474,7 +10658,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -10702,7 +10888,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -10805,7 +10993,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -10908,7 +11098,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -11113,7 +11305,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -11216,7 +11410,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -11319,7 +11515,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -11433,7 +11631,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -11536,7 +11736,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -11734,7 +11936,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -11837,7 +12041,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -11940,7 +12146,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -12160,7 +12368,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -12263,7 +12473,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -12366,7 +12578,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -12469,7 +12683,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -12594,7 +12810,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -12697,7 +12915,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -12800,7 +13020,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -13172,7 +13394,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -13275,7 +13499,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -13378,7 +13604,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -13906,7 +14134,9 @@
                                     "timeout",
                                     "bad_request",
                                     "upstream_error",
-                                    "network_error"
+                                    "network_error",
+                                    "malformed_tool_call",
+                                    "empty_response"
                                   ]
                                 },
                                 "reason": {
@@ -14091,7 +14321,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -14194,7 +14426,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -14297,7 +14531,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -14400,7 +14636,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -14503,7 +14741,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -15005,7 +15245,9 @@
                                     "timeout",
                                     "bad_request",
                                     "upstream_error",
-                                    "network_error"
+                                    "network_error",
+                                    "malformed_tool_call",
+                                    "empty_response"
                                   ]
                                 },
                                 "reason": {
@@ -15190,7 +15432,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -15293,7 +15537,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -15396,7 +15642,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -15499,7 +15747,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -15691,7 +15941,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -15794,7 +16046,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -15897,7 +16151,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -16000,7 +16256,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -16103,7 +16361,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -16238,7 +16498,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -16341,7 +16603,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -16444,7 +16708,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -16610,7 +16876,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -16713,7 +16981,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -16816,7 +17086,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -16919,7 +17191,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -17022,7 +17296,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -17125,7 +17401,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -17228,7 +17506,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -17331,7 +17611,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -17434,7 +17716,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -17603,7 +17887,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -17706,7 +17992,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -17809,7 +18097,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -17912,7 +18202,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -18015,7 +18307,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -18118,7 +18412,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -18221,7 +18517,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -18407,7 +18705,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -18510,7 +18810,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -18613,7 +18915,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -19109,7 +19413,9 @@
                                     "timeout",
                                     "bad_request",
                                     "upstream_error",
-                                    "network_error"
+                                    "network_error",
+                                    "malformed_tool_call",
+                                    "empty_response"
                                   ]
                                 },
                                 "reason": {
@@ -19265,7 +19571,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -19368,7 +19676,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -19471,7 +19781,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -19616,7 +19928,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -19719,7 +20033,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -19822,7 +20138,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -19925,7 +20243,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -20416,7 +20736,9 @@
                                     "timeout",
                                     "bad_request",
                                     "upstream_error",
-                                    "network_error"
+                                    "network_error",
+                                    "malformed_tool_call",
+                                    "empty_response"
                                   ]
                                 },
                                 "reason": {
@@ -20601,7 +20923,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -20704,7 +21028,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -20807,7 +21133,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -20910,7 +21238,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -21119,7 +21449,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -21222,7 +21554,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -21438,7 +21772,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -21541,7 +21877,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -21644,7 +21982,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -21846,7 +22186,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -21949,7 +22291,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -22052,7 +22396,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -22276,7 +22622,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -22379,7 +22727,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -22482,7 +22832,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -22585,7 +22937,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -22710,7 +23064,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -22813,7 +23169,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -22916,7 +23274,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -23064,7 +23424,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -23167,7 +23529,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -23270,7 +23634,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -23373,7 +23739,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -23500,7 +23868,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -23603,7 +23973,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -23706,7 +24078,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -23906,7 +24280,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -24009,7 +24385,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -24112,7 +24490,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -24267,7 +24647,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -24370,7 +24752,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -24473,7 +24857,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -24576,7 +24962,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -24679,7 +25067,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -24829,7 +25219,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -24932,7 +25324,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -25035,7 +25429,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -25138,7 +25534,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -25546,6 +25944,8 @@
                                 "enum": [
                                   "timeout",
                                   "model_error",
+                                  "empty_answer",
+                                  "tool_call_malformed",
                                   "approval_rejected",
                                   "approval_expired",
                                   "output_failed",
@@ -25586,6 +25986,26 @@
                               "createdAt": {
                                 "type": "string",
                                 "format": "date-time"
+                              },
+                              "waitingApproval": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "count": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                  },
+                                  "expiresAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  }
+                                },
+                                "required": [
+                                  "count",
+                                  "expiresAt"
+                                ]
                               }
                             },
                             "required": [
@@ -25728,7 +26148,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -25831,7 +26253,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -26505,6 +26929,8 @@
                           "enum": [
                             "timeout",
                             "model_error",
+                            "empty_answer",
+                            "tool_call_malformed",
                             "approval_rejected",
                             "approval_expired",
                             "output_failed",
@@ -26545,6 +26971,26 @@
                         "createdAt": {
                           "type": "string",
                           "format": "date-time"
+                        },
+                        "waitingApproval": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "expiresAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "expiresAt"
+                          ]
                         }
                       },
                       "required": [
@@ -26674,7 +27120,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -26777,7 +27225,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -26880,7 +27330,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -27042,7 +27494,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -27145,7 +27599,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -27248,7 +27704,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -27675,6 +28133,8 @@
                               "enum": [
                                 "timeout",
                                 "model_error",
+                                "empty_answer",
+                                "tool_call_malformed",
                                 "approval_rejected",
                                 "approval_expired",
                                 "output_failed",
@@ -27715,6 +28175,26 @@
                             "createdAt": {
                               "type": "string",
                               "format": "date-time"
+                            },
+                            "waitingApproval": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "count": {
+                                  "type": "integer",
+                                  "minimum": 1
+                                },
+                                "expiresAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "count",
+                                "expiresAt"
+                              ]
                             }
                           },
                           "required": [
@@ -27881,7 +28361,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -27984,7 +28466,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -28087,7 +28571,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -28521,6 +29007,8 @@
                           "enum": [
                             "timeout",
                             "model_error",
+                            "empty_answer",
+                            "tool_call_malformed",
                             "approval_rejected",
                             "approval_expired",
                             "output_failed",
@@ -28561,6 +29049,26 @@
                         "createdAt": {
                           "type": "string",
                           "format": "date-time"
+                        },
+                        "waitingApproval": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "expiresAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "expiresAt"
+                          ]
                         }
                       },
                       "required": [
@@ -28690,7 +29198,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -28793,7 +29303,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -28896,7 +29408,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -28999,7 +29513,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -29413,6 +29929,8 @@
                           "enum": [
                             "timeout",
                             "model_error",
+                            "empty_answer",
+                            "tool_call_malformed",
                             "approval_rejected",
                             "approval_expired",
                             "output_failed",
@@ -29453,6 +29971,26 @@
                         "createdAt": {
                           "type": "string",
                           "format": "date-time"
+                        },
+                        "waitingApproval": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "expiresAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "expiresAt"
+                          ]
                         }
                       },
                       "required": [
@@ -29582,7 +30120,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -29685,7 +30225,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -29788,7 +30330,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -30466,6 +31010,8 @@
                           "enum": [
                             "timeout",
                             "model_error",
+                            "empty_answer",
+                            "tool_call_malformed",
                             "approval_rejected",
                             "approval_expired",
                             "output_failed",
@@ -30506,6 +31052,26 @@
                         "createdAt": {
                           "type": "string",
                           "format": "date-time"
+                        },
+                        "waitingApproval": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "expiresAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "expiresAt"
+                          ]
                         }
                       },
                       "required": [
@@ -30635,7 +31201,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -30738,7 +31306,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -30841,7 +31411,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -30944,7 +31516,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -31069,7 +31643,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -31172,7 +31748,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -31275,7 +31853,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -31378,7 +31958,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -31524,7 +32106,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -31627,7 +32211,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -31730,7 +32316,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -31833,7 +32421,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -31925,6 +32515,8 @@
                       "enum": [
                         "timeout",
                         "model_error",
+                        "empty_answer",
+                        "tool_call_malformed",
                         "approval_rejected",
                         "approval_expired",
                         "output_failed",
@@ -31965,6 +32557,26 @@
                     "createdAt": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "waitingApproval": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "expiresAt"
+                      ]
                     }
                   },
                   "required": [
@@ -32069,7 +32681,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -32172,7 +32786,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -32275,7 +32891,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -32378,7 +32996,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -32496,6 +33116,8 @@
                             "enum": [
                               "timeout",
                               "model_error",
+                              "empty_answer",
+                              "tool_call_malformed",
                               "approval_rejected",
                               "approval_expired",
                               "output_failed",
@@ -32536,6 +33158,26 @@
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
+                          },
+                          "waitingApproval": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "count": {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              "expiresAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "count",
+                              "expiresAt"
+                            ]
                           }
                         },
                         "required": [
@@ -32653,7 +33295,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -32756,7 +33400,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -32859,7 +33505,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -32951,6 +33599,8 @@
                       "enum": [
                         "timeout",
                         "model_error",
+                        "empty_answer",
+                        "tool_call_malformed",
                         "approval_rejected",
                         "approval_expired",
                         "output_failed",
@@ -32991,6 +33641,26 @@
                     "createdAt": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "waitingApproval": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "expiresAt"
+                      ]
                     }
                   },
                   "required": [
@@ -33095,7 +33765,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -33198,7 +33870,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -33301,7 +33975,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -33393,6 +34069,8 @@
                       "enum": [
                         "timeout",
                         "model_error",
+                        "empty_answer",
+                        "tool_call_malformed",
                         "approval_rejected",
                         "approval_expired",
                         "output_failed",
@@ -33433,6 +34111,26 @@
                     "createdAt": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "waitingApproval": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "expiresAt"
+                      ]
                     }
                   },
                   "required": [
@@ -33537,7 +34235,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -33640,7 +34340,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -33743,7 +34445,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -33846,7 +34550,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -34146,7 +34852,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -34249,7 +34957,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -34486,7 +35196,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -34589,7 +35301,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -34692,7 +35406,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -35013,7 +35729,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -35116,7 +35834,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -35219,7 +35939,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -35573,7 +36295,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -35676,7 +36400,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -35779,7 +36505,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -35933,7 +36661,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -36036,7 +36766,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -36510,7 +37242,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -36613,7 +37347,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -36764,7 +37500,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -36867,7 +37605,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -36970,7 +37710,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -37073,7 +37815,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -37253,7 +37997,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -37356,7 +38102,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -37527,7 +38275,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -37630,7 +38380,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -37733,7 +38485,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -37918,7 +38672,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -38021,7 +38777,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -38124,7 +38882,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -38227,7 +38987,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -38493,7 +39255,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -38596,7 +39360,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -38699,7 +39465,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -38997,7 +39765,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -39100,7 +39870,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -39203,7 +39975,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -39483,7 +40257,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -39586,7 +40362,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -39689,7 +40467,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -39998,7 +40778,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -40101,7 +40883,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -40204,7 +40988,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -40307,7 +41093,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -40445,7 +41233,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -40548,7 +41338,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -40651,7 +41443,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -40885,7 +41679,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -40988,7 +41784,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -41259,7 +42057,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -41362,7 +42162,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -41465,7 +42267,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -41671,7 +42475,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -41774,7 +42580,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -41877,7 +42685,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -41980,7 +42790,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -42184,7 +42996,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -42287,7 +43101,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -42414,7 +43230,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -42517,7 +43335,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -42620,7 +43440,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -42931,7 +43753,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -43034,7 +43858,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -43137,7 +43963,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -43304,7 +44132,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -43407,7 +44237,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -43582,7 +44414,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -43685,7 +44519,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -43788,7 +44624,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -43891,7 +44729,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -44070,7 +44910,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -44173,7 +45015,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -44276,7 +45120,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -44379,7 +45225,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -44504,7 +45352,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -44607,7 +45457,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -44710,7 +45562,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -44948,7 +45802,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -45051,7 +45907,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -45331,7 +46189,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -45434,7 +46294,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -45537,7 +46399,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -45798,7 +46662,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -45901,7 +46767,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -46004,7 +46872,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -46120,7 +46990,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -46223,7 +47095,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -46454,7 +47328,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -46557,7 +47433,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -46660,7 +47538,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -46979,7 +47859,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -47082,7 +47964,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -47185,7 +48069,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -47288,7 +48174,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -47537,7 +48425,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -47640,7 +48530,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -47743,7 +48635,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -47899,7 +48793,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -48002,7 +48898,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -48105,7 +49003,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -48388,7 +49288,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -48491,7 +49393,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -48594,7 +49498,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -48697,7 +49603,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -49009,7 +49917,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -49112,7 +50022,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -49215,7 +50127,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -49318,7 +50232,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -49493,7 +50409,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -49596,7 +50514,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -49699,7 +50619,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -49802,7 +50724,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -49955,7 +50879,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -50058,7 +50984,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -50161,7 +51089,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -50264,7 +51194,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -50498,7 +51430,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -50601,7 +51535,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -50881,7 +51817,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -50984,7 +51922,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -51087,7 +52027,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -51190,7 +52132,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -51445,7 +52389,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -51548,7 +52494,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -51651,7 +52599,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -51754,7 +52704,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -51879,7 +52831,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -51982,7 +52936,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -52085,7 +53041,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -52248,7 +53206,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -52351,7 +53311,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -52454,7 +53416,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -52669,7 +53633,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -52772,7 +53738,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -53072,7 +54040,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -53175,7 +54145,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -53583,7 +54555,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -53686,7 +54660,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -53789,7 +54765,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -54082,7 +55060,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -54185,7 +55165,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -54288,7 +55270,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -54696,7 +55680,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -54799,7 +55785,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -54902,7 +55890,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -55005,7 +55995,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -55130,7 +56122,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -55233,7 +56227,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -55336,7 +56332,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -55562,7 +56560,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -55665,7 +56665,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -55768,7 +56770,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -55946,7 +56950,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -56049,7 +57055,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -56152,7 +57160,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -56321,7 +57331,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -56424,7 +57436,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -56527,7 +57541,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -56906,7 +57922,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -57009,7 +58027,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -57333,7 +58353,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -57436,7 +58458,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -57539,7 +58563,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -57686,7 +58712,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -57789,7 +58817,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -57892,7 +58922,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -58048,7 +59080,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -58151,7 +59185,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -58254,7 +59290,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -58357,7 +59395,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -58618,7 +59658,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -58721,7 +59763,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -58982,7 +60026,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -59085,7 +60131,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -59188,7 +60236,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -59489,7 +60539,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -59592,7 +60644,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -59695,7 +60749,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -59798,7 +60854,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -59923,7 +60981,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -60026,7 +61086,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {
@@ -60129,7 +61191,9 @@
                         "timeout",
                         "bad_request",
                         "upstream_error",
-                        "network_error"
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
                       ]
                     },
                     "reason": {

@@ -12,7 +12,7 @@ import type { UntrustedContent } from '@fatcat-ai/shared';
 import { z } from 'zod';
 import type { ToolDefinition } from '../types.js';
 import { htmlToText } from './html.js';
-import { isBlockedAddress } from './net-guard.js';
+import { isBlockedAddress, isFakeIpAddress } from './net-guard.js';
 
 export const MAX_REDIRECTS = 5;
 export const MAX_BODY_BYTES = 2 * 1024 * 1024;
@@ -24,6 +24,23 @@ const TEXT_TYPES = /^(text\/|application\/(json|xml|xhtml\+xml|ld\+json|rss\+xml
 
 export class WebFetchError extends Error {
     override readonly name = 'WebFetchError';
+    /** 稳定的原因码,供界面按语言提示;没有特殊原因时为空。 */
+    readonly code: string | undefined;
+    constructor(message: string, code?: string) {
+        super(message);
+        this.code = code;
+    }
+}
+
+/** 域名被解析到 fake-IP 段而被拦截时的提示:说明原因与两种解决办法(中文,ADR 0038)。 */
+export function fakeIpMessage(hostname: string, address: string): string {
+    return (
+        `${hostname} 被解析到了 ${address}(198.18.0.0/15)。这是 Clash 等代理开启 fake-IP 模式后的地址段,` +
+        '默认按内网地址拦截。解决办法:在「设置 → 网络」里开启「允许 fake-IP 段」,' +
+        '或在代理软件里把该域名加入 fake-ip-filter。 ' +
+        `(${hostname} resolves to ${address}, the fake-IP range 198.18.0.0/15, which is blocked by default; ` +
+        "allow it in Settings → Network or add the domain to the proxy's fake-ip-filter.)"
+    );
 }
 
 export interface WebFetchOptions {
@@ -31,6 +48,11 @@ export interface WebFetchOptions {
     resolve?: (hostname: string) => Promise<LookupAddress[]>;
     /** 地址是否不允许访问;默认 isBlockedAddress。测试中可替换。 */
     isBlocked?: (address: string) => boolean;
+    /**
+     * 是否允许 198.18.0.0/15(代理 fake-IP 段,默认不允许)。按 owner 读取,设置里改动立即生效(ADR 0038)。
+     * 只放行这一段;回环、私网、链路本地、云元数据等仍然拦截。
+     */
+    allowFakeIp?: (ownerId: string) => boolean;
     timeoutMs?: number;
     maxBytes?: number;
     userAgent?: string;
@@ -71,8 +93,11 @@ function guardedLookup(options: Required<Pick<WebFetchOptions, 'resolve' | 'isBl
                 if (addresses.length === 0 || blocked) {
                     const error = new WebFetchError(
                         blocked
-                            ? `${hostname} resolves to a disallowed address (${blocked.address})`
+                            ? isFakeIpAddress(blocked.address)
+                                ? fakeIpMessage(hostname, blocked.address)
+                                : `${hostname} resolves to a disallowed address (${blocked.address})`
                             : `${hostname} has no address`,
+                        blocked && isFakeIpAddress(blocked.address) ? 'fake_ip_blocked' : undefined,
                     );
                     callback(error as NodeJS.ErrnoException, '', 4);
                     return;
@@ -85,6 +110,8 @@ function guardedLookup(options: Required<Pick<WebFetchOptions, 'resolve' | 'isBl
     };
 }
 
+type FetchSettings = Required<Omit<WebFetchOptions, 'allowFakeIp'>>;
+
 interface FetchResult {
     url: string;
     status: number;
@@ -93,7 +120,7 @@ interface FetchResult {
     truncated: boolean;
 }
 
-function once(url: URL, options: Required<WebFetchOptions>, signal: AbortSignal): Promise<{ res: IncomingMessage }> {
+function once(url: URL, options: FetchSettings, signal: AbortSignal): Promise<{ res: IncomingMessage }> {
     const request = url.protocol === 'https:' ? httpsRequest : httpRequest;
     return new Promise((resolve, reject) => {
         const req = request(
@@ -119,7 +146,7 @@ function once(url: URL, options: Required<WebFetchOptions>, signal: AbortSignal)
 
 /** 发起 GET,手动处理跳转(每次都重新校验);响应体超过上限时截断。 */
 export async function guardedFetch(raw: string, partial: WebFetchOptions = {}): Promise<FetchResult> {
-    const options: Required<WebFetchOptions> = {
+    const options: FetchSettings = {
         resolve: partial.resolve ?? defaultResolve,
         isBlocked: partial.isBlocked ?? isBlockedAddress,
         timeoutMs: partial.timeoutMs ?? TIMEOUT_MS,
@@ -220,9 +247,14 @@ export function createWebFetchTool(options: WebFetchOptions = {}): ToolDefinitio
         constraints: { domain: fetchHost },
         requireConstraint: 'domain',
         summarize: (input) => `Fetch ${String((input as { url?: unknown } | null)?.url ?? '')}`,
-        execute: async (raw) => {
+        execute: async (raw, context) => {
             const { url } = Input.parse(raw);
-            const result = await guardedFetch(url, options);
+            const allowFake = options.allowFakeIp?.(context.ownerId) === true;
+            const base = options.isBlocked ?? isBlockedAddress;
+            const result = await guardedFetch(url, {
+                ...options,
+                isBlocked: allowFake ? (address) => !isFakeIpAddress(address) && base(address) : base,
+            });
             if (result.status >= 400) throw new WebFetchError(`the server answered HTTP ${result.status}`);
             if (result.contentType && !TEXT_TYPES.test(result.contentType)) {
                 throw new WebFetchError(`unsupported content type: ${result.contentType.split(';')[0]}`);

@@ -547,9 +547,33 @@ fieldset {
 }
 
 .approval-panel {
-    border-bottom: 1px solid var(--warn);
+    border-bottom: 2px solid var(--warn);
+    border-left: 6px solid var(--warn);
     background: var(--panel);
-    padding: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
+}
+
+.approval-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.05rem;
+}
+
+.badge-alert {
+    background: var(--warn);
+    color: #fff;
+    margin-left: 0.4rem;
+}
+
+.run-waiting {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--warn);
+    background: color-mix(in srgb, var(--warn) 15%, transparent);
+    font-weight: 600;
 }
 
 .approval-panel .list {

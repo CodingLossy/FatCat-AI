@@ -330,6 +330,10 @@ export function createToolRegistry(
         ...createBuiltinTools({
             timeZoneOf: (ownerId) => effectiveTimeZone(repos.settings.get(ownerId).timeZone),
             ...builtin,
+            webFetch: {
+                allowFakeIp: (ownerId) => repos.settings.get(ownerId).network?.allowFakeIp === true,
+                ...builtin.webFetch,
+            },
         }),
         ...createFsTools({ roots }),
         ...createItemTools(repos, items),

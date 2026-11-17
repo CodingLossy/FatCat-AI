@@ -142,6 +142,8 @@ export interface StartRunInput {
         id: string;
         channelId?: string | undefined;
         allowedTools?: { tool: string; constraint?: PreauthConstraint }[];
+        /** 不交给模型的工具名前缀(例如没有授权文件夹时的 `fs.`);模型硬调用也按未知工具处理。 */
+        withholdToolPrefixes?: string[];
     };
 }
 
@@ -672,7 +674,12 @@ export class RunManager {
                 let stepText = '';
                 let reason: string | null = null;
                 let usage: Usage | undefined;
-                const specs = tools && tools.size > 0 && step < MAX_TOOL_STEPS ? tools.specs() : undefined;
+                const withheld = input.task?.withholdToolPrefixes ?? [];
+                const isWithheld = (name: string) => withheld.some((prefix) => name.startsWith(prefix));
+                const specs =
+                    tools && tools.size > 0 && step < MAX_TOOL_STEPS
+                        ? tools.specs().filter((spec) => !isWithheld(spec.name))
+                        : undefined;
                 for await (const chunk of provider.stream({ messages, signal, ...(specs ? { tools: specs } : {}) })) {
                     if (chunk.type === 'text-delta') {
                         stepText += chunk.delta;
@@ -690,13 +697,19 @@ export class RunManager {
                     }
                 }
                 if (reason === 'aborted' || signal.aborted) return finish('cancelled', usage);
-                if (calls.length === 0 || !specs) return finish(reason === 'length' ? 'length' : 'stop', usage);
+                if (calls.length === 0 || !specs) {
+                    // 整条回答没有任何内容(没有文字也没调用过工具)不算成功:否则任务页会显示「成功」却什么都没有
+                    if (reason !== 'length' && parts.every((p) => p.type === 'text' && p.text.trim() === '')) {
+                        throw new ProviderError('empty_response', 'the model returned an empty answer');
+                    }
+                    return finish(reason === 'length' ? 'length' : 'stop', usage);
+                }
 
                 messages.push({ role: 'assistant', content: stepText, toolCalls: calls });
                 for (const call of calls) {
                     // 对外的 callId 由服务器生成,保证全局唯一;模型侧的 id 只用于回填工具结果
                     const callId = newId();
-                    const tool = tools?.get(call.name);
+                    const tool = isWithheld(call.name) ? undefined : tools?.get(call.name);
                     emit({ type: 'tool-call', runId: run.runId, callId, name: call.name, input: call.input });
                     parts.push({ type: 'tool-call', callId, name: call.name, input: call.input });
 

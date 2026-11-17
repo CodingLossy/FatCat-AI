@@ -15,6 +15,7 @@ import {
     guardedFetch,
     htmlToText,
     isBlockedAddress,
+    isFakeIpAddress,
     type ToolContext,
 } from './index.js';
 
@@ -183,6 +184,7 @@ describe('web.fetch(本机测试服务器)', () => {
         'site.test': [LOCAL],
         'private.test': ['10.0.0.5'],
         'rebind.test': [LOCAL, '192.168.0.10'],
+        'fake.test': ['198.18.0.7'],
     };
     const resolve = (host: string): Promise<LookupAddress[]> => {
         const list = hosts[host];
@@ -248,6 +250,26 @@ describe('web.fetch(本机测试服务器)', () => {
         expect(json).toMatchObject({ content: '{"ok":true}' });
     });
 
+    it('fake-IP 段默认拦截,给出中文提示与原因码;不会因此放松别的内网段', async () => {
+        const error = await guardedFetch(url('fake.test', '/page'), options).catch((e: unknown) => e);
+        expect(error).toMatchObject({ name: 'WebFetchError', code: 'fake_ip_blocked' });
+        expect((error as Error).message).toMatch(/fake-IP 模式.*设置 → 网络.*fake-ip-filter/s);
+        // 普通内网的提示和原因码不变
+        const other = await guardedFetch(url('private.test', '/page'), options).catch((e: unknown) => e);
+        expect((other as { code?: string }).code).toBeUndefined();
+    });
+
+    it('开启「允许 fake-IP 段」后只放行 198.18.0.0/15:fake-IP 不再被拦,私网与元数据地址仍被拦', async () => {
+        const tool = createWebFetchTool({ ...options, allowFakeIp: () => true, timeoutMs: 300 });
+        const fake = await tool.execute({ url: url('fake.test', '/page') }, ctx).catch((e: unknown) => e);
+        // 198.18.0.7 在测试机上连不通,所以报连接失败 / 超时,但不是被护栏拦下
+        expect((fake as { code?: string }).code).toBeUndefined();
+        expect(String((fake as Error).message)).not.toMatch(/disallowed|fake-IP/);
+        await expect(tool.execute({ url: url('private.test', '/page') }, ctx)).rejects.toThrow(/10\.0\.0\.5/);
+        await expect(tool.execute({ url: 'http://169.254.169.254/latest/' }, ctx)).rejects.toThrow(/not allowed/);
+        await expect(tool.execute({ url: 'http://198.18.0.7/' }, ctx)).rejects.not.toThrow(/not allowed/);
+    });
+
     it('DNS 解析到内网、DNS 重绑定(任一地址为内网)、跳转到内网都被拒绝', async () => {
         await expect(guardedFetch(url('private.test', '/page'), options)).rejects.toThrow(
             /disallowed address \(10\.0\.0\.5\)/,
@@ -306,5 +328,16 @@ describe('web.fetch(本机测试服务器)', () => {
 describe('htmlToText', () => {
     it('没有标题时 title 为 null;未知实体原样保留', () => {
         expect(htmlToText('<p>a &unknown; b</p>')).toEqual({ title: null, text: 'a &unknown; b' });
+    });
+});
+
+describe('isFakeIpAddress', () => {
+    it('只认 198.18.0.0/15', () => {
+        expect(isFakeIpAddress('198.18.0.1')).toBe(true);
+        expect(isFakeIpAddress('198.19.255.254')).toBe(true);
+        expect(isFakeIpAddress('198.20.0.1')).toBe(false);
+        expect(isFakeIpAddress('198.17.255.255')).toBe(false);
+        expect(isFakeIpAddress('10.0.0.1')).toBe(false);
+        expect(isFakeIpAddress('example.com')).toBe(false);
     });
 });

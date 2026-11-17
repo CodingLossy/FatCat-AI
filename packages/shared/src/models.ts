@@ -98,6 +98,8 @@ export const ModelTestResult = z.discriminatedUnion('ok', [
             'bad_request',
             'upstream_error',
             'network_error',
+            'malformed_tool_call',
+            'empty_response',
             'key_missing',
         ]),
         message: z.string(),

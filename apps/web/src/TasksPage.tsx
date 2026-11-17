@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { Channel, Task, TaskDraftResult, TaskRun } from '@fatcat-ai/shared';
+import type { Channel, Task, TaskAllowedTool, TaskDraftResult, TaskRun } from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { PreauthPicker } from './PreauthPicker.js';
+import { navigate } from './router.js';
 import { formatInTimeZone } from './time-zone.js';
 
 /**
@@ -27,6 +29,16 @@ export function TasksPage() {
     } | null>(null);
     const [nl, setNl] = useState('');
     const [draft, setDraft] = useState<TaskDraftResult | null>(null);
+    // 确认卡上勾选的预授权;任务编辑页里正在编辑预授权的任务
+    const [draftAllowed, setDraftAllowed] = useState<{ allowed: TaskAllowedTool[]; missing: string | null }>({
+        allowed: [],
+        missing: null,
+    });
+    const [preauthEdit, setPreauthEdit] = useState<{
+        id: string;
+        allowed: TaskAllowedTool[];
+        missing: string | null;
+    } | null>(null);
     const [token, setToken] = useState<{ id: string; token: string; url: string } | null>(null);
     const [editing, setEditing] = useState<{
         id: string;
@@ -103,15 +115,29 @@ export function TasksPage() {
         e.preventDefault();
         if (!nl.trim()) return;
         await act(async () => {
+            setDraftAllowed({ allowed: [], missing: null });
             setDraft(await api.tasks.propose(nl.trim()));
             setNl('');
         });
     };
     const confirmDraft = async () => {
         if (!draft) return;
+        if (draftAllowed.missing) {
+            setError(t('tasks.preauth.needScope', { tool: draftAllowed.missing }));
+            return;
+        }
         await act(async () => {
-            await api.tasks.confirm(draft.task.id, draft.task.updatedAt);
+            let version = draft.task.updatedAt;
+            if (draftAllowed.allowed.length > 0) {
+                // 先把勾选的预授权写进草稿,再用新的版本号确认
+                const updated = await api.tasks.update(draft.task.id, {
+                    policy: { ...draft.task.policy, allowedTools: draftAllowed.allowed },
+                });
+                version = updated.updatedAt;
+            }
+            await api.tasks.confirm(draft.task.id, version);
             setDraft(null);
+            setDraftAllowed({ allowed: [], missing: null });
         });
     };
     const discardDraft = async () => {
@@ -153,6 +179,17 @@ export function TasksPage() {
         if (!iso) return t('tasks.none');
         const { main, local } = formatInTimeZone(iso, timeZone, locale);
         return local ? `${main} (${t('tasks.localTime', { time: local })})` : main;
+    };
+    const runStatusText = (run: TaskRun) =>
+        run.waitingApproval ? t('tasks.status.waiting') : t(`tasks.status.${run.status}`);
+    const waitingText = (run: TaskRun, timeZone?: string) =>
+        t('tasks.waiting', {
+            n: run.waitingApproval?.count ?? 0,
+            time: when(run.waitingApproval?.expiresAt ?? null, timeZone),
+        });
+    /** 打开这次运行的对话(审批卡片在里面,也在顶部审批面板里)。 */
+    const openRun = (run: TaskRun) => {
+        if (run.sessionId) navigate({ name: 'session', id: run.sessionId });
     };
     const name = (task: Task) =>
         task.action.kind === 'system' && task.action.key === 'memory.maintenance'
@@ -224,6 +261,10 @@ export function TasksPage() {
                               </p>
                           ))
                         : null}
+                    <PreauthPicker
+                        initial={[]}
+                        onChange={(allowed, missing) => setDraftAllowed({ allowed, missing })}
+                    />
                     <p className="muted small">{t('tasks.draftNotice')}</p>
                     <button type="button" onClick={() => void confirmDraft()}>
                         {t('tasks.draftConfirm')}
@@ -317,9 +358,17 @@ export function TasksPage() {
                             {trigger(task)} · {t('tasks.next')}: {when(task.nextRunAt, task.timeZone)} ·{' '}
                             {t('tasks.last')}:{' '}
                             {task.lastRun
-                                ? `${t(`tasks.status.${task.lastRun.status}`)} (${when(task.lastRun.createdAt)})`
+                                ? `${runStatusText(task.lastRun)} (${when(task.lastRun.createdAt, task.timeZone)})`
                                 : t('tasks.none')}
                         </p>
+                        {task.lastRun?.waitingApproval ? (
+                            <p className="small">
+                                <span className="run-waiting">{waitingText(task.lastRun, task.timeZone)}</span>{' '}
+                                <button type="button" className="link" onClick={() => openRun(task.lastRun!)}>
+                                    {t('tasks.approveNow')}
+                                </button>
+                            </p>
+                        ) : null}
                         {task.warning ? <p className="small error">{t(`tasks.warning.${task.warning}`)}</p> : null}
                         {task.lastRun?.errorCode === 'over_budget' ? (
                             <p className="small muted">{t('tasks.error.over_budget')}</p>
@@ -329,6 +378,24 @@ export function TasksPage() {
                             <button type="button" onClick={() => void act(() => api.tasks.run(task.id))}>
                                 {t('tasks.runNow')}
                             </button>
+                            {task.action.kind === 'agent_prompt' ? (
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setPreauthEdit(
+                                            preauthEdit?.id === task.id
+                                                ? null
+                                                : {
+                                                      id: task.id,
+                                                      allowed: task.policy.allowedTools ?? [],
+                                                      missing: null,
+                                                  },
+                                        )
+                                    }
+                                >
+                                    {t('tasks.preauth.edit')}
+                                </button>
+                            ) : null}
                             {task.trigger.kind === 'cron' ? (
                                 <button type="button" onClick={() => startEdit(task)}>
                                     {t('tasks.editSchedule')}
@@ -359,6 +426,36 @@ export function TasksPage() {
                             <p className="small">
                                 {t('tasks.webhookShown')} <code>{token.token}</code> · POST {token.url}
                             </p>
+                        ) : null}
+                        {preauthEdit?.id === task.id ? (
+                            <div className="task-edit">
+                                <PreauthPicker
+                                    initial={task.policy.allowedTools ?? []}
+                                    onChange={(allowed, missing) => setPreauthEdit({ id: task.id, allowed, missing })}
+                                />
+                                <div className="row">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (preauthEdit.missing) {
+                                                setError(t('tasks.preauth.needScope', { tool: preauthEdit.missing }));
+                                                return;
+                                            }
+                                            void act(async () => {
+                                                await api.tasks.update(task.id, {
+                                                    policy: { ...task.policy, allowedTools: preauthEdit.allowed },
+                                                });
+                                                setPreauthEdit(null);
+                                            });
+                                        }}
+                                    >
+                                        {t('tasks.preauth.save')}
+                                    </button>
+                                    <button type="button" onClick={() => setPreauthEdit(null)}>
+                                        {t('nav.cancel')}
+                                    </button>
+                                </div>
+                            </div>
                         ) : null}
                         {editing?.id === task.id ? (
                             <form className="task-edit" onSubmit={(e) => void save(e)}>
@@ -408,10 +505,27 @@ export function TasksPage() {
                                         <tbody>
                                             {runs.map((run) => (
                                                 <tr key={run.id} data-status={run.status}>
-                                                    <td className="small">{when(run.scheduledFor)}</td>
+                                                    <td className="small">{when(run.scheduledFor, task.timeZone)}</td>
                                                     <td className="small">{t(`tasks.trigger.${run.trigger}`)}</td>
                                                     <td className={run.status === 'failed' ? 'error' : ''}>
-                                                        {t(`tasks.status.${run.status}`)}
+                                                        {run.waitingApproval ? (
+                                                            <span className="run-waiting" data-testid="run-waiting">
+                                                                {waitingText(run, task.timeZone)}
+                                                            </span>
+                                                        ) : (
+                                                            t(`tasks.status.${run.status}`)
+                                                        )}
+                                                        {run.sessionId ? (
+                                                            <div>
+                                                                <button
+                                                                    type="button"
+                                                                    className="link small"
+                                                                    onClick={() => openRun(run)}
+                                                                >
+                                                                    {t('tasks.openSession')}
+                                                                </button>
+                                                            </div>
+                                                        ) : null}
                                                         {run.errorCode ? (
                                                             <div className="small">
                                                                 {t(`tasks.error.${run.errorCode}`)}

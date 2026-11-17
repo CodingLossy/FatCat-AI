@@ -22,6 +22,14 @@ describe('Footer', () => {
         expect(html).toContain('AGPL-3.0-only');
     });
 
+    it('服务器没给版本号时不显示 vundefined', () => {
+        const html = renderToStaticMarkup(
+            <Footer meta={{ ...meta, serverVersion: undefined } as unknown as MetaResponse} />,
+        );
+        expect(html).not.toContain('undefined');
+        expect(html).toContain('FatCat-AI');
+    });
+
     it('无 meta 时仍显示许可证', () => {
         const html = renderToStaticMarkup(<Footer meta={null} />);
         expect(html).toContain('AGPL-3.0-only');

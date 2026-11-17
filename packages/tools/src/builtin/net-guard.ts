@@ -94,3 +94,13 @@ export function isBlockedAddress(ip: string): boolean {
     }
     return true;
 }
+
+/**
+ * 是否属于 198.18.0.0/15(RFC 2544 基准测试段)。Clash 等代理的 fake-IP 模式会把所有域名解析到这个段,
+ * 真实目的地由代理再解析。默认仍按内网拦截,只有用户在设置里明确允许才放行(ADR 0038)。
+ */
+export function isFakeIpAddress(ip: string): boolean {
+    const host = ip.split('%')[0]!;
+    if (isIP(host) !== 4) return false;
+    return inRange(ipv4ToBigInt(host), v4('198.18.0.0/15'), 32);
+}

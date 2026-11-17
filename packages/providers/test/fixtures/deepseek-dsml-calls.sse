@@ -1,0 +1,10 @@
+data: {"id": "x", "object": "chat.completion.chunk", "model": "deepseek-flash", "choices": [{"index": 0, "delta": {"content": "我先看看"}, "finish_reason": null}]}
+
+data: {"id": "x", "object": "chat.completion.chunk", "model": "deepseek-flash", "choices": [{"index": 0, "delta": {"content": "邮件。\n\n<｜"}, "finish_reason": null}]}
+
+data: {"id": "x", "object": "chat.completion.chunk", "model": "deepseek-flash", "choices": [{"index": 0, "delta": {"content": "｜DSML｜｜ function_calls>\n<｜｜DSML｜｜ invoke name=\"mail__list\">\n<｜｜DSML｜｜ parameter name=\"limit\" string=\"false\">5</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"folder\" string=\"true\">INBOX</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ function_calls>"}, "finish_reason": null}]}
+
+data: {"id": "x", "choices": [{"index": 0, "delta": {"content": ""}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 120, "completion_tokens": 40, "total_tokens": 160}}
+
+data: [DONE]
+
