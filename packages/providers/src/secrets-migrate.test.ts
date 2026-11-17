@@ -9,6 +9,7 @@ import {
     readdirSync,
     readFileSync,
     rmSync,
+    statSync,
     writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -150,6 +151,47 @@ describe('secrets migration and file states', () => {
             expect(decryptSecrets(readFileSync(enc(), 'utf8'), KEY_A)).toBe(PLAIN);
             expect(store().resolve('file:ILINK_TOKEN_A')).toBe('tok-bbbbbbbbbbbb');
             expect(JSON.stringify(result)).not.toContain('sk-test');
+        });
+
+        it('restricts the renamed plaintext rollback copy to the current user right after the rename', () => {
+            writeFileSync(plain(), PLAIN);
+            const restricted: string[] = [];
+            migrateSecrets({
+                dataDir: dir,
+                keys: keys(),
+                now: at(0),
+                hooks: { restrict: (p) => restricted.push(p) },
+            });
+            expect(restricted).toContain(join(dir, 'secrets.yaml.migrated'));
+        });
+
+        it.skipIf(process.platform === 'win32')(
+            'sets mode 0600 on the migrated copy even if the source was 0644',
+            () => {
+                writeFileSync(plain(), PLAIN, { mode: 0o644 });
+                chmodSync(plain(), 0o644);
+                migrateSecrets({ dataDir: dir, keys: keys(), now: at(0) });
+                expect(statSync(join(dir, 'secrets.yaml.migrated')).mode & 0o777).toBe(0o600);
+            },
+        );
+
+        it('keeps the migration result and warns when restricting the migrated copy fails', () => {
+            writeFileSync(plain(), PLAIN);
+            const warnings: string[] = [];
+            const result = migrateSecrets({
+                dataDir: dir,
+                keys: keys(),
+                now: at(0),
+                hooks: {
+                    restrict: () => {
+                        throw new Error('icacls failed');
+                    },
+                    onWarning: (m) => warnings.push(m),
+                },
+            });
+            expect(result.migratedKeys).toBe(2);
+            expect(existsSync(join(dir, 'secrets.yaml.migrated'))).toBe(true);
+            expect(warnings.length).toBeGreaterThan(0);
         });
 
         it('leaves the plaintext bytes unchanged when the read-back differs, and can be repeated', () => {

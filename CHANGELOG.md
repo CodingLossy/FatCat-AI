@@ -283,12 +283,15 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 
 ### M5c · 发布收尾(进行中)
 
+#### 新增
+
+- Docker 一键部署指南(`docs/deploy/docker.md`,英文版待校对):`docker/docker-compose.prod.yml` 同时跑应用与 Caddy(自动 HTTPS),只有 Caddy 发布端口,应用容器内存上限 512 MiB,主密钥用 Docker secret 文件传入;另有 `Caddyfile.example`、用于 DNS-01 的 DNSPod(腾讯云 DNS)变体(固定版本的社区插件,仅作示例,不是项目依赖)。指南包含公网暴露前的加固、备份恢复、升级和排错。ADR 0031 记录反向代理的责任划分与一条已知限制:经代理访问时登录失败限速把所有访客算作同一个来源。CI 新增不依赖域名的部署冒烟(HTTP 版 Caddy,检查 `/healthz`、设置码、WebSocket 与 SSE 逐块到达,不访问公网)。
+
 #### 变更
 
 - 手机抽屉:点指向当前页的链接也会关闭;打开时焦点移入抽屉,按 Esc 或点遮罩关闭时焦点回到「菜单」按钮;邮件里「返回列表」后焦点回到刚才打开的那封邮件。
 - **新增**:发布准备(ADR 0032)。`.github/workflows/release.yml` 在改动 Dockerfile 的 PR 和手动触发时,分别在原生 runner 上构建 `linux/amd64` 与 `linux/arm64` 镜像并做健康检查,**默认不推送**:只有 `v*` tag,或手动触发并勾选 `push` 才会推送到 GHCR(手动只得到 `sha-<7>` 标签)。标签策略与「确认没有发布」的核对见 `docs/release/image-tags.md` 与 `scripts/check-no-release.mjs`。`docs/release/` 里有 v1.0 发布说明草稿(英文待校对;推荐的模型组合留空等业主确认)。README 快速开始改为以 Docker 开头。新增 `scripts/perf/chat-peak.mjs`,在镜像里测对话时的内存峰值。没有打 tag、没有发 Release、没有推送镜像。
 - Web UI 适配手机尺寸(360 px 起,竖屏与横屏)。宽度小于 720 px 时侧栏变成顶栏打开的抽屉(点遮罩、按 Esc 或换页即关闭);控件高度不低于 44 px,输入框用 16 px 字号避免 iOS 聚焦时放大;邮件页改为「列表 → 邮件」两屏并带「返回列表」按钮;审计表在自己的容器里横向滚动;输入区贴底并避开安全区。页面加了 `viewport-fit=cover` 与 `theme-color`。不改任何接口。真机(iOS Safari、Android Chrome 软键盘)尚未验证。
-- **新增**:Docker 一键部署指南(`docs/deploy/docker.md`,英文版待校对):`docker/docker-compose.prod.yml` 同时跑应用与 Caddy(自动 HTTPS),只有 Caddy 发布端口,应用容器内存上限 512 MiB,主密钥用 Docker secret 文件传入;另有 `Caddyfile.example`、用于 DNS-01 的 DNSPod(腾讯云 DNS)变体(固定版本的社区插件,仅作示例,不是项目依赖)。指南包含公网暴露前的加固、备份恢复、升级和排错。ADR 0031 记录反向代理的责任划分与一条已知限制:经代理访问时登录失败限速把所有访客算作同一个来源。CI 新增不依赖域名的部署冒烟(HTTP 版 Caddy,检查 `/healthz`、设置码、WebSocket 与 SSE 逐块到达,不访问公网)。
 
 ### M5b · 密钥、TOTP 与知识地图(进行中)
 

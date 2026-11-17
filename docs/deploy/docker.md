@@ -97,14 +97,16 @@ DNS-01 通过在域名下写一条临时 TXT 记录来证明域名所有权,不�
 > **示例,不保证长期可用。** 使用的是社区维护的 Caddy 插件 `github.com/caddy-dns/tencentcloud`(MIT,依赖同样是 MIT 的 `github.com/libdns/tencentcloud`),在 `docker/caddy/Dockerfile.dnspod` 里用 `xcaddy` 构建,版本固定在 `CADDY_VERSION` 与 `DNS_PLUGIN_VERSION` 两个 ARG 上;它不属于本项目依赖。升级前先看插件的更新记录(选择理由见 ADR 0031 第 5 节)。
 
 1. 在腾讯云控制台创建一个**子账号**,只授予管理这个域名解析的权限(云解析 DNS / DNSPod 的记录读写),生成 API 密钥(SecretId 与 SecretKey)。
-2. 写成两个文件(与主密钥一样,属主 1000、权限 400):
+2. 写成两个文件。**属主要是 root(0:0),不是 1000**:Caddy 容器以 root 运行,但 compose 去掉了它的全部 capability(只留绑定 80/443 的那一项),root 也就没有绕过文件权限的能力,属主为 1000、权限 400 的文件它读不了,DNS-01 会因 `Permission denied` 失败。
 
 ```bash
 printf '%s' '你的SecretId'  > secrets/tencentcloud_secret_id
 printf '%s' '你的SecretKey' > secrets/tencentcloud_secret_key
-sudo chown 1000:1000 secrets/tencentcloud_secret_id secrets/tencentcloud_secret_key
+sudo chown 0:0 secrets/tencentcloud_secret_id secrets/tencentcloud_secret_key
 sudo chmod 400 secrets/tencentcloud_secret_id secrets/tencentcloud_secret_key
 ```
+
+(主密钥 `secrets/master.key` 相反,是给应用容器的 node 用户读的,属主是 1000。)
 
 3. 叠加 DNSPod 版的 compose 启动:
 
@@ -150,7 +152,7 @@ docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai node d
 docker compose -f docker-compose.prod.yml start fatcat-ai
 ```
 
-- 把 `secrets migrate` 换成 `secrets cleanup` 删除迁移留下的明文文件。
+- **`secrets migrate` 成功后,确认应用正常就立刻运行 `secrets cleanup`**(把上面的 `secrets migrate` 换成 `secrets cleanup`)删除迁移留下的明文文件 `secrets.yaml.migrated`;在此之前它仍是明文,不要长时间留着。
 - 换主密钥:新密钥写进一个文件(例如 `secrets/new.key`,权限让容器能读),用 `-v "$PWD/secrets/new.key:/run/new.key:ro"` 挂进去,运行 `... secrets rekey --new-key-file /run/new.key`,成功后用新密钥文件替换 `secrets/master.key` 再启动应用。
 - **server.lock**:Docker 里应用被强制终止后,数据卷里可能残留 `server.lock`,命令会报「the server seems to be running」。**确认服务器已停止后**删除它:`docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai rm /data/server.lock`。
 
