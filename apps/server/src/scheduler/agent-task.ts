@@ -66,9 +66,7 @@ export function createAgentTaskExecutor(deps: AgentTaskDeps): Executor {
             if (status === 'cancelled') throw new ExecutorError('cancelled');
             if (status !== 'succeeded') throw new ExecutorError('model_error', true);
             // 审批没有通过(被拒绝或到期)时,运行本身仍会「成功」结束:按审批状态记成相应错误码,不重试
-            const approvals = repos.approvals
-                .list(task.ownerId, { limit: 50 })
-                .items.filter((a) => a.runId === started.runId);
+            const approvals = repos.approvals.listByRun(task.ownerId, started.runId);
             if (approvals.some((a) => a.status === 'rejected')) throw new ExecutorError('approval_rejected');
             if (approvals.some((a) => a.status === 'expired')) throw new ExecutorError('approval_expired');
             if (channel && !approvals.some((a) => a.toolName === 'channel.push' && a.status === 'approved')) {
