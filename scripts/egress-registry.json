@@ -36,6 +36,12 @@
     "reason": "IMAP and SMTP sessions via imapflow and nodemailer; node:net is only used to tell IP literals from host names"
   },
   {
+    "file": "packages/plugin-sdk/src/plugin.ts",
+    "kind": "local-only",
+    "listedAs": "-",
+    "reason": "Plugin SDK; ctx.fetch only sends a JSON-RPC request to the host over stdio (fatcat/net.fetch), the plugin itself opens no connection"
+  },
+  {
     "file": "packages/providers/src/http.ts",
     "kind": "fixed",
     "listedAs": ["modelTargets", "embeddingTargets", "voiceTargets"],
