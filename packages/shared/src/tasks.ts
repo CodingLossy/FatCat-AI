@@ -176,3 +176,15 @@ export const TaskWebhookToken = z.object({ token: z.string(), url: z.string() })
 export type TaskWebhookToken = z.infer<typeof TaskWebhookToken>;
 
 export type TaskSchedulePreview = z.infer<typeof TaskSchedulePreview>;
+
+/** `POST /tasks/propose`:一句话描述;解析结果只会成为草稿,不会生效(ADR 0036)。 */
+export const TaskPropose = z.object({ text: z.string().trim().min(1).max(500) }).strict();
+export type TaskPropose = z.infer<typeof TaskPropose>;
+
+/** 草稿与提示:`warnings` 是人话(例如「没有已绑定的微信渠道,结果只留在会话里」)。 */
+export const TaskDraftResult = z.object({ task: Task, warnings: z.array(z.string()) });
+export type TaskDraftResult = z.infer<typeof TaskDraftResult>;
+
+/** `POST /tasks/{id}/confirm`:`version` 是确认卡片上展示的草稿的 `updatedAt`,不一致则 409。 */
+export const TaskConfirm = z.object({ version: IsoDateTime }).strict();
+export type TaskConfirm = z.infer<typeof TaskConfirm>;

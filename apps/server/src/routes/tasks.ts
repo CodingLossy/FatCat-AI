@@ -10,7 +10,10 @@ import {
     Id,
     PageQuery,
     Task,
+    TaskConfirm,
     TaskCreate,
+    TaskDraftResult,
+    TaskPropose,
     TaskPage,
     TaskPatch,
     TaskRun,
@@ -26,6 +29,7 @@ import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
 import type { Scheduler } from '../scheduler-setup.js';
 import { nextTriggerTime, previewCron, validateCron } from '../scheduler/time.js';
+import { parseDraft, parserPrompt, type TaskComplete } from '../scheduler/nl-parse.js';
 import { authErrors, json, problem, router } from './common.js';
 
 const tags = ['tasks'];
@@ -59,6 +63,28 @@ const createTaskRoute = createRoute({
         'Create a task that hands a prompt to the Agent on a schedule. Anything that sends or writes still needs approval',
     request: { body: { content: { 'application/json': { schema: TaskCreate } }, required: true } },
     responses: { 201: json(Task, 'Created'), 400: problem('Invalid request'), ...authErrors },
+});
+const proposeRoute = createRoute({
+    method: 'post',
+    path: '/tasks/propose',
+    tags,
+    summary: 'Turn one sentence into a task draft. A draft never runs until it is confirmed in the Web UI',
+    request: { body: { content: { 'application/json': { schema: TaskPropose } }, required: true } },
+    responses: { 201: json(TaskDraftResult, 'Draft'), 400: problem('Not understood'), ...authErrors },
+});
+const confirmRoute = createRoute({
+    method: 'post',
+    path: '/tasks/{id}/confirm',
+    tags,
+    summary:
+        'Confirm a draft so it takes effect. Needs a logged-in session (not an access token) and the draft version',
+    request: { params: idParam, body: { content: { 'application/json': { schema: TaskConfirm } }, required: true } },
+    responses: {
+        200: json(Task, 'Active task'),
+        404: problem('Not found'),
+        409: problem('The draft changed or is not a draft'),
+        ...authErrors,
+    },
 });
 const getRoute = createRoute({
     method: 'get',
@@ -156,7 +182,14 @@ export function toTaskRun(run: TaskRunRecord): TaskRunDto {
     return { ...run };
 }
 
-export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler; tools?: ToolRegistry | undefined }) {
+const DRAFT_TTL_MS = 7 * 24 * 3600_000;
+
+export function taskRoutes(deps: {
+    repos: Repositories;
+    scheduler: Scheduler;
+    tools?: ToolRegistry | undefined;
+    complete?: TaskComplete | undefined;
+}) {
     const { repos, scheduler } = deps;
     const timeZoneOf = (ownerId: string) => effectiveTimeZone(repos.settings.get(ownerId).timeZone);
     const taskOr404 = (ownerId: string, id: string) => {
@@ -267,6 +300,75 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler; to
             scheduler.syncWatchers();
             return c.json(toTask(task), 201);
         })
+        .openapi(proposeRoute, async (c) => {
+            const ownerId = requireOwner(c);
+            const { text } = c.req.valid('json');
+            if (!deps.complete) throw new ApiError(400, 'validation_failed', 'Bad Request', 'No model is configured.');
+            const timeZone = timeZoneOf(ownerId);
+            let raw: string;
+            try {
+                raw = await deps.complete(ownerId, parserPrompt(timeZone, new Date()), text, c.req.raw.signal);
+            } catch {
+                throw new ApiError(400, 'validation_failed', 'Bad Request', 'The model could not be reached.');
+            }
+            const parsed = parseDraft(raw);
+            if (!parsed.ok) {
+                throw new ApiError(
+                    400,
+                    'validation_failed',
+                    'Bad Request',
+                    `I could not understand that (${parsed.reason}). Please rephrase.`,
+                );
+            }
+            const { task: p } = parsed;
+            let trigger: TaskDto['trigger'];
+            if (p.trigger.kind === 'once') {
+                const at = Date.parse(p.trigger.at);
+                if (Number.isNaN(at)) throw invalid('The time is not understood.', ['trigger', 'at']);
+                trigger = { kind: 'once', at: new Date(at).toISOString() };
+            } else trigger = p.trigger;
+            checkTrigger(ownerId, trigger);
+            const warnings: string[] = [];
+            const outputs: TaskDto['outputs'] = [{ kind: 'conversation' }];
+            if (p.push) {
+                const channel = repos.channels.list(ownerId).find((ch) => ch.enabled && ch.binding);
+                if (channel) outputs[0] = { kind: 'channel', channelId: channel.id };
+                else warnings.push('No bound channel is available, so the result stays in the task conversation.');
+            }
+            // 解析器只给出这四项;策略一律取默认值,白名单为空
+            const policy = {
+                maxAttempts: 3,
+                misfire: trigger.kind === 'once' ? ('catchUp' as const) : ('skip' as const),
+                quietHours: null,
+                maxRuntimeMinutes: 10,
+            };
+            repos.tasks.pruneDrafts(new Date(Date.now() - DRAFT_TTL_MS).toISOString());
+            const draft = repos.tasks.createUser(
+                ownerId,
+                { name: p.name, trigger, action: { kind: 'agent_prompt', prompt: p.prompt }, outputs, policy },
+                true,
+            );
+            return c.json({ task: toTask(draft), warnings }, 201);
+        })
+        .openapi(confirmRoute, (c) => {
+            const auth = c.get('auth');
+            const ownerId = requireOwner(c);
+            if (auth?.kind !== 'session') {
+                throw new ApiError(403, 'forbidden', 'Forbidden', 'Confirming a task needs a logged-in session.');
+            }
+            const task = taskOr404(ownerId, c.req.valid('param').id);
+            if (task.status !== 'draft') throw new ApiError(409, 'conflict', 'Conflict', 'The task is not a draft.');
+            if (task.updatedAt !== c.req.valid('json').version) {
+                throw new ApiError(409, 'conflict', 'Conflict', 'The draft changed after it was shown.');
+            }
+            // 确认时再校验一遍(草稿期间渠道或目录可能已被删除;一次性时刻可能已过)
+            checkTrigger(ownerId, task.trigger);
+            checkOutputsAndPolicy(ownerId, task.outputs, task.policy);
+            const active = repos.tasks.update(ownerId, task.id, { status: 'active', enabled: true })!;
+            scheduler.engine.rescheduleAll();
+            scheduler.syncWatchers();
+            return c.json(toTask(active), 200);
+        })
         .openapi(getRoute, (c) => c.json(toTask(taskOr404(requireOwner(c), c.req.valid('param').id)), 200))
         .openapi(patchRoute, (c) => {
             const ownerId = requireOwner(c);
@@ -279,6 +381,9 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler; to
                 throw invalid('System tasks cannot change their action or outputs.', [
                     body.action ? 'action' : 'outputs',
                 ]);
+            }
+            if (task.status === 'draft' && body.enabled === true) {
+                throw new ApiError(409, 'conflict', 'Conflict', 'A draft must be confirmed before it can be enabled.');
             }
             checkOutputsAndPolicy(ownerId, body.outputs, body.policy);
             if (body.trigger) {
@@ -323,6 +428,7 @@ export function taskRoutes(deps: { repos: Repositories; scheduler: Scheduler; to
         })
         .openapi(runRoute, (c) => {
             const task = taskOr404(requireOwner(c), c.req.valid('param').id);
+            if (task.status === 'draft') throw new ApiError(409, 'conflict', 'Conflict', 'Confirm the draft first.');
             const run = scheduler.engine.runNow(task.id);
             if (!run) throw new ApiError(409, 'conflict', 'Conflict', 'The task is already queued or running.');
             return c.json(toTaskRun(run), 202);

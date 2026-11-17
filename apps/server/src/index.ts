@@ -281,6 +281,7 @@ const app = createApp({
     channels,
     wechat,
     scheduler,
+    taskComplete: createMailComplete(repos, providerFor),
     embeddings,
     config: { ...config, setupCode },
     repos,

@@ -1,0 +1,20 @@
+# ADR 0036 · 自然语言创建任务(M6 PR 5)
+
+状态:已采纳(随 PR 5)。依据:`docs/milestones/M6-plan.md` 第 5 节。
+
+## 决定
+
+1. **只产生草稿**:`POST /tasks/propose {text}` 调用一次补全(cheap 配置档,没有则默认对话配置档),要求输出一个 JSON。解析器不调用工具、不写任务表以外的东西。
+2. **只取四项**:`name`、`trigger`(cron / once / mail_received)、`prompt`、`push`。其余字段(白名单、策略、渠道 id、状态)一律被 zod 丢弃;策略取默认值(3 次、cron 跳过错过、一次性补跑、10 分钟),白名单为空。
+3. **推送目标由服务器决定**:`push = true` 时取主人第一个已启用且已绑定的渠道;没有则退回 `conversation` 并给出警告。模型给不出渠道 id。
+4. **草稿 = `status 'draft'`、`enabled 0`**:调度器、事件触发、立即运行与 PATCH 启用都拒绝草稿(409)。草稿 7 天后在下一次 propose 时清理。不改表结构(0016 已含 `draft`)。
+5. **确认**:`POST /tasks/{id}/confirm {version}` 只接受登录会话(访问令牌 403),`version` 是展示时草稿的 `updatedAt`,不一致 409。确认时重新校验触发器、渠道。聊天里没有 confirm 工具。
+6. 解析失败、字段缺失、时间已过一律 400「没听懂」,不重试。
+
+## 契约变化(packages/shared,只增)
+
+`TaskPropose`、`TaskDraftResult`、`TaskConfirm`;`/api/v1` 新增两个端点,向后兼容。
+
+## 未做
+
+聊天里的 `tasks.propose` 工具、微信里生成草稿、确认卡片里逐字段编辑(现在只能确认或丢弃;要改字段可确认后在任务页改)。

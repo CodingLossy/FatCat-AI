@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { Channel, Task, TaskRun } from '@fatcat-ai/shared';
+import type { Channel, Task, TaskDraftResult, TaskRun } from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
@@ -24,6 +24,8 @@ export function TasksPage() {
         prompt: string;
         channelId: string;
     } | null>(null);
+    const [nl, setNl] = useState('');
+    const [draft, setDraft] = useState<TaskDraftResult | null>(null);
     const [token, setToken] = useState<{ id: string; token: string; url: string } | null>(null);
     const [editing, setEditing] = useState<{
         id: string;
@@ -95,6 +97,29 @@ export function TasksPage() {
         }
     };
 
+    const propose = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!nl.trim()) return;
+        await act(async () => {
+            setDraft(await api.tasks.propose(nl.trim()));
+            setNl('');
+        });
+    };
+    const confirmDraft = async () => {
+        if (!draft) return;
+        await act(async () => {
+            await api.tasks.confirm(draft.task.id, draft.task.updatedAt);
+            setDraft(null);
+        });
+    };
+    const discardDraft = async () => {
+        if (!draft) return;
+        await act(async () => {
+            await api.tasks.remove(draft.task.id);
+            setDraft(null);
+        });
+    };
+
     const startEdit = (task: Task) => {
         if (task.trigger.kind !== 'cron') return;
         setEditing({ id: task.id, expression: task.trigger.expression, preview: [], error: null });
@@ -147,6 +172,48 @@ export function TasksPage() {
             <h1>{t('tasks.title')}</h1>
             <p className="muted small">{t('tasks.hint')}</p>
             {error ? <p className="error">{error}</p> : null}
+            {!form && !draft ? (
+                <form className="card task-card" onSubmit={(e) => void propose(e)}>
+                    <label>
+                        {t('tasks.nl')}
+                        <input
+                            value={nl}
+                            maxLength={500}
+                            placeholder={t('tasks.nlPlaceholder')}
+                            onChange={(e) => setNl(e.target.value)}
+                        />
+                    </label>
+                    <button type="submit" disabled={!nl.trim()}>
+                        {t('tasks.nlSubmit')}
+                    </button>
+                </form>
+            ) : null}
+            {draft ? (
+                <div className="card task-card" data-testid="task-draft">
+                    <h2>{t('tasks.draftTitle')}</h2>
+                    <p>
+                        <strong>{draft.task.name}</strong> · {trigger(draft.task)}
+                    </p>
+                    <p className="muted">{draft.task.action.kind === 'agent_prompt' ? draft.task.action.prompt : ''}</p>
+                    <p className={draft.task.outputs.some((o) => o.kind === 'channel') ? 'warn' : 'muted'}>
+                        {draft.task.outputs.some((o) => o.kind === 'channel')
+                            ? t('tasks.draftPush')
+                            : t('tasks.outputConversation')}
+                    </p>
+                    {draft.warnings.map((w) => (
+                        <p key={w} className="warn">
+                            {w}
+                        </p>
+                    ))}
+                    <p className="muted small">{t('tasks.draftNotice')}</p>
+                    <button type="button" onClick={() => void confirmDraft()}>
+                        {t('tasks.draftConfirm')}
+                    </button>{' '}
+                    <button type="button" className="secondary" onClick={() => void discardDraft()}>
+                        {t('tasks.draftDiscard')}
+                    </button>
+                </div>
+            ) : null}
             {form ? (
                 <form className="card task-card" onSubmit={(e) => void create(e)}>
                     <label>
@@ -209,143 +276,149 @@ export function TasksPage() {
             )}
             {tasks === null ? <p className="muted">{t('common.loading')}</p> : null}
             {tasks?.length === 0 ? <p className="muted">{t('tasks.empty')}</p> : null}
-            {tasks?.map((task) => (
-                <section key={task.id} className="card task-card" data-task={task.id}>
-                    <div className="task-head">
-                        <strong>{name(task)}</strong>
-                        {task.kind === 'system' ? <span className="badge">{t('tasks.systemBadge')}</span> : null}
-                        <label className="task-toggle">
-                            <input
-                                type="checkbox"
-                                checked={task.enabled}
-                                onChange={(e) =>
-                                    void act(() => api.tasks.update(task.id, { enabled: e.target.checked }))
-                                }
-                            />{' '}
-                            {t('tasks.enabled')}
-                        </label>
-                    </div>
-                    <p className="small muted">
-                        {trigger(task)} · {t('tasks.next')}: {when(task.nextRunAt)} · {t('tasks.last')}:{' '}
-                        {task.lastRun
-                            ? `${t(`tasks.status.${task.lastRun.status}`)} (${when(task.lastRun.createdAt)})`
-                            : t('tasks.none')}
-                    </p>
-                    {detail(task)}
-                    <div className="row">
-                        <button type="button" onClick={() => void act(() => api.tasks.run(task.id))}>
-                            {t('tasks.runNow')}
-                        </button>
-                        {task.trigger.kind === 'cron' ? (
-                            <button type="button" onClick={() => startEdit(task)}>
-                                {t('tasks.editSchedule')}
-                            </button>
-                        ) : null}
-                        {task.trigger.kind === 'webhook' ? (
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    void act(async () =>
-                                        setToken({ id: task.id, ...(await api.tasks.webhookToken(task.id)) }),
-                                    )
-                                }
-                            >
-                                {t('tasks.webhookToken')}
-                            </button>
-                        ) : null}
-                        {task.kind === 'user' ? (
-                            <button type="button" onClick={() => void act(() => api.tasks.remove(task.id))}>
-                                {t('tasks.delete')}
-                            </button>
-                        ) : null}
-                        <button type="button" onClick={() => setOpen(open === task.id ? null : task.id)}>
-                            {open === task.id ? t('tasks.hideRuns') : t('tasks.showRuns')}
-                        </button>
-                    </div>
-                    {token?.id === task.id ? (
-                        <p className="small">
-                            {t('tasks.webhookShown')} <code>{token.token}</code> · POST {token.url}
-                        </p>
-                    ) : null}
-                    {editing?.id === task.id ? (
-                        <form className="task-edit" onSubmit={(e) => void save(e)}>
-                            <label>
-                                {t('tasks.cron')}
+            {tasks
+                ?.filter((task) => task.status !== 'draft')
+                .map((task) => (
+                    <section key={task.id} className="card task-card" data-task={task.id}>
+                        <div className="task-head">
+                            <strong>{name(task)}</strong>
+                            {task.kind === 'system' ? <span className="badge">{t('tasks.systemBadge')}</span> : null}
+                            <label className="task-toggle">
                                 <input
-                                    value={editing.expression}
-                                    onChange={(e) => void previewCron(e.target.value)}
-                                    aria-label={t('tasks.cron')}
-                                />
+                                    type="checkbox"
+                                    checked={task.enabled}
+                                    onChange={(e) =>
+                                        void act(() => api.tasks.update(task.id, { enabled: e.target.checked }))
+                                    }
+                                />{' '}
+                                {t('tasks.enabled')}
                             </label>
-                            <p className="small muted">{t('tasks.cronHint')}</p>
-                            {editing.error ? <p className="error small">{editing.error}</p> : null}
-                            {editing.preview.length > 0 ? (
-                                <p className="small">
-                                    {t('tasks.preview')}:{' '}
-                                    {editing.preview.map((p) => new Date(p).toLocaleString(locale)).join(' · ')}
-                                </p>
+                        </div>
+                        <p className="small muted">
+                            {trigger(task)} · {t('tasks.next')}: {when(task.nextRunAt)} · {t('tasks.last')}:{' '}
+                            {task.lastRun
+                                ? `${t(`tasks.status.${task.lastRun.status}`)} (${when(task.lastRun.createdAt)})`
+                                : t('tasks.none')}
+                        </p>
+                        {detail(task)}
+                        <div className="row">
+                            <button type="button" onClick={() => void act(() => api.tasks.run(task.id))}>
+                                {t('tasks.runNow')}
+                            </button>
+                            {task.trigger.kind === 'cron' ? (
+                                <button type="button" onClick={() => startEdit(task)}>
+                                    {t('tasks.editSchedule')}
+                                </button>
                             ) : null}
-                            <div className="row">
+                            {task.trigger.kind === 'webhook' ? (
                                 <button
-                                    type="submit"
-                                    disabled={editing.error !== null || editing.expression.trim() === ''}
+                                    type="button"
+                                    onClick={() =>
+                                        void act(async () =>
+                                            setToken({ id: task.id, ...(await api.tasks.webhookToken(task.id)) }),
+                                        )
+                                    }
                                 >
-                                    {t('tasks.save')}
+                                    {t('tasks.webhookToken')}
                                 </button>
-                                <button type="button" onClick={() => setEditing(null)}>
-                                    {t('nav.cancel')}
+                            ) : null}
+                            {task.kind === 'user' ? (
+                                <button type="button" onClick={() => void act(() => api.tasks.remove(task.id))}>
+                                    {t('tasks.delete')}
                                 </button>
-                            </div>
-                        </form>
-                    ) : null}
-                    {open === task.id ? (
-                        runs.length === 0 ? (
-                            <p className="muted small">{t('tasks.noRuns')}</p>
-                        ) : (
-                            <div className="table-scroll">
-                                <table className="audit-table">
-                                    <thead>
-                                        <tr>
-                                            <th>{t('tasks.runTime')}</th>
-                                            <th>{t('tasks.runTrigger')}</th>
-                                            <th>{t('tasks.runStatus')}</th>
-                                            <th>{t('tasks.runDuration')}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {runs.map((run) => (
-                                            <tr key={run.id} data-status={run.status}>
-                                                <td className="small">{when(run.scheduledFor)}</td>
-                                                <td className="small">{t(`tasks.trigger.${run.trigger}`)}</td>
-                                                <td className={run.status === 'failed' ? 'error' : ''}>
-                                                    {t(`tasks.status.${run.status}`)}
-                                                    {run.errorCode ? (
-                                                        <div className="small">{t(`tasks.error.${run.errorCode}`)}</div>
-                                                    ) : null}
-                                                    {run.status === 'queued' || run.status === 'running' ? (
-                                                        <button
-                                                            type="button"
-                                                            className="link"
-                                                            onClick={() => void act(() => api.tasks.cancelRun(run.id))}
-                                                        >
-                                                            {t('tasks.cancelRun')}
-                                                        </button>
-                                                    ) : null}
-                                                </td>
-                                                <td className="small">
-                                                    {run.startedAt && run.finishedAt
-                                                        ? `${Math.max(0, Math.round((Date.parse(run.finishedAt) - Date.parse(run.startedAt)) / 1000))} s`
-                                                        : '—'}
-                                                </td>
+                            ) : null}
+                            <button type="button" onClick={() => setOpen(open === task.id ? null : task.id)}>
+                                {open === task.id ? t('tasks.hideRuns') : t('tasks.showRuns')}
+                            </button>
+                        </div>
+                        {token?.id === task.id ? (
+                            <p className="small">
+                                {t('tasks.webhookShown')} <code>{token.token}</code> · POST {token.url}
+                            </p>
+                        ) : null}
+                        {editing?.id === task.id ? (
+                            <form className="task-edit" onSubmit={(e) => void save(e)}>
+                                <label>
+                                    {t('tasks.cron')}
+                                    <input
+                                        value={editing.expression}
+                                        onChange={(e) => void previewCron(e.target.value)}
+                                        aria-label={t('tasks.cron')}
+                                    />
+                                </label>
+                                <p className="small muted">{t('tasks.cronHint')}</p>
+                                {editing.error ? <p className="error small">{editing.error}</p> : null}
+                                {editing.preview.length > 0 ? (
+                                    <p className="small">
+                                        {t('tasks.preview')}:{' '}
+                                        {editing.preview.map((p) => new Date(p).toLocaleString(locale)).join(' · ')}
+                                    </p>
+                                ) : null}
+                                <div className="row">
+                                    <button
+                                        type="submit"
+                                        disabled={editing.error !== null || editing.expression.trim() === ''}
+                                    >
+                                        {t('tasks.save')}
+                                    </button>
+                                    <button type="button" onClick={() => setEditing(null)}>
+                                        {t('nav.cancel')}
+                                    </button>
+                                </div>
+                            </form>
+                        ) : null}
+                        {open === task.id ? (
+                            runs.length === 0 ? (
+                                <p className="muted small">{t('tasks.noRuns')}</p>
+                            ) : (
+                                <div className="table-scroll">
+                                    <table className="audit-table">
+                                        <thead>
+                                            <tr>
+                                                <th>{t('tasks.runTime')}</th>
+                                                <th>{t('tasks.runTrigger')}</th>
+                                                <th>{t('tasks.runStatus')}</th>
+                                                <th>{t('tasks.runDuration')}</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )
-                    ) : null}
-                </section>
-            ))}
+                                        </thead>
+                                        <tbody>
+                                            {runs.map((run) => (
+                                                <tr key={run.id} data-status={run.status}>
+                                                    <td className="small">{when(run.scheduledFor)}</td>
+                                                    <td className="small">{t(`tasks.trigger.${run.trigger}`)}</td>
+                                                    <td className={run.status === 'failed' ? 'error' : ''}>
+                                                        {t(`tasks.status.${run.status}`)}
+                                                        {run.errorCode ? (
+                                                            <div className="small">
+                                                                {t(`tasks.error.${run.errorCode}`)}
+                                                            </div>
+                                                        ) : null}
+                                                        {run.status === 'queued' || run.status === 'running' ? (
+                                                            <button
+                                                                type="button"
+                                                                className="link"
+                                                                onClick={() =>
+                                                                    void act(() => api.tasks.cancelRun(run.id))
+                                                                }
+                                                            >
+                                                                {t('tasks.cancelRun')}
+                                                            </button>
+                                                        ) : null}
+                                                    </td>
+                                                    <td className="small">
+                                                        {run.startedAt && run.finishedAt
+                                                            ? `${Math.max(0, Math.round((Date.parse(run.finishedAt) - Date.parse(run.startedAt)) / 1000))} s`
+                                                            : '—'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )
+                        ) : null}
+                    </section>
+                ))}
         </div>
     );
 }

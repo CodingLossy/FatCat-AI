@@ -143,8 +143,9 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
         insertUser: sqlite.prepare(
             `INSERT INTO tasks (id, owner_id, name, kind, status, enabled, trigger_json, action_json, outputs_json,
                policy_json, created_at, updated_at)
-             VALUES (@id, @ownerId, @name, 'user', 'active', 1, @trigger, @action, @outputs, @policy, @at, @at)`,
+             VALUES (@id, @ownerId, @name, 'user', @status, @enabled, @trigger, @action, @outputs, @policy, @at, @at)`,
         ),
+        pruneDrafts: sqlite.prepare(`DELETE FROM tasks WHERE status = 'draft' AND kind = 'user' AND updated_at < ?`),
         update: sqlite.prepare(
             `UPDATE tasks SET name = @name, status = @status, enabled = @enabled, trigger_json = @trigger,
                action_json = @action, outputs_json = @outputs, policy_json = @policy, updated_at = @at WHERE id = @id`,
@@ -242,10 +243,13 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
                 outputs: TaskOutput[];
                 policy: TaskPolicy;
             },
+            draft = false,
         ): TaskRecord {
             const id = newId(now());
             q.insertUser.run({
                 id,
+                status: draft ? 'draft' : 'active',
+                enabled: draft ? 0 : 1,
                 ownerId,
                 name: input.name,
                 trigger: JSON.stringify(input.trigger),
@@ -272,6 +276,10 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
                 at: iso(),
             });
             return toTask(q.getById.get(id)!);
+        },
+        /** 删除超过保留期仍未确认的草稿(自然语言创建,ADR 0036)。 */
+        pruneDrafts(olderThanIso: string): number {
+            return q.pruneDrafts.run(olderThanIso).changes;
         },
         markFired(id: string, scheduledFor: string): void {
             q.fired.run(scheduledFor, id);

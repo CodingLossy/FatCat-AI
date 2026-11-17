@@ -1115,3 +1115,8 @@ td .badge {
         min-width: 5rem;
     }
 }
+
+.warn {
+    color: var(--warn, #b45309);
+    font-weight: 600;
+}
