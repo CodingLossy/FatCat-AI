@@ -356,6 +356,13 @@ describe('M6 真机问题', () => {
         expect(bad.status).toBe(400);
         expect(((await bad.json()) as { reason?: string }).reason).toBe('task_tool_constraint_required');
         expect((await createTask({ policy: policy({ domain: 'news.example.com' }) })).status).toBe(201);
+        // 带协议 / 路径 / 端口的写法不过 schema(400);过宽的通配有稳定的原因码
+        for (const domain of ['https://news.example.com', 'news.example.com/a', 'news.example.com:8080']) {
+            expect((await createTask({ policy: policy({ domain }) })).status).toBe(400);
+        }
+        const broad = await createTask({ policy: policy({ domain: '*.com' }) });
+        expect(broad.status).toBe(400);
+        expect(((await broad.json()) as { reason?: string }).reason).toBe('task_domain_broad');
     });
 
     it('运行停在审批上时,任务的运行记录显示等待批准的数量与过期时间;批准后恢复', async () => {

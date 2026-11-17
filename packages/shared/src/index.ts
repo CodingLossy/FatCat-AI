@@ -5,6 +5,7 @@ export * from './attachments.js';
 export * from './auth.js';
 export * from './channels.js';
 export * from './common.js';
+export * from './domain-scope.js';
 export * from './egress.js';
 export * from './embeddings.js';
 export * from './errors.js';

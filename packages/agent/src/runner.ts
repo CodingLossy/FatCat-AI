@@ -420,13 +420,17 @@ export class RunManager {
     }
 
     private decideCall(tool: ToolDefinition, input: unknown, context: ToolContext) {
-        const stored = this.options.repos.preauths.forTool(context.ownerId, tool.name, context.sessionId);
+        // 库里以前存下的、缺了必填约束的条目(例如没有域名的 web.fetch)等于放行所有目标:不采用(ADR 0039)
+        const required = tool.requireConstraint;
+        const stored = this.options.repos.preauths
+            .forTool(context.ownerId, tool.name, context.sessionId)
+            .filter((p) => !required || Boolean(p.constraint?.[required]));
         // 任务级白名单:合成「只在本会话有效」的预授权;decide 对 external / dangerous 工具不看预授权,所以白名单绕不过审批
         const task = this.taskRuns.get(context.runId);
         const preauths: Preauthorization[] = [
             ...stored,
             ...(task?.allowedTools ?? [])
-                .filter((a) => a.tool === tool.name)
+                .filter((a) => a.tool === tool.name && (!required || Boolean(a.constraint?.[required])))
                 .map((a, i) => ({
                     id: `task-${task!.id}-${i}`,
                     toolName: a.tool,

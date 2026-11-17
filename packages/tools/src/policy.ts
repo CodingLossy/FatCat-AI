@@ -10,6 +10,7 @@ import type {
     ToolApproval,
     ToolRisk,
 } from '@fatcat-ai/shared';
+import { matchesDomain } from '@fatcat-ai/shared';
 import { isWithin } from './fs/paths.js';
 import type { ToolContext, ToolDefinition } from './types.js';
 
@@ -45,13 +46,6 @@ export function defaultApproval(tool: ToolDefinition, options: PolicyOptions = {
 /** 路径前缀匹配:必须在分隔符边界上(/docs 不匹配 /docs-private);Windows 与 macOS 上不区分大小写。 */
 function underPrefix(value: string, prefix: string): boolean {
     return isWithin(value, prefix);
-}
-
-/** 域名匹配:example.com 只匹配它本身;*.example.com 匹配所有子域,不匹配 example.com 本身。 */
-function matchesDomain(host: string, pattern: string): boolean {
-    const h = host.toLowerCase().replace(/\.$/, '');
-    if (pattern.startsWith('*.')) return h.endsWith(pattern.slice(1));
-    return h === pattern;
 }
 
 function constraintMatches(

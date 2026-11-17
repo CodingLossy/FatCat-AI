@@ -123,7 +123,7 @@ export function TasksPage() {
     const confirmDraft = async () => {
         if (!draft) return;
         if (draftAllowed.missing) {
-            setError(t('tasks.preauth.needScope', { tool: draftAllowed.missing }));
+            setError(draftAllowed.missing);
             return;
         }
         await act(async () => {
@@ -438,7 +438,7 @@ export function TasksPage() {
                                         type="button"
                                         onClick={() => {
                                             if (preauthEdit.missing) {
-                                                setError(t('tasks.preauth.needScope', { tool: preauthEdit.missing }));
+                                                setError(preauthEdit.missing);
                                                 return;
                                             }
                                             void act(async () => {

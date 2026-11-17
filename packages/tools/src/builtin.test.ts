@@ -270,6 +270,13 @@ describe('web.fetch(本机测试服务器)', () => {
         await expect(tool.execute({ url: 'http://198.18.0.7/' }, ctx)).rejects.not.toThrow(/not allowed/);
     });
 
+    it('开启「允许 fake-IP 段」后,IPv4 映射的 IPv6 地址仍按内嵌 IPv4 拦截(#61 审查)', async () => {
+        const tool = createWebFetchTool({ ...options, allowFakeIp: () => true, timeoutMs: 300 });
+        for (const target of ['[::ffff:127.0.0.1]', '[::ffff:10.0.0.5]', '[::ffff:198.18.0.7]', '[::ffff:a9fe:a9fe]']) {
+            await expect(tool.execute({ url: `http://${target}/` }, ctx)).rejects.toThrow(/not allowed/);
+        }
+    });
+
     it('DNS 解析到内网、DNS 重绑定(任一地址为内网)、跳转到内网都被拒绝', async () => {
         await expect(guardedFetch(url('private.test', '/page'), options)).rejects.toThrow(
             /disallowed address \(10\.0\.0\.5\)/,

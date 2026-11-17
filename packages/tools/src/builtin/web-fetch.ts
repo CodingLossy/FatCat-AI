@@ -8,7 +8,7 @@ import { lookup as dnsLookup, type LookupAddress } from 'node:dns';
 import { request as httpRequest, type IncomingMessage } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { isIP, type LookupFunction } from 'node:net';
-import type { UntrustedContent } from '@fatcat-ai/shared';
+import { parseDomainScope, type UntrustedContent } from '@fatcat-ai/shared';
 import { z } from 'zod';
 import type { ToolDefinition } from '../types.js';
 import { htmlToText } from './html.js';
@@ -245,6 +245,14 @@ export function createWebFetchTool(options: WebFetchOptions = {}): ToolDefinitio
         approval: 'required',
         untrustedOutput: true,
         constraints: { domain: fetchHost },
+        // 保存预授权前校验域名写法(带协议 / 路径 / 端口直接报错,而不是存下一条永远匹配不上的条目)
+        normalizeConstraint: {
+            domain: (value) => {
+                const parsed = parseDomainScope(value);
+                if ('problem' in parsed) throw new Error(`invalid domain (${parsed.problem})`);
+                return parsed.ok;
+            },
+        },
         requireConstraint: 'domain',
         summarize: (input) => `Fetch ${String((input as { url?: unknown } | null)?.url ?? '')}`,
         execute: async (raw, context) => {
