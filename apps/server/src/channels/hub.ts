@@ -523,6 +523,24 @@ export class ChannelHub {
         }
     }
 
+    /**
+     * 定时任务的推送(ADR 0034 第 3 节):只发给这个渠道已绑定的主人,不接受任何别的目标。
+     * 审批已由调用方(channel.push 工具)完成;渠道没有运行、没有绑定或不属于主人时抛错。
+     */
+    async push(ownerId: string, channelId: string, markdown: string): Promise<void> {
+        const channel = this.options.repos.channels.get(ownerId, channelId);
+        const rt = this.runtimes.get(channelId);
+        if (!channel?.enabled || !channel.binding || !rt?.adapter) {
+            throw new Error('the channel is not running or has no bound owner account');
+        }
+        // 只发给绑定的主人:rt.target 与绑定账号不一致时退回绑定账号
+        const target =
+            rt.target?.externalUserId === channel.binding.externalUserId
+                ? rt.target
+                : { externalUserId: channel.binding.externalUserId };
+        await this.send(rt, target, markdown);
+    }
+
     /** 入站消息:去重 → 过滤 → 限流 → 指令或排队(ADR 0022 第 3、4、8 节)。 */
     private async receive(rt: Runtime, message: InboundMessage): Promise<void> {
         const { channels } = this.options.repos;

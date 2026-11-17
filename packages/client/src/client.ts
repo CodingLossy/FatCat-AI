@@ -102,6 +102,7 @@ import type {
     MailPreset,
     MailSyncResult,
     Task,
+    TaskCreate,
     TaskPatch,
     TaskRun,
     TaskSchedulePreview,
@@ -494,6 +495,7 @@ export function createClient(options: ClientOptions) {
         tasks: {
             /** 定时任务(ADR 0033):内置系统任务与(之后的)用户任务;运行记录只含元数据。 */
             list: () => t.json<Page<Task>>('/tasks'),
+            create: (body: TaskCreate) => t.json<Task>('/tasks', { method: 'POST', body }),
             get: (id: string) => t.json<Task>(`/tasks/${enc(id)}`),
             update: (id: string, body: TaskPatch) => t.json<Task>(`/tasks/${enc(id)}`, { method: 'PATCH', body }),
             remove: (id: string) => t.json<void>(`/tasks/${enc(id)}`, { method: 'DELETE' }),

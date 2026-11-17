@@ -11,6 +11,7 @@ import { createProvider, type ModelProvider, Redactor, SecretStore } from '@fatc
 import { type Connection, createRepositories, openStorage, type Repositories } from '@fatcat-ai/storage';
 import type { WebFetchOptions } from '@fatcat-ai/tools';
 import { createItemService, createKnowledgeBase, type KnowledgeBase } from '@fatcat-ai/items';
+import { createChannelPushTool } from './scheduler/channel-push-tool.js';
 import { createMailComplete, createSummarizer, createToolRegistry } from './agent-setup.js';
 import { type AttachmentFiles, createAttachmentFiles, createImageLoader } from './attachment-files.js';
 import { createApp, type AppDeps } from './app.js';
@@ -46,6 +47,8 @@ export interface TestServer {
     /** 本测试期间写出的全部日志行。 */
     logs: string[];
     wechat: WechatChannels;
+    /** channel.push 在测试中不真的发消息,只记在这里。 */
+    pushed: Array<{ ownerId: string; channelId: string; text: string }>;
     cleanup(): Promise<void>;
 }
 
@@ -125,6 +128,7 @@ export async function createTestServer(
         onSynced: (ownerId) => void kb.index(ownerId),
     });
     const bus = new EventBus();
+    const pushed: TestServer['pushed'] = [];
     const attachmentFiles = createAttachmentFiles(dir);
     const runs = new RunManager({
         repos,
@@ -132,11 +136,19 @@ export async function createTestServer(
         persistIntervalMs: 0,
         providerFor,
         loadImage: createImageLoader(repos, attachmentFiles),
-        tools: createToolRegistry(memory, repos, items, kb, options.webFetch ? { webFetch: options.webFetch } : {}, {
-            runner: mailRunner,
-            secret: (ref) => secrets.resolve(ref),
-            complete: createMailComplete(repos, providerFor),
-        }),
+        tools: createToolRegistry(
+            memory,
+            repos,
+            items,
+            kb,
+            options.webFetch ? { webFetch: options.webFetch } : {},
+            {
+                runner: mailRunner,
+                secret: (ref) => secrets.resolve(ref),
+                complete: createMailComplete(repos, providerFor),
+            },
+            [createChannelPushTool(async (ownerId, channelId, text) => void pushed.push({ ownerId, channelId, text }))],
+        ),
         redact: (text) => redactor.redact(text),
         ...(options.approvalTimeoutMs ? { approvalTimeoutMs: options.approvalTimeoutMs } : {}),
         summarize: createSummarizer(repos, providerFor),
@@ -219,6 +231,7 @@ export async function createTestServer(
         conn,
         logs,
         wechat,
+        pushed,
         async cleanup() {
             await channels.stopAll();
             mcp.closeAll();

@@ -175,6 +175,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             }),
             timeZone: () => 'UTC',
             onError: () => {},
+            agent: { runs: deps.runs, secrets: deps.secrets },
             schedule: false,
         });
 
@@ -304,7 +305,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         )
         .route('/', runRoutes(runDeps))
         .route('/', channelRoutes({ repos, hub: channels, wechat }))
-        .route('/', taskRoutes({ repos, scheduler }))
+        .route('/', taskRoutes({ repos, scheduler, tools: deps.runs.tools }))
         .route('/', memoryRoutes({ repos, memory: deps.memory, detectCredential }))
         .route('/', toolRoutes({ repos, runs: deps.runs, redact: deps.redact ?? ((text) => text) }))
         .route('/', fsRoutes({ repos, items: deps.items, redact: deps.redact ?? ((text) => text) }))

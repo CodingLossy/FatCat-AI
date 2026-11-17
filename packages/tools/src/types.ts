@@ -23,6 +23,11 @@ export interface ToolContext {
      * 因为之后的调用可能是被这些内容诱导的(ADR 0010 第 4 节)。
      */
     untrustedContentSeen: boolean;
+    /**
+     * 本次运行属于定时任务时:任务 id 与它配置的输出渠道(来自任务配置,不来自模型)。
+     * `channel.push` 只能发到这里的渠道(ADR 0034 第 3 节)。
+     */
+    task?: { id: string; channelId?: string | undefined };
     /** 经审批后执行时:审批请求创建的时间。工具可据此确认审批之后内容没有被改动(例如 mail.send 的草稿)。 */
     approvalRequestedAt?: string;
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { Task, TaskRun } from '@fatcat-ai/shared';
+import type { Channel, Task, TaskRun } from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
@@ -16,6 +16,8 @@ export function TasksPage() {
     const [error, setError] = useState<string | null>(null);
     const [open, setOpen] = useState<string | null>(null);
     const [runs, setRuns] = useState<TaskRun[]>([]);
+    const [channels, setChannels] = useState<Channel[]>([]);
+    const [form, setForm] = useState<{ name: string; cron: string; prompt: string; channelId: string } | null>(null);
     const [editing, setEditing] = useState<{
         id: string;
         expression: string;
@@ -34,7 +36,25 @@ export function TasksPage() {
 
     useEffect(() => {
         void reload();
+        api.channels
+            .list()
+            .then((page) => setChannels(page.items.filter((c) => c.enabled && c.binding)))
+            .catch(() => setChannels([]));
     }, [reload]);
+
+    const create = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!form) return;
+        await act(async () => {
+            await api.tasks.create({
+                name: form.name,
+                trigger: { kind: 'cron', expression: form.cron },
+                action: { kind: 'agent_prompt', prompt: form.prompt },
+                outputs: form.channelId ? [{ kind: 'channel', channelId: form.channelId }] : [{ kind: 'conversation' }],
+            });
+            setForm(null);
+        });
+    };
 
     useEffect(() => {
         if (!open) {
@@ -97,6 +117,13 @@ export function TasksPage() {
         task.action.kind === 'system' && task.action.key === 'memory.maintenance'
             ? t('tasks.system.memory.maintenance')
             : task.name;
+    const detail = (task: Task) =>
+        task.action.kind === 'agent_prompt' ? (
+            <p className="small">
+                {task.action.prompt}
+                {task.outputs.some((o) => o.kind === 'channel') ? ` · ${t('tasks.pushNote')}` : ''}
+            </p>
+        ) : null;
     const trigger = (task: Task) =>
         task.trigger.kind === 'cron'
             ? `cron ${task.trigger.expression}`
@@ -107,6 +134,66 @@ export function TasksPage() {
             <h1>{t('tasks.title')}</h1>
             <p className="muted small">{t('tasks.hint')}</p>
             {error ? <p className="error">{error}</p> : null}
+            {form ? (
+                <form className="card task-card" onSubmit={(e) => void create(e)}>
+                    <label>
+                        {t('tasks.name')}
+                        <input
+                            value={form.name}
+                            onChange={(e) => setForm({ ...form, name: e.target.value })}
+                            required
+                            maxLength={80}
+                        />
+                    </label>
+                    <label>
+                        {t('tasks.cron')}
+                        <input
+                            value={form.cron}
+                            onChange={(e) => setForm({ ...form, cron: e.target.value })}
+                            required
+                        />
+                    </label>
+                    <p className="small muted">{t('tasks.cronHint')}</p>
+                    <label>
+                        {t('tasks.prompt')}
+                        <textarea
+                            value={form.prompt}
+                            onChange={(e) => setForm({ ...form, prompt: e.target.value })}
+                            required
+                            maxLength={2000}
+                            rows={4}
+                        />
+                    </label>
+                    <label>
+                        {t('tasks.output')}
+                        <select
+                            value={form.channelId}
+                            onChange={(e) => setForm({ ...form, channelId: e.target.value })}
+                        >
+                            <option value="">{t('tasks.outputConversation')}</option>
+                            {channels.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                    {t('tasks.outputChannel', { name: c.label })}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    {form.channelId ? <p className="small muted">{t('tasks.outputChannelHint')}</p> : null}
+                    <div className="row">
+                        <button type="submit">{t('tasks.create')}</button>
+                        <button type="button" onClick={() => setForm(null)}>
+                            {t('nav.cancel')}
+                        </button>
+                    </div>
+                </form>
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => setForm({ name: '', cron: '0 8 * * *', prompt: '', channelId: '' })}
+                >
+                    {t('tasks.new')}
+                </button>
+            )}
             {tasks === null ? <p className="muted">{t('common.loading')}</p> : null}
             {tasks?.length === 0 ? <p className="muted">{t('tasks.empty')}</p> : null}
             {tasks?.map((task) => (
@@ -131,6 +218,7 @@ export function TasksPage() {
                             ? `${t(`tasks.status.${task.lastRun.status}`)} (${when(task.lastRun.createdAt)})`
                             : t('tasks.none')}
                     </p>
+                    {detail(task)}
                     <div className="row">
                         <button type="button" onClick={() => void act(() => api.tasks.run(task.id))}>
                             {t('tasks.runNow')}
@@ -138,6 +226,11 @@ export function TasksPage() {
                         {task.trigger.kind === 'cron' ? (
                             <button type="button" onClick={() => startEdit(task)}>
                                 {t('tasks.editSchedule')}
+                            </button>
+                        ) : null}
+                        {task.kind === 'user' ? (
+                            <button type="button" onClick={() => void act(() => api.tasks.remove(task.id))}>
+                                {t('tasks.delete')}
                             </button>
                         ) : null}
                         <button type="button" onClick={() => setOpen(open === task.id ? null : task.id)}>

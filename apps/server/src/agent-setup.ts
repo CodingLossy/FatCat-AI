@@ -319,6 +319,8 @@ export function createToolRegistry(
     builtin: BuiltinToolOptions = {},
     /** 邮件工具(ADR 0016);不给时不注册。 */
     mail?: Pick<MailToolOptions, 'runner' | 'secret' | 'complete' | 'now' | 'timeZone'>,
+    /** 其他需要服务器内对象的工具(例如 channel.push,ADR 0034)。 */
+    extraTools: ToolDefinition[] = [],
 ): ToolRegistry {
     // 每次调用都重新读取授权目录,撤销立即生效
     const roots = (ownerId: string) => repos.fsRoots.list(ownerId).map((r) => r.path);
@@ -334,5 +336,6 @@ export function createToolRegistry(
         // 检索前按需同步条目(超过 60 秒才同步),新文件在后台进入知识库
         ...createKbTools(kb, (ownerId) => items.syncIfStale(ownerId)),
         ...(mail ? createMailTools({ repos, roots, ...mail }) : []),
+        ...extraTools,
     );
 }

@@ -4,6 +4,7 @@
 import type {
     TaskAction,
     TaskErrorCode,
+    TaskOutput,
     TaskPolicy,
     TaskRunStatus,
     TaskRunTrigger,
@@ -23,6 +24,7 @@ export interface TaskRecord {
     enabled: boolean;
     trigger: TaskTrigger;
     action: TaskAction;
+    outputs: TaskOutput[];
     policy: TaskPolicy;
     systemKey: string | null;
     /** 最近一次已触发(入队)的计划时刻;用来判断服务器关闭期间错过了哪些触发。 */
@@ -39,6 +41,7 @@ export interface TaskRunRecord {
     status: TaskRunStatus;
     attempt: number;
     errorCode: TaskErrorCode | null;
+    sessionId: string | null;
     startedAt: string | null;
     finishedAt: string | null;
     createdAt: string;
@@ -57,6 +60,8 @@ export interface TaskPatchInput {
     enabled?: boolean | undefined;
     trigger?: TaskTrigger | undefined;
     policy?: TaskPolicy | undefined;
+    outputs?: TaskOutput[] | undefined;
+    action?: TaskAction | undefined;
     status?: TaskRecord['status'] | undefined;
 }
 
@@ -69,6 +74,7 @@ interface TaskRow {
     enabled: number;
     triggerJson: string;
     actionJson: string;
+    outputsJson: string;
     policyJson: string;
     systemKey: string | null;
     lastFiredAt: string | null;
@@ -84,16 +90,17 @@ interface RunRow {
     status: TaskRunStatus;
     attempt: number;
     errorCode: TaskErrorCode | null;
+    sessionId: string | null;
     startedAt: string | null;
     finishedAt: string | null;
     createdAt: string;
 }
 
 const TASK_SELECT = `SELECT id, owner_id AS ownerId, name, kind, status, enabled, trigger_json AS triggerJson,
-    action_json AS actionJson, policy_json AS policyJson, system_key AS systemKey, last_fired_at AS lastFiredAt,
+    action_json AS actionJson, outputs_json AS outputsJson, policy_json AS policyJson, system_key AS systemKey, last_fired_at AS lastFiredAt,
     created_at AS createdAt, updated_at AS updatedAt FROM tasks`;
 const RUN_SELECT = `SELECT id, task_id AS taskId, trigger_reason AS trigger, scheduled_for AS scheduledFor, status,
-    attempt, error_code AS errorCode, started_at AS startedAt, finished_at AS finishedAt, created_at AS createdAt
+    attempt, error_code AS errorCode, session_id AS sessionId, started_at AS startedAt, finished_at AS finishedAt, created_at AS createdAt
   FROM task_runs`;
 
 const RunCursor = z.object({ at: z.string(), id: z.string() });
@@ -108,6 +115,7 @@ function toTask(row: TaskRow): TaskRecord {
         enabled: row.enabled === 1,
         trigger: JSON.parse(row.triggerJson) as TaskTrigger,
         action: JSON.parse(row.actionJson) as TaskAction,
+        outputs: JSON.parse(row.outputsJson) as TaskOutput[],
         policy: JSON.parse(row.policyJson) as TaskPolicy,
         systemKey: row.systemKey,
         lastFiredAt: row.lastFiredAt,
@@ -132,10 +140,16 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
                system_key, created_at, updated_at)
              VALUES (@id, @ownerId, @name, @kind, 'active', @enabled, @trigger, @action, @policy, @systemKey, @at, @at)`,
         ),
+        insertUser: sqlite.prepare(
+            `INSERT INTO tasks (id, owner_id, name, kind, status, enabled, trigger_json, action_json, outputs_json,
+               policy_json, created_at, updated_at)
+             VALUES (@id, @ownerId, @name, 'user', 'active', 1, @trigger, @action, @outputs, @policy, @at, @at)`,
+        ),
         update: sqlite.prepare(
             `UPDATE tasks SET name = @name, status = @status, enabled = @enabled, trigger_json = @trigger,
-               policy_json = @policy, updated_at = @at WHERE id = @id`,
+               action_json = @action, outputs_json = @outputs, policy_json = @policy, updated_at = @at WHERE id = @id`,
         ),
+        setRunSession: sqlite.prepare(`UPDATE task_runs SET session_id = ?, run_id = ? WHERE id = ?`),
         fired: sqlite.prepare(`UPDATE tasks SET last_fired_at = ? WHERE id = ?`),
         delete: sqlite.prepare(`DELETE FROM tasks WHERE owner_id = ? AND id = ? AND kind = 'user'`),
         insertRun: sqlite.prepare(
@@ -210,6 +224,29 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
             });
             return toTask(q.getById.get(id)!);
         },
+        createUser(
+            ownerId: string,
+            input: {
+                name: string;
+                trigger: TaskTrigger;
+                action: TaskAction;
+                outputs: TaskOutput[];
+                policy: TaskPolicy;
+            },
+        ): TaskRecord {
+            const id = newId(now());
+            q.insertUser.run({
+                id,
+                ownerId,
+                name: input.name,
+                trigger: JSON.stringify(input.trigger),
+                action: JSON.stringify(input.action),
+                outputs: JSON.stringify(input.outputs),
+                policy: JSON.stringify(input.policy),
+                at: iso(),
+            });
+            return toTask(q.getById.get(id)!);
+        },
         update(ownerId: string, id: string, patch: TaskPatchInput): TaskRecord | null {
             const current = q.get.get(ownerId, id);
             if (!current) return null;
@@ -220,6 +257,8 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
                 status: patch.status ?? task.status,
                 enabled: (patch.enabled ?? task.enabled) ? 1 : 0,
                 trigger: JSON.stringify(patch.trigger ?? task.trigger),
+                action: JSON.stringify(patch.action ?? task.action),
+                outputs: JSON.stringify(patch.outputs ?? task.outputs),
                 policy: JSON.stringify(patch.policy ?? task.policy),
                 at: iso(),
             });
@@ -251,6 +290,10 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
                 at: iso(),
             });
             return q.getRun.get(id)!;
+        },
+        /** 记下这次运行用的任务会话与 Agent 运行 id。 */
+        setRunSession(id: string, sessionId: string, agentRunId: string): void {
+            q.setRunSession.run(sessionId, agentRunId, id);
         },
         getRun(id: string): TaskRunRecord | null {
             return q.getRun.get(id) ?? null;
