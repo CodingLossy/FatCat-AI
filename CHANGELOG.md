@@ -4,6 +4,13 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### M7 · Plugins (in progress)
+
+#### Added
+
+- Plugin manifest contract (ADR 0040): the `plugin.json` schema, the market index schema, the `engines.fatcat` version-range check and the `fatcat/*` extension messages now live in `@fatcat-ai/shared`, so the server, the SDK and the index repository share one validator. Unknown fields, `dangerous` tools, `broad` domains, `FATCAT_AI_*` secret names and non-free licensing are rejected. Nothing is installable yet; the runtime and UI come in later M7 changes.
+- `@fatcat-ai/plugin-sdk` (Apache-2.0, not published to npm yet): `definePlugin`, `registerTool`, `registerItemProvider`, `ctx.fetch`, `ctx.log` and a built-in minimal stdio MCP server with a 30-second heartbeat. The example plugin `examples/plugins/hello` also works as an ordinary MCP server.
+
 ### Memory
 
 - Memory is now measured and reported, not gated (ADR 0041, which supersedes ADR 0018). CI no longer fails on idle memory, memory rollback after load or channel increments; the numbers are still written to the job summary. The README and the Docker guide no longer promise a 2 GB server; 2 GB is only a suggestion. `.github/memory-baseline.json` is kept as recorded reference values.
@@ -293,6 +300,11 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 ---
 
 ## 中文摘要(未发布)
+
+### M7 · 插件(进行中)
+
+- 插件清单契约(ADR 0040):`plugin.json`、市场索引、`engines.fatcat` 版本范围和 `fatcat/*` 扩展消息的 schema 放进 `@fatcat-ai/shared`,服务器、SDK 与索引仓库共用同一个校验。未知字段、`dangerous` 工具、`broad` 域名、`FATCAT_AI_*` 密钥名和非免费授权都会被拒绝。目前还不能安装插件,运行时和界面在后续 M7 改动中提供。
+- `@fatcat-ai/plugin-sdk`(Apache-2.0,暂未发布到 npm):`definePlugin`、`registerTool`、`registerItemProvider`、`ctx.fetch`、`ctx.log`,自带最小的 stdio MCP 服务端和 30 秒心跳。示例插件 `examples/plugins/hello` 也是一个普通的 MCP 服务器。
 
 ### 内存
 

@@ -1,0 +1,12 @@
+{
+  "name": "@fatcat-ai/example-plugin-hello",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal example plugin for FatCat-AI",
+  "license": "Apache-2.0",
+  "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
+  "type": "module",
+  "dependencies": {
+    "@fatcat-ai/plugin-sdk": "workspace:*"
+  }
+}

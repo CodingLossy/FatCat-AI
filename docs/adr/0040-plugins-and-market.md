@@ -108,12 +108,20 @@ M7 没有、因此一律拒绝的能力:读写用户文件夹(ADR 0011 的授权
     {
       "title": { "zh-CN": "每天早上推送天气", "en": "Morning weather" },
       "prompt": "查一下今天的天气,推送给我",
-      "trigger": { "kind": "cron", "expr": "0 7 * * *" }
+      "trigger": { "kind": "cron", "expression": "0 7 * * *" }
     }
   ],
   "licensing": { "model": "free" }
 }
 ```
+
+**PR 1 实现注记**(契约以 `packages/shared/src/plugin.ts` 为准,与上文有出入处在此说明):
+
+- `taskTemplates[].trigger` 沿用 ADR 0033 的 `TaskTrigger`(cron 的字段是 `expression`,上面示例原写 `expr`,已改正),模板里只接受 `cron` 与不带账户的 `mail_received`:`once` 需要绝对时刻,`file_changed` 需要用户环境里的目录 id,都不适合做模板。
+- `fatcat/items.children` 与 `fatcat/items.open` 的参数多带一个 `type`(节点所属的类别),宿主据此找到对应的提供者。
+- `settings` 的 `string` 项可带 `enum`(即上表「enum」);`taskTemplates[].title` 与类别 `title` 一样是 i18n 文案。
+- `compareSemver` 按 semver 规则比较预发布标识;核心版本是预发布(如 `1.1.0-rc.1`)时不满足 `>=1.1.0`。
+- 示例插件放在 `examples/plugins/hello`,按 Apache-2.0 发布(与 SDK 一致,方便复制);仓库内它直接引用工作区里的 SDK,发布前需要先打包成单个 JS 文件。
 
 ## 3. 权限模型
 

@@ -15,7 +15,7 @@ export const AUTHOR = '尹绪柏 (Theodore Yin) <x19169738916@163.com>';
 export const COPYRIGHT = 'Copyright (C) 2026 尹绪柏 (Theodore Yin)';
 
 /** 使用 Apache-2.0 的 SDK 包目录(计划第 16 节已定决策 #2)。 */
-export const APACHE_DIRS = ['packages/shared/', 'packages/plugin-sdk/', 'packages/client/'];
+export const APACHE_DIRS = ['packages/shared/', 'packages/plugin-sdk/', 'packages/client/', 'examples/plugins/'];
 
 export function expectedLicense(file) {
     return APACHE_DIRS.some((dir) => file.startsWith(dir)) ? 'Apache-2.0' : 'AGPL-3.0-only';
