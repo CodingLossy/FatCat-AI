@@ -10,6 +10,7 @@ import { MAINTENANCE_CRON } from './maintenance-setup.js';
 import { resolveProfile } from './routes/sessions.js';
 import { createAgentTaskExecutor } from './scheduler/agent-task.js';
 import { TaskEngine, type Executor } from './scheduler/engine.js';
+import { createFileWatcher } from './scheduler/file-watch.js';
 import type { SecretStore } from '@fatcat-ai/providers';
 
 export const MAINTENANCE_TASK_KEY = 'memory.maintenance';
@@ -21,6 +22,10 @@ export interface Scheduler {
     engine: TaskEngine;
     /** 为主人补建内置系统任务;有新建时返回 true(调用方应让引擎重新排期)。 */
     ensureSystemTasks(ownerId: string): boolean;
+    /** 新邮件事件(只带数量;按账户匹配任务)。 */
+    mailReceived(ownerId: string, accountId: string, added: number): void;
+    /** 任务或授权目录改变后重新建立文件监听。 */
+    syncWatchers(): void;
     stop(): void;
 }
 
@@ -50,8 +55,25 @@ export function startScheduler(options: {
         });
     }
     const engine = new TaskEngine({ repos, executors, timeZone: options.timeZone, onError: options.onError });
+    const files = createFileWatcher({
+        repos,
+        onChange: (task, note) => void engine.fireEvent(task.id, note),
+        onError: options.onError,
+    });
     const scheduler: Scheduler = {
         engine,
+        mailReceived(ownerId, accountId, added) {
+            for (const task of repos.tasks.list(ownerId)) {
+                if (task.trigger.kind !== 'mail_received') continue;
+                if (task.trigger.accountId && task.trigger.accountId !== accountId) continue;
+                const label = repos.mail.get(ownerId, accountId)?.label ?? 'mail account';
+                engine.fireEvent(
+                    task.id,
+                    `${added} new message(s) arrived in "${label}". Use the mail tools to look at them.`,
+                );
+            }
+        },
+        syncWatchers: () => files.sync(),
         ensureSystemTasks(ownerId) {
             const before = repos.tasks.list(ownerId, { kind: 'system' }).length;
             repos.tasks.ensureSystem(ownerId, {
@@ -65,6 +87,7 @@ export function startScheduler(options: {
         },
         stop() {
             if (watcher) clearInterval(watcher);
+            files.stop();
             engine.stop();
         },
     };
@@ -72,6 +95,7 @@ export function startScheduler(options: {
     let watcher: ReturnType<typeof setInterval> | null = null;
     if (options.schedule !== false) {
         engine.start();
+        files.sync();
         // 主人账户是首次启动之后才创建的:每分钟补建内置任务并排期(没有新建时什么也不做)
         watcher = setInterval(() => {
             let created = false;

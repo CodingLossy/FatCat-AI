@@ -263,3 +263,36 @@ describe('任务调度器(ADR 0033)', () => {
         expect(e.nextRun(a.id)).toBeNull();
     });
 });
+
+describe('事件触发(ADR 0035)', () => {
+    it('每小时有上限:超出记 throttled;任务正在运行时的事件被丢弃;停用的任务忽略事件', async () => {
+        const t = seed('ev', { kind: 'webhook' }, policy());
+        let n = 0;
+        const e = make({ ev: async () => (n++, 'succeeded') }, { eventsPerHour: 3 });
+        e.start();
+        expect(e.nextRun(t.id)).toBeNull(); // 事件触发器没有下一次
+        for (let i = 0; i < 3; i++) {
+            expect(e.fireEvent(t.id, 'x')).toBe('queued');
+            await vi.advanceTimersByTimeAsync(0);
+        }
+        expect(e.fireEvent(t.id, 'x')).toBe('throttled');
+        expect(runsOf(t.id)[0]).toMatchObject({ status: 'skipped', errorCode: 'throttled' });
+        expect(n).toBe(3);
+        await vi.advanceTimersByTimeAsync(61 * MIN); // 一小时后恢复
+        expect(e.fireEvent(t.id)).toBe('queued');
+        repos.tasks.update(ownerId, t.id, { enabled: false });
+        expect(e.fireEvent(t.id)).toBe('ignored');
+    });
+
+    it('任务正在运行时来的事件不再排队(防回环与事件风暴)', async () => {
+        const t = seed('slow', { kind: 'webhook' }, policy());
+        const release: Array<() => void> = [];
+        const e = make({ slow: () => new Promise((resolve) => release.push(() => resolve('succeeded'))) });
+        e.start();
+        expect(e.fireEvent(t.id)).toBe('queued');
+        await vi.advanceTimersByTimeAsync(0);
+        expect(e.fireEvent(t.id)).toBe('busy');
+        expect(runsOf(t.id)).toHaveLength(1);
+        release[0]!();
+    });
+});

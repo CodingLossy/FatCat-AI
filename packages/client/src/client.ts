@@ -106,6 +106,7 @@ import type {
     TaskPatch,
     TaskRun,
     TaskSchedulePreview,
+    TaskWebhookToken,
 } from '@fatcat-ai/shared';
 import { RunStream, type StreamOptions } from './run-stream.js';
 import { Transport, type TransportOptions } from './transport.js';
@@ -501,6 +502,9 @@ export function createClient(options: ClientOptions) {
             remove: (id: string) => t.json<void>(`/tasks/${enc(id)}`, { method: 'DELETE' }),
             /** 立即运行一次;已有排队或运行中的记录时服务器返回 409。 */
             run: (id: string) => t.json<TaskRun>(`/tasks/${enc(id)}/run`, { method: 'POST' }),
+            /** 生成(或替换)Webhook 令牌;明文只出现在这个响应里。 */
+            webhookToken: (id: string) =>
+                t.json<TaskWebhookToken>(`/tasks/${enc(id)}/webhook-token`, { method: 'POST' }),
             runs: (id: string, params: PageParams = {}) =>
                 t.json<Page<TaskRun>>(`/tasks/${enc(id)}/runs`, { query: { ...params } }),
             cancelRun: (runId: string) => t.json<TaskRun>(`/task-runs/${enc(runId)}/cancel`, { method: 'POST' }),

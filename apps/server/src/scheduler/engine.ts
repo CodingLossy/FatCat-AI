@@ -21,7 +21,13 @@ export class ExecutorError extends Error {
     }
 }
 
-export type Executor = (ctx: { task: TaskRecord; run: TaskRunRecord; signal: AbortSignal }) => Promise<ExecutorResult>;
+export type Executor = (ctx: {
+    task: TaskRecord;
+    run: TaskRunRecord;
+    signal: AbortSignal;
+    /** 事件触发时的事件说明(不可信数据;只能放进 <untrusted> 块,ADR 0035 第 5 节)。 */
+    eventNote?: string | undefined;
+}) => Promise<ExecutorResult>;
 
 export interface EngineOptions {
     repos: Repositories;
@@ -41,6 +47,8 @@ export interface EngineOptions {
     /** 启动后补跑的延迟。 */
     catchUpDelayMs?: number;
     keepRuns?: number;
+    /** 每个任务每小时最多被事件触发的次数(ADR 0035 第 3 节)。 */
+    eventsPerHour?: number;
     onError: (error: unknown) => void;
     onRunChanged?: (run: TaskRunRecord) => void;
 }
@@ -60,6 +68,9 @@ export class TaskEngine {
     private readonly missedWindowMs: number;
     private readonly catchUpDelayMs: number;
     private readonly keepRuns: number;
+    private readonly eventsPerHour: number;
+    private readonly eventTimes = new Map<string, number[]>();
+    private readonly eventNotes = new Map<string, string>();
     private readonly next = new Map<string, Date>();
     private readonly queue: Pending[] = [];
     private readonly running = new Map<string, { controller: AbortController; run: TaskRunRecord }>();
@@ -79,6 +90,7 @@ export class TaskEngine {
         this.missedWindowMs = options.missedWindowMs ?? 24 * 3_600_000;
         this.catchUpDelayMs = options.catchUpDelayMs ?? 10 * 60_000;
         this.keepRuns = options.keepRuns ?? 200;
+        this.eventsPerHour = options.eventsPerHour ?? 12;
     }
 
     /** 启动:把上次未结束的记录标为已取消,处理错过的触发,然后开始排期。 */
@@ -112,6 +124,30 @@ export class TaskEngine {
         const task = this.options.repos.tasks.getById(taskId);
         if (!task) return null;
         return this.enqueue(task, this.now(), 'manual');
+    }
+
+    /**
+     * 事件触发(ADR 0035):返回 'queued' | 'throttled' | 'busy' | 'ignored'。
+     * 超过每小时上限记一行 throttled;任务正在排队或运行时直接丢弃(防回环与事件风暴),不记录。
+     */
+    fireEvent(taskId: string, note?: string): 'queued' | 'throttled' | 'busy' | 'ignored' {
+        const task = this.options.repos.tasks.getById(taskId);
+        if (!task || task.status !== 'active' || !task.enabled || this.stopped) return 'ignored';
+        const now = this.now();
+        const recent = (this.eventTimes.get(taskId) ?? []).filter((t) => now.getTime() - t < 3_600_000);
+        if (recent.length >= this.eventsPerHour) {
+            this.eventTimes.set(taskId, recent);
+            this.recordSkipped(task, now, 'throttled');
+            return 'throttled';
+        }
+        const busy =
+            this.queue.some((p) => p.task.id === taskId) ||
+            [...this.running.values()].some((r) => r.run.taskId === taskId);
+        if (busy) return 'busy';
+        recent.push(now.getTime());
+        this.eventTimes.set(taskId, recent);
+        const run = this.enqueue(task, now, 'event', note);
+        return run ? 'queued' : 'busy';
     }
 
     /** 取消排队中或运行中的记录;返回是否找到。 */
@@ -276,7 +312,7 @@ export class TaskEngine {
         this.finish(run, 'skipped', code);
     }
 
-    private enqueue(task: TaskRecord, scheduledFor: Date, reason: TaskRunTrigger): TaskRunRecord | null {
+    private enqueue(task: TaskRecord, scheduledFor: Date, reason: TaskRunTrigger, note?: string): TaskRunRecord | null {
         const { repos } = this.options;
         const busyWithTask =
             this.queue.some((p) => p.task.id === task.id) ||
@@ -295,6 +331,7 @@ export class TaskEngine {
             trigger: reason,
             scheduledFor: scheduledFor.toISOString(),
         });
+        if (note) this.eventNotes.set(run.id, note);
         this.queue.push({ run, task });
         this.options.onRunChanged?.(run);
         this.pump();
@@ -324,7 +361,7 @@ export class TaskEngine {
             const executor = this.options.executors[task.action.kind === 'system' ? task.action.key : task.action.kind];
             if (!executor) throw new ExecutorError('config_error');
             const result = await Promise.race([
-                executor({ task, run: started, signal: controller.signal }),
+                executor({ task, run: started, signal: controller.signal, eventNote: this.eventNotes.get(run.id) }),
                 new Promise<never>((_, reject) =>
                     controller.signal.addEventListener('abort', () =>
                         reject(
@@ -356,6 +393,7 @@ export class TaskEngine {
         } finally {
             clearTimeout(timeout);
             this.running.delete(run.id);
+            if (!this.queue.some((p) => p.run.id === run.id)) this.eventNotes.delete(run.id);
             this.pump();
         }
     }

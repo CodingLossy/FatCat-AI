@@ -175,6 +175,15 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
             `UPDATE task_runs SET status = 'cancelled', error_code = 'internal', finished_at = ?
              WHERE status IN ('queued', 'running')`,
         ),
+        tokenGet: sqlite.prepare<[string], { tokenHash: string }>(
+            `SELECT token_hash AS tokenHash FROM task_webhook_tokens WHERE task_id = ?`,
+        ),
+        tokenSet: sqlite.prepare(
+            `INSERT INTO task_webhook_tokens (task_id, token_hash, created_at) VALUES (?, ?, ?)
+             ON CONFLICT(task_id) DO UPDATE SET token_hash = excluded.token_hash, created_at = excluded.created_at,
+               last_used_at = NULL`,
+        ),
+        tokenUsed: sqlite.prepare(`UPDATE task_webhook_tokens SET last_used_at = ? WHERE task_id = ?`),
         prune: sqlite.prepare(
             `DELETE FROM task_runs WHERE task_id = ? AND id NOT IN (
                SELECT id FROM task_runs WHERE task_id = ? ORDER BY created_at DESC, id DESC LIMIT ?)`,
@@ -336,6 +345,16 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
                 items,
                 nextCursor: rows.length > page.limit && last ? encodeCursor({ at: last.createdAt, id: last.id }) : null,
             };
+        },
+        /** Webhook 令牌的哈希(只存哈希);没有令牌时为 null。 */
+        webhookTokenHash(taskId: string): string | null {
+            return q.tokenGet.get(taskId)?.tokenHash ?? null;
+        },
+        setWebhookTokenHash(taskId: string, hash: string): void {
+            q.tokenSet.run(taskId, hash, iso());
+        },
+        touchWebhookToken(taskId: string): void {
+            q.tokenUsed.run(iso(), taskId);
         },
         /** 启动时:上次关闭时还在排队或运行的记录标为已取消(不恢复执行,ADR 0033 第 3 节)。 */
         interruptUnfinished(): number {

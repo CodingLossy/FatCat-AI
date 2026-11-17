@@ -318,6 +318,7 @@ export const TABLE_COLUMNS = {
         'created_at',
         'updated_at',
     ],
+    task_webhook_tokens: ['task_id', 'token_hash', 'created_at', 'last_used_at'],
     task_runs: [
         'id',
         'task_id',

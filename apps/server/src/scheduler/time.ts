@@ -33,6 +33,7 @@ export function nextTriggerTime(trigger: TaskTrigger, timeZone: string, after: D
         const at = new Date(trigger.at);
         return at.getTime() > after.getTime() ? at : null;
     }
+    if (trigger.kind !== 'cron') return null; // 事件触发器没有「下一次」
     return new Cron(trigger.expression, { timezone: timeZone, paused: true }).nextRun(after);
 }
 
