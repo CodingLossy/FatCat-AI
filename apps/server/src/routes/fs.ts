@@ -61,7 +61,13 @@ const patchRoute = createRoute({
     },
 });
 
-export function fsRoutes(deps: { repos: Repositories; items: ItemService; redact: (text: string) => string }) {
+export function fsRoutes(deps: {
+    repos: Repositories;
+    items: ItemService;
+    redact: (text: string) => string;
+    /** 授权目录改变后调用(任务的文件监听据此重建)。 */
+    onRootsChanged?: () => void;
+}) {
     const { repos } = deps;
     return router()
         .openapi(listRoute, (c) => c.json({ items: repos.fsRoots.list(requireOwner(c)), nextCursor: null }, 200))
@@ -97,6 +103,7 @@ export function fsRoutes(deps: { repos: Repositories; items: ItemService; redact
                 c.req.valid('json').knowledgeBase,
             );
             if (!root) throw notFound('Authorized folder');
+            deps.onRootsChanged?.();
             // 条目同步结束后知识库会重新索引:新勾选的目录入库,取消勾选的目录清理分块与向量
             refreshItems(c, ownerId);
             return c.json(root, 200);
@@ -106,6 +113,7 @@ export function fsRoutes(deps: { repos: Repositories; items: ItemService; redact
             const { id } = c.req.valid('param');
             const root = repos.fsRoots.get(ownerId, id);
             if (!root || !repos.fsRoots.delete(ownerId, id)) throw notFound('Authorized folder');
+            deps.onRootsChanged?.();
             // 撤销目录时,路径前缀落在它里面的文件工具预授权一并删除(ADR 0010 第 3 节、ADR 0011 第 1 节)
             for (const p of repos.preauths.list(ownerId)) {
                 const prefix = p.constraint?.pathPrefix;

@@ -65,16 +65,27 @@ export function createFileWatcher(options: {
                 try {
                     const entry = {
                         watcher: watchFn(path, { recursive: true, persistent: false }, (_event, name) => {
-                            if (entry.names.size < MAX_NAMES && name) entry.names.add(String(name));
+                            if (entry.names.size < MAX_NAMES && name) entry.names.add(String(name).slice(0, 200));
                             if (entry.timer) return;
                             entry.timer = setTimeout(() => {
                                 entry.timer = null;
                                 const note = `Files changed: ${[...entry.names].join(', ')}`;
                                 entry.names.clear();
+                                // 触发前重新核对:任务仍启用、授权目录仍在;目录被撤销就关闭监听(ADR 0035 第 2 节)
+                                let live = 0;
                                 for (const id of entry.taskIds) {
                                     const task = options.repos.tasks.getById(id);
-                                    if (task) options.onChange(task, note);
+                                    if (!task || !task.enabled || task.status !== 'active') continue;
+                                    const trigger = task.trigger;
+                                    if (trigger.kind !== 'file_changed') continue;
+                                    const root = options.repos.fsRoots
+                                        .list(task.ownerId)
+                                        .find((r) => r.id === trigger.rootId);
+                                    if (!root || root.path !== path) continue;
+                                    live++;
+                                    options.onChange(task, note);
                                 }
+                                if (live === 0) close(path);
                             }, options.debounceMs ?? DEBOUNCE_MS);
                             entry.timer.unref?.();
                         }),

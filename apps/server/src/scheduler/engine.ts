@@ -165,6 +165,7 @@ export class TaskEngine {
         const queued = this.queue.findIndex((p) => p.run.id === runId);
         if (queued >= 0) {
             const [pending] = this.queue.splice(queued, 1);
+            this.eventNotes.delete(pending!.run.id);
             this.finish(pending!.run, 'cancelled', 'cancelled');
             return true;
         }
