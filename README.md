@@ -72,7 +72,7 @@ pnpm dev
 
 不想用环境变量时,也可以把密钥写进数据目录(默认 `~/.fatcat-ai`,Windows 为 `%USERPROFILE%\.fatcat-ai`)下的 `secrets.yaml`,每行一个 `NAME: value`,配置档里引用 `file:NAME`。文件修改后立即生效,不需要重启。服务器自己写入这个文件时(例如微信登录令牌),在 Windows 上会去掉继承来的访问项,只保留当前用户的完全控制;做不到时记一条警告,文件仍会留下。
 
-**加密密钥文件**(可选,需要你明确确认,不会自动进行):在「设置 → 密钥」点「加密密钥文件」,或停服后在命令行运行(见下面的「命令行迁移」)。服务器会先备份、把 `secrets.yaml` 加密为 `secrets.yaml.enc`(AES-256-GCM)、解密回读逐个核对,全部通过后才把明文改名为 `secrets.yaml.migrated`;确认一切正常后用 `secrets cleanup` 删除它。主密钥按优先级取:环境变量 `FATCAT_MASTER_KEY`(64 位十六进制或 base64)→ `FATCAT_MASTER_KEY_FILE` 指向的文件 → 数据目录里自动生成的 `master.key`(权限 600,Windows 上只给当前用户)。前两种格式不对时启动报错,不会悄悄换成下一种。**丢失主密钥等于丢失全部密钥**(模型 key 重新填写,微信重新扫码);主密钥不进备份。拿到整个数据目录(含 `master.key`)的人仍能解密,所以公网部署请把主密钥放在环境变量或容器 secret 里。换主密钥:停服后在同一目录运行 `node dist/index.js secrets rekey --new-key-file <文件>`(不接受命令行里直接写密钥)。没有任何密钥文件的全新安装,第一次写入密钥(例如微信登录令牌)时直接写加密文件;明文与加密文件同时存在时启动报错。
+**加密密钥文件**(可选,需要你明确确认,不会自动进行):在「设置 → 密钥」点「加密密钥文件」,或停服后在命令行运行(见下面的「命令行迁移」)。服务器会先备份、把 `secrets.yaml` 加密为 `secrets.yaml.enc`(AES-256-GCM)、解密回读逐个核对,全部通过后才把明文改名为 `secrets.yaml.migrated`;确认一切正常后尽快用 `node dist/index.js secrets cleanup`(在 `apps/server` 下运行)删除它:这个明文文件目前还没有收紧文件权限。主密钥按优先级取:环境变量 `FATCAT_MASTER_KEY`(64 位十六进制或 base64)→ `FATCAT_MASTER_KEY_FILE` 指向的文件 → 数据目录里自动生成的 `master.key`(权限 600,Windows 上只给当前用户)。前两种格式不对时启动报错,不会悄悄换成下一种。**丢失主密钥等于丢失全部密钥**(模型 key 重新填写,微信重新扫码);主密钥不进备份。拿到整个数据目录(含 `master.key`)的人仍能解密,所以公网部署请把主密钥放在环境变量或容器 secret 里。换主密钥:停服后在同一目录运行 `node dist/index.js secrets rekey --new-key-file <文件>`(不接受命令行里直接写密钥)。没有任何密钥文件的全新安装,第一次写入密钥(例如微信登录令牌)时直接写加密文件;明文与加密文件同时存在时启动报错。
 
 **命令行迁移**:停服后,在 `apps/server` 目录下执行(不是仓库根目录,根目录没有 `dist/index.js`)。本地开发先 `pnpm build`,或者之前已经跑过构建;只跑过 `pnpm dev` 不够,它不生成 `apps/server/dist`。
 
@@ -81,7 +81,7 @@ cd apps/server
 node dist/index.js secrets migrate --plaintext-backups keep   # keep | encrypt | delete
 ```
 
-读写哪个数据目录由 `FATCAT_AI_DATA_DIR` 决定(没设置就是默认的 `~/.fatcat-ai`),所以要和你启动服务器时用的值一致。`--plaintext-backups` 决定 `backups/` 里旧的明文备份怎么处理:默认 `keep` 原样保留,会在 `backups/` 留下含密钥的明文备份,命令结束时会列出并提醒你确认加密文件可用后手动删除;`encrypt` 把它们也加密;`delete` 直接删除。服务器还在运行时命令会拒绝执行。
+读写哪个数据目录由 `FATCAT_AI_DATA_DIR` 决定(没设置就是默认的 `~/.fatcat-ai`,Windows 上是 `%USERPROFILE%\.fatcat-ai`),所以要和你启动服务器时用的值一致。`--plaintext-backups` 决定 `backups/` 里旧的明文备份怎么处理:默认 `keep` 原样保留,会在 `backups/` 留下含密钥的明文备份,命令结束时会列出并提醒你确认加密文件可用后手动删除;`encrypt` 把它们也加密;`delete` 直接删除。服务器还在运行时命令会拒绝执行。
 
 **两步验证(TOTP,可选)**:在「设置 → 安全」开启,用验证器 App(Google Authenticator、Microsoft Authenticator、1Password 等)扫码,并保存 10 个一次性恢复码(只显示一次)。开启后登录需要密码加 6 位验证码(或恢复码),开启时其他已登录的会话会被退出;已有的个人访问令牌不受影响,但开启后创建新令牌需要通过两步验证的浏览器会话。共享密钥用上面的主密钥加密后存进数据库,主密钥不可用时带验证码的登录会失败(不会被跳过);恢复码只存加盐哈希。验证码和恢复码都丢了:在服务器本机运行 `node dist/index.js auth reset-totp`(会删除 TOTP 数据并让所有会话退出),密码仍可使用。拿到整个数据目录的人也能解开共享密钥,所以公网部署同样请把主密钥放在环境变量里。
 
