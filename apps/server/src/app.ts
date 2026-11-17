@@ -49,6 +49,9 @@ import { attachmentRoutes, UPLOAD_OVERHEAD_BYTES } from './routes/attachments.js
 import { type AttachmentFiles, createMemoryAttachmentFiles } from './attachment-files.js';
 import { tokenRoutes } from './routes/tokens.js';
 import { channelRoutes } from './routes/channels.js';
+import { taskRoutes } from './routes/tasks.js';
+import { startScheduler, type Scheduler } from './scheduler-setup.js';
+import { startMaintenance } from './maintenance-setup.js';
 import { ChannelHub } from './channels/hub.js';
 import { WechatChannels } from './channels/wechat.js';
 import { TRANSCRIPTION_OVERHEAD_BYTES, type VoiceRouteDeps, voiceRoutes } from './routes/voice.js';
@@ -94,6 +97,8 @@ export interface AppDeps {
     voice?: Partial<Pick<VoiceRouteDeps, 'limits' | 'timeouts'>>;
     /** 保存了新的用户时区后调用(维护任务重新排期,ADR 0023 第 5 节);参数是新的生效时区。 */
     onTimeZoneChanged?: (ownerId: string, timeZone: string) => void;
+    /** 通用任务调度器(ADR 0033);不给时建一个不排期的(只适合测试与导出 OpenAPI 文档)。 */
+    scheduler?: Scheduler;
     /** IM 渠道的运行器(ADR 0022);不给时按需创建(没有注册任何适配器,只适合测试与导出 OpenAPI 文档)。 */
     channels?: ChannelHub;
     /** 微信 iLink 的扫码授权与适配器工厂;测试时可指向假的 iLink 服务器。 */
@@ -156,6 +161,22 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         });
 
     wechat.attach(channels);
+
+    const scheduler =
+        deps.scheduler ??
+        startScheduler({
+            repos,
+            maintenance: startMaintenance({
+                repos,
+                removeVectors: () => {},
+                isBusy: () => false,
+                onChanged: () => {},
+                onError: () => {},
+            }),
+            timeZone: () => 'UTC',
+            onError: () => {},
+            schedule: false,
+        });
 
     app.onError(handleError);
 
@@ -283,6 +304,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         )
         .route('/', runRoutes(runDeps))
         .route('/', channelRoutes({ repos, hub: channels, wechat }))
+        .route('/', taskRoutes({ repos, scheduler }))
         .route('/', memoryRoutes({ repos, memory: deps.memory, detectCredential }))
         .route('/', toolRoutes({ repos, runs: deps.runs, redact: deps.redact ?? ((text) => text) }))
         .route('/', fsRoutes({ repos, items: deps.items, redact: deps.redact ?? ((text) => text) }))

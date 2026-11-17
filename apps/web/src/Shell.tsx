@@ -9,6 +9,7 @@ import { AuditPage } from './AuditPage.js';
 import { ChatView } from './ChatView.js';
 import { ItemsPage } from './ItemsPage.js';
 import { MailPage } from './MailPage.js';
+import { TasksPage } from './TasksPage.js';
 import { useI18n } from './i18n.js';
 import { MemoryPage } from './MemoryPage.js';
 import { navigate, routePath, useRoute, type Route } from './router.js';
@@ -212,6 +213,9 @@ export function Shell({
                     <Link to={{ name: 'mail' }} className={route.name === 'mail' ? 'active' : ''}>
                         {t('nav.mail')}
                     </Link>
+                    <Link to={{ name: 'tasks' }} className={route.name === 'tasks' ? 'active' : ''}>
+                        {t('nav.tasks')}
+                    </Link>
                     <Link to={{ name: 'memory' }} className={route.name === 'memory' ? 'active' : ''}>
                         {t('nav.memory')}
                     </Link>
@@ -238,6 +242,8 @@ export function Shell({
                     <ItemsPage />
                 ) : route.name === 'mail' ? (
                     <MailPage />
+                ) : route.name === 'tasks' ? (
+                    <TasksPage />
                 ) : (
                     <ChatView key={activeId ?? 'new'} sessionId={activeId} onSessionsChanged={reloadSessions} />
                 )}

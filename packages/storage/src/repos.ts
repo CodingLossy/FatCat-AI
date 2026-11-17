@@ -27,6 +27,7 @@ import { createFsRootRepository } from './fs-roots.js';
 import { createItemRepository } from './items.js';
 import { createMcpServerRepository } from './mcp.js';
 import { createChannelRepository } from './channels.js';
+import { createTaskRepository } from './tasks.js';
 import { createEmbeddingStore } from './embeddings.js';
 import { createKbRepository } from './kb.js';
 import { createMailRepository } from './mail.js';
@@ -544,6 +545,7 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
         items: itemRepo,
         mcpServers: createMcpServerRepository(conn, now),
         channels: createChannelRepository(conn, now),
+        tasks: createTaskRepository(conn, now),
         embeddings: createEmbeddingStore(conn, now),
         kb: createKbRepository(conn, now),
         mail: createMailRepository(conn, now),

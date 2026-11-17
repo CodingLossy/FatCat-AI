@@ -18,6 +18,7 @@ import { createMcpControl } from './mcp-setup.js';
 import { createMailService } from './mail-setup.js';
 import { createMemoryStack } from './memory-setup.js';
 import { scheduleDaily, startMaintenance } from './maintenance-setup.js';
+import { startScheduler } from './scheduler-setup.js';
 import { createAttachmentFiles, createImageLoader, sweepAttachments } from './attachment-files.js';
 import { itemProviders } from './memory-provider.js';
 import { createEmbeddingService } from './embeddings.js';
@@ -212,12 +213,18 @@ const ownerTimeZone = () => {
 };
 // 记忆维护任务:每天 03:30(用户时区)运行 decay / tier / expire,有对话进行中时推迟(ADR 0007 第 5.7 节)
 const maintenance = startMaintenance({
-    timeZone: ownerTimeZone(),
     repos,
     removeVectors: (itemId) => repos.embeddings.removeItem(itemId),
     isBusy: () => runs.activeRuns > 0,
     onChanged: (ownerId) => memoryStack.digest.schedule(ownerId),
     onError: (err) => logger.warn({ err }, 'memory maintenance failed'),
+});
+// 通用调度器(ADR 0033):内置的记忆维护任务每天 03:30(用户时区)运行,持久、有运行记录、错过的启动后补跑
+const scheduler = startScheduler({
+    repos,
+    maintenance,
+    timeZone: ownerTimeZone,
+    onError: (err) => logger.warn({ err }, 'scheduled task failed'),
 });
 // 图片附件的清理:每天与记忆维护同一时间,删除 24 小时内未被引用的附件与孤立文件(ADR 0020 第 3 节)
 const sweepJob = scheduleDaily(() => {
@@ -269,6 +276,7 @@ mail.start();
 const app = createApp({
     channels,
     wechat,
+    scheduler,
     embeddings,
     config: { ...config, setupCode },
     repos,
@@ -286,7 +294,7 @@ const app = createApp({
     attachmentFiles,
     // 改时区后:定时任务按新时区重新排期,嵌入队列按新的「今天」重新判断每日上限(ADR 0023 第 5 节)
     onTimeZoneChanged: (_ownerId, timeZone) => {
-        maintenance.reschedule(timeZone);
+        scheduler.engine.rescheduleAll();
         sweepJob.reschedule(timeZone);
         inboxJob.reschedule(timeZone);
         embeddings.kick();
@@ -305,7 +313,7 @@ function shutdown(signal: string): void {
     mcp.closeAll();
     embeddings.stop();
     memoryStack.stop();
-    maintenance.stop();
+    scheduler.stop();
     sweepJob.stop();
     inboxJob.stop();
     void channels.stopAll();

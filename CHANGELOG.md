@@ -17,6 +17,12 @@ The project was renamed from AI-Personal to FatCat-AI and moved to <https://gith
 - Environment variables now start with `FATCAT_AI_` instead of `AIP_` (for example `FATCAT_AI_PORT`, `FATCAT_AI_DATA_DIR`, `FATCAT_AI_TOKEN`). The old names still work for now and print a deprecation warning.
 - Unchanged on purpose: the `aip_pat_` token prefix, the `aip_session` / `aip_csrf` cookies and the `X-AIP-Server-Version` header, so existing tokens and API v1 clients keep working.
 
+### M6 · Scheduled tasks and automation (in progress)
+
+#### Added
+
+- General task scheduler (ADR 0033, migration 0016): tasks and run records are stored in the database, scheduled in your time zone, and kept across restarts. Each run is recorded with its status, error code and times only (no content). Failed runs retry after 1, 5 and 15 minutes; runs missed while the server was off are skipped or caught up once, per task; tasks can have quiet hours; at most two tasks run at once. The memory maintenance (decay, tiering, expiry) now runs as the built-in system task "Memory maintenance" and can be disabled, run now, or moved to another time. New Web page "Tasks" and `/api/v1/tasks` endpoints (also in the client SDK). Your own tasks, event triggers and push to WeChat or mail come in later M6 changes.
+
 ### M5c · Release prep (in progress)
 
 #### Added
@@ -280,6 +286,10 @@ Done. The owner's tests on Windows (2026-11-10) used DeepSeek (`deepseek-flash`)
 - Windows 上旧服务器仍在运行时,数据目录无法迁移(`EPERM` / `EBUSY`)。服务器会重试几秒,仍失败就提示先停止旧的 AI-Personal 服务器并退出,不移动也不删除任何文件。
 - 环境变量前缀由 `AIP_` 改为 `FATCAT_AI_`(如 `FATCAT_AI_PORT`、`FATCAT_AI_DATA_DIR`、`FATCAT_AI_TOKEN`);旧名暂时仍可用,并打印弃用警告。
 - 有意不改:令牌前缀 `aip_pat_`、Cookie `aip_session` / `aip_csrf` 与响应头 `X-AIP-Server-Version`,现有令牌与 API v1 客户端不受影响。
+
+### M6 · 定时任务与自动化(进行中)
+
+- 通用任务调度器(ADR 0033,迁移 0016):任务与运行记录存在数据库里,按用户时区排期,重启后仍然有效;每次运行只记录状态、错误码和时间(不存内容)。失败按 1、5、15 分钟重试;服务器关闭期间错过的触发按任务设置跳过或只补跑一次;任务可设静默时段;同时最多运行两个任务。记忆维护(衰减、分层、过期)现在是内置系统任务「记忆维护」,可以停用、立即运行或改时间。新增 Web 页面「任务」与 `/api/v1/tasks` 接口(客户端 SDK 同步)。自建任务、事件触发和推送到微信或邮件在 M6 之后的改动中加入。
 
 ### M5c · 发布收尾(进行中)
 
