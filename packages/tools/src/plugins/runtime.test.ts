@@ -187,7 +187,11 @@ describe('plugin runtime', () => {
         const tcp = createNetServer((socket) => socket.end('SERVER-SECRET'));
         await new Promise<void>((resolve) => tcp.listen(0, '127.0.0.1', resolve));
         const port = String((tcp.address() as { port: number }).port);
-        const socketPath = join(h.root, 'local.sock');
+        // Windows 上没有 Unix socket 文件,用命名管道
+        const socketPath =
+            process.platform === 'win32'
+                ? `\\\\.\\pipe\\fatcat-test-${process.pid}-${Date.now()}`
+                : join(h.root, 'local.sock');
         const unix = createNetServer((socket) => socket.end('SERVER-SECRET'));
         await new Promise<void>((resolve) => unix.listen(socketPath, resolve));
         try {
