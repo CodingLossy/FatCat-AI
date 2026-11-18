@@ -175,15 +175,36 @@ export function mcpTargets(servers: readonly McpServer[]): EgressTarget[] {
     }));
 }
 
+/** 插件授权的域名(ADR 0040 第 3.3 节):每个域名一项,类别 `plugin`;插件自己不能联网,只能经主程序代发。 */
+export interface PluginEgressDomain {
+    pluginId: string;
+    name: string;
+    domain: string;
+    enabled: boolean;
+}
+
+export function pluginTargets(domains: readonly PluginEgressDomain[]): EgressTarget[] {
+    return domains.map((d) => ({
+        id: `plugin:${d.pluginId}:${d.domain}`,
+        category: 'plugin' as const,
+        label: d.name,
+        origin: `https://${d.domain}`,
+        local: false,
+        source: { kind: 'plugin', id: d.pluginId },
+        enabled: d.enabled,
+    }));
+}
+
 export interface EgressInputs {
     profiles: readonly ModelProfileRecord[];
     voice: Pick<VoiceSettings, 'defaultSttProfileId' | 'defaultTtsProfileId'>;
     mailAccounts: readonly MailAccountRecord[];
     channels: readonly ChannelRecord[];
     mcpServers: readonly McpServer[];
+    plugins?: readonly PluginEgressDomain[];
 }
 
-/** GET /settings/egress-targets 的内容。当前没有插件与更新检查,这两类不出现。 */
+/** GET /settings/egress-targets 的内容。当前没有更新检查,这一类不出现。 */
 export function listEgressTargets(input: EgressInputs, log?: EgressLog): EgressTargetList {
     return {
         targets: [
@@ -193,6 +214,7 @@ export function listEgressTargets(input: EgressInputs, log?: EgressLog): EgressT
             ...mailTargets(input.mailAccounts, log),
             ...channelTargets(input.channels, log),
             ...mcpTargets(input.mcpServers),
+            ...pluginTargets(input.plugins ?? []),
         ],
     };
 }

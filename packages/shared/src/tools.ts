@@ -28,8 +28,8 @@ export const ToolInfo = z.object({
     description: z.string(),
     risk: ToolRisk,
     approval: ToolApproval,
-    source: z.enum(['builtin', 'mcp']),
-    /** MCP 工具所属的服务器名;内置工具为 null。 */
+    source: z.enum(['builtin', 'mcp', 'plugin']),
+    /** MCP 工具所属的服务器名、插件工具所属的插件 id;内置工具为 null。 */
     server: z.string().nullable(),
     /** 能否预授权(external / dangerous 永远为 false)。 */
     preauthorizable: z.boolean(),
@@ -165,7 +165,7 @@ export type AuditQuery = z.infer<typeof AuditQuery>;
 export const UntrustedContent = z.object({
     untrusted: z.literal(true),
     source: z.object({
-        kind: z.enum(['web', 'file', 'mcp', 'email', 'item']),
+        kind: z.enum(['web', 'file', 'mcp', 'plugin', 'email', 'item']),
         /** URL、文件路径、mcp.<server>.<tool> 或条目 id。 */
         ref: z.string(),
     }),

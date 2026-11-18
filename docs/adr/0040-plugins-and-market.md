@@ -455,6 +455,18 @@ ALTER TABLE tasks ADD COLUMN disabled_reason TEXT;
 
 全部通过才继续实现。**任何一项不通过就降级**:例如在该平台上把「读不到主程序的密钥与数据库」降为「不保证」、把数据目录移到权限模型能可靠拦截的位置、或在该平台只允许安装市场审核过的插件;降级方案连同实测结果写进 PR 描述**报给业主决定**,决定前不合并。第 3.5 节的保护程度表以实测结果为准。
 
+**PR 2b 实现注记**(与上文有出入或上文没写的地方,以代码为准):
+
+- **实测脚本与结果**:`scripts/plugins/probe-permission.mjs`(`node scripts/plugins/probe-permission.mjs`,先 `pnpm build`)。Linux(Node 24)全部通过;**Windows 与 macOS 还没跑**,所以安装确认页的「读不到主程序的密钥与数据库」在这两个平台上显示 `unverified`,不显示「强制」。实测不通过的项按本节「降级」处理,结果由业主决定。
+- **预加载补了三处**:除第 3.4 节列的 `registerHooks` 外,还覆盖 `process.getBuiltinModule`(绕过模块钩子的入口)、`Module._load` 与 `data:` URL 里的 `import`;`process.binding` / `process._linkedBinding` / `process.dlopen` 置为抛错;`fetch` / `WebSocket` / `EventSource` 置为 `undefined`。拒绝名单多了 `_http_*`、`_tls_*` 这类 `http` / `tls` 的内部别名。
+- **工具何时注册**:工具的 `inputSchema` 只在插件进程里,所以启用时(`apply`)启动一次、握手、`tools/list`,把声明过的工具注册进 `ToolRegistry`;空闲停止与手动停止之后工具**保持注册**,下一次调用重新启动进程(不重新列工具)。崩溃(非计划内退出)才注销工具并重新拉起;5 分钟内第 3 次崩溃停用(`error`)。
+- **单插件运行设置**(V8 堆上限、内存阈值)存在 `settings_json` 的保留键 `__runtime` 下,卸载中的标记在 `__uninstall` 下;插件自己的设置值不能以 `__` 开头。
+- **核心版本**:开发树的 `package.json` 版本是 `0.0.0`,检查 `engines.fatcat` 时按 `1.1.0` 处理(第一个带插件的版本);正式版本号写进去后直接用它。
+- **引用该插件的任务**(第 6.1 节)目前按任务的 `toolSet` 与 `allowedTools` 里 `plugin.<id>.` 开头的名字判断;`fromPlugin`(模板创建的任务)随 PR 3 的 `taskTemplates` 一起加。
+- **`fatcat/net.fetch`、`fatcat/items.upsert`**:授权判定与 `denied` 事件已实现(未授权 → `permission_denied`,1 分钟内超过 20 次停用插件);已授权时回「当前版本不可用」,真正的代发与条目写入在 PR 3。外连清单已经列出每个授权域名(类别 `plugin`)。
+- **新增的错误码**(ADR 0030 允许的增量):`plugin_package_invalid`、`plugin_manifest_invalid`、`plugin_incompatible`、`plugin_secrets_missing`、`plugin_staging_not_found`;另有 `GET /plugins/{id}`(含卸载会停用的任务),方便 PR 2c 的卸载对话框。
+- **不在 PR 2b**:市场与下载(PR 4)、升级与回退(PR 5)、Web 与 CLI(PR 2c)、`fatcat/net.fetch` 与知识地图条目(PR 3)。
+
 ## 12. 业主已定的问题(2026-11-17)
 
 | #   | 问题                     | 决定                                                                                                    |

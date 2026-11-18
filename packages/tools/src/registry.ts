@@ -27,7 +27,8 @@ export class ToolRegistry {
             if (!NAME.test(tool.name) || tool.name.length > 200) throw new Error(`invalid tool name: ${tool.name}`);
             if (this.tools.has(tool.name)) throw new Error(`duplicate tool: ${tool.name}`);
             const activityLabel =
-                tool.activityLabel ?? (tool.source === 'mcp' ? undefined : defaultActivityLabel(tool.name));
+                tool.activityLabel ??
+                (tool.source === 'mcp' || tool.source === 'plugin' ? undefined : defaultActivityLabel(tool.name));
             this.tools.set(tool.name, activityLabel ? { ...tool, activityLabel } : tool);
         }
         return this;
@@ -45,7 +46,8 @@ export class ToolRegistry {
         for (const tool of tools) {
             if (!NAME.test(tool.name) || tool.name.length > 200 || this.tools.has(tool.name)) continue;
             const activityLabel =
-                tool.activityLabel ?? (tool.source === 'mcp' ? undefined : defaultActivityLabel(tool.name));
+                tool.activityLabel ??
+                (tool.source === 'mcp' || tool.source === 'plugin' ? undefined : defaultActivityLabel(tool.name));
             this.tools.set(tool.name, activityLabel ? { ...tool, activityLabel } : tool);
             added.push(tool.name);
         }

@@ -47,10 +47,10 @@ export interface ToolDefinition {
     approval?: 'required';
     /** 为 false 时不允许预授权,每次都要审批(例如 memory.forget)。 */
     preauthorizable?: false;
-    source?: 'builtin' | 'mcp';
+    source?: 'builtin' | 'mcp' | 'plugin';
     /** 执行时语音指示器下的状态文字(ADR 0021 第 7 节);不给时内置工具按名称取默认值,MCP 工具没有。 */
     activityLabel?: ActivityLabel;
-    /** MCP 工具所属的服务器名。 */
+    /** MCP 工具所属的服务器名,或插件工具所属的插件 id。 */
     server?: string;
     /** 输出可能包含外部内容(网页、文件、MCP 输出);执行后本次运行的条件预授权失效。 */
     untrustedOutput?: boolean;

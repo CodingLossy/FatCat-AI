@@ -137,6 +137,7 @@ export function createPluginRepository(conn: Connection, now: () => Date) {
     const { sqlite } = conn;
     const q = {
         list: sqlite.prepare<[string], PluginRow>(`${PLUGIN_SELECT} WHERE owner_id = ? ORDER BY plugin_id`),
+        listAll: sqlite.prepare<[], PluginRow>(`${PLUGIN_SELECT} ORDER BY owner_id, plugin_id`),
         get: sqlite.prepare<[string, string], PluginRow>(`${PLUGIN_SELECT} WHERE owner_id = ? AND plugin_id = ?`),
         insert: sqlite.prepare(
             `INSERT INTO plugins (id, owner_id, plugin_id, version, source_kind, source_ref, signed_key_id,
@@ -172,6 +173,10 @@ export function createPluginRepository(conn: Connection, now: () => Date) {
     return {
         list(ownerId: string): PluginRecord[] {
             return q.list.all(ownerId).map(toPlugin);
+        },
+        /** 全部 owner 的插件(服务启动时拉起已启用的插件用)。 */
+        listAll(): PluginRecord[] {
+            return q.listAll.all().map(toPlugin);
         },
         get(ownerId: string, pluginId: string): PluginRecord | null {
             const row = q.get.get(ownerId, pluginId);
