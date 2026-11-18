@@ -119,6 +119,14 @@ export interface PluginRuntimeOptions {
 export type PluginUpsertItem = z.infer<typeof ItemsUpsertParams>['items'][number];
 
 /** 条目配额超出(每个插件 50,000 条)。 */
+/** WebFetchError 里属于策略拒绝(记 denied)的原因码;fake_ip_blocked 不在其中:它是网络环境问题,按 fetch_failed 返回。 */
+const POLICY_FETCH_CODES: ReadonlySet<string> = new Set([
+    'bad_scheme',
+    'credentials_in_url',
+    'blocked_address',
+    'no_address',
+]);
+
 export class PluginQuotaError extends Error {
     override readonly name = 'PluginQuotaError';
 }
@@ -551,10 +559,7 @@ export class PluginRuntime {
                     if (error instanceof NetScopeError) return this.deny(entry, method, 'domain is not granted');
                     if (error instanceof WebFetchError) {
                         // 私网地址、fake-IP、带凭据的 URL、非 https 都是策略拒绝:记 denied;其余(超时、连接失败)只是请求失败
-                        if (
-                            error.code !== 'fake_ip_blocked' &&
-                            /not allowed|disallowed|credentials|only https|only http|no address/.test(error.message)
-                        ) {
+                        if (error.code !== undefined && POLICY_FETCH_CODES.has(error.code)) {
                             return this.deny(entry, method, 'destination is not allowed');
                         }
                         throw new McpRpcError(redactSecrets(error.message, entry.secretValues).slice(0, 300), -32003, {

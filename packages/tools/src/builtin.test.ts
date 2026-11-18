@@ -256,7 +256,7 @@ describe('web.fetch(本机测试服务器)', () => {
         expect((error as Error).message).toMatch(/fake-IP 模式.*设置 → 网络.*fake-ip-filter/s);
         // 普通内网的提示和原因码不变
         const other = await guardedFetch(url('private.test', '/page'), options).catch((e: unknown) => e);
-        expect((other as { code?: string }).code).toBeUndefined();
+        expect((other as { code?: string }).code).toBe('blocked_address');
     });
 
     it('开启「允许 fake-IP 段」后只放行 198.18.0.0/15:fake-IP 不再被拦,私网与元数据地址仍被拦', async () => {

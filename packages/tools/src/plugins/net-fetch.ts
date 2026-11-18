@@ -40,7 +40,7 @@ export async function pluginNetFetch(input: unknown, options: PluginNetFetchOpti
         requestHeaders: params.headers ?? {},
         ...(params.body !== undefined ? { requestBody: params.body } : {}),
         onUrl: (url) => {
-            if (url.protocol !== 'https:') throw new WebFetchError('only https: URLs are allowed');
+            if (url.protocol !== 'https:') throw new WebFetchError('only https: URLs are allowed', 'bad_scheme');
             if (!options.domains.some((domain) => matchesDomain(url.hostname, domain))) {
                 throw new NetScopeError(`${url.hostname} is not in the granted domains`);
             }

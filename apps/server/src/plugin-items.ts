@@ -52,26 +52,32 @@ export function upsertPluginItems(
     items: readonly PluginUpsertItem[],
 ): number {
     const source = pluginSource(pluginId);
-    const fresh = items.filter((item) => !repos.items.bySource(ownerId, source, nodeRef(item.id))).length;
+    const fresh = [...new Set(items.map((item) => item.id))].filter(
+        (id) => !repos.items.bySource(ownerId, source, nodeRef(id)),
+    ).length;
     if (repos.items.countBySource(ownerId, source) + fresh > PLUGIN_ITEM_QUOTA) {
         throw new PluginQuotaError(`at most ${PLUGIN_ITEM_QUOTA} items per plugin`);
     }
     const categories = granted.items?.categories ?? [];
-    for (const item of items) {
-        const category = categories.find((c) => c.type === item.type);
-        if (!category) continue;
-        const top = ensureCategory(repos, ownerId, pluginId, category);
-        const parent = item.parentId ? repos.items.bySource(ownerId, source, nodeRef(item.parentId)) : null;
-        repos.items.upsert(ownerId, {
-            source,
-            sourceRef: nodeRef(item.id),
-            kind: item.hasChildren ? 'category' : 'content',
-            type: item.type,
-            title: item.title,
-            summary: item.summary ?? null,
-            meta: item.meta ?? null,
-            parentId: parent && !parent.deletedAt ? parent.id : top.id,
-        });
+    // 两遍:第一遍写入全部条目;第二遍把「父项排在后面」的子项挂到正确的父项下(不要求插件按顺序返回)
+    for (const pass of [1, 2]) {
+        for (const item of items) {
+            if (pass === 2 && !item.parentId) continue;
+            const category = categories.find((c) => c.type === item.type);
+            if (!category) continue;
+            const top = ensureCategory(repos, ownerId, pluginId, category);
+            const parent = item.parentId ? repos.items.bySource(ownerId, source, nodeRef(item.parentId)) : null;
+            repos.items.upsert(ownerId, {
+                source,
+                sourceRef: nodeRef(item.id),
+                kind: item.hasChildren ? 'category' : 'content',
+                type: item.type,
+                title: item.title,
+                summary: item.summary ?? null,
+                meta: item.meta ?? null,
+                parentId: parent && !parent.deletedAt ? parent.id : top.id,
+            });
+        }
     }
     return items.length;
 }

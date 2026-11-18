@@ -77,7 +77,13 @@ export function createItemService(options: ItemServiceOptions) {
         /** 打开条目:由提供者读取;文件类条目会重新校验路径,越权时抛出 ToolDeniedError。 */
         async open(ownerId: string, item: Item): Promise<ItemContent> {
             const provider = allProviders().find((p) => p.id === item.source);
-            if (!provider) throw new Error(`no provider can open items from ${item.source}`);
+            if (!provider) {
+                throw new Error(
+                    item.source.startsWith('plugin:')
+                        ? `the plugin that provides this item is disabled or not installed (${item.source})`
+                        : `no provider can open items from ${item.source}`,
+                );
+            }
             return provider.open(item, { ownerId, repos, roots: rootsOf(ownerId).map((r) => r.path) });
         },
     };

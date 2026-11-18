@@ -259,6 +259,15 @@ describe('插件 REST', () => {
                 { id: 'p0', type: 'video', title: 'P0 renamed', hasChildren: false },
             ]),
         ).toBe(1);
+        // 子项排在父项前面也能挂对(两遍写入);同一批里重复的 id 只算一条
+        s.conn.sqlite.prepare("DELETE FROM items WHERE source = 'plugin:probe' AND source_ref LIKE 'n:filler%'").run();
+        upsertPluginItems(s.repos, owner, 'probe', granted, [
+            { id: 'kid', type: 'video', title: 'Kid', hasChildren: false, parentId: 'dad' },
+            { id: 'dad', type: 'video', title: 'Dad', hasChildren: true },
+            { id: 'dad', type: 'video', title: 'Dad', hasChildren: true },
+        ]);
+        const dad = s.repos.items.bySource(owner, 'plugin:probe', 'n:dad')!;
+        expect(s.repos.items.parentId(s.repos.items.bySource(owner, 'plugin:probe', 'n:kid')!.id)).toBe(dad.id);
 
         expect((await send('DELETE', '/api/v1/plugins/probe')).status).toBe(204);
         expect(s.repos.items.countBySource(owner, 'plugin:probe')).toBe(0);

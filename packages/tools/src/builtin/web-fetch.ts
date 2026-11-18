@@ -83,11 +83,12 @@ export function checkUrl(raw: string, isBlocked: (address: string) => boolean = 
         throw new WebFetchError('the URL is not valid');
     }
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-        throw new WebFetchError('only http and https URLs can be fetched');
+        throw new WebFetchError('only http and https URLs can be fetched', 'bad_scheme');
     }
-    if (url.username || url.password) throw new WebFetchError('URLs with credentials are not allowed');
+    if (url.username || url.password)
+        throw new WebFetchError('URLs with credentials are not allowed', 'credentials_in_url');
     const host = url.hostname.replace(/^\[|\]$/g, '');
-    if (isIP(host) && isBlocked(host)) throw new WebFetchError(`the address ${host} is not allowed`);
+    if (isIP(host) && isBlocked(host)) throw new WebFetchError(`the address ${host} is not allowed`, 'blocked_address');
     return url;
 }
 
@@ -104,7 +105,11 @@ function guardedLookup(options: Required<Pick<WebFetchOptions, 'resolve' | 'isBl
                                 ? fakeIpMessage(hostname, blocked.address)
                                 : `${hostname} resolves to a disallowed address (${blocked.address})`
                             : `${hostname} has no address`,
-                        blocked && isFakeIpAddress(blocked.address) ? 'fake_ip_blocked' : undefined,
+                        blocked
+                            ? isFakeIpAddress(blocked.address)
+                                ? 'fake_ip_blocked'
+                                : 'blocked_address'
+                            : 'no_address',
                     );
                     callback(error as NodeJS.ErrnoException, '', 4);
                     return;

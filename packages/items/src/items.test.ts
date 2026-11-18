@@ -201,6 +201,15 @@ describe('提供者与同步', () => {
             parentId: null,
         });
         await expect(service.open(ownerId, orphan)).rejects.toThrow(/no provider/);
+        const fromPlugin = repos.items.upsert(ownerId, {
+            source: 'plugin:gone',
+            sourceRef: 'y',
+            kind: 'content',
+            type: 'y',
+            title: 'y',
+            parentId: null,
+        });
+        await expect(service.open(ownerId, fromPlugin)).rejects.toThrow(/disabled or not installed/);
     });
 });
 
