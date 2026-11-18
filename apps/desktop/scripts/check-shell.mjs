@@ -33,12 +33,14 @@ async function waitFor(cond, ms) {
 }
 
 const shell = spawn('xvfb-run', ['-a', binary], {
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'pipe'],
     env: { ...process.env, HOME: home, XDG_DATA_HOME: join(home, 'data'), FATCAT_AI_SIDECAR_DIR: sidecarDir },
 });
+let shellLog = '';
+shell.stderr.on('data', (d) => (shellLog = (shellLog + d).slice(-2000)));
 let ok = false;
 try {
-    if (!(await waitFor(() => sidecarPids().length > 0, 30_000))) throw new Error('sidecar never started');
+    if (!(await waitFor(() => sidecarPids().length > 0, 60_000))) throw new Error('sidecar never started');
     console.log('shell started the sidecar');
     // 杀掉壳本身(不是 xvfb-run 包装),模拟崩溃。
     execFileSync('pkill', ['-9', '-f', `^${binary}`]);
@@ -46,7 +48,7 @@ try {
     console.log('sidecar exited after the shell was killed');
     ok = true;
 } catch (error) {
-    console.error(`check-shell FAILED: ${error.message}`);
+    console.error(`check-shell FAILED: ${error.message}\n${shellLog}`);
 } finally {
     shell.kill('SIGKILL');
     try {

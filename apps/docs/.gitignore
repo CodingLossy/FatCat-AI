@@ -2,6 +2,8 @@
 # Copyright (C) 2026 尹绪柏 (Theodore Yin)
 src/content/docs/guides/docker.md
 src/content/docs/en/guides/docker.md
+src/content/docs/guides/desktop.md
+src/content/docs/en/guides/desktop.md
 .astro/
 src/content/docs/guides/plugins.md
 src/content/docs/en/guides/plugins.md

@@ -3,11 +3,34 @@
   "productName": "FatCat-AI",
   "version": "0.0.0",
   "identifier": "ai.fatcat.desktop",
-  "build": { "frontendDist": "../ui" },
+  "build": {
+    "frontendDist": "../ui"
+  },
   "app": {
     "windows": [],
-    "security": { "csp": null }
+    "security": {
+      "csp": null
+    }
   },
-  "plugins": { "deep-link": { "desktop": { "schemes": ["fatcat-ai"] } } },
-  "bundle": { "active": false, "icon": ["icons/icon.png"] }
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["fatcat-ai"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "resources": {
+      "../dist/sidecar": "sidecar",
+      "../dist/node": "node"
+    },
+    "category": "Productivity",
+    "shortDescription": "Self-hosted personal AI assistant",
+    "macOS": {
+      "signingIdentity": "-"
+    }
+  }
 }

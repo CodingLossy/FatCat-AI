@@ -44,6 +44,10 @@ await build({
 
 // 插件沙箱预加载脚本:与入口并列(preloadScriptPath 先找同目录 preload.js)。
 cpSync(join(root, 'packages/tools/dist/plugins/preload.js'), join(out, 'dist/preload.js'));
+// Web UI 静态文件:壳启动核心时用 FATCAT_AI_WEB_DIR 指向它。
+const webDist = join(root, 'apps/web/dist');
+if (!existsSync(join(webDist, 'index.html'))) throw new Error('apps/web/dist is missing; run pnpm build first');
+cpSync(webDist, join(out, 'web'), { recursive: true });
 // 版本号读取 ../package.json。
 const serverPkg = JSON.parse(readFileSync(join(root, 'apps/server/package.json'), 'utf8'));
 writeFileSync(

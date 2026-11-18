@@ -86,6 +86,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xvfb
       - run: node apps/desktop/scripts/bundle-sidecar.mjs
+      - run: node apps/desktop/scripts/fetch-node.mjs
+      - run: node --test apps/desktop/scripts/release-lib.test.mjs
+      - run: cargo install cargo-deny --locked --version 0.21.0
+      - run: cargo deny check licenses bans sources
+        working-directory: apps/desktop/src-tauri
       - run: cargo test --locked
         working-directory: apps/desktop/src-tauri
       - run: cargo build --locked

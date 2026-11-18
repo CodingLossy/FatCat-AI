@@ -33,6 +33,7 @@ export default defineConfig({
                     translations: { en: 'Guides' },
                     items: [
                         { slug: 'guides/docker' },
+                        { slug: 'guides/desktop' },
                         { slug: 'guides/channels' },
                         { slug: 'guides/plugins' },
                         { slug: 'security' },
