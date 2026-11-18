@@ -26807,6 +26807,16 @@
                               null
                             ]
                           },
+                          "disabledReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "plugin_removed",
+                              null
+                            ]
+                          },
                           "timeZone": {
                             "type": "string"
                           },
@@ -27819,6 +27829,16 @@
                       "enum": [
                         "root_revoked",
                         "root_missing",
+                        null
+                      ]
+                    },
+                    "disabledReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "plugin_removed",
                         null
                       ]
                     },
@@ -29066,6 +29086,16 @@
                             null
                           ]
                         },
+                        "disabledReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "plugin_removed",
+                            null
+                          ]
+                        },
                         "timeZone": {
                           "type": "string"
                         },
@@ -29962,6 +29992,16 @@
                       "enum": [
                         "root_revoked",
                         "root_missing",
+                        null
+                      ]
+                    },
+                    "disabledReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "plugin_removed",
                         null
                       ]
                     },
@@ -30914,6 +30954,16 @@
                       "enum": [
                         "root_revoked",
                         "root_missing",
+                        null
+                      ]
+                    },
+                    "disabledReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "plugin_removed",
                         null
                       ]
                     },
@@ -32030,6 +32080,16 @@
                       "enum": [
                         "root_revoked",
                         "root_missing",
+                        null
+                      ]
+                    },
+                    "disabledReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "plugin_removed",
                         null
                       ]
                     },
@@ -55553,6 +55613,212 @@
                             "type": "object",
                             "additionalProperties": {}
                           },
+                          "settingsSchema": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "object"
+                                ]
+                              },
+                              "properties": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "oneOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "string"
+                                          ]
+                                        },
+                                        "title": {
+                                          "type": "object",
+                                          "properties": {
+                                            "zh-CN": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            },
+                                            "en": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        "description": {
+                                          "type": "object",
+                                          "properties": {
+                                            "zh-CN": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            },
+                                            "en": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        "default": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        },
+                                        "maxLength": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 2000
+                                        },
+                                        "enum": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 100
+                                          },
+                                          "minItems": 1,
+                                          "maxItems": 50
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "number"
+                                          ]
+                                        },
+                                        "title": {
+                                          "type": "object",
+                                          "properties": {
+                                            "zh-CN": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            },
+                                            "en": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        "description": {
+                                          "type": "object",
+                                          "properties": {
+                                            "zh-CN": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            },
+                                            "en": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        "default": {
+                                          "type": "number"
+                                        },
+                                        "minimum": {
+                                          "type": "number"
+                                        },
+                                        "maximum": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "boolean"
+                                          ]
+                                        },
+                                        "title": {
+                                          "type": "object",
+                                          "properties": {
+                                            "zh-CN": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            },
+                                            "en": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        "description": {
+                                          "type": "object",
+                                          "properties": {
+                                            "zh-CN": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            },
+                                            "en": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        "default": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "^[a-z][A-Za-z0-9_]{0,31}$"
+                                },
+                                "maxItems": 20
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "properties"
+                            ],
+                            "additionalProperties": false
+                          },
                           "runtime": {
                             "type": "object",
                             "properties": {
@@ -55653,6 +55919,7 @@
                           "secretRefs",
                           "missingSecrets",
                           "settings",
+                          "settingsSchema",
                           "runtime",
                           "run",
                           "installedAt",
@@ -56157,6 +56424,212 @@
                       "type": "object",
                       "additionalProperties": {}
                     },
+                    "settingsSchema": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "object"
+                          ]
+                        },
+                        "properties": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "string"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "description": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "default": {
+                                    "type": "string",
+                                    "maxLength": 500
+                                  },
+                                  "maxLength": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 2000
+                                  },
+                                  "enum": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "minItems": 1,
+                                    "maxItems": 50
+                                  }
+                                },
+                                "required": [
+                                  "type"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "number"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "description": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "default": {
+                                    "type": "number"
+                                  },
+                                  "minimum": {
+                                    "type": "number"
+                                  },
+                                  "maximum": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "type"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "boolean"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "description": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "default": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "type"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^[a-z][A-Za-z0-9_]{0,31}$"
+                          },
+                          "maxItems": 20
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "properties"
+                      ],
+                      "additionalProperties": false
+                    },
                     "runtime": {
                       "type": "object",
                       "properties": {
@@ -56255,6 +56728,46 @@
                           "name"
                         ]
                       }
+                    },
+                    "protections": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string",
+                            "enum": [
+                              "approval",
+                              "untrusted-output",
+                              "host-files",
+                              "environment",
+                              "brokered-network",
+                              "direct-network",
+                              "items-quota",
+                              "memory-threshold",
+                              "review"
+                            ]
+                          },
+                          "level": {
+                            "type": "string",
+                            "enum": [
+                              "enforced",
+                              "layered",
+                              "self-reported",
+                              "unverified",
+                              "none"
+                            ]
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "level",
+                          "detail"
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -56275,11 +56788,13 @@
                     "secretRefs",
                     "missingSecrets",
                     "settings",
+                    "settingsSchema",
                     "runtime",
                     "run",
                     "installedAt",
                     "updatedAt",
-                    "affectedTasks"
+                    "affectedTasks",
+                    "protections"
                   ]
                 }
               }
@@ -56932,6 +57447,212 @@
                       "type": "object",
                       "additionalProperties": {}
                     },
+                    "settingsSchema": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "object"
+                          ]
+                        },
+                        "properties": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "string"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "description": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "default": {
+                                    "type": "string",
+                                    "maxLength": 500
+                                  },
+                                  "maxLength": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 2000
+                                  },
+                                  "enum": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "minItems": 1,
+                                    "maxItems": 50
+                                  }
+                                },
+                                "required": [
+                                  "type"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "number"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "description": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "default": {
+                                    "type": "number"
+                                  },
+                                  "minimum": {
+                                    "type": "number"
+                                  },
+                                  "maximum": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "type"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "boolean"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "description": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "default": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "type"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^[a-z][A-Za-z0-9_]{0,31}$"
+                          },
+                          "maxItems": 20
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "properties"
+                      ],
+                      "additionalProperties": false
+                    },
                     "runtime": {
                       "type": "object",
                       "properties": {
@@ -57032,6 +57753,7 @@
                     "secretRefs",
                     "missingSecrets",
                     "settings",
+                    "settingsSchema",
                     "runtime",
                     "run",
                     "installedAt",
@@ -59290,6 +60012,212 @@
                       "type": "object",
                       "additionalProperties": {}
                     },
+                    "settingsSchema": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "object"
+                          ]
+                        },
+                        "properties": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "string"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "description": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "default": {
+                                    "type": "string",
+                                    "maxLength": 500
+                                  },
+                                  "maxLength": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 2000
+                                  },
+                                  "enum": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "minItems": 1,
+                                    "maxItems": 50
+                                  }
+                                },
+                                "required": [
+                                  "type"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "number"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "description": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "default": {
+                                    "type": "number"
+                                  },
+                                  "minimum": {
+                                    "type": "number"
+                                  },
+                                  "maximum": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "type"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "boolean"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "description": {
+                                    "type": "object",
+                                    "properties": {
+                                      "zh-CN": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "en": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "default": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "type"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^[a-z][A-Za-z0-9_]{0,31}$"
+                          },
+                          "maxItems": 20
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "properties"
+                      ],
+                      "additionalProperties": false
+                    },
                     "runtime": {
                       "type": "object",
                       "properties": {
@@ -59390,6 +60318,7 @@
                     "secretRefs",
                     "missingSecrets",
                     "settings",
+                    "settingsSchema",
                     "runtime",
                     "run",
                     "installedAt",

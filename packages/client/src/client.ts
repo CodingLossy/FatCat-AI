@@ -41,6 +41,11 @@ import type {
     ChannelStatus,
     McpServerStatus,
     McpServerView,
+    PluginDetail,
+    PluginEventView,
+    PluginPatch,
+    PluginPrepared,
+    PluginView,
     LoginResponse,
     Me,
     Memory,
@@ -475,6 +480,28 @@ export function createClient(options: ClientOptions) {
                 t.json<McpServerView>(`/mcp/servers/${enc(id)}`, { method: 'PATCH', body }),
             remove: (id: string) => t.json<void>(`/mcp/servers/${enc(id)}`, { method: 'DELETE' }),
             status: (id: string) => t.json<McpServerStatus>(`/mcp/servers/${enc(id)}/status`),
+        },
+
+        plugins: {
+            /** 插件(ADR 0040);只能由登录的主人管理,没有对应的 Agent 工具。 */
+            list: () => t.json<Page<PluginView>>('/plugins'),
+            get: (id: string) => t.json<PluginDetail>(`/plugins/${enc(id)}`),
+            /** 复制并检查本地目录(不运行插件代码),返回要确认的权限与保护程度表。 */
+            prepareLocal: (path: string) =>
+                t.json<PluginPrepared>('/plugins/prepare', {
+                    method: 'POST',
+                    body: { source: { kind: 'local', path } },
+                }),
+            /** 安装已 prepare 的包;accept 必须为 true(全部同意)。 */
+            install: (stagingId: string) =>
+                t.json<PluginView>('/plugins/install', { method: 'POST', body: { stagingId, accept: true } }),
+            update: (id: string, body: PluginPatch) =>
+                t.json<PluginView>(`/plugins/${enc(id)}`, { method: 'PATCH', body }),
+            stop: (id: string) => t.json<void>(`/plugins/${enc(id)}/stop`, { method: 'POST' }),
+            uninstall: (id: string, purgeData = false) =>
+                t.json<void>(`/plugins/${enc(id)}`, { method: 'DELETE', query: { purgeData: String(purgeData) } }),
+            events: (id: string, params: PageParams = {}) =>
+                t.json<Page<PluginEventView>>(`/plugins/${enc(id)}/events`, { query: { ...params } }),
         },
 
         channels: {

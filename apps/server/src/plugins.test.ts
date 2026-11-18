@@ -175,6 +175,31 @@ describe('插件 REST', () => {
         );
     }, 60_000);
 
+    it('设置按清单的 settings 声明校验;详情带 settingsSchema 与保护程度表', async () => {
+        const { send, install, settled } = await setup();
+        const src = sourceDir((m) => {
+            m.settings = {
+                type: 'object',
+                properties: {
+                    city: { type: 'string', maxLength: 8 },
+                    days: { type: 'number', minimum: 1, maximum: 7 },
+                },
+                required: ['city'],
+            };
+        });
+        expect((await install(src)).res.status).toBe(201);
+        await settled();
+        const bad = await send('PATCH', '/api/v1/plugins/probe', { settings: { city: 'Beijing-Haidian', other: 1 } });
+        expect(bad.status).toBe(400);
+        expect(JSON.stringify(await bad.json())).toContain('other: not declared by the plugin');
+        const good = await send('PATCH', '/api/v1/plugins/probe', { settings: { city: 'Paris', days: 3 } });
+        expect(good.status).toBe(200);
+        expect(PluginView.parse(await good.json()).settings).toEqual({ city: 'Paris', days: 3 });
+        const detail = PluginDetail.parse(await (await send('GET', '/api/v1/plugins/probe')).json());
+        expect(detail.settingsSchema?.required).toEqual(['city']);
+        expect(detail.protections.find((r) => r.key === 'direct-network')?.level).toBe('layered');
+    });
+
     it('卸载:勾选删除数据后文件树与表行数回到安装前;预授权撤销并审计,任务停用并写原因', async () => {
         const { send, settled, install } = await setup();
         const treeBefore = tree(s.dir);
@@ -213,6 +238,12 @@ describe('插件 REST', () => {
         expect(s.repos.preauths.list(owner)).toEqual([]);
         expect(s.repos.audit.list(owner, { limit: 50 }).items.some((a) => a.action === 'preauth-revoked')).toBe(true);
         expect(s.repos.tasks.list(owner)[0]).toMatchObject({ enabled: false, disabledReason: 'plugin_removed' });
+        // 任务页能看到原因;用户重新启用后原因清空
+        const shown = (await (await send('GET', `/api/v1/tasks/${task.id}`)).json()) as Record<string, unknown>;
+        expect(shown).toMatchObject({ enabled: false, disabledReason: 'plugin_removed' });
+        const again = await send('PATCH', `/api/v1/tasks/${task.id}`, { enabled: true });
+        expect(again.status).toBe(200);
+        expect(await again.json()).toMatchObject({ enabled: true, disabledReason: null });
 
         // 重新安装再卸载并删除数据:回到安装前的快照
         await install(sourceDir());

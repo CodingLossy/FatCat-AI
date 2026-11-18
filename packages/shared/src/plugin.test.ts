@@ -12,6 +12,8 @@ import {
     parsePluginManifest,
     parseSemver,
     satisfiesEngine,
+    validatePluginSettings,
+    type PluginSettings,
 } from './plugin.js';
 
 function manifest(patch: Record<string, unknown> = {}): Record<string, unknown> {
@@ -265,5 +267,40 @@ describe('fatcat/* messages', () => {
     it('validates the heartbeat', () => {
         expect(HeartbeatParams.safeParse({ rss: 1024 }).success).toBe(true);
         expect(HeartbeatParams.safeParse({ rss: -1 }).success).toBe(false);
+    });
+});
+
+describe('validatePluginSettings', () => {
+    const schema: PluginSettings = {
+        type: 'object',
+        properties: {
+            city: { type: 'string', maxLength: 5 },
+            unit: { type: 'string', enum: ['c', 'f'] },
+            days: { type: 'number', minimum: 1, maximum: 7 },
+            alerts: { type: 'boolean' },
+        },
+        required: ['city'],
+    };
+
+    it('accepts declared values of the right type', () => {
+        expect(validatePluginSettings(schema, { city: 'Paris', unit: 'c', days: 3, alerts: false })).toEqual([]);
+    });
+
+    it('rejects undeclared keys, wrong types, out-of-range values and a missing required one', () => {
+        expect(validatePluginSettings(schema, { city: 'Paris', extra: 1 })).toEqual([
+            'extra: not declared by the plugin',
+        ]);
+        expect(validatePluginSettings(schema, { city: 'Paris', unit: 'k', days: 9, alerts: 'yes' })).toEqual([
+            'unit: not one of the allowed values',
+            'days: at most 7',
+            'alerts: must be true or false',
+        ]);
+        expect(validatePluginSettings(schema, { city: 'Beijing' })).toEqual(['city: at most 5 characters']);
+        expect(validatePluginSettings(schema, {})).toEqual(['city: required']);
+    });
+
+    it('rejects every value when the plugin declares no settings', () => {
+        expect(validatePluginSettings(undefined, {})).toEqual([]);
+        expect(validatePluginSettings(undefined, { a: 1 })).toEqual(['a: not declared by the plugin']);
     });
 });

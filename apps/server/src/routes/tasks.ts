@@ -238,6 +238,7 @@ export function taskRoutes(deps: {
             action: task.action,
             outputs: task.outputs,
             policy: task.policy,
+            disabledReason: task.disabledReason === 'plugin_removed' ? 'plugin_removed' : null,
             warning: rootGone ? 'root_revoked' : rootMissing ? 'root_missing' : null,
             timeZone: timeZoneOf(task.ownerId),
             nextRunAt: next ? next.toISOString() : null,

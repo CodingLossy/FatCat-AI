@@ -14,7 +14,7 @@ import { detectNetIsolation, NO_NET_ISOLATION, type NetIsolation } from './isola
 import { pluginEnv, pluginNodeArgs } from './launch.js';
 
 const fixture = fileURLToPath(new URL('./fixtures/probe-plugin.js', import.meta.url));
-const isolation = detectNetIsolation();
+const isolation = await detectNetIsolation();
 
 async function attackWithoutPreload(wrapper: NetIsolation, port: string): Promise<string> {
     const root = mkdtempSync(join(tmpdir(), 'fatcat-iso-'));

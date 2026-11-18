@@ -8,6 +8,7 @@ import { approve, login, logout, setup, whoami } from './commands/auth.js';
 import { askCommand, chatCommand } from './commands/chat.js';
 import { memoryCommand } from './commands/memory.js';
 import { modelsCommand } from './commands/models.js';
+import { pluginsCommand } from './commands/plugins.js';
 import { serveCommand } from './commands/serve.js';
 import { sessionsCommand } from './commands/sessions.js';
 import { CLI_ENV_NAMES } from './config.js';
@@ -34,6 +35,12 @@ Data
   models list [--json] | models add ... | models test <id|label>
   memory list [--json] | memory search <query> | memory add <text> | memory edit <id> <text> | memory forget <id>
 
+Plugins
+  plugins list [--json]                                     installed plugins, state and memory
+  plugins install <dir> [--yes]                             check a local plugin folder, show its permissions, then install
+  plugins stop <id>                                         stop the running process (the next call starts it again)
+  plugins remove <id> [--purge-data] [--yes]                uninstall; lists the tasks it disables first
+
 Server
   serve [--host h] [--port p] [--data-dir dir]              run the core server in this process
 
@@ -58,6 +65,7 @@ const COMMANDS: Record<string, Command> = {
     sessions: sessionsCommand,
     models: modelsCommand,
     memory: memoryCommand,
+    plugins: pluginsCommand,
     serve: serveCommand,
 };
 

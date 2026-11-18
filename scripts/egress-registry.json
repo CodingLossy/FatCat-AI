@@ -64,5 +64,11 @@
     "kind": "local-only",
     "listedAs": "-",
     "reason": "Plugin process preload (ADR 0040 section 3.4); imports node:net only to replace Socket.prototype.connect with a function that throws, it never opens a connection"
+  },
+  {
+    "file": "packages/tools/src/plugins/isolation.ts",
+    "kind": "local-only",
+    "listedAs": "-",
+    "reason": "Plugin network-isolation probe (ADR 0040 section 4); on macOS it opens a listening socket on 127.0.0.1 and has a sandboxed child try to connect, to prove the sandbox denies it; nothing leaves the machine"
   }
 ]
