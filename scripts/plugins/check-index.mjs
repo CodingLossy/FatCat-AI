@@ -17,7 +17,7 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const INDEX_MAX_BYTES = 4 * 1024 * 1024;
@@ -168,7 +168,13 @@ export function listScripts(dir, base = dir) {
         const full = join(dir, entry.name);
         if (entry.isDirectory()) out.push(...listScripts(full, base));
         else if (entry.isFile() && /\.(c|m)?js$/.test(entry.name))
-            out.push({ path: full.slice(base.length + 1), text: readFileSync(full, 'utf8') });
+            out.push({
+                path: full
+                    .slice(base.length + 1)
+                    .split(sep)
+                    .join('/'),
+                text: readFileSync(full, 'utf8'),
+            });
     }
     return out;
 }
