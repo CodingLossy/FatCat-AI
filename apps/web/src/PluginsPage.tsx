@@ -4,6 +4,7 @@
 import type {
     PluginDetail,
     PluginEventView,
+    PluginPermissionChange,
     PluginPrepared,
     PluginProtection,
     PluginView,
@@ -34,6 +35,7 @@ export function PluginsPage() {
     const [path, setPath] = useState('');
     const [prepared, setPrepared] = useState<PluginPrepared | null>(null);
     const [accepted, setAccepted] = useState(false);
+    const [skipBackup, setSkipBackup] = useState(false);
     const [busy, setBusy] = useState(false);
     const [open, setOpen] = useState<string | null>(null);
     const [tab, setTab] = useState<'installed' | 'market'>('installed');
@@ -78,6 +80,7 @@ export function PluginsPage() {
         act(async () => {
             setPrepared(await api.plugins.prepareMarket(market, id, version));
             setAccepted(false);
+            setSkipBackup(false);
         });
 
     const prepare = (e: FormEvent) => {
@@ -85,13 +88,14 @@ export function PluginsPage() {
         void act(async () => {
             setPrepared(await api.plugins.prepareLocal(path.trim()));
             setAccepted(false);
+            setSkipBackup(false);
         });
     };
 
     const install = () => {
         if (!prepared) return;
         void act(async () => {
-            const view = await api.plugins.install(prepared.stagingId);
+            const view = await api.plugins.install(prepared.stagingId, { skipDataBackup: skipBackup });
             setPrepared(null);
             setPath('');
             setOpen(view.id);
@@ -154,8 +158,13 @@ export function PluginsPage() {
 
             {prepared ? (
                 <section className="card form" data-testid="plugin-confirm">
-                    <h3>{t('plugins.confirmTitle', { name: pickText(prepared.manifest.name, locale) })}</h3>
+                    <h3>
+                        {prepared.upgrade
+                            ? t('plugins.upgradeTitle', { name: pickText(prepared.manifest.name, locale) })
+                            : t('plugins.confirmTitle', { name: pickText(prepared.manifest.name, locale) })}
+                    </h3>
                     <ManifestSummary prepared={prepared} />
+                    {prepared.upgrade ? <UpgradePanel prepared={prepared} /> : null}
                     <h4>{t('plugins.permissions')}</h4>
                     <PermissionList permissions={prepared.manifest.permissions} />
                     <h4>{t('plugins.protections')}</h4>
@@ -166,29 +175,88 @@ export function PluginsPage() {
                             {t('plugins.marketNote', { market: prepared.market.id, keyId: prepared.market.keyId })}
                         </p>
                     ) : null}
-                    {prepared.installed ? (
+                    {prepared.installed && !prepared.upgrade ? (
                         <p className="error">
                             {t('plugins.alreadyInstalled', { version: prepared.installed.version })}
                         </p>
                     ) : null}
                     <label className="inline">
                         <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
-                        {t('plugins.acceptAll')}
+                        {prepared.upgrade ? t('plugins.acceptUpgrade') : t('plugins.acceptAll')}
                     </label>
+                    {prepared.upgrade?.backupTooLarge ? (
+                        <label className="inline" data-testid="plugin-skip-backup">
+                            <input
+                                type="checkbox"
+                                checked={skipBackup}
+                                onChange={(e) => setSkipBackup(e.target.checked)}
+                            />
+                            {t('plugins.skipBackupAck')}
+                        </label>
+                    ) : null}
                     <div className="row">
                         <button
                             type="button"
                             className="primary"
-                            disabled={!accepted || busy || prepared.installed !== null}
+                            disabled={
+                                !accepted ||
+                                busy ||
+                                (prepared.installed !== null && prepared.upgrade === null) ||
+                                (prepared.upgrade?.backupTooLarge === true && !skipBackup)
+                            }
                             onClick={install}
                         >
-                            {t('plugins.install')}
+                            {prepared.upgrade ? t('plugins.upgrade') : t('plugins.install')}
                         </button>
                         <button type="button" onClick={() => setPrepared(null)}>
                             {t('nav.cancel')}
                         </button>
                     </div>
                 </section>
+            ) : null}
+        </div>
+    );
+}
+
+/** 升级时的权限差异(第 6.2 节):新增的权限要用户同意,减少的只告知;数据过大时提示不会备份。 */
+function UpgradePanel({ prepared }: { prepared: PluginPrepared }) {
+    const { t } = useI18n();
+    const upgrade = prepared.upgrade;
+    if (!upgrade) return null;
+    const line = (c: PluginPermissionChange, group: 'diff' | 'diffGone') =>
+        t(`plugins.${group}.${c.kind}`, { name: c.name, from: c.from ?? '', to: c.to ?? '' });
+    return (
+        <div data-testid="plugin-upgrade">
+            <p className="small muted">
+                {t('plugins.upgradeFrom', { from: upgrade.fromVersion, to: prepared.manifest.version })}
+            </p>
+            {upgrade.diff.added.length > 0 ? (
+                <div data-testid="plugin-diff-added">
+                    <h4>{t('plugins.diffAdded')}</h4>
+                    <ul className="warn">
+                        {upgrade.diff.added.map((c, i) => (
+                            <li key={i}>{line(c, 'diff')}</li>
+                        ))}
+                    </ul>
+                </div>
+            ) : (
+                <p className="small muted">{t('plugins.diffNone')}</p>
+            )}
+            {upgrade.diff.removed.length > 0 ? (
+                <div data-testid="plugin-diff-removed">
+                    <h4>{t('plugins.diffRemoved')}</h4>
+                    <ul className="small muted">
+                        {upgrade.diff.removed.map((c, i) => (
+                            <li key={i}>{line(c, 'diffGone')}</li>
+                        ))}
+                    </ul>
+                </div>
+            ) : null}
+            <p className="small muted">{t('plugins.upgradeNote')}</p>
+            {upgrade.backupTooLarge ? (
+                <p className="warn" data-testid="plugin-backup-too-large">
+                    {t('plugins.backupTooLarge', { size: formatRss(upgrade.dataBytes) ?? '' })}
+                </p>
             ) : null}
         </div>
     );
@@ -383,6 +451,7 @@ function PluginManage({
     const [events, setEvents] = useState<PluginEventView[]>([]);
     const [uninstalling, setUninstalling] = useState(false);
     const [purge, setPurge] = useState(false);
+    const [rollingBack, setRollingBack] = useState(false);
 
     useEffect(() => {
         let alive = true;
@@ -427,6 +496,44 @@ function PluginManage({
                             </li>
                         ))}
                     </ul>
+                </div>
+            ) : null}
+            {plugin.state === 'incompatible' ? (
+                <p className="warn" data-testid="plugin-incompatible">
+                    {t('plugins.incompatibleHint')}
+                </p>
+            ) : null}
+            {plugin.previousVersion ? (
+                <div data-testid="plugin-rollback">
+                    <h4>{t('plugins.versionTitle')}</h4>
+                    <p className="small muted">{t('plugins.rollbackHint', { version: plugin.previousVersion })}</p>
+                    {rollingBack ? (
+                        <div className="card" role="alertdialog">
+                            <p className="small">{t('plugins.rollbackWhat', { version: plugin.previousVersion })}</p>
+                            <div className="row">
+                                <button
+                                    type="button"
+                                    className="danger"
+                                    disabled={busy}
+                                    onClick={() =>
+                                        void act(async () => {
+                                            await api.plugins.rollback(plugin.id);
+                                            setRollingBack(false);
+                                        })
+                                    }
+                                >
+                                    {t('plugins.rollbackConfirm')}
+                                </button>
+                                <button type="button" onClick={() => setRollingBack(false)}>
+                                    {t('nav.cancel')}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button type="button" disabled={busy} onClick={() => setRollingBack(true)}>
+                            {t('plugins.rollback', { version: plugin.previousVersion })}
+                        </button>
+                    )}
                 </div>
             ) : null}
             <h4>{t('plugins.permissions')}</h4>

@@ -91,3 +91,10 @@ At least once a month (the default validity is 30 days; clients ignore an expire
 
 If the main key is lost or leaked, sign with `fatcat-backup-2026` and ship a client release that replaces the leaked
 public key in `packages/tools/src/plugins/market.ts` and in `sign-index.mjs`.
+
+## Updating the pinned checks
+
+`index-repo-workflow.yml` checks out FatCat-AI at the full commit SHA in `FATCAT_AI_REF`, so the index repository
+always runs the schema, tar reader and rules you reviewed. To update it, read the diff of `scripts/plugins/` and
+`packages/shared`/`packages/tools` between the old and the new commit, then replace the SHA in a pull request to the
+index repository. Do not use a branch name there.

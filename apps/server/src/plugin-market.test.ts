@@ -3,7 +3,7 @@
 
 // 插件市场(ADR 0040 PR 4):用测试时生成的密钥对签名的假索引、本机 https 假服务器,全程不联网。
 import { createHash, generateKeyPairSync, sign, type KeyObject } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:https';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
@@ -110,7 +110,9 @@ interface VersionSpec {
     permissions?: unknown;
 }
 
-function makeIndex(opts: { serial?: number; expiresAt?: string; versions?: VersionSpec[]; market?: string } = {}) {
+function makeIndex(
+    opts: { serial?: number; expiresAt?: string; versions?: VersionSpec[]; market?: string; generatedAt?: string } = {},
+) {
     const versions = (opts.versions ?? [{}]).map((v) => {
         const file = v.file ?? 'probe-0.1.0.tgz';
         const bytes = v.bytes ?? packages.get(file) ?? tgz(goodFiles);
@@ -131,7 +133,7 @@ function makeIndex(opts: { serial?: number; expiresAt?: string; versions?: Versi
         formatVersion: 1,
         market: opts.market ?? 'official',
         serial: opts.serial ?? 1,
-        generatedAt: '2026-11-18T00:00:00Z',
+        generatedAt: opts.generatedAt ?? '2026-11-18T00:00:00Z',
         expiresAt: opts.expiresAt ?? '2999-01-01T00:00:00Z',
         downloadHosts: ['ok.test'],
         plugins: [
@@ -351,6 +353,45 @@ describe('插件市场', () => {
         signWith = undefined;
         publish(makeIndex({ serial: 5 }));
         expect((await refresh()).markets[0]).toMatchObject({ state: 'ok', serial: 5, error: null });
+    });
+
+    it('同一个 serial 内容变了就拒绝;缓存文件丢失后最高 serial 仍然防回滚', async () => {
+        publish(makeIndex({ serial: 7 }));
+        const { refresh } = await setup();
+        expect((await refresh()).markets[0]).toMatchObject({ state: 'ok', serial: 7 });
+
+        publish(makeIndex({ serial: 7, generatedAt: '2026-11-19T00:00:00Z' }));
+        expect((await refresh()).markets[0]).toMatchObject({ state: 'stale', error: { code: 'index_rollback' } });
+
+        // 缓存的索引与签名被删(或换索引中途失败):没有缓存了,但见过 serial 7
+        const dir = join(s.dir, 'plugins', '.market');
+        rmSync(join(dir, 'official.json'));
+        rmSync(join(dir, 'official.sig'));
+        publish(makeIndex({ serial: 6 }));
+        const reopened = new MarketService({
+            repos: s.repos,
+            dataDir: s.dir,
+            markets: [
+                {
+                    id: 'official',
+                    indexUrl: `https://ok.test:${port}/index.json`,
+                    keys: [{ keyId: main.keyId, publicKey: main.publicKey }],
+                    official: true,
+                },
+            ],
+            net: { resolve: async () => [{ address: '127.0.0.1', family: 4 }], isBlocked: (a) => a !== '127.0.0.1' },
+        });
+        const ownerId = s.repos.owners.ids()[0]!;
+        await reopened.refresh(ownerId);
+        expect(reopened.listing(ownerId, { coreVersion: '1.1.0', installed: () => null }).markets[0]).toMatchObject({
+            error: { code: 'index_rollback' },
+        });
+        publish(makeIndex({ serial: 8 }));
+        await reopened.refresh(ownerId);
+        expect(reopened.listing(ownerId, { coreVersion: '1.1.0', installed: () => null }).markets[0]).toMatchObject({
+            state: 'ok',
+            serial: 8,
+        });
     });
 
     it('索引下载失败时继续用缓存(仍可安装);从没成功过时市场页只显示错误,不能安装', async () => {

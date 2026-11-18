@@ -218,3 +218,93 @@ test('plugins page: install, configure, stop, uninstall and see the disabled tas
     await expect(page.getByTestId('task-disabled-reason')).toContainText('插件被卸载而停用');
     if (SHOTS) await page.screenshot({ path: join(SHOTS, 'plugins-task-disabled.png'), fullPage: true });
 });
+
+/** 升级用的夹具:同一个插件 id 的不同版本;`patch` 改清单。 */
+function versionDir(
+    version: string,
+    patch: (manifest: Record<string, unknown> & { permissions: { tools: Record<string, unknown>[] } }) => void = () =>
+        undefined,
+): string {
+    const target = join(dir, `tides-${version}`);
+    cpSync(FIXTURES, target, { recursive: true });
+    const manifest = JSON.parse(readFileSync(join(target, 'plugin.json'), 'utf8')) as Record<string, unknown> & {
+        permissions: { tools: Record<string, unknown>[] };
+    };
+    manifest.id = 'tides';
+    manifest.version = version;
+    manifest.name = { 'zh-CN': '潮汐', en: 'Tides' };
+    patch(manifest);
+    writeFileSync(join(target, 'plugin.json'), JSON.stringify(manifest));
+    return target;
+}
+
+test('plugins page: upgrade shows the permission diff, a failed upgrade is undone, and rollback restores the old version', async ({
+    page,
+}) => {
+    await page.goto(base);
+    await page.getByLabel('用户名').fill('owner');
+    await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
+    // 单独跑这个用例时还没有账号:走创建账号;否则登录
+    const create = page.getByRole('button', { name: '创建并登录' });
+    const login = page.getByRole('button', { name: '登录', exact: true });
+    await create.or(login).first().waitFor();
+    await ((await create.isVisible()) ? create : login).click();
+    await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
+    await page.getByRole('link', { name: '插件' }).click();
+
+    const check = async (path: string) => {
+        await page.getByLabel('插件目录', { exact: false }).fill(path);
+        await page.getByRole('button', { name: '检查' }).click();
+    };
+    const confirm = page.getByTestId('plugin-confirm');
+    const card = page.locator('[data-plugin="tides"]');
+
+    // 先装 0.1.0
+    await check(versionDir('0.1.0'));
+    await confirm.getByRole('checkbox').check();
+    await confirm.getByRole('button', { name: '安装', exact: true }).click();
+    await expect(card).toContainText('v0.1.0');
+    await expect(card).toContainText('已启用');
+
+    // 0.2.0:echo 升到 write 并开始外发数据,probe 工具不再声明
+    await check(
+        versionDir('0.2.0', (m) => {
+            m.permissions.tools = [{ name: 'echo', risk: 'write', sendsData: true }];
+        }),
+    );
+    await expect(confirm).toContainText('升级「潮汐」?');
+    await expect(confirm.getByTestId('plugin-upgrade')).toContainText('从 v0.1.0 升级到 v0.2.0');
+    await expect(confirm.getByTestId('plugin-diff-added')).toContainText('工具 echo 的级别从 read 升到 write');
+    await expect(confirm.getByTestId('plugin-diff-added')).toContainText('会把你的数据发到外部服务');
+    await expect(confirm.getByTestId('plugin-diff-removed')).toContainText('不再提供工具 probe');
+    await expect(confirm.getByRole('button', { name: '升级', exact: true })).toBeDisabled();
+    if (SHOTS) await page.screenshot({ path: join(SHOTS, 'plugin-upgrade-confirm.png'), fullPage: true });
+    await confirm.getByRole('checkbox').check();
+    await confirm.getByRole('button', { name: '升级', exact: true }).click();
+    await expect(card).toContainText('v0.2.0');
+    await expect(card).toContainText('已启用');
+
+    // 升级后可以回退;回退要再确认一次
+    const rollback = card.getByTestId('plugin-rollback'); // 安装或升级后卡片自动展开
+    await expect(rollback).toContainText('上一个版本 v0.1.0 还在');
+    await rollback.getByRole('button', { name: '回退到 v0.1.0' }).click();
+    await expect(rollback).toContainText('恢复到升级前');
+    if (SHOTS) await page.screenshot({ path: join(SHOTS, 'plugin-rollback-confirm.png'), fullPage: true });
+    await rollback.getByRole('button', { name: '确认回退' }).click();
+    await expect(card).toContainText('v0.1.0');
+    await expect(card.getByTestId('plugin-rollback')).toHaveCount(0);
+
+    // 新版本启动不了(声明了插件没有的工具):提示原因,旧版本原样还在
+    await check(
+        versionDir('0.3.0', (m) => {
+            m.permissions.tools.push({ name: 'ghost', risk: 'read' });
+        }),
+    );
+    await expect(confirm).toContainText('升级「潮汐」?');
+    await confirm.getByRole('checkbox').check();
+    await confirm.getByRole('button', { name: '升级', exact: true }).click();
+    await expect(page.locator('p.error')).toContainText('health check');
+    await expect(card).toContainText('v0.1.0');
+    await expect(card).toContainText('已启用');
+    if (SHOTS) await page.screenshot({ path: join(SHOTS, 'plugin-upgrade-failed.png'), fullPage: true });
+});

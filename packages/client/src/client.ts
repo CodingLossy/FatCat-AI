@@ -503,9 +503,17 @@ export function createClient(options: ClientOptions) {
             market: () => t.json<PluginMarketListing>('/plugins/market'),
             /** 重新下载并验证索引;失败或被拒绝时保留缓存,原因在返回的市场状态里。 */
             refreshMarket: () => t.json<PluginMarketListing>('/plugins/market/refresh', { method: 'POST' }),
-            /** 安装已 prepare 的包;accept 必须为 true(全部同意)。 */
-            install: (stagingId: string) =>
-                t.json<PluginView>('/plugins/install', { method: 'POST', body: { stagingId, accept: true } }),
+            /**
+             * 安装已 prepare 的包;accept 必须为 true(全部同意)。已装同名插件且包的版本更新时这就是升级;
+             * 数据超过备份上限时需要 `skipDataBackup: true` 明确同意不备份。
+             */
+            install: (stagingId: string, options: { skipDataBackup?: boolean } = {}) =>
+                t.json<PluginView>('/plugins/install', {
+                    method: 'POST',
+                    body: { stagingId, accept: true, ...(options.skipDataBackup ? { skipDataBackup: true } : {}) },
+                }),
+            /** 回退到上一个版本(恢复它的数据备份);没有上一个版本时 409。 */
+            rollback: (id: string) => t.json<PluginView>(`/plugins/${enc(id)}/rollback`, { method: 'POST' }),
             update: (id: string, body: PluginPatch) =>
                 t.json<PluginView>(`/plugins/${enc(id)}`, { method: 'PATCH', body }),
             stop: (id: string) => t.json<void>(`/plugins/${enc(id)}/stop`, { method: 'POST' }),

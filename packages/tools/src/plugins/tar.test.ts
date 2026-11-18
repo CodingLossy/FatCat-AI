@@ -86,6 +86,17 @@ describe('extractTgz', () => {
         );
     });
 
+    it('rejects empty path segments and names that differ only in Unicode normalization', async () => {
+        await reject([{ name: 'a//b.js', data: '1' }], /empty path segment/);
+        await reject(
+            [
+                { name: 'caf\u00e9.txt', data: '1' }, // NFC
+                { name: 'cafe\u0301.txt', data: '2' }, // NFD
+            ],
+            /duplicate/,
+        );
+    });
+
     it('rejects pax headers that rename an entry but ignores harmless ones', async () => {
         const pax = (record: string) => {
             const body = ` ${record}\n`;

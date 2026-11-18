@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
 import { navigate } from './router.js';
-import { defaultMarketVersion, marketErrorKey, permissionSummary, pickText } from './plugin-ui.js';
+import { defaultMarketVersion, marketAction, marketErrorKey, permissionSummary, pickText } from './plugin-ui.js';
 
 /**
  * 插件市场(ADR 0040 第 5.2、5.3 节)。打开这个页签时下载并验证一次签名的索引(只发一个 GET,不带任何标识),
@@ -170,6 +170,7 @@ function MarketEntry({
     const { t, locale } = useI18n();
     const version = plugin.versions.find((v) => v.version === selected) ?? plugin.versions[0];
     const installed = plugin.installed;
+    const action = version ? marketAction(installed?.version ?? null, version.version) : 'none';
     return (
         <div className="row">
             <div>
@@ -207,11 +208,11 @@ function MarketEntry({
                 </select>
                 <button
                     type="button"
-                    disabled={busy || !version || !version.compatible || installed !== null}
-                    title={installed ? t('plugins.market.alreadyInstalledHint') : undefined}
+                    disabled={busy || !version || !version.compatible || action === 'none'}
+                    title={action === 'none' && installed ? t('plugins.market.alreadyInstalledHint') : undefined}
                     onClick={() => version && void onPrepare(plugin.market, plugin.id, version.version)}
                 >
-                    {t('plugins.market.review')}
+                    {action === 'upgrade' ? t('plugins.market.reviewUpgrade') : t('plugins.market.review')}
                 </button>
             </div>
         </div>

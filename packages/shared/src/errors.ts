@@ -38,6 +38,10 @@ export const ErrorCode = z.enum([
     'plugin_checksum_mismatch',
     'plugin_manifest_mismatch',
     'plugin_yanked',
+    /** 以下自 M7 PR 5 起提供(升级与回退、本地插件的平台限制,ADR 0040 第 3.4、6.2 节)。 */
+    'plugin_upgrade_failed',
+    'plugin_backup_too_large',
+    'plugin_network_unsupported',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 

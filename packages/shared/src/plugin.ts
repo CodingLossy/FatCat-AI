@@ -196,6 +196,74 @@ export const PluginPermissions = z.strictObject({
 });
 export type PluginPermissions = z.infer<typeof PluginPermissions>;
 
+// ───────────────────────── 升级时的权限对比(第 6.2 节) ─────────────────────────
+
+export const PluginPermissionChange = z.object({
+    kind: z.enum(['tool', 'tool-risk', 'tool-sends-data', 'net', 'secret', 'category']),
+    /** 工具名、域名、密钥名或条目类别。 */
+    name: z.string(),
+    /** `tool-risk` 的旧级别;其他为 null。 */
+    from: z.string().nullable(),
+    /** `tool` 的级别、`tool-risk` 的新级别;其他为 null。 */
+    to: z.string().nullable(),
+});
+export type PluginPermissionChange = z.infer<typeof PluginPermissionChange>;
+
+/** `added` 里的任何一条都需要用户同意;`removed` 只是告知。 */
+export const PluginPermissionDiff = z.object({
+    added: z.array(PluginPermissionChange),
+    removed: z.array(PluginPermissionChange),
+});
+export type PluginPermissionDiff = z.infer<typeof PluginPermissionDiff>;
+
+const RISK_RANK: Record<string, number> = { read: 0, write: 1, external: 2 };
+const riskRank = (risk: string): number => RISK_RANK[risk] ?? 0;
+
+/**
+ * 新版本相对已授权范围的权限变化:新工具、工具级别升高、新增 `sendsData`、新域名、新密钥、新条目类别算「新增」;
+ * 反方向算「减少」。授权以清单为准,所以这里只比清单里的权限。
+ */
+export function diffPermissions(granted: PluginPermissions, next: PluginPermissions): PluginPermissionDiff {
+    const added: PluginPermissionChange[] = [];
+    const removed: PluginPermissionChange[] = [];
+    const change = (
+        kind: PluginPermissionChange['kind'],
+        name: string,
+        from: string | null = null,
+        to: string | null = null,
+    ): PluginPermissionChange => ({ kind, name, from, to });
+    const oldTools = new Map(granted.tools.map((t) => [t.name, t]));
+    const newTools = new Map(next.tools.map((t) => [t.name, t]));
+    for (const [name, tool] of newTools) {
+        const before = oldTools.get(name);
+        if (!before) {
+            added.push(change('tool', name, null, tool.risk));
+            continue;
+        }
+        if (riskRank(tool.risk) > riskRank(before.risk)) added.push(change('tool-risk', name, before.risk, tool.risk));
+        else if (riskRank(tool.risk) < riskRank(before.risk))
+            removed.push(change('tool-risk', name, before.risk, tool.risk));
+        if (tool.sendsData === true && before.sendsData !== true) added.push(change('tool-sends-data', name));
+        else if (before.sendsData === true && tool.sendsData !== true) removed.push(change('tool-sends-data', name));
+    }
+    for (const [name, tool] of oldTools) if (!newTools.has(name)) removed.push(change('tool', name, null, tool.risk));
+    const both = <T>(
+        before: T[],
+        after: T[],
+        key: (value: T) => string,
+        kind: PluginPermissionChange['kind'],
+    ): void => {
+        const had = new Set(before.map(key));
+        const has = new Set(after.map(key));
+        for (const name of has) if (!had.has(name)) added.push(change(kind, name));
+        for (const name of had) if (!has.has(name)) removed.push(change(kind, name));
+    };
+    both(granted.net, next.net, (d) => d, 'net');
+    both(granted.secrets, next.secrets, (s) => s.name, 'secret');
+    both(granted.items?.categories ?? [], next.items?.categories ?? [], (c) => c.type, 'category');
+    return { added, removed };
+}
+
 // ───────────────────────── 入口、设置、任务模板、变现 ─────────────────────────
 
 /** 包内相对路径:不能是绝对路径、含 `..` 或盘符,只能是 `.js` / `.mjs`。 */

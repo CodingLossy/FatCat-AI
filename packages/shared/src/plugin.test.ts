@@ -8,11 +8,13 @@ import {
     NetFetchParams,
     PluginIndex,
     compareSemver,
+    diffPermissions,
     isSpdxExpression,
     parsePluginManifest,
     parseSemver,
     satisfiesEngine,
     validatePluginSettings,
+    type PluginPermissions,
     type PluginSettings,
 } from './plugin.js';
 
@@ -314,5 +316,67 @@ describe('validatePluginSettings', () => {
     it('rejects every value when the plugin declares no settings', () => {
         expect(validatePluginSettings(undefined, {})).toEqual([]);
         expect(validatePluginSettings(undefined, { a: 1 })).toEqual(['a: not declared by the plugin']);
+    });
+});
+
+describe('diffPermissions', () => {
+    const base: PluginPermissions = {
+        tools: [
+            { name: 'forecast', risk: 'read' },
+            { name: 'save', risk: 'write' },
+        ],
+        net: ['api.example.org'],
+        secrets: [{ name: 'API_KEY', required: true }],
+    };
+
+    it('is empty when nothing changed and when permissions only shrink the surface', () => {
+        expect(diffPermissions(base, base)).toEqual({ added: [], removed: [] });
+        const smaller: PluginPermissions = { tools: [{ name: 'forecast', risk: 'read' }], net: [], secrets: [] };
+        const diff = diffPermissions(base, smaller);
+        expect(diff.added).toEqual([]);
+        expect(diff.removed.map((c) => `${c.kind}:${c.name}`).sort()).toEqual([
+            'net:api.example.org',
+            'secret:API_KEY',
+            'tool:save',
+        ]);
+    });
+
+    it('flags new tools, raised risk, new sendsData, new domains, secrets and categories as additions', () => {
+        const next: PluginPermissions = {
+            tools: [
+                { name: 'forecast', risk: 'write', sendsData: true },
+                { name: 'save', risk: 'write' },
+                { name: 'delete', risk: 'external' },
+            ],
+            net: ['api.example.org', 'cdn.example.org'],
+            secrets: [
+                { name: 'API_KEY', required: true },
+                { name: 'EXTRA', required: false },
+            ],
+            items: { categories: [{ type: 'note', title: { en: 'Notes' } }] },
+        };
+        const diff = diffPermissions(base, next);
+        expect(diff.removed).toEqual([]);
+        expect(diff.added.map((c) => `${c.kind}:${c.name}:${c.from ?? ''}>${c.to ?? ''}`).sort()).toEqual([
+            'category:note:>',
+            'net:cdn.example.org:>',
+            'secret:EXTRA:>',
+            'tool-risk:forecast:read>write',
+            'tool-sends-data:forecast:>',
+            'tool:delete:>external',
+        ]);
+    });
+
+    it('reports a lowered risk as a removal, never as something to consent to', () => {
+        const lowered: PluginPermissions = {
+            ...base,
+            tools: [
+                { name: 'forecast', risk: 'read' },
+                { name: 'save', risk: 'read' },
+            ],
+        };
+        const diff = diffPermissions(base, lowered);
+        expect(diff.added).toEqual([]);
+        expect(diff.removed).toEqual([{ kind: 'tool-risk', name: 'save', from: 'write', to: 'read' }]);
     });
 });

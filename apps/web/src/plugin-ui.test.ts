@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
     defaultMarketVersion,
     formatRss,
+    marketAction,
     marketErrorKey,
     permissionSummary,
     pickText,
@@ -113,5 +114,16 @@ describe('secret binding changes', () => {
                 { A: 'env:OLD', B: 'env:GONE', C: 'env:SAME' },
             ),
         ).toEqual({ A: 'env:NEW', B: null, E: 'env:TRIM' });
+    });
+});
+
+describe('marketAction', () => {
+    it('installs when nothing is installed, upgrades only to a higher version, and never offers same or older', () => {
+        expect(marketAction(null, '1.0.0')).toBe('install');
+        expect(marketAction('1.0.0', '1.1.0')).toBe('upgrade');
+        expect(marketAction('1.0.0', '1.0.0')).toBe('none');
+        expect(marketAction('1.2.0', '1.1.9')).toBe('none');
+        expect(marketAction('1.0.0-beta.1', '1.0.0')).toBe('upgrade');
+        expect(marketAction('not-a-version', '1.0.0')).toBe('none');
     });
 });
