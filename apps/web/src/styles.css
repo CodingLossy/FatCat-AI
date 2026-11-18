@@ -1154,3 +1154,22 @@ td .badge {
 .audit-table .badge {
     white-space: nowrap;
 }
+
+.agent-picker {
+    margin-left: auto;
+}
+
+.agent-prompt {
+    white-space: pre-wrap;
+    max-height: 4.5rem;
+    overflow: hidden;
+}
+
+.delegation-tree {
+    margin-top: 0.5rem;
+}
+
+.delegation-tree .list {
+    gap: 0.25rem;
+    margin: 0;
+}

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
-import { Agent, ProblemDetails, Run, Session } from '@fatcat-ai/shared';
+import { Agent, ProblemDetails, Run, RunTree, Session } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
@@ -211,6 +211,12 @@ describe('agents API(ADR 0042)', () => {
         const kids = s.repos.runs.listChildren(s.repos.owners.ids()[0]!, runId);
         expect(kids).toHaveLength(1);
         expect(kids[0]).toMatchObject({ parentRunId: runId, status: 'succeeded' });
+        const tree = RunTree.parse(await (await req(`/api/v1/runs/${runId}/tree`)).json());
+        expect(tree.rootRunId).toBe(runId);
+        expect(tree.nodes.map((n) => [n.agentName, n.depth, n.parentRunId])).toEqual([
+            ['Lead', 0, null],
+            [researcher.name, 1, runId],
+        ]);
     });
 
     it('🔒 while a sub-agent waits for approval the root run is the one that is reported, retried-by-id and cancelled', async () => {

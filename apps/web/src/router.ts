@@ -13,7 +13,8 @@ export type Route =
     | { name: 'items' }
     | { name: 'mail' }
     | { name: 'tasks' }
-    | { name: 'plugins' };
+    | { name: 'plugins' }
+    | { name: 'agents' };
 
 export function parseRoute(path: string): Route {
     const session = /^\/s\/([0-9A-Za-z]+)\/?$/.exec(path);
@@ -25,6 +26,7 @@ export function parseRoute(path: string): Route {
     if (path === '/mail') return { name: 'mail' };
     if (path === '/tasks') return { name: 'tasks' };
     if (path === '/plugins') return { name: 'plugins' };
+    if (path === '/agents') return { name: 'agents' };
     return { name: 'home' };
 }
 

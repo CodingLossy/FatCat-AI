@@ -7,6 +7,7 @@ import { applyLegacyEnv, legacyEnvWarning } from '@fatcat-ai/shared';
 import { approve, login, logout, setup, whoami } from './commands/auth.js';
 import { askCommand, chatCommand } from './commands/chat.js';
 import { memoryCommand } from './commands/memory.js';
+import { agentsCommand } from './commands/agents.js';
 import { modelsCommand } from './commands/models.js';
 import { pluginsCommand } from './commands/plugins.js';
 import { serveCommand } from './commands/serve.js';
@@ -33,6 +34,7 @@ Chat
 Data
   sessions list [--limit n] [--json] | sessions show <id> [--json]
   models list [--json] | models add ... | models test <id|label>
+  agents list [--json] | agents show <id|name> [--json]
   memory list [--json] | memory search <query> | memory add <text> | memory edit <id> <text> | memory forget <id>
 
 Plugins
@@ -64,6 +66,7 @@ const COMMANDS: Record<string, Command> = {
     chat: chatCommand,
     sessions: sessionsCommand,
     models: modelsCommand,
+    agents: agentsCommand,
     memory: memoryCommand,
     plugins: pluginsCommand,
     serve: serveCommand,
