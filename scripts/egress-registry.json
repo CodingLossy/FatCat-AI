@@ -58,5 +58,11 @@
     "kind": "dynamic",
     "listedAs": "-",
     "reason": "web.fetch: the destination is decided in the conversation and each call needs approval, so it is not a fixed target"
+  },
+  {
+    "file": "packages/tools/src/plugins/preload.ts",
+    "kind": "local-only",
+    "listedAs": "-",
+    "reason": "Plugin process preload (ADR 0040 section 3.4); imports node:net only to replace Socket.prototype.connect with a function that throws, it never opens a connection"
   }
 ]
