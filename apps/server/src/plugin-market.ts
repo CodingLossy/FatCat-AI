@@ -43,6 +43,8 @@ export interface MarketServiceOptions {
 
 interface Cache {
     verified: VerifiedIndex;
+    /** 缓存里索引文件的原始字节:同一个 serial 的新索引必须与它完全一致。 */
+    raw: Buffer;
     fetchedAt: string;
 }
 
@@ -109,7 +111,11 @@ export class MarketService {
     }
 
     private paths(id: string) {
-        return { index: join(this.cacheDir, `${id}.json`), sig: join(this.cacheDir, `${id}.sig`) };
+        return {
+            index: join(this.cacheDir, `${id}.json`),
+            sig: join(this.cacheDir, `${id}.sig`),
+            serial: join(this.cacheDir, `${id}.serial`),
+        };
     }
 
     /** 读缓存并重新验签;文件缺失、被改动或公钥已不在列表里都当作没有缓存。同步读取,文件很小。 */
@@ -117,16 +123,31 @@ export class MarketService {
         const paths = this.paths(market.id);
         if (!existsSync(paths.index) || !existsSync(paths.sig)) return null;
         try {
-            const verified = verifyIndex(readFileSync(paths.index), readFileSync(paths.sig), market.keys, market.id);
-            return { verified, fetchedAt: statSync(paths.index).mtime.toISOString() };
+            const raw = readFileSync(paths.index);
+            const verified = verifyIndex(raw, readFileSync(paths.sig), market.keys, market.id);
+            return { verified, raw, fetchedAt: statSync(paths.index).mtime.toISOString() };
         } catch {
             return null;
         }
     }
 
-    private writeCache(market: MarketConfig, index: Buffer, signature: Buffer): void {
+    /** 见过的最高 serial(单独存一个文件):缓存文件损坏或被删后,防回滚的基准仍在。读不出来按 0。 */
+    private serialFloor(market: MarketConfig): number {
+        try {
+            const value = Number.parseInt(readFileSync(this.paths(market.id).serial, 'utf8').trim(), 10);
+            return Number.isSafeInteger(value) && value > 0 ? value : 0;
+        } catch {
+            return 0;
+        }
+    }
+
+    private writeCache(market: MarketConfig, index: Buffer, signature: Buffer, serial: number): void {
         mkdirSync(this.cacheDir, { recursive: true });
         const paths = this.paths(market.id);
+        // 最高 serial 先于索引落盘:中途失败也不会丢掉已经见过的最高值
+        const floor = Math.max(this.serialFloor(market), serial);
+        writeFileSync(`${paths.serial}.tmp`, String(floor));
+        renameSync(`${paths.serial}.tmp`, paths.serial);
         // 先写临时文件再改名:中途失败时旧缓存不受影响;先换索引再换签名之间的短暂不一致由读取时的验签兜住
         for (const [path, bytes] of [
             [paths.index, index],
@@ -164,17 +185,26 @@ export class MarketService {
             const files = await fetchIndexFiles(market, this.netFor(ownerId));
             const verified = verifyIndex(files.index, files.signature, market.keys, market.id);
             const { index } = verified;
-            if (state.cache && index.serial < state.cache.verified.index.serial) {
+            const floor = Math.max(state.cache?.verified.index.serial ?? 0, this.serialFloor(market));
+            if (index.serial < floor) {
+                throw new MarketError('index_rollback', `the index serial ${index.serial} is older than ${floor}`);
+            }
+            // 同一个 serial 只能是同一份内容(重新签名同样的字节可以);内容变了就必须提高 serial
+            if (
+                state.cache &&
+                index.serial === state.cache.verified.index.serial &&
+                !files.index.equals(state.cache.raw)
+            ) {
                 throw new MarketError(
                     'index_rollback',
-                    `the index serial ${index.serial} is older than the cached ${state.cache.verified.index.serial}`,
+                    `the index serial ${index.serial} was reused for different content`,
                 );
             }
             if (Date.parse(index.expiresAt) <= this.now().getTime()) {
                 throw new MarketError('index_expired', `the index expired at ${index.expiresAt}`);
             }
-            this.writeCache(market, files.index, files.signature);
-            state.cache = { verified, fetchedAt: this.now().toISOString() };
+            this.writeCache(market, files.index, files.signature, index.serial);
+            state.cache = { verified, raw: files.index, fetchedAt: this.now().toISOString() };
             state.error = null;
             this.options.log?.info(
                 { market: market.id, serial: index.serial, keyId: verified.keyId },

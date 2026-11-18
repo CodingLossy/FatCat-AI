@@ -6,7 +6,10 @@
 #
 # It never touches a signing key: there are no secrets in this workflow, and it only has read access.
 # The checks run from a checkout of the FatCat-AI repository, so they always use the same schema,
-# tar reader and rules as the client. Pin FATCAT_AI_REF to a commit of FatCat-AI that you reviewed.
+# tar reader and rules as the client. FATCAT_AI_REF is a full commit SHA of FatCat-AI that was reviewed;
+# update it by hand (see "Updating the pinned checks" in scripts/plugins/README.md) and never point it at a
+# branch. The third-party actions below are still on major-version tags: pin them to commit SHAs in the
+# index repository (for example with Dependabot) before relying on this workflow.
 name: check index
 
 on:
@@ -18,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  FATCAT_AI_REF: main
+  FATCAT_AI_REF: c828e18b5814c93765917641b5d2e6b4e072cd2d # FatCat-AI main after the plugin market merge (#72)
 
 jobs:
   check:

@@ -211,7 +211,12 @@ class TarExtractor {
         }
         const problem = badPackagePath(rel);
         if (problem) throw invalid(`${rel}: ${problem}`);
-        const key = rel.toLowerCase();
+        // 空路径段(`a//b`)与 `a/b` 指向同一处,统一当作非法路径;目录条目允许一个结尾的 `/`
+        if ((rel.endsWith('/') ? rel.slice(0, -1) : rel).split('/').includes('')) {
+            throw invalid(`${rel}: empty path segment`);
+        }
+        // 判重用 NFC 规范化后的小写:`café` 的 NFC 与 NFD 两种写法在 Linux 上是两个文件,但对用户是同一个名字
+        const key = rel.normalize('NFC').toLowerCase();
         if (this.seen.has(key)) throw invalid(`${rel}: duplicate path`);
         this.seen.add(key);
         const parts = key.split('/');
