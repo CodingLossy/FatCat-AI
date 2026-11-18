@@ -3,3 +3,9 @@
 src/content/docs/guides/docker.md
 src/content/docs/en/guides/docker.md
 .astro/
+src/content/docs/guides/plugins.md
+src/content/docs/en/guides/plugins.md
+src/content/docs/changelog.md
+src/content/docs/en/changelog.md
+src/content/docs/reference/
+src/content/docs/en/reference/
