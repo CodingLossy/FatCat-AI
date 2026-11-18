@@ -83,12 +83,30 @@ const installRoute = createRoute({
     method: 'post',
     path: '/plugins/install',
     tags,
-    summary: 'Install a prepared package after the user accepted all of its permissions',
+    summary:
+        'Install a prepared package after the user accepted all of its permissions. If the plugin is already installed and the package is newer, this is an upgrade (data backup, health check, automatic rollback on failure)',
     request: { body: { content: { 'application/json': { schema: PluginInstallInput } }, required: true } },
     responses: {
-        201: json(PluginView, 'Installed'),
+        201: json(PluginView, 'Installed or upgraded'),
         404: problem('The prepared package is gone'),
-        409: problem('Already installed'),
+        409: problem(
+            'Not newer than the installed version, or the data is too large to back up without skipDataBackup',
+        ),
+        422: problem('The upgrade failed its health check and was rolled back'),
+        ...authErrors,
+    },
+});
+const rollbackRoute = createRoute({
+    method: 'post',
+    path: '/plugins/{id}/rollback',
+    tags,
+    summary: 'Go back to the previous version (restores its data backup when there is one)',
+    request: { params: idParam },
+    responses: {
+        200: json(PluginView, 'Rolled back'),
+        404: problem('Not found'),
+        409: problem('There is no previous version to go back to'),
+        422: problem('The previous version failed its health check; the current version was restored'),
         ...authErrors,
     },
 });
@@ -153,10 +171,17 @@ export function pluginRoutes(deps: { plugins: PluginService }) {
                 return c.json(await plugins.prepare(requireOwner(c), body.source), 200);
             })
             .openapi(installRoute, async (c) => {
-                const { stagingId } = c.req.valid('json');
-                const view = await plugins.install(requireOwner(c), stagingId);
+                const { stagingId, skipDataBackup } = c.req.valid('json');
+                const view = await plugins.install(requireOwner(c), stagingId, {
+                    skipDataBackup: skipDataBackup === true,
+                });
                 c.get('logger').info({ plugin: view.id, version: view.version }, 'plugin installed');
                 return c.json(view, 201);
+            })
+            .openapi(rollbackRoute, async (c) => {
+                const view = await plugins.rollback(requireOwner(c), c.req.valid('param').id);
+                c.get('logger').info({ plugin: view.id, version: view.version }, 'plugin rolled back');
+                return c.json(view, 200);
             })
             .openapi(patchRoute, async (c) =>
                 c.json(await plugins.patch(requireOwner(c), c.req.valid('param').id, c.req.valid('json')), 200),

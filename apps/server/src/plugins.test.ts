@@ -2,11 +2,22 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 插件管理 REST 与卸载(ADR 0040 PR 2b):只有登录且带 CSRF 的主人能安装;卸载快照一致;预授权、任务与审批的善后。
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+    cpSync,
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readdirSync,
+    readFileSync,
+    rmSync,
+    statSync,
+    writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PluginDetail, PluginPrepared, PluginView, pageOf, ToolInfo } from '@fatcat-ai/shared';
+import { NO_NET_ISOLATION } from '@fatcat-ai/tools/plugins';
 import { afterEach, describe, expect, it } from 'vitest';
 import { protectionTable } from './plugin-setup.js';
 import { PLUGIN_ITEM_QUOTA, upsertPluginItems } from './plugin-items.js';
@@ -31,8 +42,8 @@ function sourceDir(patch: (manifest: Record<string, unknown>) => void = () => un
     return dir;
 }
 
-async function setup() {
-    s = await createTestServer();
+async function setup(options: Parameters<typeof createTestServer>[1] = {}) {
+    s = await createTestServer({}, options);
     const res = await s.app.request('/api/v1/auth/setup', jsonBody({ username: 'owner', password: TEST_PASSWORD }));
     const { cookie, csrf } = sessionFrom(res);
     const headers = { cookie, 'X-CSRF-Token': csrf, 'content-type': 'application/json' };
@@ -412,6 +423,186 @@ describe('密钥绑定', () => {
         const owner = s.repos.owners.ids()[0]!;
         const events = s.repos.plugins.listEvents(owner, { pluginId: 'probe', limit: 10 }).items;
         expect(events.some((e) => e.kind === 'disabled' && e.detail === 'required secret unbound')).toBe(true);
+    }, 60_000);
+});
+
+describe('升级与回退', () => {
+    const versioned = (version: string, patch: (m: Record<string, unknown>) => void = () => undefined) =>
+        sourceDir((m) => {
+            m.version = version;
+            patch(m);
+        });
+    const tools = (m: Record<string, unknown>) => (m.permissions as { tools: Record<string, unknown>[] }).tools;
+    const writeData = (name: string, text: string) => {
+        mkdirSync(join(s.dir, 'plugin-data', 'probe'), { recursive: true });
+        writeFileSync(join(s.dir, 'plugin-data', 'probe', name), text);
+    };
+    const events = () =>
+        s.repos.plugins.listEvents(s.repos.owners.ids()[0]!, { pluginId: 'probe', limit: 50 }).items.map((e) => e.kind);
+    type Send = Awaited<ReturnType<typeof setup>>['send'];
+    const prepare = async (send: Send, path: string) =>
+        PluginPrepared.parse(
+            await (await send('POST', '/api/v1/plugins/prepare', { source: { kind: 'local', path } })).json(),
+        );
+    const upgradeTo = async (send: Send, path: string, extra: Record<string, unknown> = {}) => {
+        const prepared = await prepare(send, path);
+        return send('POST', '/api/v1/plugins/install', { stagingId: prepared.stagingId, accept: true, ...extra });
+    };
+
+    it('升级:列出权限差异,备份数据,新版本健康后换上;上一版本的代码与备份各留一份', async () => {
+        const { send, settled, install } = await setup();
+        await install(versioned('0.1.0'));
+        await settled();
+        writeData('keep.txt', 'v1 data');
+
+        const prepared = await prepare(
+            send,
+            versioned('0.2.0', (m) => (tools(m)[0]!.risk = 'write')),
+        );
+        expect(prepared.upgrade).toMatchObject({
+            fromVersion: '0.1.0',
+            backupTooLarge: false,
+            diff: { added: [{ kind: 'tool-risk', name: 'echo', from: 'read', to: 'write' }], removed: [] },
+        });
+        const res = await send('POST', '/api/v1/plugins/install', { stagingId: prepared.stagingId, accept: true });
+        expect(res.status).toBe(201);
+        const [view] = await settled();
+        expect(view).toMatchObject({ version: '0.2.0', previousVersion: '0.1.0', state: 'enabled' });
+        expect(view?.permissions.tools.find((t) => t.name === 'echo')?.risk).toBe('write');
+        expect(readdirSync(join(s.dir, 'plugins', 'probe')).sort()).toEqual(['0.1.0', '0.2.0']);
+        const backup = join(s.dir, 'plugin-data', '.backup', 'probe', '0.1.0', 'keep.txt');
+        expect(readFileSync(backup, 'utf8')).toBe('v1 data');
+        expect(events()).toContain('upgraded');
+    }, 90_000);
+
+    it('升级后工具级别升高:旧的预授权被撤销并审计,没变的工具不受影响', async () => {
+        const { send, settled, install } = await setup();
+        await install(versioned('0.1.0'));
+        await settled();
+        const owner = s.repos.owners.ids()[0]!;
+        for (const toolName of ['plugin.probe.echo', 'plugin.probe.probe']) {
+            s.repos.preauths.create(owner, { toolName, scope: 'always', sessionId: null, constraint: null });
+        }
+        const res = await upgradeTo(
+            send,
+            versioned('0.2.0', (m) => (tools(m)[0]!.sendsData = true)),
+        );
+        expect(res.status).toBe(201);
+        expect(s.repos.preauths.list(owner).map((p) => p.toolName)).toEqual(['plugin.probe.probe']);
+        const revoked = s.repos.audit.list(owner, { limit: 20 }).items.filter((e) => e.action === 'preauth-revoked');
+        expect(revoked.map((e) => e.toolName)).toEqual(['plugin.probe.echo']);
+    }, 90_000);
+
+    it('新版本启动不了(声明了插件没有提供的工具):原样恢复旧版本、数据和状态,并记下原因', async () => {
+        const { send, settled, install } = await setup();
+        await install(versioned('0.1.0'));
+        await settled();
+        writeData('keep.txt', 'v1 data');
+        const res = await upgradeTo(
+            send,
+            versioned('0.2.0', (m) => tools(m).push({ name: 'ghost', risk: 'read' })),
+        );
+        expect(res.status).toBe(422);
+        expect(await res.json()).toMatchObject({ code: 'plugin_upgrade_failed' });
+        const [view] = await settled();
+        expect(view).toMatchObject({ version: '0.1.0', previousVersion: null, state: 'enabled', error: null });
+        expect(view?.run.tools.sort()).toEqual(['plugin.probe.echo', 'plugin.probe.probe']);
+        expect(readdirSync(join(s.dir, 'plugins', 'probe'))).toEqual(['0.1.0']);
+        expect(readFileSync(join(s.dir, 'plugin-data', 'probe', 'keep.txt'), 'utf8')).toBe('v1 data');
+        expect(events()).toContain('upgrade-failed');
+    }, 90_000);
+
+    it('相同或更低的版本不能「升级」;已装的不会被动', async () => {
+        const { send, settled, install, list } = await setup();
+        await install(versioned('0.2.0'));
+        await settled();
+        for (const version of ['0.2.0', '0.1.0']) {
+            const prepared = await prepare(send, versioned(version));
+            expect(prepared.upgrade).toBeNull();
+            expect(prepared.installed).toMatchObject({ version: '0.2.0' });
+            const res = await send('POST', '/api/v1/plugins/install', { stagingId: prepared.stagingId, accept: true });
+            expect(res.status).toBe(409);
+        }
+        expect((await list())[0]).toMatchObject({ version: '0.2.0' });
+    }, 90_000);
+
+    it('回退:换回上一个版本,数据恢复到升级前,新版本的代码与备份删除;没有上一版本时 409', async () => {
+        const { send, settled, install } = await setup();
+        await install(versioned('0.1.0'));
+        await settled();
+        writeData('keep.txt', 'v1 data');
+        expect((await upgradeTo(send, versioned('0.2.0'))).status).toBe(201);
+        await settled();
+        writeData('keep.txt', 'changed by v2');
+        writeData('new-in-v2.txt', 'x');
+
+        const res = await send('POST', '/api/v1/plugins/probe/rollback');
+        expect(res.status).toBe(200);
+        expect(PluginView.parse(await res.json())).toMatchObject({
+            version: '0.1.0',
+            previousVersion: null,
+            state: 'enabled',
+        });
+        await settled();
+        expect(readFileSync(join(s.dir, 'plugin-data', 'probe', 'keep.txt'), 'utf8')).toBe('v1 data');
+        expect(existsSync(join(s.dir, 'plugin-data', 'probe', 'new-in-v2.txt'))).toBe(false);
+        expect(readdirSync(join(s.dir, 'plugins', 'probe'))).toEqual(['0.1.0']);
+        expect(existsSync(join(s.dir, 'plugin-data', '.backup', 'probe'))).toBe(false);
+        expect((await send('POST', '/api/v1/plugins/probe/rollback')).status).toBe(409);
+        expect((await send('POST', '/api/v1/plugins/nope/rollback')).status).toBe(404);
+    }, 90_000);
+
+    it('数据超过备份上限:必须明确选择不备份才能升级;选了就不留备份', async () => {
+        const { send, settled, install } = await setup({ pluginOverrides: { backupLimitBytes: 10 } });
+        await install(versioned('0.1.0'));
+        await settled();
+        writeData('big.bin', 'x'.repeat(100));
+        const prepared = await prepare(send, versioned('0.2.0'));
+        expect(prepared.upgrade?.backupTooLarge).toBe(true);
+        const refused = await send('POST', '/api/v1/plugins/install', { stagingId: prepared.stagingId, accept: true });
+        expect(refused.status).toBe(409);
+        expect(await refused.json()).toMatchObject({ code: 'plugin_backup_too_large' });
+        expect(readdirSync(join(s.dir, 'plugins', 'probe'))).toEqual(['0.1.0']);
+        const ok = await send('POST', '/api/v1/plugins/install', {
+            stagingId: prepared.stagingId,
+            accept: true,
+            skipDataBackup: true,
+        });
+        expect(ok.status).toBe(201);
+        expect(existsSync(join(s.dir, 'plugin-data', '.backup', 'probe'))).toBe(false);
+    }, 90_000);
+
+    it('核心升级后 engines 不再满足:启动时标为 incompatible、不启动;启用被拒绝,装上兼容的新版本即恢复', async () => {
+        const { send, settled, install, list } = await setup();
+        await install(versioned('0.1.0'));
+        await settled();
+        const owner = s.repos.owners.ids()[0]!;
+        const record = s.repos.plugins.get(owner, 'probe')!;
+        const manifest = { ...(record.manifest as Record<string, unknown>), engines: { fatcat: '>=99.0.0' } };
+        s.repos.plugins.update(owner, 'probe', { manifest });
+        await s.plugins.closeAll();
+        await s.plugins.start();
+        const [view] = await list();
+        expect(view).toMatchObject({ state: 'incompatible' });
+        expect(view?.error).toMatch(/requires FatCat-AI >=99\.0\.0/);
+        expect((await send('PATCH', '/api/v1/plugins/probe', { enabled: true })).status).toBe(409);
+
+        expect((await upgradeTo(send, versioned('0.2.0'))).status).toBe(201);
+        expect((await settled())[0]).toMatchObject({ version: '0.2.0', state: 'enabled' });
+    }, 90_000);
+
+    it('没有操作系统网络隔离的平台:拒绝声明了联网的本地插件;没声明联网的照常', async () => {
+        const { send } = await setup({ pluginOverrides: { netIsolation: NO_NET_ISOLATION } });
+        const withNet = versioned('0.1.0', (m) => {
+            (m.permissions as { net?: string[] }).net = ['api.example.org'];
+        });
+        const res = await send('POST', '/api/v1/plugins/prepare', { source: { kind: 'local', path: withNet } });
+        expect(res.status).toBe(400);
+        expect(await res.json()).toMatchObject({ code: 'plugin_network_unsupported' });
+        const plain = await send('POST', '/api/v1/plugins/prepare', {
+            source: { kind: 'local', path: versioned('0.1.0') },
+        });
+        expect(plain.status).toBe(200);
     }, 60_000);
 });
 

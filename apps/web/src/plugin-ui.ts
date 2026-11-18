@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 插件页的纯函数:插件文案按界面语言取值、设置表单的初值与取值、内存读数格式化。
-import type { PluginPermissions, PluginSettings } from '@fatcat-ai/shared';
+import { compareSemver, parseSemver, type PluginPermissions, type PluginSettings } from '@fatcat-ai/shared';
 
 /** 插件的 i18n 文案(至少有一种语言):优先当前界面语言,否则取另一种。只当纯文本显示。 */
 export function pickText(text: { 'zh-CN'?: string | undefined; en?: string | undefined }, locale: string): string {
@@ -99,4 +99,15 @@ export function marketErrorKey(code: string): `plugins.market.err.${(typeof MARK
     return (MARKET_ERROR_CODES as readonly string[]).includes(code)
         ? (`plugins.market.err.${code}` as `plugins.market.err.${(typeof MARKET_ERROR_CODES)[number]}`)
         : null;
+}
+
+/**
+ * 市场里选中版本的按钮动作:没装是 install;已装且选中的版本更高是 upgrade;其余(同版本、更低)没有动作,
+ * 换回旧版本走「回退」。版本号不合法时按 none 处理。
+ */
+export function marketAction(installedVersion: string | null, selected: string): 'install' | 'upgrade' | 'none' {
+    if (installedVersion === null) return 'install';
+    const from = parseSemver(installedVersion);
+    const to = parseSemver(selected);
+    return from && to && compareSemver(to, from) > 0 ? 'upgrade' : 'none';
 }

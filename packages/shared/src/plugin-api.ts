@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
     PluginId,
     PluginManifest,
+    PluginPermissionDiff,
     PluginPermissions,
     PluginSettings,
     PluginTaskTemplate,
@@ -124,8 +125,19 @@ export const PluginPrepared = z.object({
     unreviewed: z.boolean(),
     /** 来自市场时:市场 id 与验证索引用的公钥 id。 */
     market: z.object({ id: z.string(), keyId: z.string() }).nullable(),
-    /** 已安装的同名插件(PR 2b 不支持升级,安装会被拒绝)。 */
+    /** 已安装的同名插件。 */
     installed: z.object({ version: z.string(), state: PluginState }).nullable(),
+    /** 新版本高于已安装版本时的升级信息(第 6.2 节);全新安装、同版本或更低版本为 null。 */
+    upgrade: z
+        .object({
+            fromVersion: z.string(),
+            diff: PluginPermissionDiff,
+            /** 插件数据目录当前的大小(字节),超过 500 MiB 时升级前不会自动备份。 */
+            dataBytes: z.number().int().min(0),
+            /** 数据超过备份上限:必须明确选择「不备份」才能升级。 */
+            backupTooLarge: z.boolean(),
+        })
+        .nullable(),
 });
 export type PluginPrepared = z.infer<typeof PluginPrepared>;
 
@@ -133,6 +145,8 @@ export const PluginInstallInput = z.strictObject({
     stagingId: z.string().regex(/^[a-f0-9]{16}$/),
     /** 必须为 true:全部同意才能安装,不能只勾一部分。 */
     accept: z.literal(true),
+    /** 升级时数据超过备份上限:明确同意不备份(失败后将无法自动恢复数据)。 */
+    skipDataBackup: z.literal(true).optional(),
 });
 export type PluginInstallInput = z.infer<typeof PluginInstallInput>;
 

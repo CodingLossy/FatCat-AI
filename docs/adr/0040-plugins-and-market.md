@@ -499,6 +499,18 @@ ALTER TABLE tasks ADD COLUMN disabled_reason TEXT;
 - **不在 PR 4**:升级与回退(PR 5;已装同名插件时市场页的安装按钮不可用);用户自己加的第三方市场(`plugins.markets` 的 config.yaml 读取器还没有,`MarketService` 已按配置列表工作,默认只有官方一项);CLI 的市场命令。
 - **待业主决定**(C 的推荐:同意):没有操作系统层网络隔离的平台(目前 Windows,以及 Linux 上没有非特权 user namespace 时)上,拒绝安装声明了 `net` 的**本地目录**插件,除非来自已审核的市场。PR 4 没有实现这条;同意后在 PR 5 里一并做。
 
+**PR 5 实现注记**(升级与回退,第 6.2 节):
+
+- **同意发生在确认页里**:`prepare` 对高于已装版本的包返回 `upgrade`(`fromVersion`、权限差异 `diff.added / removed`、数据大小);确认页列出差异,`install` 带 `accept: true` 即是同意。第 2 步的 `upgrade-pending` 状态因此不落库:准备好的包只在内存暂存里,旧版本在 `install` 之前一直照常运行;状态枚举里保留 `upgrade-pending` 没有用到。差异的判定在 `packages/shared` 的 `diffPermissions`(服务端与界面共用):新工具、工具级别升高(read < write < external)、新增 `sendsData`、新域名、新密钥、新条目类别算新增(需要同意);反方向只告知。
+- **升级流程**(`PluginService.upgrade`):版本必须高于已装版本(同版本或更低 409,换旧版本走回退)→ 新版本放进 `plugins/<id>/<新版本>/` → 停旧进程(数据目录不再变化)→ 备份到 `plugin-data/.backup/<id>/<旧版本>/`(超过 500 MiB 不备份,必须带 `skipDataBackup: true`,否则 409 `plugin_backup_too_large`)→ 用新记录启动并健康检查(握手、`tools/list`、清单声明的工具都已注册)→ 成功才更新 `plugins` 行(`version`、`previous_version`、`granted_json`、`content_sha256`、来源信息),只留新旧两个版本目录与旧版本的备份。数据库行在健康检查通过前不改,所以失败的回滚只涉及文件:停进程、恢复备份、删新版本目录、把状态恢复成升级前的样子、重新启动旧版本,写 `upgrade-failed` 事件,返回 422 `plugin_upgrade_failed`。原来是停用的插件、或缺少新版本必需密钥的插件只换文件与记录,不启动也就没有健康检查。同一个插件同一时间只做一件事(升级或回退)。
+- **预授权**:级别升高、开始外发数据或被删除的工具,它们的预授权与待处理审批在升级(和回退)成功后撤销,按 `preauth-revoked` 审计,与卸载共用同一段代码(`revokeToolGrants`)。
+- **回退**(`POST /plugins/{id}/rollback`):需要 `previous_version` 与磁盘上的上一版本目录;重新检查清单、engines 与目录哈希(与升级时记下的一致才用);先把当前数据存成备份,再恢复上一版本的数据备份(有的话),启动并健康检查,失败则原样恢复当前版本。成功后 `previous_version` 清空、新版本的代码与全部备份删除。上一版本的来源信息(来源、签名公钥、目录哈希)升级时记在 `settings` 的保留键 `__previous` 里(和 `__runtime`、`__uninstall` 一样不对外显示),所以不需要迁移。
+- **事件种类**:`plugin_events.kind` 受 0018 的 CHECK 约束限制,不为此新增迁移:升级成功是 `upgraded`(回退也是,说明里写 `rolled back`),失败是 `upgrade-failed`,核心不兼容是 `stopped`(说明以 `incompatible:` 开头)。
+- **`incompatible`**:服务启动时,已启用且 `engines.fatcat` 不再满足核心版本的插件标为 `incompatible`、写原因、不启动、不卸载;启用它返回 409 `plugin_incompatible`;装上兼容的新版本后恢复。
+- **平台限制**(业主 2026-11-18 同意):探测结果为没有操作系统层网络隔离时,`prepare` 拒绝声明了 `net` 的本地目录插件(400 `plugin_network_unsupported`);市场来源不受限。
+- **界面**:升级确认页(差异、备份提示、数据过大时要多勾一项)、市场页对已装且有更高版本的插件显示「查看权限并升级」、插件管理里的「回退」(带二次确认)、`incompatible` 提示。
+- **不在 PR 5**:CLI 的升级 / 回退命令;升级时对旧版本里已存在的 `items` 做类别迁移(被删的类别随下一次条目同步清理);Windows 上的真机验证(见 PR 描述)。
+
 - **不在 PR 2b**:市场与下载(PR 4)、升级与回退(PR 5)、Web 与 CLI(PR 2c)、`fatcat/net.fetch` 与知识地图条目(PR 3)。
 
 ## 12. 业主已定的问题(2026-11-17)
