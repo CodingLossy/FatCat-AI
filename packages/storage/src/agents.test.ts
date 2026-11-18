@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { BUILTIN_AGENT_ROLES } from '@fatcat-ai/shared';
 import { describe, expect, it } from 'vitest';
 import { AgentNameTakenError, BuiltinAgentError } from './agents.js';
+import { openDatabase } from './db.js';
+import { migrate } from './migrate.js';
+import { migrations } from './migrations/index.js';
+import { createRepositories } from './repos.js';
 import { createTestDb } from './test-helpers.js';
 
 const input = (name: string) => ({
@@ -44,5 +51,52 @@ describe('agents repository', () => {
         expect(() => repos.agents.update(ownerId, keeper.id, { name: 'x' })).toThrow(BuiltinAgentError);
         expect(() => repos.agents.delete(ownerId, keeper.id)).toThrow(BuiltinAgentError);
         cleanup();
+    });
+});
+
+describe('migration 0019', () => {
+    it('applies on a database with data after a backup; old runs get no agent and foreign keys stay clean', async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'fatcat-m19-'));
+        const conn = openDatabase(join(dir, 'db.sqlite'));
+        try {
+            await migrate(
+                conn.sqlite,
+                migrations.filter((m) => m.id <= 18),
+                { backupDir: join(dir, 'backups') },
+            );
+            // 迁移前的库里用原始 SQL 造数据(仓储已经按新列写 SQL)
+            const exec = (sql: string) => conn.sqlite.prepare(sql).run();
+            exec(
+                "INSERT INTO owners (id, username, password_hash, created_at, updated_at) VALUES ('o','u','h','t','t')",
+            );
+            exec("INSERT INTO sessions (id, owner_id, title, created_at, updated_at) VALUES ('s','o','t','t','t')");
+            exec(
+                "INSERT INTO messages (id, session_id, owner_id, seq, role, parts_json, status, created_at, updated_at) VALUES ('m','s','o',1,'user','[]','complete','t','t')",
+            );
+            exec(
+                "INSERT INTO runs (id, session_id, owner_id, status, input_message_id, started_at) VALUES ('r1','s','o','succeeded','m','t')",
+            );
+
+            const result = await migrate(conn.sqlite, migrations, { backupDir: join(dir, 'backups') });
+            expect(result.applied).toEqual([19]);
+            expect(result.backupPath && existsSync(result.backupPath)).toBe(true);
+            expect(conn.sqlite.pragma('foreign_key_check')).toEqual([]);
+            const repos = createRepositories(conn);
+            expect(repos.runs.get('o', 'r1')).toMatchObject({ id: 'r1' });
+            expect(repos.runs.get('o', 'r1')).not.toHaveProperty('agentId');
+            // 删除代理后,运行记录保留,agentId 清空
+            const agent = repos.agents.create('o', input('A'));
+            const run2 = repos.runs.create('o', {
+                sessionId: 's',
+                inputMessageId: 'm',
+                agentId: agent.id,
+            });
+            expect(repos.runs.get('o', run2.id)?.agentId).toBe(agent.id);
+            repos.agents.delete('o', agent.id);
+            expect(repos.runs.get('o', run2.id)).not.toHaveProperty('agentId');
+        } finally {
+            conn.close();
+            rmSync(dir, { recursive: true, force: true });
+        }
     });
 });
