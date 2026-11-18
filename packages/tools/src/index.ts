@@ -21,11 +21,18 @@ export {
     type PolicyOptions,
 } from './policy.js';
 export { ToolRegistry, type ToolSpecLike } from './registry.js';
-export { type ToolContext, type ToolDefinition, ToolDeniedError } from './types.js';
+export {
+    type DelegateRequest,
+    type DelegateResult,
+    type ToolContext,
+    type ToolDefinition,
+    ToolDeniedError,
+} from './types.js';
 export { type BuiltinToolOptions, createBuiltinTools } from './builtin/index.js';
 export { CalcError, createCalcTool, evaluate } from './builtin/calc.js';
 export { htmlToText } from './builtin/html.js';
 export { isBlockedAddress, isFakeIpAddress } from './builtin/net-guard.js';
+export { createDelegateTool } from './builtin/delegate.js';
 export { createTimeTool } from './builtin/time.js';
 export {
     checkUrl,

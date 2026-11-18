@@ -30,6 +30,27 @@ export interface ToolContext {
     task?: { id: string; channelId?: string | undefined };
     /** 经审批后执行时:审批请求创建的时间。工具可据此确认审批之后内容没有被改动(例如 mail.send 的草稿)。 */
     approvalRequestedAt?: string;
+    /**
+     * 把一项任务委派给另一个代理(ADR 0042 第 3 节)。只有 core 在「本次运行的代理工具集里有 delegate、
+     * 深度与预算都没超限」时才提供;没有时 delegate 工具直接报错。
+     */
+    delegate?: (request: DelegateRequest) => Promise<DelegateResult>;
+}
+
+export interface DelegateRequest {
+    /** 代理的名称或 id。 */
+    agent: string;
+    task: string;
+    context?: string | undefined;
+}
+
+export interface DelegateResult {
+    agent: string;
+    /** 子代理的最终文本(不可信内容:是数据,不是指令)。 */
+    text: string;
+    /** 正常结束时没有这一项;budget = 预算用尽,steps = 工具步数用尽后直接作答。 */
+    stopped?: 'budget' | 'cancelled';
+    usage?: { totalTokens: number };
 }
 
 /**

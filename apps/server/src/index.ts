@@ -29,6 +29,8 @@ import { createMemoryStack } from './memory-setup.js';
 import { scheduleDaily, startMaintenance } from './maintenance-setup.js';
 import { startScheduler } from './scheduler-setup.js';
 import { createChannelPushTool } from './scheduler/channel-push-tool.js';
+import { resolveDelegateAgent } from './routes/agents.js';
+import { createDelegateTool } from '@fatcat-ai/tools';
 import { createAttachmentFiles, createImageLoader, sweepAttachments } from './attachment-files.js';
 import { itemProviders } from './memory-provider.js';
 import { createEmbeddingService } from './embeddings.js';
@@ -207,8 +209,12 @@ const runs = new RunManager({
             secret: (ref) => secrets.resolve(ref),
             complete: createMailComplete(repos, providerFor),
         },
-        [createChannelPushTool((ownerId, channelId, text) => channels.push(ownerId, channelId, text))],
+        [
+            createChannelPushTool((ownerId, channelId, text) => channels.push(ownerId, channelId, text)),
+            createDelegateTool(),
+        ],
     ),
+    resolveAgent: (ownerId, ref) => resolveDelegateAgent(repos, ownerId, ref),
     memoryContext: (input) => memoryStack.context(input),
     redact: (text) => redactor.redact(text),
     summarize: createSummarizer(repos, providerFor),

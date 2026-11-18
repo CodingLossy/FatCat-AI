@@ -178,6 +178,41 @@ describe('agents API(ADR 0042)', () => {
         expect(Run.parse(await (await req(`/api/v1/runs/${third.runId}`)).json()).agentId).toBeUndefined();
     });
 
+    it('🔒 delegates to a built-in role through the same rules: the sub-agent only gets the tools both sets share, and its run points at the parent', async () => {
+        const { steps, requests, req, post, send, untilIdle } = await setup();
+        const listed = (await (await req('/api/v1/agents')).json()) as { items: unknown[] };
+        const researcher = listed.items.map((a) => Agent.parse(a)).find((a) => a.role === 'researcher')!;
+        const lead = Agent.parse(
+            await (
+                await post('/api/v1/agents', agentBody({ name: 'Lead', toolSet: ['delegate', 'kb.search'] }))
+            ).json(),
+        );
+        steps.push(
+            async function* () {
+                yield {
+                    type: 'tool-call',
+                    callId: 'c1',
+                    name: 'delegate',
+                    input: { agent: researcher.name, task: 'dig' },
+                };
+                yield { type: 'finish', reason: 'tool-calls' };
+            },
+            async function* () {
+                yield { type: 'text-delta', delta: 'found it' };
+                yield { type: 'finish', reason: 'stop' };
+            },
+        );
+        const res = await send({ text: 'research', agentId: lead.id });
+        const { runId } = (await res.json()) as { runId: string };
+        await untilIdle();
+        // Researcher = kb., items., web.fetch, memory.search; Lead = delegate, kb.search → shared: kb.search only
+        expect((requests[1]?.tools ?? []).map((t) => t.name)).toEqual(['kb.search']);
+        expect(JSON.stringify(requests[2]?.messages)).toContain('found it');
+        const kids = s.repos.runs.listChildren(s.repos.owners.ids()[0]!, runId);
+        expect(kids).toHaveLength(1);
+        expect(kids[0]).toMatchObject({ parentRunId: runId, status: 'succeeded' });
+    });
+
     it('404 for an unknown agent id on send', async () => {
         const { send } = await setup();
         expect((await send({ text: 'x', agentId: '01HZZZZZZZZZZZZZZZZZZZZZZZ' })).status).toBe(404);

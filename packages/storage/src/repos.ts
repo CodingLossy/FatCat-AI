@@ -404,6 +404,9 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
             `${runSelect} WHERE owner_id = ? AND session_id = ? AND finished_at IS NULL ORDER BY started_at DESC LIMIT 1`,
         ),
         unfinished: sqlite.prepare<[], RunRow>(`${runSelect} WHERE finished_at IS NULL ORDER BY started_at`),
+        children: sqlite.prepare<[string, string], RunRow>(
+            `${runSelect} WHERE owner_id = ? AND parent_run_id = ? ORDER BY started_at, id`,
+        ),
         latestForInput: sqlite.prepare<[string, string], RunRow>(
             `${runSelect} WHERE owner_id = ? AND input_message_id = ? ORDER BY started_at DESC, id DESC LIMIT 1`,
         ),
@@ -446,6 +449,10 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
                 setError: extra.error === undefined ? 0 : 1,
                 errorJson: extra.error === undefined ? null : JSON.stringify(extra.error),
             });
+        },
+        /** 某个运行直接委派出去的子运行(ADR 0042),按开始顺序。 */
+        listChildren(ownerId: string, parentRunId: string): Run[] {
+            return runQ.children.all(ownerId, parentRunId).map(toRun);
         },
         listActive(ownerId: string): Run[] {
             return runQ.active.all(ownerId).map(toRun);
