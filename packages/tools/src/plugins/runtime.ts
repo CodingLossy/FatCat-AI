@@ -118,15 +118,14 @@ export interface PluginRuntimeOptions {
 
 export type PluginUpsertItem = z.infer<typeof ItemsUpsertParams>['items'][number];
 
-/** 条目配额超出(每个插件 50,000 条)。 */
-/** WebFetchError 里属于策略拒绝(记 denied)的原因码;fake_ip_blocked 不在其中:它是网络环境问题,按 fetch_failed 返回。 */
-const POLICY_FETCH_CODES: ReadonlySet<string> = new Set([
-    'bad_scheme',
-    'credentials_in_url',
-    'blocked_address',
-    'no_address',
-]);
+/**
+ * WebFetchError 里属于策略拒绝(记 denied、计入「1 分钟内超过 20 次停用」)的原因码。
+ * `fake_ip_blocked`(代理的 fake-IP 设置)与 `no_address`(域名解析不到地址)不在其中:
+ * 这是网络环境问题,不是插件越权,按 `fetch_failed` 返回。
+ */
+const POLICY_FETCH_CODES: ReadonlySet<string> = new Set(['bad_scheme', 'credentials_in_url', 'blocked_address']);
 
+/** 条目配额超出(每个插件 50,000 条)。 */
 export class PluginQuotaError extends Error {
     override readonly name = 'PluginQuotaError';
 }

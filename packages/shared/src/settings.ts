@@ -21,6 +21,13 @@ export const NetworkSettings = z.object({
 });
 export type NetworkSettings = z.infer<typeof NetworkSettings>;
 
+/** 插件设置(ADR 0040 第 5.2 节)。自 M7 PR 4 起提供,旧服务器不返回。 */
+export const PluginSettingsGroup = z.object({
+    /** 「插件市场」开关;关闭后不下载索引、市场页隐藏、外连清单里不出现市场地址,本地目录安装不受影响。 */
+    marketEnabled: z.boolean(),
+});
+export type PluginSettingsGroup = z.infer<typeof PluginSettingsGroup>;
+
 export const Settings = z.object({
     defaultChatProfileId: Id.nullable(),
     /** 上下文压缩等廉价任务用的配置档;为 null 时回退到 chat 配置档(ADR 0006)。 */
@@ -50,6 +57,8 @@ export const Settings = z.object({
     timeZone: TimeZoneName.nullable().optional(),
     /** 网络设置;旧服务器不返回,按全部默认处理。 */
     network: NetworkSettings.optional(),
+    /** 插件相关设置;旧服务器不返回,按全部默认处理(市场默认开启)。 */
+    plugins: PluginSettingsGroup.optional(),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -58,6 +67,7 @@ export const SettingsPatch = Settings.partial().extend({
     knowledgeBase: Settings.shape.knowledgeBase.partial().optional(),
     voice: Settings.shape.voice.partial().optional(),
     network: NetworkSettings.partial().optional(),
+    plugins: PluginSettingsGroup.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof SettingsPatch>;
 
@@ -71,4 +81,5 @@ export const DEFAULT_SETTINGS: Settings = {
     voice: DEFAULT_VOICE_SETTINGS,
     timeZone: null,
     network: { allowFakeIp: false },
+    plugins: { marketEnabled: true },
 };

@@ -202,6 +202,8 @@ export interface EgressInputs {
     channels: readonly ChannelRecord[];
     mcpServers: readonly McpServer[];
     plugins?: readonly PluginEgressDomain[];
+    /** 插件市场的索引与下载主机(ADR 0040 第 5.3 节);市场关闭时为空。 */
+    pluginMarkets?: readonly EgressTarget[];
 }
 
 /** GET /settings/egress-targets 的内容。当前没有更新检查,这一类不出现。 */
@@ -215,6 +217,7 @@ export function listEgressTargets(input: EgressInputs, log?: EgressLog): EgressT
             ...channelTargets(input.channels, log),
             ...mcpTargets(input.mcpServers),
             ...pluginTargets(input.plugins ?? []),
+            ...(input.pluginMarkets ?? []),
         ],
     };
 }

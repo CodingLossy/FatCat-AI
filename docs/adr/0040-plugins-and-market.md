@@ -484,6 +484,21 @@ ALTER TABLE tasks ADD COLUMN disabled_reason TEXT;
 - **`sendsData` / `net` 的级别下限**在 PR 2b 已实现(`effectiveRisk`),本 PR 没有改动,仍有越权用例。
 - **不在 PR 3**:市场(PR 4)、升级(PR 5)。
 
+**PR 4 实现注记**:
+
+- **签名文件格式**:`index.json.sig` 是一行 JSON `{ "keyId": "...", "alg": "ed25519", "sig": "<64 字节签名的 base64>" }`(schema 在 `packages/shared/src/plugin-market.ts` 的 `PluginIndexSignature`)。客户端先验签、再解析 JSON,所以没验证过的内容不进解析器;`keyId` 不在内置(或 config 配置)的公钥列表里一律拒绝(`index_unknown_key`)。
+- **两把官方公钥**(业主 2026-11-18 生成,原始 32 字节的 base64)内置在 `packages/tools/src/plugins/market.ts`:`fatcat-main-2026`、`fatcat-backup-2026`,两把签的索引都接受。`scripts/plugins/sign-index.mjs` 里有同一份(测试核对一致);仓库里没有任何私钥,测试用的密钥对在测试时生成。
+- **官方索引地址**:`https://codinglossy.github.io/fatcat-plugins/index.json`(GitHub Pages 直接提供,不经重定向),签名在同地址加 `.sig`。**这是 C 的推荐,待业主确认**:如果改用仓库 Release 提供,地址会重定向到 `objects.githubusercontent.com`,需要把它加进该市场的 `indexHosts`(取索引时允许的主机,默认只有 `indexUrl` 的主机)。
+- **索引缓存与状态**:验证通过的索引连同签名存在 `<数据目录>/plugins/.market/<市场>.json` 与 `.sig`,每次读取都重新验签(文件被改过当作没有缓存)。状态 `ok` / `stale`(最近一次更新失败或被拒绝,显示缓存里的旧索引并写明原因)/ `unavailable`(从没成功过或缓存已过期,不能安装)。被拒绝(签名、未知密钥、格式、市场名不符、serial 回退、已过期)写 `plugin_events(kind='market-rejected')`,`plugin_id = market:<市场>`,`detail` 是原因码;网络失败不写事件。`serial` 相等允许(重新签名),更小拒绝。
+- **API**:`GET /plugins/market`(只读缓存,不发请求)、`POST /plugins/market/refresh`;关闭「插件市场」时两者与 `prepare` 的市场来源都回 409 `market_disabled`,并且不发任何请求。`POST /plugins/prepare` 的 `source` 增加 `{ kind: 'market', market, id, version }`:**只能指名,不能带 URL**,下载地址、大小与 sha256 只来自已验证的索引。新增错误码:`market_disabled`、`market_unavailable`(503)、`plugin_download_failed`(502)、`plugin_too_large`(413)、`plugin_checksum_mismatch`(422,同时写 `checksum-mismatch` 事件)、`plugin_manifest_mismatch`(422)、`plugin_yanked`(409)。`PluginView` 增加 `signedKeyId`、`yanked`;`PluginPrepared` 增加 `market`;`PluginPatch.secretRefs` 的值可以是 `null`(解除绑定,必需的密钥被解除时同时停用插件)。设置增加 `plugins.marketEnabled`(默认开)。
+- **下载**:`guardedFetch` 加上 https-only 与「主机必须在索引的 `downloadHosts` 里」,每一跳(含第一跳)都经过 `onUrl` 检查,所以重定向到范围外的主机时那台主机收不到请求;解析出的地址过 net-guard,受设置里的 fake-IP 开关约束。包最多读到声明的 `size + 1` 字节,超过即 `plugin_too_large`;大小与 sha256 之一不符即 `plugin_checksum_mismatch`。包只在内存里,解包到 `.staging/<随机名>/`,任何一步失败都删除暂存目录,已安装的东西不动。包内 `plugin.json` 的 `id`、`version` 与权限必须与索引条目一致(权限按顺序无关的规范化比较),否则 `plugin_manifest_mismatch`。
+- **tar 读取器**(`packages/tools/src/plugins/tar.ts`,约 250 行):只接受 ustar 的普通文件、目录与 pax 扩展头(pax 里出现 `path`、`linkpath`、`size` 一律拒绝);解压后 200 MiB / 5,000 个文件 / 单文件 50 MiB / 路径 240 字符、仅大小写不同的重复、Windows 盘符与保留名、`..`、绝对路径、结束标记之后的非零数据都整体拒绝;压缩比超过 100 倍边解边中止。包根必须直接有 `plugin.json`。
+- **外连清单**:每个市场的 `indexUrl` 主机、`indexHosts` 与缓存索引的 `downloadHosts` 以类别 `plugin`、来源 `plugin-market` 列出;市场关闭时没有。`egress.test.ts` 的反向检查(清单里 enabled 的项必须被用到)现在也驱动一次市场刷新。
+- **保留 id**:插件 id `market` 保留(`GET /plugins/market` 不能被一个插件抢走)。
+- **索引仓库脚本**在 `scripts/plugins/`:`sign-index.mjs`(本机签名,私钥只从命令行给的文件读,不读环境变量与标准输入,检测到 CI 环境变量即拒绝,只接受私钥与内置公钥对得上的官方 keyId;`--verify` 只用公钥核对)、`check-index.mjs`(索引仓库的 CI:schema、与上一版比较、重新下载核对 sha256、用同一个 tar 读取器解包、清单与权限一致、静态检查)、`index-repo-workflow.yml`(拷成索引仓库的 `.github/workflows/check-index.yml`;CI 从 FatCat-AI 的检出里运行这些脚本,所以与客户端始终用同一份 schema)。步骤见 `scripts/plugins/README.md`。
+- **不在 PR 4**:升级与回退(PR 5;已装同名插件时市场页的安装按钮不可用);用户自己加的第三方市场(`plugins.markets` 的 config.yaml 读取器还没有,`MarketService` 已按配置列表工作,默认只有官方一项);CLI 的市场命令。
+- **待业主决定**(C 的推荐:同意):没有操作系统层网络隔离的平台(目前 Windows,以及 Linux 上没有非特权 user namespace 时)上,拒绝安装声明了 `net` 的**本地目录**插件,除非来自已审核的市场。PR 4 没有实现这条;同意后在 PR 5 里一并做。
+
 - **不在 PR 2b**:市场与下载(PR 4)、升级与回退(PR 5)、Web 与 CLI(PR 2c)、`fatcat/net.fetch` 与知识地图条目(PR 3)。
 
 ## 12. 业主已定的问题(2026-11-17)

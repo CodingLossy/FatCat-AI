@@ -330,6 +330,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
                 log: (message, fields) => logger.info(fields, message),
                 onTimeZoneChanged: deps.onTimeZoneChanged,
                 pluginDomains: (ownerId) => plugins.egressDomains(ownerId),
+                pluginMarkets: (ownerId) => plugins.market.egressTargets(ownerId),
             }),
         )
         .route('/', sessionRoutes(runDeps))

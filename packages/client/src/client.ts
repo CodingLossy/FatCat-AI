@@ -43,6 +43,7 @@ import type {
     McpServerView,
     PluginDetail,
     PluginEventView,
+    PluginMarketListing,
     PluginPatch,
     PluginPrepared,
     PluginView,
@@ -492,6 +493,16 @@ export function createClient(options: ClientOptions) {
                     method: 'POST',
                     body: { source: { kind: 'local', path } },
                 }),
+            /** 下载并检查市场里的一个版本(不运行插件代码);下载地址只来自已验证的索引。 */
+            prepareMarket: (market: string, id: string, version: string) =>
+                t.json<PluginPrepared>('/plugins/prepare', {
+                    method: 'POST',
+                    body: { source: { kind: 'market', market, id, version } },
+                }),
+            /** 缓存的市场索引(不发网络请求);设置里关闭市场时 409 market_disabled。 */
+            market: () => t.json<PluginMarketListing>('/plugins/market'),
+            /** 重新下载并验证索引;失败或被拒绝时保留缓存,原因在返回的市场状态里。 */
+            refreshMarket: () => t.json<PluginMarketListing>('/plugins/market/refresh', { method: 'POST' }),
             /** 安装已 prepare 的包;accept 必须为 true(全部同意)。 */
             install: (stagingId: string) =>
                 t.json<PluginView>('/plugins/install', { method: 'POST', body: { stagingId, accept: true } }),

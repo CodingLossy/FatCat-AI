@@ -87,6 +87,8 @@ export interface TestServerOptions {
     challenges?: AppDeps['challenges'];
     totpLimiter?: AppDeps['totpLimiter'];
     taskComplete?: AppDeps['taskComplete'];
+    /** 插件市场(ADR 0040 第 5.2 节):测试用的市场配置(测试公钥)与指向本机的网络检查。 */
+    pluginMarket?: ConstructorParameters<typeof PluginService>[0]['market'];
 }
 
 export async function createTestServer(
@@ -172,6 +174,7 @@ export async function createTestServer(
         env: options.env ?? {},
         onItemsChanged: (ownerId) => items.invalidate(ownerId),
         runtime: { idleMs: 60_000, graceMs: 1000, termMs: 500, handshakeTimeoutMs: 15_000 },
+        ...(options.pluginMarket ? { market: options.pluginMarket } : {}),
     });
     const mail = createMailService({
         repos,

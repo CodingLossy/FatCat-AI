@@ -378,6 +378,36 @@ describe('插件 REST', () => {
     }, 90_000);
 });
 
+describe('密钥绑定', () => {
+    it('清空绑定(null)即解除;必需的密钥被解除时插件同时被停用,并记下原因', async () => {
+        const { send, settled, install } = await setup();
+        await install(
+            sourceDir((m) => {
+                ((m.permissions as { secrets: { required: boolean }[] }).secrets[0] as { required: boolean }).required =
+                    true;
+            }),
+        );
+        expect((await settled())[0]?.state).toBe('disabled'); // 缺必需的密钥,安装后不启用
+        const bound = await send('PATCH', '/api/v1/plugins/probe', {
+            secretRefs: { WEATHER_API_KEY: 'env:WEATHER_KEY' },
+            enabled: true,
+        });
+        expect(((await bound.json()) as { state: string }).state).toBe('enabled');
+        await settled();
+
+        const unbound = await send('PATCH', '/api/v1/plugins/probe', { secretRefs: { WEATHER_API_KEY: null } });
+        expect(unbound.status).toBe(200);
+        expect(await unbound.json()).toMatchObject({
+            state: 'disabled',
+            secretRefs: {},
+            missingSecrets: ['WEATHER_API_KEY'],
+        });
+        const owner = s.repos.owners.ids()[0]!;
+        const events = s.repos.plugins.listEvents(owner, { pluginId: 'probe', limit: 10 }).items;
+        expect(events.some((e) => e.kind === 'disabled' && e.detail === 'required secret unbound')).toBe(true);
+    }, 60_000);
+});
+
 describe('protectionTable', () => {
     it('never claims enforced direct-network: the Linux namespace leaves Unix socket files to the preload', () => {
         for (const kind of ['unshare', 'sandbox-exec', 'none'] as const) {

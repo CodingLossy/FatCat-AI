@@ -9,6 +9,7 @@ function prepared(patch: Partial<PluginPrepared['manifest']['permissions']> = {}
     return {
         stagingId: '0123456789abcdef',
         unreviewed,
+        market: null,
         installed: null,
         protections: [{ key: 'direct-network', level: 'layered', detail: 'preload only' }],
         manifest: {
