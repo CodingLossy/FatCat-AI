@@ -379,6 +379,11 @@ describe('check-index.mjs', () => {
         expect(checker.staticScan([{ path: 'b.js', text: loads }])).toHaveLength(7);
     });
 
+    it('known misses: a call split over two lines or reached through a computed property is not seen', () => {
+        const hidden = ['const r = require', "('net');", "globalThis['require']('net');"].join('\n');
+        expect(checker.staticScan([{ path: 'c.js', text: hidden }])).toEqual([]);
+    });
+
     const esbuildDir = (() => {
         const store = join(fileURLToPath(new URL('../../../../node_modules/.pnpm/', import.meta.url)));
         const found = readdirSync(store).find((n) => n.startsWith('esbuild@'));
@@ -496,6 +501,11 @@ describe('pack-plugin.mjs', () => {
         const tooLong = plugin();
         writeFileSync(join(tooLong, `${'x'.repeat(101)}.txt`), '');
         await expect(packer.packPlugin({ dir: tooLong, deps })).rejects.toThrow(/ustar/);
+        if (process.platform !== 'win32') {
+            const slashed = plugin();
+            writeFileSync(join(slashed, 'a\\b.txt'), '');
+            await expect(packer.packPlugin({ dir: slashed, deps })).rejects.toThrow(/backslash/);
+        }
         const bad = plugin();
         writeFileSync(join(bad, 'server.mjs'), "import net from 'node:net';\n");
         await expect(packer.packPlugin({ dir: bad, deps })).rejects.toThrow(/static check failed/);

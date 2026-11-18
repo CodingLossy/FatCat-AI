@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     acquireServerLock,
+    installLockRelease,
     installShutdownHandlers,
     runningServerPid,
     SERVER_LOCK_FILE,
@@ -56,11 +57,25 @@ describe('shutdown handlers', () => {
         expect(shutdown).toHaveBeenCalledTimes(1);
         expect(release).toHaveBeenCalledTimes(1);
         expect(exit).toHaveBeenCalledWith(1);
+        // 信号处理不再注册 exit(由 installLockRelease 负责)
         emitter.emit('exit');
-        expect(release).toHaveBeenCalledTimes(2);
-        // 关闭卡住时的定时器:释放锁并强制退出
+        expect(release).toHaveBeenCalledTimes(1);
+        // 关闭卡住时的定时器:释放锁并以非 0 退出
         timers[0]!();
-        expect(exit).toHaveBeenLastCalledWith(0);
+        expect(release).toHaveBeenCalledTimes(2);
+        expect(exit).toHaveBeenLastCalledWith(1);
+    });
+
+    it('installLockRelease releases on exit right after the lock is taken; releasing twice is harmless', () => {
+        const dir = tmp();
+        const { emitter, proc } = fakeProcess();
+        const release = acquireServerLock(dir, 4242);
+        installLockRelease(proc, release);
+        emitter.emit('exit');
+        expect(existsSync(join(dir, SERVER_LOCK_FILE))).toBe(false);
+        writeFileSync(join(dir, SERVER_LOCK_FILE), JSON.stringify({ pid: 7 }));
+        emitter.emit('exit');
+        expect(existsSync(join(dir, SERVER_LOCK_FILE))).toBe(true);
     });
 
     it('a lock released on exit is gone, and a leftover lock of a dead process is recognised as stale', () => {

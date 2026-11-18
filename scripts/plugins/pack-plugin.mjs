@@ -33,6 +33,7 @@ export function collectFiles(root) {
             const rel = relDir ? `${relDir}/${name}` : name;
             if (name === 'node_modules')
                 throw new PackError(`${rel}: node_modules is not allowed; bundle your dependencies`);
+            if (name.includes('\\')) throw new PackError(`${rel}: a backslash in a file name is not allowed`);
             const abs = join(dir, name);
             const stat = lstatSync(abs);
             if (stat.isSymbolicLink()) throw new PackError(`${rel}: symbolic links and junctions are not allowed`);

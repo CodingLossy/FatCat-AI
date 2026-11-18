@@ -38,7 +38,7 @@ import { dataDirMasterKey, LEGACY_DATA_DIR_NAME, LegacyDataDirBusyError, migrate
 import { runAuthCommand } from './auth-cli.js';
 import { runSecretsCommand } from './secrets-cli.js';
 import { createLogger } from './log.js';
-import { acquireServerLock, installShutdownHandlers, runningServerPid } from './server-lock.js';
+import { acquireServerLock, installLockRelease, installShutdownHandlers, runningServerPid } from './server-lock.js';
 import { attachWebSocket } from './ws.js';
 import { ChannelHub } from './channels/hub.js';
 import { WechatChannels } from './channels/wechat.js';
@@ -119,6 +119,7 @@ try {
 } catch (error) {
     logger.warn({ code: (error as NodeJS.ErrnoException).code }, 'could not write the server lock file');
 }
+installLockRelease(process, () => releaseLock());
 const { conn, migrated } = await openStorage({ dataDir: config.dataDir });
 if (migrated.applied.length > 0) {
     logger.info({ applied: migrated.applied, backup: migrated.backupPath }, 'database migrated');
