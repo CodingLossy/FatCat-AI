@@ -54,7 +54,9 @@
 
 ### 5. 知识地图粒子球 `KnowledgeSphere`
 
-放在 `packages/ui`,复用 VoiceOrb 的 Three.js 渲染层(Three.js 是 MIT,但要确认 `check:licenses` 通过),只用 `/api/v1/items/*`:
+放在 `packages/ui`,只用 `/api/v1/items/*`:
+
+> **实现决定(第四个 PR)**:不引入 Three.js,与 VoiceOrb 一样用 Canvas 2D 自己投影绘制。原因:一次只画「当前分类的子项」,点数就是该分类的子项数,Canvas 2D 足够;不新增依赖和体积,也没有许可证与 WebGL 兼容性问题。无头 Chromium(软件渲染)实测 1 万点:布局加首帧 16.7 ms,单帧中位数 2.4 ms、p95 4.0 ms;CI 门槛放宽到单帧 33 ms、切层 600 ms。真实 GPU 下的 60 fps 与手感由业主确认。若以后需要百万级点或光照,再换 WebGL。
 
 - 顶层类别簇 → 点击展开子类别 → 递归到内容条目(打开 / 问 AI);面包屑、返回、键盘导航、与树形视图一键切换;`subtree?depth=2` 预取。
 - 无 WebGL 或「减少动态效果」时自动用树形视图(`CategoryBrowser`),不是报错。

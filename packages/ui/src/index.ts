@@ -13,3 +13,4 @@ export {
     type VoiceOrbOptions,
 } from './voice-orb.js';
 export * from './category-browser/index.js';
+export * from './knowledge-sphere/index.js';

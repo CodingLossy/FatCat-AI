@@ -2,11 +2,12 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import type { Item, ItemContent, ItemRelatedEntry, ItemSort } from '@fatcat-ai/shared';
-import { breadcrumbOf, type Crumb, mergePage, toggleExpanded, virtualWindow } from '@fatcat-ai/ui';
+import { breadcrumbOf, type Crumb, mergePage, shouldUseList, toggleExpanded, virtualWindow } from '@fatcat-ai/ui';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
 import { itemTitle } from './item-title.js';
+import { KnowledgeSphereView } from './KnowledgeSphereView.js';
 import { navigate } from './router.js';
 
 /** 列表行高(像素,固定;虚拟滚动只渲染视口附近的行)。触摸目标不小于 44px。 */
@@ -160,6 +161,12 @@ export function ItemsPage() {
     const [detailError, setDetailError] = useState<string | null>(null);
     const [drawer, setDrawer] = useState(false);
     const listKey = useRef(0);
+    // 粒子球需要 Canvas 2D,且用户没要求减少动态效果;否则固定用列表。
+    const sphereAvailable = !shouldUseList({
+        canvasAvailable: typeof document !== 'undefined' && !!document.createElement('canvas').getContext,
+        reducedMotion: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
+    });
+    const [view, setView] = useState<'list' | 'sphere'>('list');
 
     const fail = (e: unknown) => setError(errorText(e));
 
@@ -394,6 +401,23 @@ export function ItemsPage() {
                                         </option>
                                     ))}
                                 </select>
+                                <div className="row" role="group" aria-label={t('items.view.label')}>
+                                    <button
+                                        type="button"
+                                        aria-pressed={view === 'list'}
+                                        onClick={() => setView('list')}
+                                    >
+                                        {t('items.view.list')}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        aria-pressed={view === 'sphere'}
+                                        disabled={!sphereAvailable}
+                                        onClick={() => setView('sphere')}
+                                    >
+                                        {t('items.view.sphere')}
+                                    </button>
+                                </div>
                                 <button type="button" onClick={() => ask(current, 'subtree')}>
                                     {t('items.askSubtree')}
                                 </button>
@@ -407,7 +431,20 @@ export function ItemsPage() {
                                 </p>
                             ) : null}
                             {shown.length === 0 && !listLoading ? <p className="muted">{t('items.empty')}</p> : null}
-                            <VirtualList items={shown} onPick={(i) => void pick(i)} onNearEnd={nearEnd} />
+                            {!sphereAvailable ? <p className="small muted">{t('items.sphere.fallback')}</p> : null}
+                            {view === 'sphere' && sphereAvailable ? (
+                                <KnowledgeSphereView
+                                    items={shown}
+                                    hasMore={!!list.cursor && !results}
+                                    onOpen={(i) => void pick(i)}
+                                    onBack={() => {
+                                        const parent = trail[trail.length - 2];
+                                        if (parent) void api.items.get(parent.id).then(go).catch(fail);
+                                    }}
+                                />
+                            ) : (
+                                <VirtualList items={shown} onPick={(i) => void pick(i)} onNearEnd={nearEnd} />
+                            )}
                             {list.cursor && !results ? (
                                 <button type="button" className="link small" onClick={nearEnd}>
                                     {t('items.more')}
