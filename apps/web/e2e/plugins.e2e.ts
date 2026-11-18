@@ -39,13 +39,22 @@ test.beforeAll(async () => {
     pluginDir = join(dir, 'weather-plugin');
     cpSync(FIXTURES, pluginDir, { recursive: true });
     const manifest = JSON.parse(readFileSync(join(pluginDir, 'plugin.json'), 'utf8')) as Record<string, unknown> & {
-        permissions: { secrets: unknown };
+        permissions: Record<string, unknown>;
         settings?: unknown;
+        taskTemplates?: unknown;
     };
     manifest.id = 'weather';
     manifest.name = { 'zh-CN': '天气', en: 'Weather' };
     manifest.description = { 'zh-CN': '查询城市天气预报(测试夹具)', en: 'City weather forecasts (test fixture)' };
     manifest.permissions.secrets = [{ name: 'WEATHER_API_KEY', required: true, description: { en: 'API key' } }];
+    manifest.permissions.items = { categories: [{ type: 'video', title: { 'zh-CN': '视频', en: 'Videos' } }] };
+    manifest.taskTemplates = [
+        {
+            title: { 'zh-CN': '早上探测', en: 'Morning probe' },
+            prompt: '用 probe 工具检查一下',
+            trigger: { kind: 'cron', expression: '0 7 * * *' },
+        },
+    ];
     manifest.settings = {
         type: 'object',
         properties: {
@@ -168,6 +177,26 @@ test('plugins page: install, configure, stop, uninstall and see the disabled tas
         },
     });
     expect(created.ok(), await created.text()).toBe(true);
+
+    // 知识地图:插件的类别出现在浏览器里,能下钻并打开;条目内容由插件提供
+    await page.getByRole('link', { name: '知识地图' }).click();
+    await page.getByRole('button', { name: '立即同步' }).click();
+    await page.getByRole('button', { name: '视频', exact: true }).first().click();
+    await page.locator('.item-row').filter({ hasText: 'Video one' }).click();
+    await page.locator('.item-row').filter({ hasText: 'First clip' }).click();
+    await expect(page.locator('.item-text')).toContainText('Content of v1-clip');
+    if (SHOTS) await page.screenshot({ path: join(SHOTS, 'plugins-items.png'), fullPage: true });
+
+    // 任务模板:只能建成草稿,在任务页的确认卡上确认;放弃它,不影响后面的卸载检查
+    await page.getByRole('link', { name: '插件' }).click();
+    await card.getByRole('button', { name: '管理' }).click();
+    await card.getByTestId('plugin-templates').getByRole('button', { name: '建成任务草稿' }).click();
+    await expect(page.getByTestId('draft-from-plugin')).toContainText('weather');
+    await expect(page.getByRole('button', { name: '确认并启用' })).toBeVisible();
+    if (SHOTS) await page.screenshot({ path: join(SHOTS, 'plugins-template-draft.png'), fullPage: true });
+    await page.getByRole('button', { name: '丢弃' }).click();
+    await page.getByRole('link', { name: '插件' }).click();
+    await card.getByRole('button', { name: '管理' }).click();
 
     await card.getByRole('button', { name: '停止' }).click();
     await expect(card).toContainText('已启用');

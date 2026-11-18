@@ -348,7 +348,16 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         )
         .route('/', runRoutes(runDeps))
         .route('/', channelRoutes({ repos, hub: channels, wechat }))
-        .route('/', taskRoutes({ repos, scheduler, tools: deps.runs.tools, complete: deps.taskComplete }))
+        .route(
+            '/',
+            taskRoutes({
+                repos,
+                scheduler,
+                tools: deps.runs.tools,
+                complete: deps.taskComplete,
+                pluginTemplate: (ownerId, pluginId, index) => plugins.taskTemplate(ownerId, pluginId, index),
+            }),
+        )
         .route('/', memoryRoutes({ repos, memory: deps.memory, detectCredential }))
         .route('/', toolRoutes({ repos, runs: deps.runs, redact: deps.redact ?? ((text) => text) }))
         .route(

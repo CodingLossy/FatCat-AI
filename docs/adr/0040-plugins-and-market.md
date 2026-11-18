@@ -475,6 +475,15 @@ ALTER TABLE tasks ADD COLUMN disabled_reason TEXT;
 - 网络隔离探测改为异步并在服务启动时(已装有插件时)后台探测一次、缓存结果;macOS 的探测改为真的连一次父进程开的本机端口,连不上才启用。Unix socket 文件仍只靠预加载(挂载命名空间或 Landlock 方案留待单独的改动,需要先在三个平台实测)。
 - 不在 PR 2c:升级与回退界面(PR 5)、市场页(PR 4)。
 
+**PR 3 实现注记**:
+
+- **`fatcat/net.fetch`**:`packages/tools/src/plugins/net-fetch.ts` 复用 `web.fetch` 的 `guardedFetch`(连接时解析并逐个校验 IP,DNS 重绑定无效),另加每一跳的 https 与域名范围检查(`onUrl`);`POST` 不跟随重定向。越出授权域名、私网 / 回环 / 元数据地址、带凭据的 URL、非 https 都回 `permission_denied` 并写 `denied` 事件(计入「1 分钟内超过 20 次停用」);解析到 fake-IP 段回 `fetch_failed`(这是设置问题,不是插件越权,不计入停用)。响应体超过 2 MiB 时**截断并标记 `truncated`**(与 `web.fetch` 一致),不当作拒绝。响应头去掉 `set-cookie`。
+- **条目**:来源 `plugin:<id>`,每个声明的类别在顶层有一个类别条目(`sourceRef = category:<type>`),节点的 `sourceRef = n:<插件自己的 id>`。同步(拉取)最多 2,000 个节点、3 层,每个父项下以插件这次返回的为准(顶层不删,留给推送的条目);进程没在运行且 5 分钟内拉过时不为了刷新去启动它。推送与拉取共用 50,000 条配额(整批超出就整批拒绝),超大 `meta` 或配额超出回 `quota_exceeded` 并写 `denied` 事件。卸载时整棵软删除。插件条目不进知识库(kb)的文件索引。拉取与推送不要在同一个类别里混用同一层:拉取会软删除该父项下插件没有返回的子项。
+- **设置**:启动时以 `FATCAT_PLUGIN_SETTINGS`(JSON,含清单里的默认值、不含保留键)传给插件;`PATCH /plugins/{id}` 校验后重启插件,新值才生效。
+- **任务模板**:`POST /tasks/from-plugin-template`(`{ pluginId, index }`)只建草稿(`status = draft`,不能启用或运行),任务策略里记 `fromPlugin`,输出固定为任务会话;任务页在加载时把带 `fromPlugin` 的草稿显示成确认卡。卸载时 `fromPlugin` 等于该插件的任务一并停用(`plugin_removed`)。
+- **`sendsData` / `net` 的级别下限**在 PR 2b 已实现(`effectiveRisk`),本 PR 没有改动,仍有越权用例。
+- **不在 PR 3**:市场(PR 4)、升级(PR 5)。
+
 - **不在 PR 2b**:市场与下载(PR 4)、升级与回退(PR 5)、Web 与 CLI(PR 2c)、`fatcat/net.fetch` 与知识地图条目(PR 3)。
 
 ## 12. 业主已定的问题(2026-11-17)

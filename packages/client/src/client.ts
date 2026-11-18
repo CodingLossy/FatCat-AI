@@ -530,6 +530,9 @@ export function createClient(options: ClientOptions) {
             /** 确认草稿(需要登录会话;version 是草稿的 updatedAt)。 */
             confirm: (id: string, version: string) =>
                 t.json<Task>(`/tasks/${enc(id)}/confirm`, { method: 'POST', body: { version } }),
+            /** 从已启用插件的任务模板建草稿;确认前不会运行(ADR 0040)。 */
+            fromPluginTemplate: (pluginId: string, index: number) =>
+                t.json<TaskDraftResult>('/tasks/from-plugin-template', { method: 'POST', body: { pluginId, index } }),
             get: (id: string) => t.json<Task>(`/tasks/${enc(id)}`),
             update: (id: string, body: TaskPatch) => t.json<Task>(`/tasks/${enc(id)}`, { method: 'PATCH', body }),
             remove: (id: string) => t.json<void>(`/tasks/${enc(id)}`, { method: 'DELETE' }),

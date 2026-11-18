@@ -3,7 +3,7 @@
 
 // 插件管理的 REST 契约(ADR 0040 第 9 节,/api/v1 的增量)。PR 2b 提供本地目录来源;市场与升级见后续 PR。
 import { z } from 'zod';
-import { PluginManifest, PluginPermissions, PluginSettings } from './plugin.js';
+import { PluginManifest, PluginPermissions, PluginSettings, PluginTaskTemplate } from './plugin.js';
 
 export const PluginState = z.enum([
     'enabled',
@@ -76,6 +76,8 @@ export const PluginView = z.object({
     settings: z.record(z.string(), z.unknown()),
     /** 清单里的 `settings` 声明(JSON Schema 子集),界面按它渲染表单;没有声明时 null。 */
     settingsSchema: PluginSettings.nullable(),
+    /** 清单里的任务模板;只能从模板建任务草稿,不能直接建任务。 */
+    taskTemplates: z.array(PluginTaskTemplate),
     runtime: PluginRuntimeSettingsInput,
     run: PluginRunInfo,
     installedAt: z.string(),

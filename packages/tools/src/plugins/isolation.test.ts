@@ -87,3 +87,17 @@ describe.skipIf(isolation.kind === 'none')(`OS network isolation (${isolation.ki
         30_000,
     );
 });
+
+describe('detectNetIsolation platform handling', () => {
+    it('reports no isolation on platforms without a mechanism', async () => {
+        expect(await detectNetIsolation({ platform: 'win32' })).toBe(NO_NET_ISOLATION);
+        expect(await detectNetIsolation({ platform: 'freebsd' })).toBe(NO_NET_ISOLATION);
+    });
+
+    it('reports no isolation when the probe cannot run', async () => {
+        const missing = join(tmpdir(), 'fatcat-no-such-node');
+        for (const platform of ['linux', 'darwin'] as const) {
+            expect((await detectNetIsolation({ platform, nodePath: missing })).kind).toBe('none');
+        }
+    });
+});

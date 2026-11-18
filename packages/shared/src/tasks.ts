@@ -84,6 +84,11 @@ export const TaskPolicy = z.object({
      * 集合外的硬调用按未知工具处理。只缩小范围,审批与预授权规则不变。
      */
     toolSet: z.array(z.string().trim().min(1).max(100)).min(1).max(30).optional(),
+    /** 任务由哪个插件的模板建出(ADR 0040 第 6.1 节):卸载该插件时据此停用任务。 */
+    fromPlugin: z
+        .string()
+        .regex(/^[a-z][a-z0-9-]{1,31}$/)
+        .optional(),
 });
 export type TaskPolicy = z.infer<typeof TaskPolicy>;
 
@@ -210,6 +215,15 @@ export type TaskWebhookToken = z.infer<typeof TaskWebhookToken>;
 export type TaskSchedulePreview = z.infer<typeof TaskSchedulePreview>;
 
 /** `POST /tasks/propose`:一句话描述;解析结果只会成为草稿,不会生效(ADR 0036)。 */
+/** `POST /tasks/from-plugin-template`:从已启用插件的任务模板建一份草稿(仍要在确认卡上确认,ADR 0040 第 3.3 节)。 */
+export const TaskFromPluginTemplate = z
+    .object({
+        pluginId: z.string().regex(/^[a-z][a-z0-9-]{1,31}$/),
+        index: z.number().int().min(0).max(9),
+    })
+    .strict();
+export type TaskFromPluginTemplate = z.infer<typeof TaskFromPluginTemplate>;
+
 export const TaskPropose = z.object({ text: z.string().trim().min(1).max(500) }).strict();
 export type TaskPropose = z.infer<typeof TaskPropose>;
 

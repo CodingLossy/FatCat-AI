@@ -128,6 +128,7 @@ export async function createTestServer(
     const items = createItemService({
         repos,
         providers: itemProviders(),
+        dynamicProviders: () => plugins.itemProviders(),
         onSynced: (ownerId) => void kb.index(ownerId),
     });
     const bus = new EventBus();
@@ -169,6 +170,7 @@ export async function createTestServer(
         dataDir: dir,
         redact: (text) => redactor.redact(text),
         env: options.env ?? {},
+        onItemsChanged: (ownerId) => items.invalidate(ownerId),
         runtime: { idleMs: 60_000, graceMs: 1000, termMs: 500, handshakeTimeoutMs: 15_000 },
     });
     const mail = createMailService({

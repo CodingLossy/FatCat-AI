@@ -86,6 +86,8 @@ export interface PluginContext {
     log(level: 'debug' | 'info' | 'warn' | 'error', message: string, fields?: Record<string, unknown>): void;
     /** 清单里声明并由用户绑定的密钥;没绑定返回 undefined。 */
     secret(name: string): string | undefined;
+    /** 用户在插件页填的设置(含清单里的默认值);启动时读入,改了设置后宿主会重启插件。 */
+    readonly settings: Readonly<Record<string, unknown>>;
     /** 插件的数据目录(唯一可写的位置)。 */
     readonly dataDir: string | undefined;
     items: { upsert(items: (PluginItemNode & { parentId?: string })[]): Promise<number> };
@@ -105,6 +107,18 @@ export interface Plugin {
     registerItemProvider(provider: ItemProvider): void;
     /** 启动 stdio 服务;宿主关闭 stdin 后 resolve。 */
     run(options?: RunOptions): Promise<void>;
+}
+
+function parseSettings(raw: string | undefined): Record<string, unknown> {
+    if (!raw) return {};
+    try {
+        const value: unknown = JSON.parse(raw);
+        return value !== null && typeof value === 'object' && !Array.isArray(value)
+            ? (value as Record<string, unknown>)
+            : {};
+    } catch {
+        return {};
+    }
 }
 
 /** 创建一个插件。先 `registerTool` / `registerItemProvider`,最后 `await plugin.run()`。 */
@@ -157,6 +171,7 @@ export function definePlugin(options: PluginOptions): Plugin {
                     return value === undefined || value === '' ? undefined : value;
                 },
                 dataDir: env.FATCAT_PLUGIN_DATA,
+                settings: parseSettings(env.FATCAT_PLUGIN_SETTINGS),
                 items: {
                     async upsert(items) {
                         const result = ItemsUpsertResult.parse(

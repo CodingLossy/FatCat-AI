@@ -155,6 +155,22 @@ describe('items:计数与树', () => {
     });
 });
 
+describe('items:按来源计数与整体删除', () => {
+    it('countBySource 只数未删除的条目;removeSource 删除某个来源的整棵树并扣减计数,不动其他来源', () => {
+        const { items } = t.repos;
+        const top = items.upsert(t.ownerId, { ...input('cat', null, { kind: 'category' }), source: 'plugin:demo' });
+        const child = items.upsert(t.ownerId, { ...input('a', top.id, { kind: 'category' }), source: 'plugin:demo' });
+        items.upsert(t.ownerId, { ...input('b', child.id), source: 'plugin:demo' });
+        const other = items.upsert(t.ownerId, { ...input('x', null, { kind: 'category' }), source: 'plugin:other' });
+        expect(items.countBySource(t.ownerId, 'plugin:demo')).toBe(3);
+        expect(items.removeSource(t.ownerId, 'plugin:demo')).toBe(3);
+        expect(items.countBySource(t.ownerId, 'plugin:demo')).toBe(0);
+        expect(items.countBySource(t.ownerId, 'plugin:other')).toBe(1);
+        expect(items.get(t.ownerId, other.id)?.deletedAt).toBeNull();
+        expect(items.removeSource(t.ownerId, 'plugin:demo')).toBe(0);
+    });
+});
+
 describe('items:查询', () => {
     it('roots、children 分页与排序、ancestors、counts、subtree、search、changes、removeMissing', () => {
         const { items } = t.repos;

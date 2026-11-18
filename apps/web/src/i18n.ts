@@ -472,6 +472,11 @@ const zh = {
     'plugins.purgeData': '同时删除插件数据',
     'plugins.backupNote': '插件数据不在自动备份里,删除后无法恢复。不勾选时数据会保留在 plugin-data 目录。',
     'tasks.disabledReason.plugin_removed': '这个任务因为用到的插件被卸载而停用了。重新安装插件后可以再启用它。',
+    'tasks.draftFromPlugin':
+        '这份草稿来自插件「{plugin}」的任务模板。确认之前不会运行;请检查提示词、时间和它能用的工具。',
+    'plugins.templatesTitle': '任务模板',
+    'plugins.templatesHint': '插件提供的任务草稿。点击后到任务页的确认卡上检查并确认,确认之前不会运行。',
+    'plugins.templateCreate': '建成任务草稿',
     'mcp.title': 'MCP 服务器',
     'mcp.hint':
         '本机启动的 MCP 服务器(stdio)。命令不经过 shell 运行,只拿到最少的环境变量;它的工具名为 mcp.<名字>.<工具>,默认每次调用都需要你批准,输出视为不可信内容。',
@@ -1232,6 +1237,12 @@ const en: Record<Key, string> = {
         'Plugin data is not part of the automatic backups, so deleting it cannot be undone. If unchecked, the data stays in the plugin-data folder.',
     'tasks.disabledReason.plugin_removed':
         'This task was disabled because a plugin it uses was uninstalled. Reinstall the plugin, then you can enable it again.',
+    'tasks.draftFromPlugin':
+        'This draft comes from a task template of the plugin "{plugin}". Nothing runs until you confirm it; check the prompt, the schedule and the tools it may use.',
+    'plugins.templatesTitle': 'Task templates',
+    'plugins.templatesHint':
+        'Task drafts offered by the plugin. The draft opens on the Tasks page as a confirmation card; nothing runs until you confirm it.',
+    'plugins.templateCreate': 'Create task draft',
     'mcp.title': 'MCP servers',
     'mcp.hint':
         'Local MCP servers (stdio). The command runs without a shell and gets a minimal environment; its tools are named mcp.<name>.<tool>, every call needs your approval by default, and their output is treated as untrusted.',

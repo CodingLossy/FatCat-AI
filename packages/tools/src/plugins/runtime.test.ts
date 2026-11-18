@@ -12,7 +12,14 @@ import { validatePluginManifest } from '@fatcat-ai/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ToolRegistry } from '../registry.js';
 import { hashPluginDir } from './package.js';
-import { PluginRuntime, type PluginEventInput, type PluginRuntimeRecord, redactSecrets } from './runtime.js';
+import {
+    PluginQuotaError,
+    PluginRuntime,
+    pluginSettingsValues,
+    type PluginEventInput,
+    type PluginRuntimeRecord,
+    redactSecrets,
+} from './runtime.js';
 
 const fixtures = fileURLToPath(new URL('./fixtures/', import.meta.url));
 const SECRET = 'sk-test-9f3a-very-secret';
@@ -309,8 +316,8 @@ describe('risk floor', () => {
             const probe = h.registry.get('plugin.probe.probe')!;
             expect(probe.risk).toBe('external');
             expect(probe.preauthorizable).toBe(false);
-            // net 已授权但 PR 3 才实现代发:拒绝以「不可用」回应,不当作越权
-            expect(await run(h, 'probe', { attack: 'rpc', arg: 'fatcat/net.fetch' })).toContain('not available');
+            // net 已授权:缺少参数是 invalid params,不是越权
+            expect(await run(h, 'probe', { attack: 'rpc', arg: 'fatcat/net.fetch' })).toContain('invalid params');
         } finally {
             await h.runtime.closeAll();
             rmSync(h.root, { recursive: true, force: true });
@@ -328,5 +335,173 @@ describe('redactSecrets', () => {
             encodeURIComponent(secret),
         ].join(' | ');
         expect(redactSecrets(text, [secret])).toBe('[redacted] | [redacted] | [redacted] | [redacted]');
+    });
+});
+
+describe('fatcat/net.fetch', () => {
+    let h: Harness;
+    beforeEach(() => {
+        h = setup((m) => {
+            (m.permissions as Record<string, unknown>).net = ['api.example.org', '*.cdn.example.org'];
+        });
+    });
+    afterEach(async () => {
+        await h.runtime.closeAll();
+        rmSync(h.root, { recursive: true, force: true });
+    });
+
+    const fetchVia = (params: Record<string, unknown>) =>
+        run(h, 'probe', { attack: 'rpc', arg: 'fatcat/net.fetch', params });
+    const denied = () => h.events.filter((e) => e.kind === 'denied').map((e) => e.detail);
+
+    it('refuses domains that were not granted, non-https URLs and forbidden headers, and records denied', async () => {
+        await h.runtime.apply(h.record);
+        expect(await fetchVia({ url: 'https://other.example.net/' })).toContain('permission_denied');
+        expect(await fetchVia({ url: 'http://api.example.org/' })).toContain('invalid params');
+        expect(await fetchVia({ url: 'https://api.example.org/', headers: { Cookie: 'x' } })).toContain(
+            'invalid params',
+        );
+        expect(denied()).toEqual(['fatcat/net.fetch: domain is not granted']);
+    }, 30_000);
+
+    it('refuses granted domains that resolve to loopback, private or metadata addresses', async () => {
+        const resolveTo = (address: string) => async () => [{ address, family: 4 }];
+        for (const [address, label] of [
+            ['127.0.0.1', 'loopback'],
+            ['10.1.2.3', 'private'],
+            ['169.254.169.254', 'metadata'],
+        ] as const) {
+            const local = setup((m) => {
+                (m.permissions as Record<string, unknown>).net = ['api.example.org'];
+            });
+            const runtime = new PluginRuntime({
+                registry: local.registry,
+                codeRoot: local.codeRoot,
+                dataRoot: local.dataRoot,
+                env: { PATH: process.env.PATH ?? '' },
+                handshakeTimeoutMs: 15_000,
+                netFetchOverrides: { resolve: resolveTo(address) },
+                onEvent: (_o, e) => local.events.push(e),
+                onState: () => undefined,
+            });
+            try {
+                await runtime.apply(local.record);
+                const out = await run(local, 'probe', {
+                    attack: 'rpc',
+                    arg: 'fatcat/net.fetch',
+                    params: { url: 'https://api.example.org/' },
+                });
+                expect(out, label).toContain('permission_denied');
+                expect(local.events.filter((e) => e.kind === 'denied').map((e) => e.detail)).toEqual([
+                    'fatcat/net.fetch: destination is not allowed',
+                ]);
+            } finally {
+                await runtime.closeAll();
+                rmSync(local.root, { recursive: true, force: true });
+            }
+        }
+    }, 60_000);
+
+    it('reports a fake-IP resolution as a failed request (a settings matter), not as a denied call', async () => {
+        const local = setup((m) => {
+            (m.permissions as Record<string, unknown>).net = ['api.example.org'];
+        });
+        const runtime = new PluginRuntime({
+            registry: local.registry,
+            codeRoot: local.codeRoot,
+            dataRoot: local.dataRoot,
+            env: { PATH: process.env.PATH ?? '' },
+            handshakeTimeoutMs: 15_000,
+            netFetchOverrides: { resolve: async () => [{ address: '198.18.0.7', family: 4 }] },
+            onEvent: (_o, e) => local.events.push(e),
+            onState: () => undefined,
+        });
+        try {
+            await runtime.apply(local.record);
+            const out = await run(local, 'probe', {
+                attack: 'rpc',
+                arg: 'fatcat/net.fetch',
+                params: { url: 'https://api.example.org/' },
+            });
+            expect(out).toContain('fetch_failed');
+            expect(local.events.filter((e) => e.kind === 'denied')).toEqual([]);
+        } finally {
+            await runtime.closeAll();
+            rmSync(local.root, { recursive: true, force: true });
+        }
+    }, 30_000);
+});
+
+describe('fatcat/items.upsert', () => {
+    it('writes only inside registered categories, refuses oversized meta and quota overruns, and records denied', async () => {
+        const written: { type: string; id: string }[] = [];
+        const h = setup((m) => {
+            (m.permissions as Record<string, unknown>).items = {
+                categories: [{ type: 'video', title: { en: 'Videos' } }],
+            };
+        });
+        const runtime = new PluginRuntime({
+            registry: h.registry,
+            codeRoot: h.codeRoot,
+            dataRoot: h.dataRoot,
+            env: { PATH: process.env.PATH ?? '' },
+            handshakeTimeoutMs: 15_000,
+            onEvent: (_o, e) => h.events.push(e),
+            onState: () => undefined,
+            upsertItems: (_o, _p, items) => {
+                if (items.some((i) => i.id === 'over-quota')) throw new PluginQuotaError('quota');
+                written.push(...items.map((i) => ({ type: i.type, id: i.id })));
+                return items.length;
+            },
+        });
+        try {
+            await runtime.apply(h.record);
+            const upsert = (items: unknown[]) =>
+                run(h, 'probe', { attack: 'rpc', arg: 'fatcat/items.upsert', params: { items } });
+            expect(await upsert([{ id: 'a', type: 'video', title: 'A' }])).toContain('"upserted":1');
+            expect(await upsert([{ id: 'b', type: 'other', title: 'B' }])).toContain('permission_denied');
+            expect(await upsert([{ id: 'c', type: 'video', title: 'C', meta: { blob: 'x'.repeat(9000) } }])).toContain(
+                'quota_exceeded',
+            );
+            expect(await upsert([{ id: 'over-quota', type: 'video', title: 'Q' }])).toContain('quota_exceeded');
+            expect(written).toEqual([{ type: 'video', id: 'a' }]);
+            expect(h.events.filter((e) => e.kind === 'denied').map((e) => e.detail)).toEqual([
+                'fatcat/items.upsert: item type is not a registered category',
+                'fatcat/items.upsert: meta is larger than 8 KiB',
+                'fatcat/items.upsert: item quota exceeded',
+            ]);
+        } finally {
+            await runtime.closeAll();
+            rmSync(h.root, { recursive: true, force: true });
+        }
+    }, 60_000);
+});
+
+describe('pluginSettingsValues', () => {
+    const manifest = (
+        validatePluginManifest({
+            manifestVersion: 1,
+            id: 'weather',
+            version: '1.0.0',
+            name: { en: 'Weather' },
+            description: { en: 'x' },
+            author: 'a',
+            license: 'MIT',
+            engines: { fatcat: '>=0.0.0' },
+            entry: { type: 'mcp-stdio', main: 'server.js' },
+            permissions: {},
+            settings: {
+                type: 'object',
+                properties: { city: { type: 'string', default: 'Paris' }, days: { type: 'number' } },
+            },
+        }) as { manifest: Parameters<typeof pluginSettingsValues>[0] }
+    ).manifest;
+
+    it('fills declared defaults, prefers saved values and never passes undeclared or reserved keys', () => {
+        expect(pluginSettingsValues(manifest, {})).toEqual({ city: 'Paris' });
+        expect(pluginSettingsValues(manifest, { city: 'Rome', days: 3, other: 1, __runtime: { a: 1 } })).toEqual({
+            city: 'Rome',
+            days: 3,
+        });
     });
 });

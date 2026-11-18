@@ -15,6 +15,8 @@ export const SYNC_INTERVAL_MS = 60_000;
 export interface ItemServiceOptions {
     repos: Repositories;
     providers?: ItemProvider[];
+    /** 运行时才知道的提供者(例如已启用的插件,ADR 0040);每次同步和打开时重新取。 */
+    dynamicProviders?: () => ItemProvider[];
     now?: () => number;
     onError?: (error: unknown, context: { provider: string }) => void;
     /** 每次同步结束后调用(例如在后台更新知识库,ADR 0015)。 */
@@ -24,6 +26,7 @@ export interface ItemServiceOptions {
 export function createItemService(options: ItemServiceOptions) {
     const { repos } = options;
     const providers = options.providers ?? [filesProvider, novelsProvider, sessionsProvider];
+    const allProviders = () => [...providers, ...(options.dynamicProviders?.() ?? [])];
     const now = options.now ?? Date.now;
     const lastSync = new Map<string, number>();
     const running = new Map<string, Promise<void>>();
@@ -33,7 +36,7 @@ export function createItemService(options: ItemServiceOptions) {
 
     async function syncAll(ownerId: string): Promise<void> {
         const roots = rootsOf(ownerId);
-        for (const provider of providers) {
+        for (const provider of allProviders()) {
             try {
                 await provider.sync({
                     ownerId,
@@ -73,8 +76,14 @@ export function createItemService(options: ItemServiceOptions) {
         },
         /** 打开条目:由提供者读取;文件类条目会重新校验路径,越权时抛出 ToolDeniedError。 */
         async open(ownerId: string, item: Item): Promise<ItemContent> {
-            const provider = providers.find((p) => p.id === item.source);
-            if (!provider) throw new Error(`no provider can open items from ${item.source}`);
+            const provider = allProviders().find((p) => p.id === item.source);
+            if (!provider) {
+                throw new Error(
+                    item.source.startsWith('plugin:')
+                        ? `the plugin that provides this item is disabled or not installed (${item.source})`
+                        : `no provider can open items from ${item.source}`,
+                );
+            }
             return provider.open(item, { ownerId, repos, roots: rootsOf(ownerId).map((r) => r.path) });
         },
     };

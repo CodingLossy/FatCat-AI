@@ -55,6 +55,9 @@ export function TasksPage() {
         try {
             const page = await api.tasks.list();
             setTasks(page.items);
+            // 从插件模板建出的草稿:跳到任务页后显示确认卡(没有确认前不会运行)
+            const fromPlugin = page.items.find((task) => task.status === 'draft' && task.policy.fromPlugin);
+            if (fromPlugin) setDraft((current) => current ?? { task: fromPlugin, warnings: [], notes: [] });
         } catch (e) {
             setError(errorText(e));
         }
@@ -252,6 +255,11 @@ export function TasksPage() {
                     <p>
                         <strong>{draft.task.name}</strong> · {trigger(draft.task)}
                     </p>
+                    {draft.task.policy.fromPlugin ? (
+                        <p className="warn" data-testid="draft-from-plugin">
+                            {t('tasks.draftFromPlugin', { plugin: draft.task.policy.fromPlugin })}
+                        </p>
+                    ) : null}
                     <p className="muted">{draft.task.action.kind === 'agent_prompt' ? draft.task.action.prompt : ''}</p>
                     {draft.task.outputs.some((o) => o.kind === 'channel') ? null : (
                         <p className="muted">{t('tasks.outputConversation')}</p>

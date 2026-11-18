@@ -33,4 +33,34 @@ describe('example plugin "hello"', () => {
             client.close();
         }
     }, 30_000);
+
+    it('reads settings from FATCAT_PLUGIN_SETTINGS and serves its knowledge-map notes', async () => {
+        const client = new StdioMcpClient(
+            {
+                command: process.execPath,
+                args: [`${dir}server.mjs`],
+                cwd: dir,
+                envPassthrough: [],
+                rawEnv: {
+                    PATH: process.env.PATH ?? '',
+                    FATCAT_PLUGIN_SETTINGS: JSON.stringify({ greeting: 'Hi', shout: true }),
+                },
+            },
+            { timeoutMs: 15_000 },
+        );
+        try {
+            await client.connect();
+            expect((await client.callTool('hello', { name: 'cat' })).content?.[0]?.text).toBe('HI, CAT!');
+            const roots = (await client.request('fatcat/items.roots', { type: 'note' })) as {
+                items: { id: string; title: string }[];
+            };
+            expect(roots.items.map((n) => n.id)).toEqual(['welcome', 'tips']);
+            const opened = (await client.request('fatcat/items.open', { type: 'note', id: 'tips' })) as {
+                content: string;
+            };
+            expect(opened.content).toContain('knowledge map');
+        } finally {
+            client.close();
+        }
+    }, 30_000);
 });

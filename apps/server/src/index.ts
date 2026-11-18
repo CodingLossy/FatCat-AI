@@ -183,6 +183,8 @@ const kb = createKnowledgeBase({
 });
 const items = createItemService({
     providers: itemProviders(),
+    // 已启用插件的条目提供者(plugins 在下面创建,同步时才会调用)
+    dynamicProviders: () => plugins.itemProviders(),
     repos,
     onError: (err, { provider }) => logger.warn({ err, provider }, 'item provider sync failed'),
     onSynced: (ownerId) => void kb.index(ownerId),
@@ -293,6 +295,7 @@ const plugins = new PluginService({
     dataDir: config.dataDir,
     redact: (text) => redactor.redact(text),
     timeZone: () => ownerTimeZone(),
+    onItemsChanged: (ownerId) => items.invalidate(ownerId),
     log: logger,
 });
 void plugins.start().catch((err: unknown) => logger.warn({ err }, 'plugin start-up failed'));

@@ -7,6 +7,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { createRoute, z } from '@hono/zod-openapi';
 import {
+    type PluginTaskTemplate,
     effectiveTimeZone,
     Id,
     PageQuery,
@@ -15,6 +16,7 @@ import {
     TaskConfirm,
     TaskCreate,
     TaskDraftResult,
+    TaskFromPluginTemplate,
     TaskPropose,
     TaskPage,
     TaskPatch,
@@ -75,6 +77,15 @@ const proposeRoute = createRoute({
     summary: 'Turn one sentence into a task draft. A draft never runs until it is confirmed in the Web UI',
     request: { body: { content: { 'application/json': { schema: TaskPropose } }, required: true } },
     responses: { 201: json(TaskDraftResult, 'Draft'), 400: problem('Not understood'), ...authErrors },
+});
+const fromPluginRoute = createRoute({
+    method: 'post',
+    path: '/tasks/from-plugin-template',
+    tags,
+    summary:
+        'Create a task draft from a task template of an enabled plugin. A draft never runs until it is confirmed in the Web UI',
+    request: { body: { content: { 'application/json': { schema: TaskFromPluginTemplate } }, required: true } },
+    responses: { 201: json(TaskDraftResult, 'Draft'), 404: problem('No such template'), ...authErrors },
 });
 const confirmRoute = createRoute({
     method: 'post',
@@ -210,6 +221,12 @@ export function taskRoutes(deps: {
     scheduler: Scheduler;
     tools?: ToolRegistry | undefined;
     complete?: TaskComplete | undefined;
+    /** 已启用插件的任务模板;找不到时抛 404。 */
+    pluginTemplate?: (
+        ownerId: string,
+        pluginId: string,
+        index: number,
+    ) => { name: string; template: PluginTaskTemplate };
 }) {
     const { repos, scheduler } = deps;
     const timeZoneOf = (ownerId: string) => effectiveTimeZone(repos.settings.get(ownerId).timeZone);
@@ -484,6 +501,48 @@ export function taskRoutes(deps: {
                 true,
             );
             return c.json({ task: toTask(draft), warnings, notes, timeZone }, 201);
+        })
+        .openapi(fromPluginRoute, (c) => {
+            const ownerId = requireOwner(c);
+            const { pluginId, index } = c.req.valid('json');
+            if (!deps.pluginTemplate) throw notFound('Task template');
+            const { name, template } = deps.pluginTemplate(ownerId, pluginId, index);
+            const timeZone = timeZoneOf(ownerId);
+            const locale = repos.settings.get(ownerId).locale;
+            const title =
+                (locale === 'en' ? template.title.en : template.title['zh-CN']) ??
+                template.title.en ??
+                template.title['zh-CN'] ??
+                pluginId;
+            checkTrigger(ownerId, template.trigger);
+            repos.tasks.pruneDrafts(new Date(Date.now() - DRAFT_TTL_MS).toISOString());
+            const draft = repos.tasks.createUser(
+                ownerId,
+                {
+                    name: title.slice(0, 80),
+                    trigger: template.trigger,
+                    action: { kind: 'agent_prompt', prompt: template.prompt },
+                    outputs: [{ kind: 'conversation' }],
+                    policy: {
+                        maxAttempts: 3,
+                        misfire: 'skip',
+                        quietHours: null,
+                        maxRuntimeMinutes: 10,
+                        fromPlugin: pluginId,
+                    },
+                },
+                true,
+            );
+            return c.json(
+                {
+                    task: toTask(draft),
+                    warnings: [
+                        `This draft comes from the task template of the plugin "${name}". Nothing runs until you confirm it.`,
+                    ],
+                    timeZone,
+                },
+                201,
+            );
         })
         .openapi(confirmRoute, (c) => {
             const auth = c.get('auth');
