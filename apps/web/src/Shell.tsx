@@ -9,6 +9,7 @@ import { AuditPage } from './AuditPage.js';
 import { ChatView } from './ChatView.js';
 import { ItemsPage } from './ItemsPage.js';
 import { MailPage } from './MailPage.js';
+import { PluginsPage } from './PluginsPage.js';
 import { TasksPage } from './TasksPage.js';
 import { useI18n } from './i18n.js';
 import { MemoryPage } from './MemoryPage.js';
@@ -229,6 +230,9 @@ export function Shell({
                             </span>
                         ) : null}
                     </Link>
+                    <Link to={{ name: 'plugins' }} className={route.name === 'plugins' ? 'active' : ''}>
+                        {t('nav.plugins')}
+                    </Link>
                     <Link to={{ name: 'memory' }} className={route.name === 'memory' ? 'active' : ''}>
                         {t('nav.memory')}
                     </Link>
@@ -257,6 +261,8 @@ export function Shell({
                     <MailPage />
                 ) : route.name === 'tasks' ? (
                     <TasksPage />
+                ) : route.name === 'plugins' ? (
+                    <PluginsPage />
                 ) : (
                     <ChatView key={activeId ?? 'new'} sessionId={activeId} onSessionsChanged={reloadSessions} />
                 )}

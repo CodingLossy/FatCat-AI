@@ -261,6 +261,38 @@ export const PluginSettings = z
 export type PluginSettings = z.infer<typeof PluginSettings>;
 
 /**
+ * 按清单的 `settings` 声明检查用户填的设置值(第 9 节 `PATCH /plugins/{id}`):未声明的键、类型不对、不在 enum 里、
+ * 超出长度或范围、缺少必填项都算问题。返回问题列表,空数组表示通过;不改动传入的值。
+ */
+export function validatePluginSettings(schema: PluginSettings | undefined, values: Record<string, unknown>): string[] {
+    const issues: string[] = [];
+    const properties = schema?.properties ?? {};
+    for (const [key, value] of Object.entries(values)) {
+        const prop = properties[key];
+        if (!prop) {
+            issues.push(`${key}: not declared by the plugin`);
+        } else if (prop.type === 'string') {
+            if (typeof value !== 'string') issues.push(`${key}: must be a string`);
+            else if (prop.maxLength !== undefined && value.length > prop.maxLength) {
+                issues.push(`${key}: at most ${prop.maxLength} characters`);
+            } else if (prop.enum && !prop.enum.includes(value)) issues.push(`${key}: not one of the allowed values`);
+        } else if (prop.type === 'number') {
+            if (typeof value !== 'number' || !Number.isFinite(value)) issues.push(`${key}: must be a number`);
+            else if (prop.minimum !== undefined && value < prop.minimum)
+                issues.push(`${key}: at least ${prop.minimum}`);
+            else if (prop.maximum !== undefined && value > prop.maximum) issues.push(`${key}: at most ${prop.maximum}`);
+        } else if (typeof value !== 'boolean') {
+            issues.push(`${key}: must be true or false`);
+        }
+    }
+    for (const key of schema?.required ?? []) {
+        const value = values[key];
+        if (value === undefined || value === '') issues.push(`${key}: required`);
+    }
+    return issues;
+}
+
+/**
  * 定时任务模板(ADR 0033 的任务草稿格式)。只是模板:用户确认后才建任务,不能带预授权。
  * 触发器只接受 cron 与不指定账户的 mail_received(其余需要用户环境里的 id 或绝对时刻)。
  */

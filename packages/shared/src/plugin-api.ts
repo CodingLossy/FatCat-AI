@@ -3,7 +3,7 @@
 
 // 插件管理的 REST 契约(ADR 0040 第 9 节,/api/v1 的增量)。PR 2b 提供本地目录来源;市场与升级见后续 PR。
 import { z } from 'zod';
-import { PluginManifest, PluginPermissions } from './plugin.js';
+import { PluginManifest, PluginPermissions, PluginSettings } from './plugin.js';
 
 export const PluginState = z.enum([
     'enabled',
@@ -74,6 +74,8 @@ export const PluginView = z.object({
     /** 缺少的必需密钥绑定(为空才能启用)。 */
     missingSecrets: z.array(z.string()),
     settings: z.record(z.string(), z.unknown()),
+    /** 清单里的 `settings` 声明(JSON Schema 子集),界面按它渲染表单;没有声明时 null。 */
+    settingsSchema: PluginSettings.nullable(),
     runtime: PluginRuntimeSettingsInput,
     run: PluginRunInfo,
     installedAt: z.string(),
@@ -84,6 +86,8 @@ export type PluginView = z.infer<typeof PluginView>;
 export const PluginDetail = PluginView.extend({
     /** 卸载会停用的任务(工具集或预授权白名单引用了该插件的工具)。 */
     affectedTasks: z.array(z.object({ id: z.string(), name: z.string() })),
+    /** 第 3.5 节的保护程度表(当前平台的真实程度),安装后在详情页继续显示。 */
+    protections: z.array(PluginProtection),
 });
 export type PluginDetail = z.infer<typeof PluginDetail>;
 

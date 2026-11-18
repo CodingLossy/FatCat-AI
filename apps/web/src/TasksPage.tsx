@@ -391,6 +391,11 @@ export function TasksPage() {
                                 </button>
                             </p>
                         ) : null}
+                        {task.disabledReason ? (
+                            <p className="small warn" data-testid="task-disabled-reason">
+                                {t(`tasks.disabledReason.${task.disabledReason}`)}
+                            </p>
+                        ) : null}
                         {task.warning ? <p className="small error">{t(`tasks.warning.${task.warning}`)}</p> : null}
                         {task.lastRun?.errorCode === 'over_budget' ? (
                             <p className="small muted">{t('tasks.error.over_budget')}</p>

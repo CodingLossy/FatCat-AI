@@ -180,7 +180,7 @@ try {
 }
 
 // 操作系统层的网络隔离(不加预加载,只靠操作系统):可用时必须连不上本机端口;不可用时只报告,不算失败
-const isolation = detectNetIsolation();
+const isolation = await detectNetIsolation();
 let isolationNote = `OS network isolation: ${isolation.kind === 'none' ? 'not available on this platform (direct network stays "layered")' : isolation.kind}`;
 if (isolation.kind !== 'none') {
     const isoRoot = realpathSync(mkdtempSync(join(tmpdir(), 'fatcat-iso-')));
@@ -217,8 +217,12 @@ if (isolation.kind !== 'none') {
         const sockPath = join(isoRoot, 'outside.sock');
         const unixServer = createNetServer((socket) => socket.end('UNIX-SECRET'));
         await new Promise((resolve) => unixServer.listen(sockPath, resolve));
-        const unixReply = await isoClient.callTool('probe', { attack: 'stdin-socket', arg: sockPath });
-        unixServer.close();
+        let unixReply;
+        try {
+            unixReply = await isoClient.callTool('probe', { attack: 'stdin-socket', arg: sockPath });
+        } finally {
+            unixServer.close();
+        }
         const unixText = String(unixReply.content?.[0]?.text ?? '');
         isolationNote += `\nOS layer alone, Unix socket file outside the plugin dirs (report only): ${unixText.includes('UNIX-SECRET') ? 'reachable, blocked only by the preload' : unixText.slice(0, 100)}`;
     } catch (error) {

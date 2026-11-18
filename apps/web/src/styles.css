@@ -1144,3 +1144,13 @@ td .badge {
     color: var(--warn, #b45309);
     font-weight: 600;
 }
+
+.plugin-manage {
+    margin-top: 0.8rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--border);
+}
+
+.audit-table .badge {
+    white-space: nowrap;
+}

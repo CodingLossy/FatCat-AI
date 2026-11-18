@@ -469,6 +469,12 @@ ALTER TABLE tasks ADD COLUMN disabled_reason TEXT;
 - **网络方案(业主 2026-11-18 要求先盘点再定)**:插件进程里能建立网络连接的途径已在 PR #69 描述中逐项列出(模块与各种加载入口、已存在的标准流 socket 与 Pipe handle、全局对象、子进程 / worker、原生扩展、inspector、同一 realm 里对 Node 内部的篡改等)。结论:同一 realm 里的 JavaScript 拦截不可能证明完整,只作纵深防御;**真正的边界放在操作系统**:Linux 用 `unshare --user --map-root-user --net`(空的网络命名空间),macOS 用 `sandbox-exec`(`deny network*`),服务启动时探测,成功才启用。**例外**:路径形式的 Unix socket 走文件系统,空的网络命名空间挡不住,插件目录外的 socket 文件(如 `/var/run/docker.sock`、会话总线、ssh-agent)只由预加载拦截;macOS 的 `sandbox-exec` 尚未真机验证。所以安装确认页的「插件自己直接联网」目前一律显示 `layered`,详情写明操作系统挡住了哪些;以后用挂载命名空间(把 `/run`、`/var/run`、`/tmp` 挂成空 tmpfs)或 Landlock 把 Unix socket 也纳入操作系统层并实测后,才改成 `enforced`。`--map-root-user` 让插件在子命名空间里看起来是 uid 0,不带来宿主权限,不是漏洞。Linux 需要非特权 user namespace(Docker 默认 seccomp 与部分加固内核不允许,此时退回 `layered`);Windows 没有不需要特权或原生辅助程序的办法,保持 `layered`。Node 出现网络权限后照第 3.4 节第 3 层启用。预加载不再逐个补新入口。
 - **网络隔离靠预加载,不靠 Node**:Node 24 没有 `--allow-net`。除模块加载入口外还要盘点「已经存在的对象」能拿到的类:插件的 stdin / stdout 是 `net.Socket`(管道),`process.stdin.constructor` 不 import 任何模块就能 `new` 并 `connect`(TCP 与 Unix socket / 命名管道),底层 `Pipe` handle 也有 `connect` / `open` / `bind` / `listen`。预加载先创建三条标准流,再把 `net.Socket.prototype.connect` 与这些 handle 方法封死(spawn 时的管道不走 `connect`,JSON-RPC 不受影响),`tty` 也加入拒绝名单。解析入口(`Module._resolveFilename` / `_load` / `_findPath`)锁死,resolve 钩子按**解析结果**再检查一次,另有 load 钩子。以后每加一个入口,回归用例按「最终能否连上本机端口」写。
 - **已知限制**:同一用户下插件仍能给主进程发信号;预加载把 `process.kill` 对父进程与进程组的调用挡掉,这只防误用,不是边界。密钥脱敏按原文、base64、base64url、URL 编码替换,插件自己做的其他变换(例如拆开再拼)不保证被发现。
+  **PR 2c 实现注记**:
+
+- Web「插件」页与 CLI `plugins list|install|stop|remove` 只用公开 API。`PluginView` 新增 `settingsSchema`(清单的 `settings`,界面据此渲染表单),`PluginDetail` 新增 `protections`(安装后继续显示保护程度表),任务新增 `disabledReason`(`plugin_removed`)。`PATCH /plugins/{id}` 现在按 `settingsSchema` 校验 `settings`(未声明的键、类型、枚举、长度、范围、必填),不合格返回 400。保护程度表的 `detail` 目前只有英文,键与级别已本地化。
+- 网络隔离探测改为异步并在服务启动时(已装有插件时)后台探测一次、缓存结果;macOS 的探测改为真的连一次父进程开的本机端口,连不上才启用。Unix socket 文件仍只靠预加载(挂载命名空间或 Landlock 方案留待单独的改动,需要先在三个平台实测)。
+- 不在 PR 2c:升级与回退界面(PR 5)、市场页(PR 4)。
+
 - **不在 PR 2b**:市场与下载(PR 4)、升级与回退(PR 5)、Web 与 CLI(PR 2c)、`fatcat/net.fetch` 与知识地图条目(PR 3)。
 
 ## 12. 业主已定的问题(2026-11-17)

@@ -154,6 +154,8 @@ export const Task = z.object({
     policy: TaskPolicy,
     /** 任务本身有问题的提示码:root_revoked = 文件变化触发器引用的授权目录已被撤销;root_missing = 授权还在但磁盘上的目录不存在(目录回来后会自动恢复监听)。没有问题时为 null。 */
     warning: z.enum(['root_revoked', 'root_missing']).nullable().optional(),
+    /** 任务被系统停用的原因码(目前只有 plugin_removed:它引用的插件被卸载了);用户重新启用后为 null。旧服务器没有这个字段。 */
+    disabledReason: z.enum(['plugin_removed']).nullable().optional(),
     /** 任务按哪个时区解释 cron 与「下一次」(IANA 名,例如 Asia/Shanghai);旧服务器可能没有。 */
     timeZone: z.string().optional(),
     /** 下一次排定的运行时刻;停用、已完成或没有下一次时为 null。 */

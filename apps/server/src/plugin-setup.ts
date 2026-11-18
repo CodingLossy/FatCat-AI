@@ -15,6 +15,7 @@ import {
     type PluginRunInfo,
     type PluginView,
     parsePluginManifest,
+    validatePluginSettings,
 } from '@fatcat-ai/shared';
 import type { PluginRecord, Repositories } from '@fatcat-ai/storage';
 import { inputDigest, type ToolRegistry } from '@fatcat-ai/tools';
@@ -133,6 +134,7 @@ export function protectionTable(
 export class PluginService {
     private runtime: PluginRuntime | null = null;
     private netIsolation: NetIsolation | null = null;
+    private isolationProbe: Promise<NetIsolation> | null = null;
     private loading: Promise<PluginRuntime> | null = null;
     private readonly staged = new Map<string, Staged>();
     readonly codeRoot: string;
@@ -149,14 +151,23 @@ export class PluginService {
         return this.options.now?.() ?? new Date();
     }
 
+    /** 探测操作系统层的网络隔离;只探测一次,并发调用共用同一个结果,不阻塞事件循环。 */
+    private detectIsolation(): Promise<NetIsolation> {
+        this.isolationProbe ??= import('@fatcat-ai/tools/plugins').then(async ({ detectNetIsolation }) => {
+            this.netIsolation = await detectNetIsolation();
+            return this.netIsolation;
+        });
+        return this.isolationProbe;
+    }
+
     private async load(): Promise<PluginRuntime> {
         const registry = this.options.registry;
         if (!registry) throw new Error('tools are not enabled on this server');
-        this.loading ??= import('@fatcat-ai/tools/plugins').then(({ PluginRuntime: Runtime, detectNetIsolation }) => {
-            this.netIsolation ??= detectNetIsolation();
-            this.options.log?.info({ netIsolation: this.netIsolation.kind }, 'plugin network isolation');
+        this.loading ??= import('@fatcat-ai/tools/plugins').then(async ({ PluginRuntime: Runtime }) => {
+            const isolation = await this.detectIsolation();
+            this.options.log?.info({ netIsolation: isolation.kind }, 'plugin network isolation');
             const runtime = new Runtime({
-                netIsolation: this.netIsolation,
+                netIsolation: isolation,
                 registry,
                 codeRoot: this.codeRoot,
                 dataRoot: this.dataRoot,
@@ -190,6 +201,8 @@ export class PluginService {
     async start(): Promise<void> {
         this.cleanStaging();
         const { repos } = this.options;
+        // 已经装了插件才探测(没有插件时不加载任何插件代码);结果缓存,详情页的保护程度表直接用
+        if (this.allRecords().length > 0) void this.detectIsolation().catch(() => undefined);
         for (const record of this.allRecords()) {
             if (record.state === 'uninstalling') {
                 const purge =
@@ -285,6 +298,7 @@ export class PluginService {
             secretRefs: record.secretRefs,
             missingSecrets: this.missingSecrets(record),
             settings,
+            settingsSchema: manifest.settings ?? null,
             runtime: (runtime ?? {}) as PluginView['runtime'],
             run: this.runInfo(record),
             installedAt: record.installedAt,
@@ -310,6 +324,11 @@ export class PluginService {
         return {
             ...this.toView(record),
             affectedTasks: this.affectedTasks(ownerId, pluginId).map((t) => ({ id: t.id, name: t.name })),
+            protections: protectionTable(
+                process.platform,
+                record.sourceKind === 'local',
+                this.netIsolation?.kind ?? 'none',
+            ),
         };
     }
 
@@ -328,9 +347,8 @@ export class PluginService {
 
     /** 复制并检查本地目录;不运行插件的任何代码。 */
     async prepareLocal(ownerId: string, sourcePath: string): Promise<PluginPrepared> {
-        const { prepareLocalPackage, PluginPackageError, detectNetIsolation } =
-            await import('@fatcat-ai/tools/plugins');
-        this.netIsolation ??= detectNetIsolation();
+        const { prepareLocalPackage, PluginPackageError } = await import('@fatcat-ai/tools/plugins');
+        const isolation = await this.detectIsolation();
         mkdirSync(this.stagingRoot, { recursive: true });
         let prepared;
         try {
@@ -357,7 +375,7 @@ export class PluginService {
         return {
             stagingId,
             manifest: prepared.manifest,
-            protections: protectionTable(process.platform, true, this.netIsolation.kind),
+            protections: protectionTable(process.platform, true, isolation.kind),
             unreviewed: true,
             installed:
                 existing && existing.state !== 'uninstalled'
@@ -449,6 +467,12 @@ export class PluginService {
         }
         const settings: Record<string, unknown> = { ...record.settings };
         if (patch.settings) {
+            const problems = validatePluginSettings(manifest.settings, patch.settings);
+            if (problems.length > 0) {
+                throw new ApiError(400, 'validation_failed', 'Bad Request', 'Invalid plugin settings.', {
+                    issues: problems.map((message) => ({ path: ['settings'], message })),
+                });
+            }
             const runtime = settings[RUNTIME_KEY];
             const uninstall = settings[UNINSTALL_KEY];
             for (const key of Object.keys(settings)) delete settings[key];
