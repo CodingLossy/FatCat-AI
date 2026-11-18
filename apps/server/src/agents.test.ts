@@ -213,6 +213,60 @@ describe('agents API(ADR 0042)', () => {
         expect(kids[0]).toMatchObject({ parentRunId: runId, status: 'succeeded' });
     });
 
+    it('🔒 while a sub-agent waits for approval the root run is the one that is reported, retried-by-id and cancelled', async () => {
+        const { steps, req, post, send, session } = await setup();
+        const lead = Agent.parse(
+            await (
+                await post('/api/v1/agents', agentBody({ name: 'Lead2', toolSet: ['delegate', 'memory.save'] }))
+            ).json(),
+        );
+        await post('/api/v1/agents', agentBody({ name: 'Scribe2', toolSet: ['memory.save'] }));
+        steps.push(
+            async function* () {
+                yield { type: 'tool-call', callId: 'c1', name: 'delegate', input: { agent: 'Scribe2', task: 'write' } };
+                yield { type: 'finish', reason: 'tool-calls' };
+            },
+            async function* () {
+                yield { type: 'tool-call', callId: 'c2', name: 'memory.save', input: { text: 'x' } };
+                yield { type: 'finish', reason: 'tool-calls' };
+            },
+        );
+        const first = (await (await send({ text: 'go', agentId: lead.id, clientMessageId: 'dup-1' })).json()) as {
+            runId: string;
+        };
+        const ownerId = s.repos.owners.ids()[0]!;
+        for (
+            let i = 0;
+            i < 200 && s.repos.approvals.list(ownerId, { limit: 5, status: 'pending' }).items.length === 0;
+            i++
+        ) {
+            await new Promise((r) => setTimeout(r, 10));
+        }
+        const child = s.repos.runs.listChildren(ownerId, first.runId)[0]!;
+        expect(child.status).toBe('waiting_approval');
+
+        // (a) same clientMessageId → the root run, not the sub-run
+        const again = (await (await send({ text: 'go', agentId: lead.id, clientMessageId: 'dup-1' })).json()) as {
+            runId: string;
+        };
+        expect(again.runId).toBe(first.runId);
+        // (b) a new message conflicts on the root run id, which can be cancelled
+        const conflict = await send({ text: 'second' });
+        expect(conflict.status).toBe(409);
+        expect(JSON.stringify(await conflict.json())).toContain(first.runId);
+        // a sub-run id cannot be retried on its own
+        const retry = await post(`/api/v1/runs/${child.id}/retry`);
+        expect(retry.status).toBe(409);
+        expect(ProblemDetails.parse(await retry.json()).reason).toBe('run_is_delegated');
+        // cancelling by the sub-run id stops the whole tree
+        expect((await post(`/api/v1/runs/${child.id}/cancel`)).status).toBe(202);
+        await s.runs.idle();
+        expect(s.repos.runs.get(ownerId, first.runId)?.status).toBe('cancelled');
+        expect(s.repos.runs.get(ownerId, child.id)?.status).toBe('cancelled');
+        expect(session.id).toBeTruthy();
+        expect(req).toBeTruthy();
+    });
+
     it('404 for an unknown agent id on send', async () => {
         const { send } = await setup();
         expect((await send({ text: 'x', agentId: '01HZZZZZZZZZZZZZZZZZZZZZZZ' })).status).toBe(404);

@@ -48,7 +48,7 @@ export interface DelegateResult {
     agent: string;
     /** 子代理的最终文本(不可信内容:是数据,不是指令)。 */
     text: string;
-    /** 正常结束时没有这一项;budget = 预算用尽,steps = 工具步数用尽后直接作答。 */
+    /** 正常结束时没有这一项;budget = 预算用尽,cancelled = 被取消。 */
     stopped?: 'budget' | 'cancelled';
     usage?: { totalTokens: number };
 }
