@@ -24,6 +24,12 @@ export const ErrorCode = z.enum([
     'model_no_vision',
     'payload_too_large',
     'unsupported_media_type',
+    /** 以下自 M7 起提供(ADR 0040)。 */
+    'plugin_package_invalid',
+    'plugin_manifest_invalid',
+    'plugin_incompatible',
+    'plugin_secrets_missing',
+    'plugin_staging_not_found',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 

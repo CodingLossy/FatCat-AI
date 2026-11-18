@@ -22,6 +22,7 @@ import {
 import { runInWorker } from '@fatcat-ai/mail';
 import { createApp } from './app.js';
 import { createMcpControl } from './mcp-setup.js';
+import { PluginService } from './plugin-setup.js';
 import { createMailService } from './mail-setup.js';
 import { createSleeper } from '@fatcat-ai/memory';
 import { createMemoryStack } from './memory-setup.js';
@@ -270,6 +271,9 @@ const channels: ChannelHub = new ChannelHub({
 const inboxJob = scheduleDaily(() => {
     const removed = channels.pruneInbox();
     if (removed > 0) logger.info({ removed }, 'pruned channel inbox');
+    // 插件事件保留 180 天(ADR 0040 第 7 节)
+    const purged = repos.plugins.purgeEvents(new Date(Date.now() - 180 * 86_400_000).toISOString());
+    if (purged > 0) logger.info({ purged }, 'pruned plugin events');
 }, ownerTimeZone());
 const interrupted = runs.recoverInterrupted();
 if (interrupted > 0) logger.warn({ count: interrupted }, 'marked runs interrupted by the previous shutdown as failed');
@@ -281,6 +285,17 @@ const mcp = createMcpControl(runs.tools, {
 for (const server of repos.mcpServers.allEnabled()) {
     void mcp.apply(server).then((status) => logger.info({ mcpServer: server.name, state: status.state }, 'MCP server'));
 }
+
+// 有已安装并启用的插件时才加载插件运行时(ADR 0040 第 8 节)
+const plugins = new PluginService({
+    repos,
+    registry: runs.tools,
+    dataDir: config.dataDir,
+    redact: (text) => redactor.redact(text),
+    timeZone: () => ownerTimeZone(),
+    log: logger,
+});
+void plugins.start().catch((err: unknown) => logger.warn({ err }, 'plugin start-up failed'));
 
 embeddings.start(repos.owners.ids());
 channels.startAll();
@@ -311,6 +326,7 @@ const app = createApp({
     memory: memoryStack,
     items,
     mcp,
+    plugins,
     mail,
     kb,
     redact: (text) => redactor.redact(text),
@@ -334,6 +350,7 @@ function shutdown(signal: string): void {
     logger.info({ signal }, 'shutdown');
     websockets.close();
     mcp.closeAll();
+    void plugins.closeAll();
     embeddings.stop();
     memoryStack.stop();
     scheduler.stop();

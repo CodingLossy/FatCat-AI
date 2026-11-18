@@ -34,7 +34,8 @@
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:egress": "node scripts/check-egress.mjs",
     "perf:mail-sync": "node scripts/perf/mail-sync-rss.mjs",
-    "perf:channel": "node scripts/perf/channel-rss.mjs"
+    "perf:channel": "node scripts/perf/channel-rss.mjs",
+    "perf:plugin": "node scripts/perf/plugin.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

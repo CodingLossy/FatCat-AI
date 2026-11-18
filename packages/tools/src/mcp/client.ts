@@ -4,6 +4,7 @@
 // 最小的 MCP stdio 客户端(ADR 0013 第 2 节):按行分隔的 JSON-RPC 2.0,只实现 initialize、tools/list 与 tools/call。
 // 不经过 shell 启动;子进程只拿到最小环境与用户允许传递的变量。
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
+import { setPriority } from 'node:os';
 import { isOwnEnvName } from '@fatcat-ai/shared';
 
 export const MCP_PROTOCOL_VERSION = '2025-06-18';
@@ -34,6 +35,31 @@ export interface StdioServerConfig {
     cwd?: string | null | undefined;
     /** 允许传给子进程的环境变量名字(值取自当前进程的环境)。 */
     envPassthrough: string[];
+    /**
+     * 完整的子进程环境(插件用,ADR 0040 第 4.2 节):给出时原样使用,不再按 envPassthrough 从主程序环境里取。
+     * 调用方负责保证里面没有主程序自己的配置。
+     */
+    rawEnv?: Record<string, string> | undefined;
+    /** 子进程的 nice 值(插件调低一档,让对话优先)。 */
+    priority?: number | undefined;
+}
+
+/** 插件扩展:服务器发来的请求 / 通知交给宿主处理(ADR 0040 第 3.3 节)。返回值作为响应的 result,抛出的 McpRpcError 作为 error。 */
+export interface McpServerMessageHandler {
+    request(method: string, params: unknown): Promise<unknown> | unknown;
+    notify(method: string, params: unknown): void;
+}
+
+/** 处理服务器请求时抛出,会原样变成 JSON-RPC 错误响应。 */
+export class McpRpcError extends Error {
+    override readonly name = 'McpRpcError';
+    constructor(
+        message: string,
+        readonly code: number,
+        readonly data?: unknown,
+    ) {
+        super(message);
+    }
 }
 
 /** 子进程的最小环境:运行程序所需的少数变量,加上用户明确允许传递的变量。 */
@@ -79,19 +105,32 @@ export class StdioMcpClient {
 
     constructor(
         private readonly config: StdioServerConfig,
-        private readonly options: { timeoutMs?: number; env?: NodeJS.ProcessEnv } = {},
+        private readonly options: {
+            timeoutMs?: number;
+            env?: NodeJS.ProcessEnv;
+            handler?: McpServerMessageHandler;
+            /** 脱敏:写进错误信息与 stderrTail 之前对文本做替换(例如抹掉绑定的密钥值)。 */
+            redact?: (text: string) => string;
+        } = {},
     ) {}
 
     /** 启动子进程并完成握手。 */
     async connect(): Promise<void> {
         const child = spawn(this.config.command, this.config.args, {
             cwd: this.config.cwd ?? undefined,
-            env: childEnv(this.config.envPassthrough, this.options.env),
+            env: this.config.rawEnv ?? childEnv(this.config.envPassthrough, this.options.env),
             shell: false,
             stdio: ['pipe', 'pipe', 'pipe'],
             windowsHide: true,
         });
         this.child = child;
+        if (this.config.priority !== undefined && child.pid !== undefined) {
+            try {
+                setPriority(child.pid, this.config.priority);
+            } catch {
+                // 调不了优先级不影响功能
+            }
+        }
         child.stdout.setEncoding('utf8');
         child.stdout.on('data', (chunk: string) => this.onData(chunk));
         child.stderr.setEncoding('utf8');
@@ -132,7 +171,42 @@ export class StdioMcpClient {
 
     /** 最近的 stderr 输出(报错时附上,便于排查;不写日志)。 */
     get stderrTail(): string {
-        return this.stderr.trim();
+        const text = this.stderr.trim();
+        return this.options.redact ? this.options.redact(text) : text;
+    }
+
+    get pid(): number | undefined {
+        return this.child?.pid;
+    }
+
+    /**
+     * 优雅停止(ADR 0040 第 4.1 节):先关 stdin,等 graceMs;仍未退出时 Linux / macOS 发 SIGTERM 再等 termMs 后 SIGKILL,
+     * Windows 直接 kill()。返回子进程退出之后。
+     */
+    async shutdown(graceMs = 5000, termMs = 2000): Promise<void> {
+        const child = this.child;
+        if (!child || child.exitCode !== null || child.signalCode !== null) {
+            this.close();
+            return;
+        }
+        const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
+        const waitFor = (ms: number) =>
+            Promise.race([exited.then(() => true), new Promise<boolean>((r) => setTimeout(() => r(false), ms))]);
+        try {
+            child.stdin.end();
+        } catch {
+            // 已经关闭
+        }
+        if (await waitFor(graceMs)) return;
+        if (process.platform === 'win32') {
+            child.kill();
+            await exited;
+            return;
+        }
+        child.kill('SIGTERM');
+        if (await waitFor(termMs)) return;
+        child.kill('SIGKILL');
+        await exited;
     }
 
     close(): void {
@@ -183,10 +257,37 @@ export class StdioMcpClient {
             return; // 服务器偶尔会把日志写到 stdout:忽略无法解析的行
         }
         if (message.method !== undefined) {
-            // 服务器发来的请求(如 sampling):不支持;通知:忽略
-            if (message.id !== undefined) {
-                this.write({ jsonrpc: '2.0', id: message.id, error: { code: -32601, message: 'Method not found' } });
+            const handler = this.options.handler;
+            if (message.id === undefined) {
+                // 通知:交给宿主(没有处理器时忽略)
+                if (handler) {
+                    try {
+                        handler.notify(message.method, (message as { params?: unknown }).params);
+                    } catch {
+                        // 通知没有响应,处理失败只能忽略
+                    }
+                }
+                return;
             }
+            // 服务器发来的请求(如 sampling):没有处理器时不支持
+            const id = message.id;
+            if (!handler) {
+                this.write({ jsonrpc: '2.0', id, error: { code: -32601, message: 'Method not found' } });
+                return;
+            }
+            const params = (message as { params?: unknown }).params;
+            void Promise.resolve()
+                .then(() => handler.request(message.method!, params))
+                .then(
+                    (result) => this.write({ jsonrpc: '2.0', id, result: result ?? {} }),
+                    (error: unknown) => {
+                        const rpc =
+                            error instanceof McpRpcError
+                                ? { code: error.code, message: error.message, data: error.data }
+                                : { code: -32603, message: 'Internal error' };
+                        this.write({ jsonrpc: '2.0', id, error: rpc });
+                    },
+                );
             return;
         }
         if (typeof message.id !== 'number') return;

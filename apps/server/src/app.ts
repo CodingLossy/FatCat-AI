@@ -36,7 +36,11 @@ import { settingsRoutes } from './routes/settings.js';
 import type { ItemService, KnowledgeBase } from '@fatcat-ai/items';
 import { fsRoutes } from './routes/fs.js';
 import { itemRoutes } from './routes/items.js';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { mcpRoutes } from './routes/mcp.js';
+import { pluginRoutes } from './routes/plugins.js';
+import { PluginService } from './plugin-setup.js';
 import { embeddingRoutes } from './routes/embeddings.js';
 import { createEmbeddingService, type EmbeddingService } from './embeddings.js';
 import { createMcpControl, type McpControl } from './mcp-setup.js';
@@ -65,6 +69,8 @@ export interface AppDeps {
     embeddings?: EmbeddingService;
     /** MCP 服务器的连接管理(ADR 0013);不给时按需创建。 */
     mcp?: McpControl;
+    /** 插件管理(ADR 0040);不给时按需创建(只适合测试与导出 OpenAPI 文档,数据目录取 config.dataDir)。 */
+    plugins?: PluginService;
     /** 邮件同步(ADR 0016);不给时按需创建(不会自动开始定时同步)。 */
     mail?: MailService;
     /** 知识库(ADR 0015):邮件附件入库、删除账户后的清理。 */
@@ -73,7 +79,9 @@ export interface AppDeps {
     items: ItemService;
     /** 审计中的脱敏(通常是 providers 的 Redactor)。 */
     redact?: (text: string) => string;
-    config: Pick<ServerConfig, 'sourceUrl' | 'webDir' | 'cookieSecure' | 'setupCode'>;
+    config: Pick<ServerConfig, 'sourceUrl' | 'webDir' | 'cookieSecure' | 'setupCode'> & {
+        dataDir?: string | undefined;
+    };
     repos: Repositories;
     logger: Logger;
     /** 解析 apiKeyRef(env: / file:)。 */
@@ -137,6 +145,14 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
     const clientIp = deps.clientIp ?? tcpPeer;
     const app = new OpenAPIHono<AppEnv>();
     const files = deps.attachmentFiles ?? createMemoryAttachmentFiles();
+    const plugins =
+        deps.plugins ??
+        new PluginService({
+            repos,
+            registry: deps.runs.tools,
+            dataDir: deps.config.dataDir ?? join(tmpdir(), 'fatcat-ai-plugins-unconfigured'),
+            redact: deps.redact ?? ((text) => text),
+        });
     const runDeps = { repos, bus: deps.bus, runs: deps.runs, secrets: deps.secrets, files };
     const embeddings =
         deps.embeddings ??
@@ -313,6 +329,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
                 secrets: deps.secrets,
                 log: (message, fields) => logger.info(fields, message),
                 onTimeZoneChanged: deps.onTimeZoneChanged,
+                pluginDomains: (ownerId) => plugins.egressDomains(ownerId),
             }),
         )
         .route('/', sessionRoutes(runDeps))
@@ -352,6 +369,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
                 redact: deps.redact ?? ((text) => text),
             }),
         )
+        .route('/', pluginRoutes({ plugins }))
         .route(
             '/',
             mailRoutes({ repos, secrets: deps.secrets, mail, items: deps.items, ...(deps.kb ? { kb: deps.kb } : {}) }),

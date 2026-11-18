@@ -17,7 +17,7 @@ import {
 } from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
-import { listEgressTargets } from '../egress.js';
+import { listEgressTargets, type PluginEgressDomain } from '../egress.js';
 import { ApiError } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
 
@@ -90,6 +90,8 @@ export function settingsRoutes(deps: {
     log?: (message: string, fields: Record<string, unknown>) => void;
     /** 生效时区变化后调用(ADR 0023 第 5 节)。 */
     onTimeZoneChanged?: ((ownerId: string, timeZone: string) => void) | undefined;
+    /** 外连清单里的插件域名(ADR 0040)。 */
+    pluginDomains?: ((ownerId: string) => PluginEgressDomain[]) | undefined;
 }) {
     const { repos } = deps;
     return router()
@@ -108,6 +110,7 @@ export function settingsRoutes(deps: {
                         mailAccounts: repos.mail.list(ownerId),
                         channels: repos.channels.list(ownerId),
                         mcpServers: repos.mcpServers.list(ownerId),
+                        plugins: deps.pluginDomains?.(ownerId) ?? [],
                     },
                     deps.log,
                 ),

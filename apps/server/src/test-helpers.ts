@@ -26,6 +26,7 @@ import { dataDirMasterKey } from './data-dir.js';
 import { createLogger } from './log.js';
 import { type AdapterFactory, ChannelHub } from './channels/hub.js';
 import { WechatChannels } from './channels/wechat.js';
+import { PluginService } from './plugin-setup.js';
 import type { ChannelKind } from '@fatcat-ai/shared';
 
 export const TEST_PASSWORD = 'correct horse battery staple';
@@ -49,6 +50,7 @@ export interface TestServer {
     wechat: WechatChannels;
     /** channel.push 在测试中不真的发消息,只记在这里。 */
     pushed: Array<{ ownerId: string; channelId: string; text: string }>;
+    plugins: PluginService;
     cleanup(): Promise<void>;
 }
 
@@ -161,6 +163,14 @@ export async function createTestServer(
     });
     // MCP 子进程在 cleanup 时关闭
     const mcp = createMcpControl(runs.tools);
+    const plugins = new PluginService({
+        repos,
+        registry: runs.tools,
+        dataDir: dir,
+        redact: (text) => redactor.redact(text),
+        env: options.env ?? {},
+        runtime: { idleMs: 60_000, graceMs: 1000, termMs: 500, handshakeTimeoutMs: 15_000 },
+    });
     const mail = createMailService({
         repos,
         secrets,
@@ -191,10 +201,12 @@ export async function createTestServer(
         channels,
         wechat,
         mcp,
+        plugins,
         mail,
         kb,
         embeddings,
         config: {
+            dataDir: dir,
             sourceUrl: 'https://github.com/CodingLossy/FatCat-AI',
             webDir: null,
             cookieSecure: 'auto',
@@ -234,9 +246,11 @@ export async function createTestServer(
         logs,
         wechat,
         pushed,
+        plugins,
         async cleanup() {
             await channels.stopAll();
             mcp.closeAll();
+            await plugins.closeAll();
             await kb.idle();
             embeddings.stop();
             memory.stop();

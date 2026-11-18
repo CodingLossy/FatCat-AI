@@ -1,0 +1,18 @@
+{
+  "manifestVersion": 1,
+  "id": "probe",
+  "version": "0.1.0",
+  "name": { "en": "Probe" },
+  "description": { "en": "Tries forbidden operations (test fixture)" },
+  "author": "Test",
+  "license": "Apache-2.0",
+  "engines": { "fatcat": ">=0.0.0" },
+  "entry": { "type": "mcp-stdio", "main": "probe-plugin.js" },
+  "permissions": {
+    "tools": [
+      { "name": "echo", "risk": "read" },
+      { "name": "probe", "risk": "read" }
+    ],
+    "secrets": [{ "name": "WEATHER_API_KEY", "required": false, "description": { "en": "test key" } }]
+  }
+}

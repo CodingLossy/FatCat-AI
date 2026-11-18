@@ -7,6 +7,8 @@ export {
     MCP_PROTOCOL_VERSION,
     type McpCallResult,
     McpError,
+    McpRpcError,
+    type McpServerMessageHandler,
     type McpToolInfo,
     StdioMcpClient,
     type StdioServerConfig,
