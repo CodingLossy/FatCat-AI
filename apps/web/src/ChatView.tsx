@@ -5,6 +5,7 @@ import type { RunStream } from '@fatcat-ai/client';
 import {
     MAX_ATTACHMENTS_PER_MESSAGE,
     MAX_RECORDING_SECONDS,
+    type Agent,
     type MemoryDegradation,
     type Message,
     type ModelProfile,
@@ -20,6 +21,7 @@ import {
     useState,
 } from 'react';
 import { api, errorText } from './api.js';
+import { DelegationTree } from './DelegationTree.js';
 import { useI18n } from './i18n.js';
 import { effectiveProfile, prepareImage, precheck } from './images.js';
 import { applyEvent, newTurn, type LiveTool, type LiveTurn } from './live-turn.js';
@@ -123,6 +125,37 @@ export function ChatView({
     const abort = useRef<AbortController | null>(null);
     const bottom = useRef<HTMLDivElement>(null);
     const fileInput = useRef<HTMLInputElement>(null);
+    // 代理选择(ADR 0042):记在本浏览器里;不选就是不用代理
+    const [agents, setAgents] = useState<Agent[]>([]);
+    const [agentId, setAgentId] = useState(() => {
+        try {
+            return localStorage.getItem('fatcat.agentId') ?? '';
+        } catch {
+            return '';
+        }
+    });
+    const agentIdRef = useRef(agentId);
+    useEffect(() => {
+        agentIdRef.current = agentId;
+    }, [agentId]);
+    useEffect(() => {
+        api.agents.list().then(
+            (page) => {
+                setAgents(page.items);
+                // 记住的代理已被删除时回到「不使用代理」
+                setAgentId((old) => (old && !page.items.some((a) => a.id === old) ? '' : old));
+            },
+            () => undefined,
+        );
+    }, []);
+    const chooseAgent = (id: string) => {
+        setAgentId(id);
+        try {
+            localStorage.setItem('fatcat.agentId', id);
+        } catch {
+            // 存不了也不影响使用
+        }
+    };
     const [images, setImages] = useState<PendingImage[]>([]);
     /** 已发送、服务器消息还没刷新前显示的预览。 */
     const [livePreviews, setLivePreviews] = useState<string[]>([]);
@@ -231,7 +264,11 @@ export function ChatView({
             setError(null);
             setLivePreviews(previews);
             try {
-                const body = attachmentIds.length > 0 ? { text, attachmentIds } : { text };
+                const body = {
+                    text,
+                    ...(attachmentIds.length > 0 ? { attachmentIds } : {}),
+                    ...(agentIdRef.current ? { agentId: agentIdRef.current } : {}),
+                };
                 await consume(id, api.sessions.send(id, body, { signal }), newTurn(text), signal);
             } finally {
                 for (const url of previews) URL.revokeObjectURL(url);
@@ -551,6 +588,23 @@ export function ChatView({
         <div className="chat">
             <div className="chat-head">
                 <VoiceIndicator state={indicatorState} label={indicatorLabel} level={level} />
+                {agents.length > 0 ? (
+                    <label className="agent-picker small">
+                        {t('agents.picker')}{' '}
+                        <select
+                            value={agentId}
+                            onChange={(e) => chooseAgent(e.target.value)}
+                            data-testid="agent-picker"
+                        >
+                            <option value="">{t('agents.pickerNone')}</option>
+                            {agents.map((a) => (
+                                <option key={a.id} value={a.id}>
+                                    {a.name}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                ) : null}
                 {sessionId ? (
                     <button type="button" className="link small" onClick={() => void deleteSession()}>
                         {t('chat.delete')}
@@ -566,6 +620,9 @@ export function ChatView({
                         {toolsOf(m, results).map((tool) => (
                             <ToolCard key={tool.callId} tool={tool} />
                         ))}
+                        {m.runId && m.parts.some((p) => p.type === 'tool-call' && p.name === 'delegate') ? (
+                            <DelegationTree runId={m.runId} active={false} />
+                        ) : null}
                         {m.status === 'cancelled' ? <p className="small muted">{t('chat.cancelled')}</p> : null}
                         {m.role === 'assistant' && voiceConfig?.tts && textOf(m).trim() ? (
                             <button
@@ -596,6 +653,9 @@ export function ChatView({
                         {live.tools.map((tool) => (
                             <ToolCard key={tool.callId} tool={tool} live />
                         ))}
+                        {live.runId && live.tools.some((tool) => tool.name === 'delegate') ? (
+                            <DelegationTree runId={live.runId} active />
+                        ) : null}
                         {!live.text && live.tools.length === 0 ? (
                             <p className="muted small">{t('chat.thinking')}</p>
                         ) : null}

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { createRoute, z } from '@hono/zod-openapi';
-import { EventEnvelope, Id, Run } from '@fatcat-ai/shared';
+import { EventEnvelope, Id, Run, RunTree } from '@fatcat-ai/shared';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
 import { resumeFrom, streamRunEvents } from '../sse.js';
@@ -19,6 +19,15 @@ const getRoute = createRoute({
     summary: 'Get a run',
     request: { params: runParam },
     responses: { 200: json(Run, 'Run'), 404: problem('Not found'), ...authErrors },
+});
+
+const treeRoute = createRoute({
+    method: 'get',
+    path: '/runs/{id}/tree',
+    tags: ['runs'],
+    summary: 'The delegation tree below a run: the run itself and every sub-run it delegated, in start order',
+    request: { params: runParam },
+    responses: { 200: json(RunTree, 'Delegation tree'), 404: problem('Not found'), ...authErrors },
 });
 
 const eventsRoute = createRoute({
@@ -74,6 +83,27 @@ export function runRoutes(deps: SessionRouteDeps) {
 
     return router()
         .openapi(getRoute, (c) => c.json(runOr404(requireOwner(c), c.req.valid('param').id), 200))
+        .openapi(treeRoute, (c) => {
+            const ownerId = requireOwner(c);
+            const root = runOr404(ownerId, c.req.valid('param').id);
+            const tree = repos.runs.listTree(ownerId, root.id);
+            const depthOf = new Map<string, number>([[root.id, 0]]);
+            const nodes = tree.map((r) => {
+                const depth = r.parentRunId ? (depthOf.get(r.parentRunId) ?? 0) + 1 : 0;
+                depthOf.set(r.id, depth);
+                return {
+                    runId: r.id,
+                    parentRunId: r.id === root.id ? null : (r.parentRunId ?? null),
+                    agentId: r.agentId ?? null,
+                    agentName: r.agentId ? (repos.agents.get(ownerId, r.agentId)?.name ?? null) : null,
+                    status: r.status,
+                    startedAt: r.startedAt,
+                    finishedAt: r.finishedAt,
+                    depth,
+                };
+            });
+            return c.json({ rootRunId: root.id, nodes }, 200);
+        })
         .openapi(eventsRoute, (c) => {
             const ownerId = requireOwner(c);
             const run = runOr404(ownerId, c.req.valid('param').id);

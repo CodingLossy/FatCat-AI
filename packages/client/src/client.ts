@@ -7,6 +7,7 @@ import type {
     AgentCopyInput,
     AgentInput,
     AgentPatch,
+    RunTree,
     Attachment,
     SpeechRequest,
     TranscriptionResult,
@@ -346,6 +347,8 @@ export function createClient(options: ClientOptions) {
 
         runs: {
             get: (id: string) => t.json<Run>(`/runs/${enc(id)}`),
+            /** 委派树:这个运行与它委派出去的所有子运行(ADR 0042)。 */
+            tree: (id: string) => t.json<RunTree>(`/runs/${enc(id)}/tree`),
             /** 续看:先补发 afterSeq 之后的事件,运行未结束时继续推送。 */
             events: (id: string, afterSeq = 0, stream: StreamOptions = {}) =>
                 new RunStream(

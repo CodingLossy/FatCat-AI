@@ -408,11 +408,11 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
         children: sqlite.prepare<[string, string], RunRow>(
             `${runSelect} WHERE owner_id = ? AND parent_run_id = ? ORDER BY started_at, id`,
         ),
-        tree: sqlite.prepare<[string, string], RunRow>(
+        tree: sqlite.prepare<[string, string, string], RunRow>(
             `WITH RECURSIVE t(id) AS (
                  SELECT id FROM runs WHERE owner_id = ? AND id = ?
                  UNION ALL
-                 SELECT r.id FROM runs r JOIN t ON r.parent_run_id = t.id
+                 SELECT r.id FROM runs r JOIN t ON r.parent_run_id = t.id AND r.owner_id = ?
              )
              ${runSelect} WHERE id IN (SELECT id FROM t) ORDER BY started_at, id`,
         ),
@@ -466,12 +466,13 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
         },
         /** 一个运行连同它所有子孙运行(委派树),按开始顺序。 */
         listTree(ownerId: string, runId: string): Run[] {
-            return runQ.tree.all(ownerId, runId).map(toRun);
+            return runQ.tree.all(ownerId, runId, ownerId).map(toRun);
         },
         /** 根运行:沿 parent_run_id 向上;运行本身没有父运行时就是它自己。 */
         rootOf(ownerId: string, runId: string): Run | null {
             let run = runQ.byOwnerAndId.get(ownerId, runId);
-            while (run?.parentRunId) run = runQ.byOwnerAndId.get(ownerId, run.parentRunId);
+            // 深度有上限:数据出错成环时也不会死循环
+            for (let i = 0; run?.parentRunId && i < 64; i++) run = runQ.byOwnerAndId.get(ownerId, run.parentRunId);
             return run ? toRun(run) : null;
         },
         /** 进行中的运行,含委派出去的子运行(要找会话里的根运行用 activeInSession)。 */

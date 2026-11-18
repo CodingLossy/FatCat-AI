@@ -4,6 +4,7 @@
 // 多智能体的契约(ADR 0042,/api/v1 的增量,自 M8 PR 1 起提供)。
 import { z } from 'zod';
 import { Id, IsoDateTime } from './common.js';
+import { RunStatus } from './sessions.js';
 
 /** 一条工具集条目:精确的工具名,或以 `.` 结尾的前缀(如 `kb.`);语法与任务的 `toolSet` 相同。 */
 export const AgentToolSetEntry = z
@@ -147,3 +148,21 @@ export function toolSetWithin(inner: readonly string[], outer: readonly string[]
         outer.some((o) => (o.endsWith('.') ? entry.startsWith(o) : entry === o && !entry.endsWith('.')));
     return inner.every(inOuter);
 }
+
+/** 委派树里的一个运行(ADR 0042 第 8 节):根运行与它委派出去的子孙运行。 */
+export const RunTreeNode = z.object({
+    runId: Id,
+    parentRunId: Id.nullable(),
+    agentId: Id.nullable(),
+    /** 代理已删除或没有用代理时为 null。 */
+    agentName: z.string().nullable(),
+    status: RunStatus,
+    startedAt: IsoDateTime,
+    finishedAt: IsoDateTime.nullable(),
+    /** 离根运行的层数,根为 0。 */
+    depth: z.number().int().nonnegative(),
+});
+export type RunTreeNode = z.infer<typeof RunTreeNode>;
+
+export const RunTree = z.object({ rootRunId: Id, nodes: z.array(RunTreeNode) });
+export type RunTree = z.infer<typeof RunTree>;

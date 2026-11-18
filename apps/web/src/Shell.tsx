@@ -5,6 +5,7 @@ import type { Session, Settings } from '@fatcat-ai/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorText } from './api.js';
 import { ApprovalPanel } from './ApprovalPanel.js';
+import { AgentsPage } from './AgentsPage.js';
 import { AuditPage } from './AuditPage.js';
 import { ChatView } from './ChatView.js';
 import { ItemsPage } from './ItemsPage.js';
@@ -230,6 +231,9 @@ export function Shell({
                             </span>
                         ) : null}
                     </Link>
+                    <Link to={{ name: 'agents' }} className={route.name === 'agents' ? 'active' : ''}>
+                        {t('nav.agents')}
+                    </Link>
                     <Link to={{ name: 'plugins' }} className={route.name === 'plugins' ? 'active' : ''}>
                         {t('nav.plugins')}
                     </Link>
@@ -263,6 +267,8 @@ export function Shell({
                     <TasksPage />
                 ) : route.name === 'plugins' ? (
                     <PluginsPage />
+                ) : route.name === 'agents' ? (
+                    <AgentsPage />
                 ) : (
                     <ChatView key={activeId ?? 'new'} sessionId={activeId} onSessionsChanged={reloadSessions} />
                 )}
