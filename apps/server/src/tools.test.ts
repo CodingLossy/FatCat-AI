@@ -91,6 +91,7 @@ describe('/api/v1/tools、/approvals、/preauthorizations、/audit', () => {
         expect(tools.map((t) => [t.name, t.risk, t.approval, t.preauthorizable, t.requiredConstraint])).toEqual([
             ['calc', 'read', 'auto', true, null],
             ['channel.push', 'external', 'required', false, null],
+            ['delegate', 'read', 'auto', true, null],
             ['fs.list', 'read', 'auto', true, null],
             ['fs.move', 'write', 'required', true, 'pathPrefix'],
             ['fs.read', 'read', 'auto', true, null],

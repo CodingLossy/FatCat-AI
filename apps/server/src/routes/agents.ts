@@ -15,7 +15,13 @@ import {
     pageOf,
     toolInSet,
 } from '@fatcat-ai/shared';
-import { AgentNameTakenError, BuiltinAgentError, type AgentRecord, type Repositories } from '@fatcat-ai/storage';
+import {
+    AgentNameTakenError,
+    BuiltinAgentError,
+    type AgentRecord,
+    type ModelProfileRecord,
+    type Repositories,
+} from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
@@ -132,13 +138,41 @@ export function loadRunAgent(
     if (!record) throw notFound('Agent');
     return {
         record,
-        runAgent: {
-            id: record.id,
-            prompt: effectiveAgentPrompt(record, localeOf(repos, ownerId)),
-            toolSet: record.toolSet,
-            memoryScope: record.memoryScope,
-            maxSteps: record.maxSteps,
-        },
+        runAgent: runAgentOf(record, localeOf(repos, ownerId)),
+    };
+}
+
+function runAgentOf(record: AgentRecord, locale: Locale): NonNullable<StartRunInput['agent']> {
+    return {
+        id: record.id,
+        name: record.name,
+        prompt: effectiveAgentPrompt(record, locale),
+        toolSet: record.toolSet,
+        memoryScope: record.memoryScope,
+        maxSteps: record.maxSteps,
+        maxDepth: record.maxDepth,
+        budgetTokens: record.budgetTokens,
+        budgetSeconds: record.budgetSeconds,
+    };
+}
+
+/**
+ * delegate 工具按名称(或 id)找子代理:预置角色首次用到时也会创建;模型配置档按「代理 > 委派者」,
+ * 所以这里只给出代理自己的配置档(没有或已删除时为 null)。
+ */
+export function resolveDelegateAgent(
+    repos: Repositories,
+    ownerId: string,
+    ref: string,
+): { agent: NonNullable<StartRunInput['agent']>; profile: ModelProfileRecord | null } | null {
+    const locale = localeOf(repos, ownerId);
+    repos.agents.ensureBuiltins(ownerId, BUILTIN_AGENT_ROLES, locale);
+    const all = repos.agents.list(ownerId);
+    const record = all.find((a) => a.name === ref) ?? all.find((a) => a.id === ref);
+    if (!record) return null;
+    return {
+        agent: runAgentOf(record, locale),
+        profile: record.modelProfileId ? repos.modelProfiles.get(ownerId, record.modelProfileId) : null,
     };
 }
 

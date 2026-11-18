@@ -10,6 +10,8 @@ export {
     type FinishedTurn,
     MAX_TOOL_STEPS,
     type MemoryTurnContext,
+    type ResolvedAgent,
+    type RunAgent,
     RunConflictError,
     RunManager,
     type RunManagerOptions,

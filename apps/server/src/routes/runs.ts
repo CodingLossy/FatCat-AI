@@ -80,7 +80,10 @@ export function runRoutes(deps: SessionRouteDeps) {
             return streamRunEvents(c, deps, ownerId, run.id, resumeFrom(c));
         })
         .openapi(cancelRoute, (c) => {
-            const run = runOr404(requireOwner(c), c.req.valid('param').id);
+            const ownerId = requireOwner(c);
+            const found = runOr404(ownerId, c.req.valid('param').id);
+            // 子运行没有自己的控制器:取消它所在的整棵委派树,即取消根运行
+            const run = repos.runs.rootOf(ownerId, found.id) ?? found;
             if (!runs.cancel(run.id)) {
                 throw new ApiError(409, 'run_not_active', 'Conflict', 'The run has already finished.');
             }
@@ -89,6 +92,15 @@ export function runRoutes(deps: SessionRouteDeps) {
         .openapi(retryRoute, (c) => {
             const ownerId = requireOwner(c);
             const run = runOr404(ownerId, c.req.valid('param').id);
+            if (run.parentRunId) {
+                throw new ApiError(
+                    409,
+                    'conflict',
+                    'Conflict',
+                    'This run was delegated by another run. Retry the run that started it.',
+                    { reason: 'run_is_delegated' },
+                );
+            }
             if (run.status !== 'failed' && run.status !== 'cancelled') {
                 throw new ApiError(409, 'conflict', 'Conflict', 'Only failed or cancelled runs can be retried.');
             }

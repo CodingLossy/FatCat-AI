@@ -401,11 +401,24 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
             `${runSelect} WHERE owner_id = ? AND finished_at IS NULL ORDER BY started_at`,
         ),
         activeInSession: sqlite.prepare<[string, string], RunRow>(
-            `${runSelect} WHERE owner_id = ? AND session_id = ? AND finished_at IS NULL ORDER BY started_at DESC LIMIT 1`,
+            `${runSelect} WHERE owner_id = ? AND session_id = ? AND finished_at IS NULL AND parent_run_id IS NULL
+             ORDER BY started_at DESC LIMIT 1`,
         ),
         unfinished: sqlite.prepare<[], RunRow>(`${runSelect} WHERE finished_at IS NULL ORDER BY started_at`),
+        children: sqlite.prepare<[string, string], RunRow>(
+            `${runSelect} WHERE owner_id = ? AND parent_run_id = ? ORDER BY started_at, id`,
+        ),
+        tree: sqlite.prepare<[string, string], RunRow>(
+            `WITH RECURSIVE t(id) AS (
+                 SELECT id FROM runs WHERE owner_id = ? AND id = ?
+                 UNION ALL
+                 SELECT r.id FROM runs r JOIN t ON r.parent_run_id = t.id
+             )
+             ${runSelect} WHERE id IN (SELECT id FROM t) ORDER BY started_at, id`,
+        ),
         latestForInput: sqlite.prepare<[string, string], RunRow>(
-            `${runSelect} WHERE owner_id = ? AND input_message_id = ? ORDER BY started_at DESC, id DESC LIMIT 1`,
+            `${runSelect} WHERE owner_id = ? AND input_message_id = ? AND parent_run_id IS NULL
+             ORDER BY started_at DESC, id DESC LIMIT 1`,
         ),
     };
 
@@ -447,14 +460,30 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
                 errorJson: extra.error === undefined ? null : JSON.stringify(extra.error),
             });
         },
+        /** 某个运行直接委派出去的子运行(ADR 0042),按开始顺序。 */
+        listChildren(ownerId: string, parentRunId: string): Run[] {
+            return runQ.children.all(ownerId, parentRunId).map(toRun);
+        },
+        /** 一个运行连同它所有子孙运行(委派树),按开始顺序。 */
+        listTree(ownerId: string, runId: string): Run[] {
+            return runQ.tree.all(ownerId, runId).map(toRun);
+        },
+        /** 根运行:沿 parent_run_id 向上;运行本身没有父运行时就是它自己。 */
+        rootOf(ownerId: string, runId: string): Run | null {
+            let run = runQ.byOwnerAndId.get(ownerId, runId);
+            while (run?.parentRunId) run = runQ.byOwnerAndId.get(ownerId, run.parentRunId);
+            return run ? toRun(run) : null;
+        },
+        /** 进行中的运行,含委派出去的子运行(要找会话里的根运行用 activeInSession)。 */
         listActive(ownerId: string): Run[] {
             return runQ.active.all(ownerId).map(toRun);
         },
-        /** 以某条用户消息为输入的最近一次运行(幂等提交时查回已有运行)。 */
+        /** 以某条用户消息为输入的最近一次根运行(幂等提交时查回已有运行;子运行不算)。 */
         latestForInput(ownerId: string, inputMessageId: string): Run | null {
             const row = runQ.latestForInput.get(ownerId, inputMessageId);
             return row ? toRun(row) : null;
         },
+        /** 会话里进行中的根运行(子运行不算:它们属于根运行,取消与冲突都以根运行为准)。 */
         activeInSession(ownerId: string, sessionId: string): Run | null {
             const row = runQ.activeInSession.get(ownerId, sessionId);
             return row ? toRun(row) : null;

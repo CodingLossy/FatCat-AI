@@ -28,6 +28,8 @@ import { type AdapterFactory, ChannelHub } from './channels/hub.js';
 import { WechatChannels } from './channels/wechat.js';
 import { PluginService } from './plugin-setup.js';
 import type { ChannelKind } from '@fatcat-ai/shared';
+import { createDelegateTool } from '@fatcat-ai/tools';
+import { resolveDelegateAgent } from './routes/agents.js';
 
 export const TEST_PASSWORD = 'correct horse battery staple';
 export const TEST_SETUP_CODE = 'setup-code-123456';
@@ -155,8 +157,14 @@ export async function createTestServer(
                 secret: (ref) => secrets.resolve(ref),
                 complete: createMailComplete(repos, providerFor),
             },
-            [createChannelPushTool(async (ownerId, channelId, text) => void pushed.push({ ownerId, channelId, text }))],
+            [
+                createChannelPushTool(
+                    async (ownerId, channelId, text) => void pushed.push({ ownerId, channelId, text }),
+                ),
+                createDelegateTool(),
+            ],
         ),
+        resolveAgent: (ownerId, ref) => resolveDelegateAgent(repos, ownerId, ref),
         redact: (text) => redactor.redact(text),
         ...(options.approvalTimeoutMs ? { approvalTimeoutMs: options.approvalTimeoutMs } : {}),
         summarize: createSummarizer(repos, providerFor),

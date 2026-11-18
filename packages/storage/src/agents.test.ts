@@ -54,6 +54,31 @@ describe('agents repository', () => {
     });
 });
 
+describe('delegated runs', () => {
+    it('sub-runs never stand in for their root run, and the tree and root lookups cover them', async () => {
+        const { repos, ownerId, cleanup } = await createTestDb();
+        const session = repos.sessions.create(ownerId);
+        const user = repos.messages.append(ownerId, session.id, { role: 'user', parts: [], status: 'complete' });
+        const root = repos.runs.create(ownerId, { sessionId: session.id, inputMessageId: user.id });
+        const child = repos.runs.create(ownerId, {
+            sessionId: session.id,
+            inputMessageId: user.id,
+            parentRunId: root.id,
+        });
+        const grandchild = repos.runs.create(ownerId, {
+            sessionId: session.id,
+            inputMessageId: user.id,
+            parentRunId: child.id,
+        });
+        expect(repos.runs.activeInSession(ownerId, session.id)?.id).toBe(root.id);
+        expect(repos.runs.latestForInput(ownerId, user.id)?.id).toBe(root.id);
+        expect(repos.runs.listTree(ownerId, root.id).map((r) => r.id)).toEqual([root.id, child.id, grandchild.id]);
+        expect(repos.runs.rootOf(ownerId, grandchild.id)?.id).toBe(root.id);
+        expect(repos.runs.rootOf(ownerId, root.id)?.id).toBe(root.id);
+        cleanup();
+    });
+});
+
 describe('migration 0019', () => {
     it('applies on a database with data after a backup; old runs get no agent and foreign keys stay clean', async () => {
         const dir = mkdtempSync(join(tmpdir(), 'fatcat-m19-'));

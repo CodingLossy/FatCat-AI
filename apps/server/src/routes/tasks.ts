@@ -206,8 +206,12 @@ function withApproval(repos: Repositories, ownerId: string, run: TaskRunRecord):
     const dto = toTaskRun(run);
     if (run.status !== 'running' || !run.sessionId) return dto;
     const agentRun = repos.runs.activeInSession(ownerId, run.sessionId);
+    // 委派出去的子运行的待批审批也算在任务运行头上(ADR 0042 第 3 节)
     const pending = agentRun
-        ? repos.approvals.listByRun(ownerId, agentRun.id).filter((a) => a.status === 'pending')
+        ? repos.runs
+              .listTree(ownerId, agentRun.id)
+              .flatMap((r) => repos.approvals.listByRun(ownerId, r.id))
+              .filter((a) => a.status === 'pending')
         : [];
     if (pending.length === 0) return dto;
     const expiresAt = pending.map((a) => a.expiresAt).sort()[0]!;

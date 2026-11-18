@@ -249,7 +249,17 @@ describe('代理的记忆设置(ADR 0042)', () => {
             budgetTokens: null,
             budgetSeconds: null,
         });
-        return { id: record.id, prompt: '', toolSet: record.toolSet, memoryScope, maxSteps: 5 };
+        return {
+            id: record.id,
+            name: record.name,
+            prompt: '',
+            toolSet: record.toolSet,
+            memoryScope,
+            maxSteps: 5,
+            maxDepth: 2,
+            budgetTokens: null,
+            budgetSeconds: null,
+        };
     };
 
     it('memoryScope 为 none 的代理一轮结束后不触发自动抽取;shared 和没有代理时照常触发', async () => {
