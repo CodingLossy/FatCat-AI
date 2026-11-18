@@ -21,7 +21,7 @@ function walk(dir) {
     });
 }
 
-const CJK = /[㐀-鿿＀-￯　-〿]/;
+const CJK = /[\u3400-\u9fff\uff00-\uffef\u3000-\u303f]/;
 const ATTR = /\b(?:placeholder|title|aria-label|alt)=(?:"([^"{}]*)"|'([^'{}]*)')/g;
 const JSX_TEXT = />([^<>{}\n]+)</g;
 const SENTENCE = /[A-Za-z]{2,}\s+[A-Za-z]{2,}/;
