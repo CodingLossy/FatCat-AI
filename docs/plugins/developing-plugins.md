@@ -103,7 +103,8 @@ Keep large caches outside it or small.
 2. Bind any secrets (`env:NAME`), save settings, and enable the plugin.
 3. Ask the assistant to use the tool. The call asks for approval unless the user pre-authorized it.
 
-Local installs are shown as unreviewed and unsigned.
+Local installs are shown as unreviewed and unsigned. The command line does the same with `fatcat-ai plugins install <folder>`,
+`plugins market`, `plugins install --market <market-id> <plugin-id>` and `plugins rollback <id>`.
 
 ## 6. Versions, upgrades and rollback
 

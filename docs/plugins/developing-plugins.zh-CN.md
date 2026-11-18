@@ -85,7 +85,7 @@ await plugin.run();
 2. 绑定密钥(`env:名字`)、保存设置、启用插件。
 3. 让助手使用这个工具。调用时会请求审批,除非用户已预授权。
 
-本地安装会显示为「未经市场审核」「未签名」。
+本地安装会显示为「未经市场审核」「未签名」。命令行里对应 `fatcat-ai plugins install <目录>`、`plugins market`、`plugins install --market <市场 id> <插件 id>` 和 `plugins rollback <id>`。
 
 ## 6. 版本、升级与回退
 

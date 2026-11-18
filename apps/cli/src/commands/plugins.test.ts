@@ -3,7 +3,7 @@
 
 import type { PluginPrepared } from '@fatcat-ai/shared';
 import { describe, expect, it } from 'vitest';
-import { describePrepared } from './plugins.js';
+import { describePrepared, describeUpgrade, marketRows } from './plugins.js';
 
 function prepared(patch: Partial<PluginPrepared['manifest']['permissions']> = {}, unreviewed = true): PluginPrepared {
     return {
@@ -48,5 +48,61 @@ describe('describePrepared', () => {
         const text = describePrepared(prepared({}, false)).join('\n');
         expect(text).toContain('(none)');
         expect(text).not.toContain('WARNING');
+    });
+});
+
+describe('describeUpgrade and marketRows', () => {
+    it('lists new and removed permissions and warns when the data is too large to back up', () => {
+        const base = prepared();
+        const text = describeUpgrade({
+            ...base,
+            installed: { version: '0.9.0', state: 'enabled' },
+            upgrade: {
+                fromVersion: '0.9.0',
+                dataBytes: 600 * 1048576,
+                backupTooLarge: true,
+                diff: {
+                    added: [
+                        { kind: 'tool-risk', name: 'forecast', from: 'read', to: 'write' },
+                        { kind: 'net', name: 'api.example.com', from: null, to: null },
+                    ],
+                    removed: [{ kind: 'secret', name: 'OLD_KEY', from: null, to: null }],
+                },
+            },
+        }).join('\n');
+        expect(text).toContain('v0.9.0 -> v1.0.0');
+        expect(text).toContain('+ tool forecast: level read -> write');
+        expect(text).toContain('+ network api.example.com');
+        expect(text).toContain('- secret OLD_KEY');
+        expect(text).toContain('will NOT be backed up');
+        expect(describeUpgrade(base)).toEqual([]);
+    });
+
+    it('picks the newest compatible version for each market plugin', () => {
+        const view = (version: string, compatible: boolean) => ({
+            version,
+            engines: '>=1.1.0',
+            size: 1,
+            publishedAt: '2026-11-18T00:00:00Z',
+            permissions: { tools: [], net: [], secrets: [] },
+            compatible,
+        });
+        const rows = marketRows({
+            markets: [],
+            plugins: [
+                {
+                    market: 'official',
+                    id: 'weather',
+                    name: { en: 'Weather' },
+                    description: { en: 'x' },
+                    author: 'Ex',
+                    license: 'MIT',
+                    homepage: null,
+                    versions: [view('2.0.0', false), view('1.2.0', true), view('1.10.0', true)],
+                    installed: { version: '1.0.0', state: 'enabled' },
+                },
+            ],
+        });
+        expect(rows).toEqual([['official', 'weather', '1.10.0', 'v1.0.0', 'Ex']]);
     });
 });
