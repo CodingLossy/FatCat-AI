@@ -63,6 +63,16 @@ describe('基础端点', () => {
         expect(await page.text()).toContain('FatCat-AI');
     });
 
+    it('service worker 与 manifest 带 no-cache,普通静态文件不带', async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'fatcat-web-'));
+        writeFileSync(join(dir, 'index.html'), '<!doctype html><title>FatCat-AI</title>');
+        writeFileSync(join(dir, 'sw.js'), '// sw');
+        writeFileSync(join(dir, 'app.js'), '// app');
+        s = await createTestServer({ webDir: dir });
+        expect((await s.app.request('/sw.js')).headers.get('cache-control')).toBe('no-cache');
+        expect((await s.app.request('/app.js')).headers.get('cache-control')).not.toBe('no-cache');
+    });
+
     it('请求体超过 2MB 返回 413', async () => {
         s = await createTestServer();
         const res = await s.app.request('/api/v1/auth/login', jsonBody({ username: 'x'.repeat(3 * 1024 * 1024) }));

@@ -29,6 +29,8 @@ export const zh = {
     'auth.logout': '退出登录',
     'nav.newChat': '新对话',
     'nav.menu': '菜单',
+    'pwa.offline': '当前离线。显示的是已保存的应用外壳,对话需要联网。',
+    'pwa.install': '安装应用',
     'mail.back': '返回列表',
     'nav.settings': '设置',
     'nav.memory': '记忆',

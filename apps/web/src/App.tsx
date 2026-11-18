@@ -7,6 +7,7 @@ import { api, errorText } from './api.js';
 import { AuthForm } from './AuthForm.js';
 import { Footer } from './Footer.js';
 import { I18nContext, translator, type Locale } from './i18n.js';
+import { useOnline } from './pwa.js';
 import { Shell } from './Shell.js';
 
 function browserLocale(): Locale {
@@ -29,6 +30,7 @@ export function App() {
     const [settings, setSettings] = useState<Settings | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    const online = useOnline();
     const locale = settings?.locale ?? browserLocale();
     const i18n = useMemo(() => ({ locale, t: translator(locale) }), [locale]);
 
@@ -78,6 +80,11 @@ export function App() {
     return (
         <I18nContext.Provider value={i18n}>
             <div className="layout">
+                {online ? null : (
+                    <div className="offline-banner" role="status">
+                        {i18n.t('pwa.offline')}
+                    </div>
+                )}
                 {body}
                 <Footer meta={meta} />
             </div>
