@@ -30,7 +30,7 @@
 1. **同意发生在确认页里**,`upgrade-pending` 不落库(PR 5 的 ADR 注记)。
 2. **事件种类没有新增**:`plugin_events.kind` 受 0018 的 CHECK 约束,升级回退与不兼容复用 `upgraded` / `upgrade-failed` / `stopped`,避免为此做表重建迁移。
 3. **第三方市场没有做**:`plugins.markets` 的 config.yaml 读取器还不存在,`MarketService` 已按配置列表工作,默认只有官方一项。
-4. **没有 CLI 市场、升级、回退命令**。
+4. **CLI 市场、升级、回退命令**:原先没有,已在 `feat/plugin-cli-market` 补上(`plugins market`、`install --market`、`install` 遇到更高版本即升级、`rollback`)。
 5. **本地目录插件在没有操作系统网络隔离的平台上不能声明 `net`**(业主 2026-11-18 同意,PR 5)。
 6. 校验和与签名只说明下载的是审核时的那个包,不说明它无害;界面与文档都这么写。
 
