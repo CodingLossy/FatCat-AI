@@ -53,9 +53,28 @@ function deny(what: string): never {
 registerHooks({
     resolve(specifier, context, nextResolve) {
         if (isDenied(specifier)) deny(`The module "${specifier}"`);
-        return nextResolve(specifier, context);
+        const result = nextResolve(specifier, context);
+        // 按「解析结果」再查一次:插件改写 Module._resolveFilename 把别名指向内置模块时,原始写法不在名单里
+        const url = (result as { url?: unknown; format?: unknown } | undefined)?.url;
+        if (
+            typeof url === 'string' &&
+            (url.startsWith('node:') || (result as { format?: unknown }).format === 'builtin')
+        ) {
+            if (isDenied(url)) deny(`The module "${url}"`);
+        }
+        return result;
+    },
+    load(url, context, nextLoad) {
+        if (url.startsWith('node:') && isDenied(url)) deny(`The module "${url}"`);
+        return nextLoad(url, context);
     },
 });
+
+// 把这几个 CommonJS 的解析与加载入口锁死,插件不能改写
+for (const name of ['_resolveFilename', '_load', '_findPath'] as const) {
+    const value = (Module as unknown as Record<string, unknown>)[name];
+    if (value !== undefined) Object.defineProperty(Module, name, { value, writable: false, configurable: false });
+}
 
 const original = process.getBuiltinModule?.bind(process);
 if (original) {
@@ -89,7 +108,7 @@ Object.defineProperty(process, 'kill', {
     configurable: false,
 });
 
-for (const name of ['binding', '_linkedBinding', 'dlopen'] as const) {
+for (const name of ['binding', '_linkedBinding', 'dlopen', '_kill', '_debugProcess'] as const) {
     Object.defineProperty(process, name, {
         value: () => deny(`process.${name}`),
         writable: false,

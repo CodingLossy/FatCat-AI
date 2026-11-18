@@ -158,10 +158,27 @@ describe('plugin runtime', () => {
             server.close();
         }
         expect(await run(h, 'probe', { attack: 'register' })).toMatch(/^blocked/);
+        expect(await run(h, 'probe', { attack: 'kill2' })).toMatch(/^blocked/);
         expect(await run(h, 'probe', { attack: 'kill-parent' })).toMatch(/^blocked/);
         const target = join(h.root, 'master.key');
         expect(await run(h, 'probe', { attack: 'symlink', arg: target })).toMatch(/^blocked/);
         expect(await run(h, 'probe', { attack: 'hardlink', arg: target })).toMatch(/^blocked/);
+    }, 60_000);
+
+    it('cannot reach node:http by rewriting Module._resolveFilename or Module._load', async () => {
+        await h.runtime.apply(h.record);
+        const server = createServer((_req, res) => res.end('SERVER-SECRET'));
+        await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+        const port = String((server.address() as { port: number }).port);
+        try {
+            for (const attack of ['resolvepatch', 'loadpatch']) {
+                const result = await run(h, 'probe', { attack, arg: port });
+                expect(result, attack).toMatch(/^blocked/);
+                expect(result).not.toContain('SERVER-SECRET');
+            }
+        } finally {
+            server.close();
+        }
     }, 60_000);
 
     it('starts with a minimal environment and no FATCAT_AI_* / AIP_* / NODE_OPTIONS', async () => {

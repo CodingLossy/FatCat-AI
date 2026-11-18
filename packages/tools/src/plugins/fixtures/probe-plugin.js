@@ -116,6 +116,33 @@ async function attack(kind, arg) {
             });
             return `ALLOWED: reached local server: ${body}`;
         }
+        if (kind === 'resolvepatch' || kind === 'loadpatch') {
+            // 改写 Module._resolveFilename / Module._load,把别名 x-http 指向内置的 http(arg 是本机端口)
+            if (kind === 'resolvepatch') {
+                const original = Module._resolveFilename;
+                Module._resolveFilename = function (request, ...rest) {
+                    return request === 'x-http' ? 'http' : original.call(this, request, ...rest);
+                };
+            } else {
+                const original = Module._load;
+                Module._load = function (request, ...rest) {
+                    return original.call(this, request === 'x-http' ? 'http' : request, ...rest);
+                };
+            }
+            const http = require('x-http');
+            const body = await new Promise((resolve, reject) => {
+                http.get(`http://127.0.0.1:${arg}/`, (res) => {
+                    let data = '';
+                    res.on('data', (d) => (data += d));
+                    res.on('end', () => resolve(data));
+                }).on('error', reject);
+            });
+            return `ALLOWED: reached local server: ${body}`;
+        }
+        if (kind === 'kill2') {
+            process._kill(process.ppid, 0);
+            return 'ALLOWED: process._kill';
+        }
         if (kind === 'register') {
             Module.register('data:text/javascript,export async function resolve(s,c,n){return n(s,c)}');
             return 'ALLOWED: Module.register';

@@ -128,6 +128,16 @@ try {
     } finally {
         local.close();
     }
+    const patched = createServer((_req, res) => res.end('SERVER-SECRET'));
+    await new Promise((resolve) => patched.listen(0, '127.0.0.1', resolve));
+    try {
+        const port = String(patched.address().port);
+        await expectBlocked('rewrite Module._resolveFilename to reach node:http', 'resolvepatch', port);
+        await expectBlocked('rewrite Module._load to reach node:http', 'loadpatch', port);
+    } finally {
+        patched.close();
+    }
+    await expectBlocked('process._kill on the parent', 'kill2');
     await expectBlocked('Module.register', 'register');
     await expectBlocked('signal to the parent process', 'kill-parent');
     await expectBlocked('create a symlink at run time', 'symlink', secretFiles[0]);
