@@ -1,0 +1,31 @@
+---
+title: FatCat-AI
+description: 可自托管、开源、自带模型的个人 AI 助手。
+template: splash
+hero:
+    tagline: '一个真正属于你自己的 AI 助手:可自托管、开源、自带模型、默认不上传任何数据。'
+    actions:
+        - text: 快速开始
+          link: /FatCat-AI/getting-started/quick-start/
+          icon: right-arrow
+        - text: GitHub
+          link: https://github.com/CodingLossy/FatCat-AI
+          variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+    <Card title="自带模型" icon="setting">
+        任何 OpenAI 兼容端点(含 Ollama、DeepSeek、硅基流动),以及 Anthropic、Gemini 原生接口。
+    </Card>
+    <Card title="无遥测" icon="approve-check">
+        不含任何统计或崩溃上报代码,只连接你配置的模型、邮箱和渠道。
+    </Card>
+    <Card title="可控的工具" icon="puzzle">
+        文件、邮件、语音、定时任务按风险分级,危险操作默认需要你批准。
+    </Card>
+    <Card title="长期记忆" icon="open-book">
+        分类型、有出处、可纠正和遗忘;凭据永远不会被记住。
+    </Card>
+</CardGrid>

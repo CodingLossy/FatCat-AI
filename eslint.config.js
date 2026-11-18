@@ -7,7 +7,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig([
-    globalIgnores(['**/dist/**', '**/coverage/**', '**/.turbo/**', '**/node_modules/**']),
+    globalIgnores(['**/dist/**', '**/coverage/**', '**/.turbo/**', '**/.astro/**', '**/node_modules/**']),
     js.configs.recommended,
     tseslint.configs.recommended,
     {
