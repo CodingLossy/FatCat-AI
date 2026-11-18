@@ -67,4 +67,23 @@ describe.skipIf(isolation.kind === 'none')(`OS network isolation (${isolation.ki
         expect(result).toMatch(/^blocked/);
         expect(result).not.toContain('SERVER-SECRET');
     }, 30_000);
+
+    // 已知例外:路径形式的 Unix socket 走文件系统,空的网络命名空间挡不住,只靠预加载拦截。
+    // 这条把例外固定下来;以后在操作系统层也挡住了,这里会失败,再把说明改成 enforced。
+    it.skipIf(isolation.kind !== 'unshare')(
+        'known gap: with only the OS layer, a Unix socket file outside the plugin dirs is still reachable',
+        async () => {
+            const dir = mkdtempSync(join(tmpdir(), 'fatcat-sock-'));
+            const path = join(dir, 's.sock');
+            const unix = createServer((socket) => socket.end('UNIX-SECRET'));
+            await new Promise<void>((resolve) => unix.listen(path, resolve));
+            try {
+                expect(await attackWithoutPreload(isolation, path)).toContain('UNIX-SECRET');
+            } finally {
+                unix.close();
+                rmSync(dir, { recursive: true, force: true });
+            }
+        },
+        30_000,
+    );
 });

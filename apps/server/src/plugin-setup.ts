@@ -74,11 +74,17 @@ export function protectionTable(
                   level: 'layered',
                   detail: 'This platform cannot deny network access to the plugin process without extra privileges; network modules and sockets are blocked by a preload script, which is layered protection, not a guarantee.',
               }
-            : {
-                  key: 'direct-network',
-                  level: 'enforced',
-                  detail: `The operating system denies network access to the plugin process (${netIsolation === 'unshare' ? 'empty Linux network namespace' : 'macOS sandbox profile'}); the preload script is an extra layer.`,
-              };
+            : netIsolation === 'unshare'
+              ? {
+                    key: 'direct-network',
+                    level: 'layered',
+                    detail: 'TCP/UDP and abstract sockets are denied by the operating system (empty Linux network namespace); local Unix socket files are blocked only by the preload script, which is layered protection.',
+                }
+              : {
+                    key: 'direct-network',
+                    level: 'layered',
+                    detail: 'A macOS sandbox profile denies network access; this has not been verified on a real Mac yet, and the preload script blocks network modules and sockets as layered protection.',
+                };
     const hostFiles: PluginProtection =
         platform === 'linux'
             ? {

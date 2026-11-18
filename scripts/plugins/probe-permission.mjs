@@ -213,6 +213,14 @@ if (isolation.kind !== 'none') {
             text.startsWith('blocked') && !text.includes('SERVER-SECRET'),
             text.slice(0, 100),
         );
+        // 路径形式的 Unix socket 走文件系统,空的网络命名空间挡不住:只报告,不算失败
+        const sockPath = join(isoRoot, 'outside.sock');
+        const unixServer = createNetServer((socket) => socket.end('UNIX-SECRET'));
+        await new Promise((resolve) => unixServer.listen(sockPath, resolve));
+        const unixReply = await isoClient.callTool('probe', { attack: 'stdin-socket', arg: sockPath });
+        unixServer.close();
+        const unixText = String(unixReply.content?.[0]?.text ?? '');
+        isolationNote += `\nOS layer alone, Unix socket file outside the plugin dirs (report only): ${unixText.includes('UNIX-SECRET') ? 'reachable, blocked only by the preload' : unixText.slice(0, 100)}`;
     } catch (error) {
         record(
             `OS layer alone (${isolation.kind}) starts the plugin`,

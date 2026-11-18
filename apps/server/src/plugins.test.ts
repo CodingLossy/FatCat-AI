@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PluginDetail, PluginPrepared, PluginView, pageOf, ToolInfo } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
+import { protectionTable } from './plugin-setup.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 const fixtures = fileURLToPath(new URL('../../../packages/tools/src/plugins/fixtures/', import.meta.url));
@@ -229,4 +230,16 @@ describe('插件 REST', () => {
         const events = s.repos.plugins.listEvents(owner, { pluginId: 'probe', limit: 50 }).items.map((e) => e.kind);
         expect(events).toEqual(expect.arrayContaining(['installed', 'uninstalled']));
     }, 90_000);
+});
+
+describe('protectionTable', () => {
+    it('never claims enforced direct-network: the Linux namespace leaves Unix socket files to the preload', () => {
+        for (const kind of ['unshare', 'sandbox-exec', 'none'] as const) {
+            const direct = protectionTable('linux', true, kind).find((p) => p.key === 'direct-network');
+            expect(direct?.level).toBe('layered');
+        }
+        expect(protectionTable('linux', true, 'unshare').find((p) => p.key === 'direct-network')?.detail).toMatch(
+            /Unix socket/,
+        );
+    });
 });
