@@ -2,6 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // assistant-state 的状态文字(ADR 0021 第 7 节):按设置里的界面语言在服务器端生成,客户端直接显示。
+import { promptText } from '@fatcat-ai/i18n';
 import type { ActivityLabel, AssistantState, Locale } from '@fatcat-ai/shared';
 
 const LABELS: Record<Exclude<AssistantState, 'executing'>, ActivityLabel> = {
@@ -20,5 +21,5 @@ export function assistantLabel(
     if (state !== 'executing') return LABELS[state][locale];
     if (tool?.activityLabel) return tool.activityLabel[locale];
     const name = tool?.name ?? '';
-    return locale === 'en' ? `Using ${name}…` : `正在使用 ${name}…`;
+    return promptText('usingTool', locale, { name });
 }

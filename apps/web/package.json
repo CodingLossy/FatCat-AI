@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@fatcat-ai/client": "workspace:*",
+    "@fatcat-ai/i18n": "workspace:*",
     "@fatcat-ai/shared": "workspace:*",
     "@fatcat-ai/ui": "workspace:*",
     "highlight.js": "11.11.1",

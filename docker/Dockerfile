@@ -42,6 +42,9 @@ COPY --from=build /repo/node_modules ./node_modules
 COPY --from=build /repo/packages/shared/package.json ./packages/shared/
 COPY --from=build /repo/packages/shared/dist ./packages/shared/dist
 COPY --from=build /repo/packages/shared/node_modules ./packages/shared/node_modules
+COPY --from=build /repo/packages/i18n/package.json ./packages/i18n/
+# i18n 没有运行时依赖,没有自己的 node_modules
+COPY --from=build /repo/packages/i18n/dist ./packages/i18n/dist
 COPY --from=build /repo/packages/storage/package.json ./packages/storage/
 COPY --from=build /repo/packages/storage/dist ./packages/storage/dist
 COPY --from=build /repo/packages/storage/node_modules ./packages/storage/node_modules

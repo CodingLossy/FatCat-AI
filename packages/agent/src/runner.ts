@@ -46,6 +46,7 @@ import {
     type ToolRegistry,
 } from '@fatcat-ai/tools';
 import type { ApprovalOutcome } from './tools.js';
+import { promptText } from '@fatcat-ai/i18n';
 import { assistantLabel } from './labels.js';
 
 /** 每轮的记忆上下文:系统消息、用到的记忆,以及召回是否完整(ADR 0017)。 */
@@ -130,7 +131,7 @@ export const SYSTEM_PROMPT = [
 /** 系统提示的最后一行:用户时区的当前时间,精确到分钟(ADR 0023 第 4 节)。 */
 export function currentTimeLine(settings: Pick<Settings, 'locale' | 'timeZone'>, nowMs: number): string {
     const time = formatPromptTime(new Date(nowMs), effectiveTimeZone(settings.timeZone), settings.locale);
-    return settings.locale === 'en' ? `Current time: ${time}.` : `当前时间:${time}。`;
+    return promptText('currentTime', settings.locale, { time });
 }
 
 /** 运行用的代理(ADR 0042)。maxDepth / 预算只在代理能委派时有意义。 */
