@@ -4,7 +4,7 @@
 // 插件进程的运行时预加载(ADR 0040 第 3.4 节):在插件代码之前运行(`node --import`),收紧能联网、能起子进程的入口。
 // 这是多层防护的第一层,不是硬墙:Node 的权限模型管文件、子进程、worker、addon,不管网络。
 // 本文件只依赖 node:module,不能引入别的模块(权限模型下只允许读本文件与插件目录)。
-import { registerHooks } from 'node:module';
+import Module, { registerHooks } from 'node:module';
 
 /** 被拒绝的内置模块(同时拒绝带 `node:` 前缀与不带前缀的写法,以及它们的子路径如 `dns/promises`)。 */
 export const DENIED_BUILTINS = [
@@ -22,6 +22,10 @@ export const DENIED_BUILTINS = [
     'vm',
     'repl',
     'sqlite',
+    // 能注册自己的模块钩子、绕过本文件的拒绝钩子(别名指向 node:http 等),或改 V8 标志、起 WASI
+    'module',
+    'wasi',
+    'v8',
     '_http_agent',
     '_http_client',
     '_http_common',
@@ -64,6 +68,26 @@ if (original) {
         configurable: false,
     });
 }
+
+// 没有 `node:module` 也能从 CommonJS 的 `module.constructor` 拿到 Module:把注册钩子的入口封死
+for (const name of ['registerHooks', 'register'] as const) {
+    Object.defineProperty(Module, name, {
+        value: () => deny(`module.${name}`),
+        writable: false,
+        configurable: false,
+    });
+}
+
+// 同一用户下插件能给主进程发信号(已知限制,见 ADR 0040 实现注记);至少挡住对父进程与进程组的误用
+const originalKill = process.kill.bind(process);
+Object.defineProperty(process, 'kill', {
+    value: (pid: number, signal?: string | number) => {
+        if (pid === process.ppid || pid <= 0) deny('Signalling the parent process or a process group');
+        return originalKill(pid, signal);
+    },
+    writable: false,
+    configurable: false,
+});
 
 for (const name of ['binding', '_linkedBinding', 'dlopen'] as const) {
     Object.defineProperty(process, name, {

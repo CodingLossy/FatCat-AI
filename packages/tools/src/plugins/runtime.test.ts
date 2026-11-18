@@ -2,6 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 插件运行时的越权用例与生命周期(ADR 0040 第 11 节 PR 2b 验收)。用的是一个真实的 node 子进程,不是替身。
+import { createServer } from 'node:http';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -10,7 +11,7 @@ import { validatePluginManifest } from '@fatcat-ai/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ToolRegistry } from '../registry.js';
 import { hashPluginDir } from './package.js';
-import { PluginRuntime, type PluginEventInput, type PluginRuntimeRecord } from './runtime.js';
+import { PluginRuntime, type PluginEventInput, type PluginRuntimeRecord, redactSecrets } from './runtime.js';
 
 const fixtures = fileURLToPath(new URL('./fixtures/', import.meta.url));
 const SECRET = 'sk-test-9f3a-very-secret';
@@ -121,7 +122,7 @@ describe('plugin runtime', () => {
             ['read', join(h.dataRoot, 'other', 'data.txt')],
             ['list', h.dataRoot],
             ['write', join(h.root, 'pwned.txt')],
-            ['write', join(h.codeRoot, 'probe', '0.1.0', 'probe-plugin.mjs')],
+            ['write', join(h.codeRoot, 'probe', '0.1.0', 'probe-plugin.js')],
         ];
         for (const [attack, arg] of attempts) {
             const result = await run(h, 'probe', { attack, arg });
@@ -138,10 +139,29 @@ describe('plugin runtime', () => {
         const table = JSON.parse(await run(h, 'probe', { attack: 'builtins' })) as Record<string, string>;
         const allowed = Object.entries(table).filter(([, v]) => v !== 'blocked');
         expect(allowed).toEqual([]);
-        expect(Object.keys(table)).toHaveLength(14 * 6);
+        expect(Object.keys(table)).toHaveLength(17 * 7);
         for (const attack of ['binding', 'dlopen', 'fetch']) {
             expect(await run(h, 'probe', { attack })).toMatch(/^blocked/);
         }
+    }, 60_000);
+
+    it('cannot re-register module hooks to reach node:http, and cannot signal the parent or create links', async () => {
+        await h.runtime.apply(h.record);
+        const server = createServer((_req, res) => res.end('SERVER-SECRET'));
+        await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+        const port = (server.address() as { port: number }).port;
+        try {
+            const bypass = await run(h, 'probe', { attack: 'hookbypass', arg: String(port) });
+            expect(bypass).toMatch(/^blocked/);
+            expect(bypass).not.toContain('SERVER-SECRET');
+        } finally {
+            server.close();
+        }
+        expect(await run(h, 'probe', { attack: 'register' })).toMatch(/^blocked/);
+        expect(await run(h, 'probe', { attack: 'kill-parent' })).toMatch(/^blocked/);
+        const target = join(h.root, 'master.key');
+        expect(await run(h, 'probe', { attack: 'symlink', arg: target })).toMatch(/^blocked/);
+        expect(await run(h, 'probe', { attack: 'hardlink', arg: target })).toMatch(/^blocked/);
     }, 60_000);
 
     it('starts with a minimal environment and no FATCAT_AI_* / AIP_* / NODE_OPTIONS', async () => {
@@ -246,4 +266,17 @@ describe('risk floor', () => {
             rmSync(h.root, { recursive: true, force: true });
         }
     }, 30_000);
+});
+
+describe('redactSecrets', () => {
+    it('also removes the base64, base64url and URL-encoded forms', () => {
+        const secret = 'sk-test/9f3a+very=secret';
+        const text = [
+            secret,
+            Buffer.from(secret).toString('base64'),
+            Buffer.from(secret).toString('base64url'),
+            encodeURIComponent(secret),
+        ].join(' | ');
+        expect(redactSecrets(text, [secret])).toBe('[redacted] | [redacted] | [redacted] | [redacted]');
+    });
 });

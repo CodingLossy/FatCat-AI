@@ -118,7 +118,17 @@ interface Entry {
 /** 把文本里的密钥值替换掉(日志与事件写入前;ADR 0040 第 4.3 节)。 */
 export function redactSecrets(text: string, values: readonly string[]): string {
     let out = text;
-    for (const value of values) if (value.length >= 3) out = out.split(value).join('[redacted]');
+    for (const value of values) {
+        if (value.length < 3) continue;
+        // 原文、base64、base64url、URL 编码各替换一次
+        const forms = new Set([
+            value,
+            Buffer.from(value).toString('base64'),
+            Buffer.from(value).toString('base64url'),
+            encodeURIComponent(value),
+        ]);
+        for (const form of forms) out = out.split(form).join('[redacted]');
+    }
     return out;
 }
 
@@ -342,7 +352,8 @@ export class PluginRuntime {
         for (const tool of listed) {
             const permission = typeof tool.name === 'string' ? declared.get(tool.name) : undefined;
             const segment = permission ? toolSegment(tool.name) : null;
-            if (!permission || !segment) continue; // 未声明的工具不注册
+            // 未声明的工具不注册;名字必须与声明完全一致(不做折叠,避免 a.b 与 a_b 变成同一个注册名)
+            if (!permission || !segment || segment !== tool.name) continue;
             const { risk, preauthorizable } = effectiveRisk(permission, hasNet);
             const name = `plugin.${record.pluginId}.${segment}`;
             const def: ToolDefinition = {

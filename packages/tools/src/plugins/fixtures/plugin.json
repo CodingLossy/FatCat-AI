@@ -7,7 +7,7 @@
   "author": "Test",
   "license": "Apache-2.0",
   "engines": { "fatcat": ">=0.0.0" },
-  "entry": { "type": "mcp-stdio", "main": "probe-plugin.mjs" },
+  "entry": { "type": "mcp-stdio", "main": "probe-plugin.js" },
   "permissions": {
     "tools": [
       { "name": "echo", "risk": "read" },

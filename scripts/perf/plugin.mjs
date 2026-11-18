@@ -39,7 +39,7 @@ async function child() {
     const dataRoot = join(base, 'plugin-data');
     const codeDir = join(codeRoot, 'probe', '0.1.0');
     mkdirSync(codeDir, { recursive: true });
-    cpSync(join(root, 'packages/tools/src/plugins/fixtures/probe-plugin.mjs'), join(codeDir, 'probe-plugin.mjs'));
+    cpSync(join(root, 'packages/tools/src/plugins/fixtures/probe-plugin.js'), join(codeDir, 'probe-plugin.js'));
     const manifestPath = join(root, 'packages/tools/src/plugins/fixtures/plugin.json');
     writeFileSync(join(codeDir, 'plugin.json'), readFileSync(manifestPath));
     const parsed = validatePluginManifest(JSON.parse(readFileSync(manifestPath, 'utf8')));

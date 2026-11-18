@@ -5,6 +5,7 @@
 // 逐项尝试越界访问,输出通过 / 不通过表。任何一项不通过时退出码为 1;不通过的项要降级并报业主决定。
 // 用法:先 `pnpm build`,再 `node scripts/plugins/probe-permission.mjs`。Windows、Linux、macOS 各跑一次。
 import { execFileSync } from 'node:child_process';
+import { createServer } from 'node:http';
 import { cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,7 +16,7 @@ const { StdioMcpClient } = await import(pathToFileURL(join(root, 'packages/tools
 const { pluginEnv, pluginNodeArgs, preloadScriptPath, findReparsePoint } = await import(
     pathToFileURL(join(root, 'packages/tools/dist/plugins/index.js')).href
 );
-const fixture = join(root, 'packages/tools/src/plugins/fixtures/probe-plugin.mjs');
+const fixture = join(root, 'packages/tools/src/plugins/fixtures/probe-plugin.js');
 
 const results = [];
 const record = (name, ok, detail = '') => results.push({ name, ok, detail });
@@ -29,7 +30,7 @@ const otherData = join(home, 'plugin-data', 'other');
 for (const dir of [codeDir, dataDir, otherData, join(dataDir, 'home'), join(dataDir, 'tmp')]) {
     mkdirSync(dir, { recursive: true });
 }
-cpSync(fixture, join(codeDir, 'probe-plugin.mjs'));
+cpSync(fixture, join(codeDir, 'probe-plugin.js'));
 const secretFiles = ['master.key', 'secrets.yaml.enc', 'db.sqlite'].map((name) => join(home, name));
 for (const file of secretFiles) writeFileSync(file, 'SENSITIVE');
 writeFileSync(join(otherData, 'data.txt'), 'other plugin');
@@ -56,7 +57,7 @@ for (const link of links) rmSync(link, { recursive: true, force: true });
 const client = new StdioMcpClient(
     {
         command: process.execPath,
-        args: pluginNodeArgs({ codeDir, dataDir, main: 'probe-plugin.mjs', preload: preloadScriptPath() }),
+        args: pluginNodeArgs({ codeDir, dataDir, main: 'probe-plugin.js', preload: preloadScriptPath() }),
         cwd: dataDir,
         envPassthrough: [],
         rawEnv: pluginEnv({ pluginId: 'probe', dataDir, secrets: {} }),
@@ -82,7 +83,7 @@ try {
     await expectBlocked('list another plugin data dir', 'list', otherData);
     await expectBlocked('read another plugin data file', 'read', join(otherData, 'data.txt'));
     await expectBlocked('write outside the data dir', 'write', join(home, 'pwned.txt'));
-    await expectBlocked('write into its own code dir', 'write', join(codeDir, 'probe-plugin.mjs'));
+    await expectBlocked('write into its own code dir', 'write', join(codeDir, 'probe-plugin.js'));
 
     // 2. 路径变体:../、多余的分隔符、大小写、8.3 短名、UNC
     const target = secretFiles[0];
@@ -115,10 +116,22 @@ try {
         .filter(([, v]) => v !== 'blocked')
         .map(([k]) => k);
     record(
-        'all 14 denied built-in modules blocked under import, bare import, createRequire, getBuiltinModule, Module._load and data URLs',
-        allowed.length === 0 && Object.keys(table).length === 84,
+        'all 17 denied built-in modules blocked under import, bare import, createRequire, getBuiltinModule, Module._load and data URLs',
+        allowed.length === 0 && Object.keys(table).length === 119,
         allowed.join(', '),
     );
+    // 绕过检查:用 Module.registerHooks 把别名指向 node:http 再连本机端口;给父进程发信号;运行中新建链接
+    const local = createServer((_req, res) => res.end('SERVER-SECRET'));
+    await new Promise((resolve) => local.listen(0, '127.0.0.1', resolve));
+    try {
+        await expectBlocked('re-register module hooks to reach node:http', 'hookbypass', String(local.address().port));
+    } finally {
+        local.close();
+    }
+    await expectBlocked('Module.register', 'register');
+    await expectBlocked('signal to the parent process', 'kill-parent');
+    await expectBlocked('create a symlink at run time', 'symlink', secretFiles[0]);
+    await expectBlocked('create a hard link at run time', 'hardlink', secretFiles[0]);
     await expectBlocked('process.binding', 'binding');
     await expectBlocked('process.dlopen', 'dlopen');
     await expectBlocked('global fetch', 'fetch');
