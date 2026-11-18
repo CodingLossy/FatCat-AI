@@ -3,6 +3,10 @@
 
 import type {
     AccessToken,
+    Agent,
+    AgentCopyInput,
+    AgentInput,
+    AgentPatch,
     Attachment,
     SpeechRequest,
     TranscriptionResult,
@@ -481,6 +485,17 @@ export function createClient(options: ClientOptions) {
                 t.json<McpServerView>(`/mcp/servers/${enc(id)}`, { method: 'PATCH', body }),
             remove: (id: string) => t.json<void>(`/mcp/servers/${enc(id)}`, { method: 'DELETE' }),
             status: (id: string) => t.json<McpServerStatus>(`/mcp/servers/${enc(id)}/status`),
+        },
+
+        agents: {
+            /** 代理(ADR 0042):预置角色只读,可以复制后修改;发消息时用 `agentId` 选择。 */
+            list: () => t.json<Page<Agent>>('/agents'),
+            get: (id: string) => t.json<Agent>(`/agents/${enc(id)}`),
+            create: (body: AgentInput) => t.json<Agent>('/agents', { method: 'POST', body }),
+            update: (id: string, body: AgentPatch) => t.json<Agent>(`/agents/${enc(id)}`, { method: 'PATCH', body }),
+            remove: (id: string) => t.json<void>(`/agents/${enc(id)}`, { method: 'DELETE' }),
+            copy: (id: string, body: AgentCopyInput = {}) =>
+                t.json<Agent>(`/agents/${enc(id)}/copy`, { method: 'POST', body }),
         },
 
         plugins: {

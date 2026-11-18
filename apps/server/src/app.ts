@@ -31,6 +31,7 @@ import { authRoutes } from './routes/auth.js';
 import { json } from './routes/common.js';
 import { memoryRoutes } from './routes/memory.js';
 import { modelRoutes } from './routes/models.js';
+import { agentRoutes } from './routes/agents.js';
 import { runRoutes } from './routes/runs.js';
 import { settingsRoutes } from './routes/settings.js';
 import type { ItemService, KnowledgeBase } from '@fatcat-ai/items';
@@ -348,6 +349,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             }),
         )
         .route('/', runRoutes(runDeps))
+        .route('/', agentRoutes({ repos, runs: deps.runs }))
         .route('/', channelRoutes({ repos, hub: channels, wechat }))
         .route(
             '/',

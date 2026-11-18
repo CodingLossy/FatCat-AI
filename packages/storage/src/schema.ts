@@ -122,6 +122,8 @@ export const TABLE_COLUMNS = {
         'error_json',
         'started_at',
         'finished_at',
+        'agent_id',
+        'parent_run_id',
     ],
     events: ['seq', 'owner_id', 'session_id', 'run_id', 'type', 'payload_json', 'created_at'],
     session_summaries: ['id', 'session_id', 'from_seq', 'to_seq', 'summary', 'created_at'],
@@ -339,6 +341,23 @@ export const TABLE_COLUMNS = {
         'installed_at',
         'updated_at',
     ],
+    agents: [
+        'id',
+        'owner_id',
+        'name',
+        'role',
+        'builtin',
+        'system_prompt',
+        'model_profile_id',
+        'tool_set_json',
+        'memory_scope',
+        'max_depth',
+        'max_steps',
+        'budget_tokens',
+        'budget_seconds',
+        'created_at',
+        'updated_at',
+    ],
     plugin_events: ['id', 'owner_id', 'at', 'plugin_id', 'version', 'kind', 'detail'],
     task_runs: [
         'id',
@@ -414,6 +433,8 @@ export interface RunRow {
     errorJson: string | null;
     startedAt: string;
     finishedAt: string | null;
+    agentId: string | null;
+    parentRunId: string | null;
 }
 
 export interface EventRow {

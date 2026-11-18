@@ -141,6 +141,18 @@ export interface StartRunInput {
     /** 重新生成时被替代的助手消息。 */
     replacesMessageId?: string;
     /**
+     * 用某个代理运行(ADR 0042):prompt 是已按语言选好的人格提示词;toolSet 与任务的 toolSet 取交集(只缩小,
+     * 集合外的工具既不交给模型、硬调用也按未知工具拒绝);memoryScope 为 none 时不召回记忆、也不交出 memory. 工具;
+     * maxSteps 是这次运行的工具步数上限(默认等于 MAX_TOOL_STEPS)。
+     */
+    agent?: {
+        id: string;
+        prompt: string;
+        toolSet: string[];
+        memoryScope: 'shared' | 'own' | 'none';
+        maxSteps: number;
+    };
+    /**
      * 这次运行由定时任务发起(ADR 0034):allowedTools 是任务级预授权白名单(只对这一次运行生效,
      * 仍受 isPreauthorizable 限制:external / dangerous 工具永远要审批);channelId 是任务配置的输出渠道。
      */
@@ -238,7 +250,11 @@ export class RunManager {
                     });
                 }
             }
-            const run = repos.runs.create(input.ownerId, { sessionId: input.sessionId, inputMessageId: userMessageId });
+            const run = repos.runs.create(input.ownerId, {
+                sessionId: input.sessionId,
+                inputMessageId: userMessageId,
+                ...(input.agent ? { agentId: input.agent.id } : {}),
+            });
             const assistant = repos.messages.append(input.ownerId, input.sessionId, {
                 role: 'assistant',
                 parts: [],
@@ -506,7 +522,7 @@ export class RunManager {
         signal: AbortSignal,
     ): Promise<MemoryTurnContext> {
         const none = { messages: [], ids: [] };
-        if (!this.options.memoryContext) return none;
+        if (!this.options.memoryContext || input.agent?.memoryScope === 'none') return none;
         const { repos } = this.options;
         try {
             const user = repos.messages.get(input.ownerId, run.userMessageId);
@@ -538,6 +554,7 @@ export class RunManager {
         profile: ModelProfileRecord,
         signal: AbortSignal,
         memory: readonly string[] = [],
+        persona = '',
     ): Promise<ChatMessage[]> {
         const { repos } = this.options;
         const summaries = repos.summaries.list(sessionId);
@@ -571,6 +588,8 @@ export class RunManager {
                 content: `${SYSTEM_PROMPT}\n${currentTimeLine(repos.settings.get(ownerId), this.now())}`,
             });
         }
+        // 代理的人格提示词放在通用系统提示之后;它只能补充角色,工具集与审批不由提示词决定
+        if (persona.trim()) out.push({ role: 'system', content: persona.trim() });
         // digest 与记忆块是数据:放在系统提示之后、对话之前(补充设计第 4.4–4.5 节)
         for (const content of memory) out.push({ role: 'system', content });
         if (summaries.length > 0) {
@@ -644,7 +663,8 @@ export class RunManager {
             persist(reason === 'cancelled' ? 'cancelled' : 'complete', usage ?? null);
             repos.runs.setStatus(run.runId, reason === 'cancelled' ? 'cancelled' : 'succeeded');
             emit({ type: 'run-finished', runId: run.runId, reason, ...(usage ? { usage } : {}) });
-            if (reason === 'cancelled' || !this.options.onTurnFinished) return;
+            // 记忆设置为 none 的代理不写记忆:自动抽取也不做(ADR 0042 第 4 节)
+            if (reason === 'cancelled' || !this.options.onTurnFinished || input.agent?.memoryScope === 'none') return;
             try {
                 this.options.onTurnFinished({
                     ownerId,
@@ -679,6 +699,7 @@ export class RunManager {
                 input.profile,
                 signal,
                 memory.messages,
+                input.agent?.prompt,
             );
             for (let step = 0; ; step++) {
                 if (signal.aborted) return finish('cancelled', undefined);
@@ -688,10 +709,15 @@ export class RunManager {
                 let usage: Usage | undefined;
                 const withheld = input.task?.withholdToolPrefixes ?? [];
                 const toolSet = input.task?.toolSet;
+                const agentToolSet = input.agent?.toolSet;
+                const noMemory = input.agent?.memoryScope === 'none';
                 const isWithheld = (name: string) =>
-                    withheld.some((prefix) => name.startsWith(prefix)) || (toolSet ? !toolInSet(name, toolSet) : false);
+                    withheld.some((prefix) => name.startsWith(prefix)) ||
+                    (noMemory && name.startsWith('memory.')) ||
+                    (toolSet ? !toolInSet(name, toolSet) : false) ||
+                    (agentToolSet ? !toolInSet(name, agentToolSet) : false);
                 const specs =
-                    tools && tools.size > 0 && step < MAX_TOOL_STEPS
+                    tools && tools.size > 0 && step < (input.agent?.maxSteps ?? MAX_TOOL_STEPS)
                         ? tools.specs().filter((spec) => !isWithheld(spec.name))
                         : undefined;
                 for await (const chunk of provider.stream({ messages, signal, ...(specs ? { tools: specs } : {}) })) {
@@ -733,7 +759,11 @@ export class RunManager {
                         error =
                             toolSet && !toolInSet(call.name, toolSet)
                                 ? `unknown tool: ${call.name} (not in this task's tool set)`
-                                : `unknown tool: ${call.name}`;
+                                : agentToolSet && !toolInSet(call.name, agentToolSet)
+                                  ? `unknown tool: ${call.name} (not in this agent's tool set)`
+                                  : noMemory && call.name.startsWith('memory.')
+                                    ? `unknown tool: ${call.name} (this agent does not use memory)`
+                                    : `unknown tool: ${call.name}`;
                         this.auditCall(ownerId, sessionId, run.runId, callId, call, null, 'denied', 'not_run', error);
                     } else {
                         const verdict = this.decideCall(tool, call.input, toolContext());

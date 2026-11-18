@@ -29,6 +29,7 @@ import { createMcpServerRepository } from './mcp.js';
 import { createChannelRepository } from './channels.js';
 import { createTaskRepository } from './tasks.js';
 import { createPluginRepository } from './plugins.js';
+import { createAgentRepository } from './agents.js';
 import { createEmbeddingStore } from './embeddings.js';
 import { createKbRepository } from './kb.js';
 import { createMailRepository } from './mail.js';
@@ -106,6 +107,8 @@ function toRun(row: RunRow): Run {
         outputMessageId: row.outputMessageId,
         startedAt: row.startedAt,
         finishedAt: row.finishedAt,
+        ...(row.agentId ? { agentId: row.agentId } : {}),
+        ...(row.parentRunId ? { parentRunId: row.parentRunId } : {}),
     };
 }
 
@@ -381,8 +384,8 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
     const runSelect = `SELECT ${selectList('runs')} FROM runs`;
     const runQ = {
         insert: sqlite.prepare(
-            `INSERT INTO runs (id, session_id, owner_id, status, input_message_id, started_at)
-             VALUES (@id, @sessionId, @ownerId, 'queued', @inputMessageId, @startedAt)`,
+            `INSERT INTO runs (id, session_id, owner_id, status, input_message_id, started_at, agent_id, parent_run_id)
+             VALUES (@id, @sessionId, @ownerId, 'queued', @inputMessageId, @startedAt, @agentId, @parentRunId)`,
         ),
         byId: sqlite.prepare<[string], RunRow>(`${runSelect} WHERE id = ?`),
         byOwnerAndId: sqlite.prepare<[string, string], RunRow>(`${runSelect} WHERE owner_id = ? AND id = ?`),
@@ -407,9 +410,20 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
     };
 
     const runs = {
-        create(ownerId: string, input: { sessionId: string; inputMessageId: string }): Run {
+        create(
+            ownerId: string,
+            input: { sessionId: string; inputMessageId: string; agentId?: string | null; parentRunId?: string | null },
+        ): Run {
             const id = newId(now());
-            runQ.insert.run({ id, ownerId, ...input, startedAt: iso() });
+            runQ.insert.run({
+                id,
+                ownerId,
+                sessionId: input.sessionId,
+                inputMessageId: input.inputMessageId,
+                agentId: input.agentId ?? null,
+                parentRunId: input.parentRunId ?? null,
+                startedAt: iso(),
+            });
             return toRun(runQ.byId.get(id)!);
         },
         get(ownerId: string, id: string): Run | null {
@@ -548,6 +562,7 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
         channels: createChannelRepository(conn, now),
         tasks: createTaskRepository(conn, now),
         plugins: createPluginRepository(conn, now),
+        agents: createAgentRepository(conn, now),
         embeddings: createEmbeddingStore(conn, now),
         kb: createKbRepository(conn, now),
         mail: createMailRepository(conn, now),

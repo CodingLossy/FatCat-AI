@@ -25,6 +25,7 @@ import { removeOwnerSessions } from '../session-delete.js';
 import type { AppEnv } from '../env.js';
 import { ApiError, notFound } from '../errors.js';
 import { streamRunEvents, type RunStreamDeps } from '../sse.js';
+import { loadRunAgent } from './agents.js';
 import { authErrors, json, problem, router } from './common.js';
 
 export interface SessionRouteDeps extends RunStreamDeps {
@@ -294,7 +295,14 @@ export function sessionRoutes(deps: SessionRouteDeps) {
                 if (!a || a.messageId !== null) throw attachmentIssue(attachmentId);
                 return { type: 'image', attachmentId: a.id, mediaType: a.mediaType, fileName: a.fileName };
             });
-            const profile = resolveProfile(deps, ownerId, body.modelProfileId, session.modelProfileId);
+            const agent = body.agentId ? loadRunAgent(repos, ownerId, body.agentId) : null;
+            // 模型配置档的优先级:请求 > 代理 > 会话 > 默认(ADR 0042)
+            const profile = resolveProfile(
+                deps,
+                ownerId,
+                body.modelProfileId ?? agent?.record.modelProfileId,
+                session.modelProfileId,
+            );
             // 不悄悄丢掉图片,也不先发给模型再看它是否报错(ADR 0020 第 1.2 节)
             if (images.length > 0 && profile.vision !== true) {
                 throw new ApiError(
@@ -315,6 +323,7 @@ export function sessionRoutes(deps: SessionRouteDeps) {
                         text: body.text,
                         clientMessageId: body.clientMessageId,
                         images,
+                        ...(agent ? { agent: agent.runAgent } : {}),
                     }),
                 stream,
             );
@@ -328,7 +337,12 @@ export function sessionRoutes(deps: SessionRouteDeps) {
             if (!message || message.sessionId !== session.id || message.role !== 'assistant' || !run) {
                 throw notFound('Assistant message');
             }
-            const profile = resolveProfile(deps, ownerId, null, session.modelProfileId);
+            // 重新生成沿用原来那次运行的代理(已被删除就按没有代理处理)
+            const agent =
+                run.agentId && repos.agents.get(ownerId, run.agentId)
+                    ? loadRunAgent(repos, ownerId, run.agentId)
+                    : null;
+            const profile = resolveProfile(deps, ownerId, agent?.record.modelProfileId, session.modelProfileId);
             return startAndRespond(
                 c,
                 deps,
@@ -339,6 +353,7 @@ export function sessionRoutes(deps: SessionRouteDeps) {
                         profile,
                         inputMessageId: run.inputMessageId,
                         replacesMessageId: message.id,
+                        ...(agent ? { agent: agent.runAgent } : {}),
                     }),
                 c.req.valid('query').stream !== 'false',
             );

@@ -6,6 +6,7 @@ import { EventEnvelope, Id, Run } from '@fatcat-ai/shared';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
 import { resumeFrom, streamRunEvents } from '../sse.js';
+import { loadRunAgent } from './agents.js';
 import { authErrors, json, problem, router } from './common.js';
 import { resolveProfile, runResponses, type SessionRouteDeps, startAndRespond } from './sessions.js';
 
@@ -93,7 +94,11 @@ export function runRoutes(deps: SessionRouteDeps) {
             }
             const session = repos.sessions.get(ownerId, run.sessionId);
             if (!session) throw notFound('Session');
-            const profile = resolveProfile(deps, ownerId, null, session.modelProfileId);
+            const agent =
+                run.agentId && repos.agents.get(ownerId, run.agentId)
+                    ? loadRunAgent(repos, ownerId, run.agentId)
+                    : null;
+            const profile = resolveProfile(deps, ownerId, agent?.record.modelProfileId, session.modelProfileId);
             return startAndRespond(
                 c,
                 deps,
@@ -102,6 +107,7 @@ export function runRoutes(deps: SessionRouteDeps) {
                         ownerId,
                         sessionId: session.id,
                         profile,
+                        ...(agent ? { agent: agent.runAgent } : {}),
                         inputMessageId: run.inputMessageId,
                         ...(run.outputMessageId ? { replacesMessageId: run.outputMessageId } : {}),
                     }),

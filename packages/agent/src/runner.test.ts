@@ -235,3 +235,40 @@ describe('RunManager', () => {
         expect(manager.recoverInterrupted()).toBe(0);
     });
 });
+
+describe('代理的记忆设置(ADR 0042)', () => {
+    const agent = (memoryScope: 'shared' | 'none') => {
+        const record = repos.agents.create(ownerId, {
+            name: `agent-${memoryScope}`,
+            systemPrompt: '',
+            modelProfileId: null,
+            toolSet: ['kb.search'],
+            memoryScope,
+            maxDepth: 2,
+            maxSteps: 5,
+            budgetTokens: null,
+            budgetSeconds: null,
+        });
+        return { id: record.id, prompt: '', toolSet: record.toolSet, memoryScope, maxSteps: 5 };
+    };
+
+    it('memoryScope 为 none 的代理一轮结束后不触发自动抽取;shared 和没有代理时照常触发', async () => {
+        const finished: string[] = [];
+        manager = new RunManager({
+            repos,
+            bus,
+            providerFor: () => fakeProvider,
+            persistIntervalMs: 0,
+            onTurnFinished: (turn) => finished.push(turn.runId),
+        });
+        const session = repos.sessions.create(ownerId);
+        const quiet = manager.start({ ownerId, sessionId: session.id, profile, text: 'a', agent: agent('none') });
+        await manager.idle();
+        const shared = manager.start({ ownerId, sessionId: session.id, profile, text: 'b', agent: agent('shared') });
+        await manager.idle();
+        const plain = manager.start({ ownerId, sessionId: session.id, profile, text: 'c' });
+        await manager.idle();
+        expect(finished).toEqual([shared.runId, plain.runId]);
+        expect(finished).not.toContain(quiet.runId);
+    });
+});

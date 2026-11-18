@@ -4,6 +4,13 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### M8 · Multi-agent (in progress)
+
+#### Added
+
+- Agents (ADR 0042, first part): an agent is a saved persona with its own system prompt, model profile, tool set and memory setting. `GET/POST /agents`, `GET/PATCH/DELETE /agents/{id}` and `POST /agents/{id}/copy` manage them; four read-only built-in roles (researcher, mail secretary, file keeper, schedule assistant) are created on first use and can be copied and edited. Send a message with `agentId` to run it as that agent; if you do not, nothing changes. An agent's tool set (same syntax as a task's `toolSet`: exact names or prefixes ending in `.`) decides which tools the model is shown, and a call to a tool outside it is refused as an unknown tool and never runs; approvals and pre-authorizations work exactly as before. The model profile is taken from the request first, then the agent, then the session. Memory setting `none` turns off memory recall and hides the `memory.` tools for that agent; `maxSteps` limits the tool steps of a run. Retry and regenerate keep the agent of the original run. Runs record their `agentId`. The client has `client.agents`. Delegation to sub-agents, budgets and the web page come in the next M8 changes.
+- Database migration 0019 for agents (ADR 0042 section 6): table `agents` plus nullable columns `runs.agent_id` and `runs.parent_run_id`. Existing tables and data are untouched, nothing changes for chats that do not use an agent, and the usual automatic backup is taken before the migration runs. Older versions cannot open a migrated database (they refuse to start with "unknown to this version"); to roll back, stop the server, restore `backups/db-…-pre-0019.sqlite` and run the older version. Data written after that backup is lost.
+
 ### M7 · Plugins (in progress)
 
 #### Added
