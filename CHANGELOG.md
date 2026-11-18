@@ -4,6 +4,12 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### M10 · Desktop app (in progress)
+
+#### Added
+
+- Desktop sidecar packaging (ADR 0044, first part): `apps/desktop` can bundle the server into a few single files plus the platform's SQLite prebuild, and a smoke script starts it and checks `/healthz` (about 240 ms here) and that it exits when the parent closes its stdin (`FATCAT_AI_EXIT_WITH_PARENT=1`). CI runs this check on Linux. Chinese summary: 新增桌面 sidecar 打包与冒烟检查,核心可随桌面壳退出。
+
 ### M9 · Internationalization and docs site (in progress)
 
 #### Added

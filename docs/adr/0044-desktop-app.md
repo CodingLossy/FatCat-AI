@@ -32,6 +32,14 @@
 - 体积是验收项(三平台安装包 ≤ 80 MB)。Node 24 二进制压缩后约 30 MB(未实测),加上 Tauri 壳、Web 产物和原生模块,预计在 50–65 MB,**但这是估计,第一个 PR 先做可行性验证并把实测数字写进 ADR,超过预算就改 SEA 或裁剪**。
 - 冷启动 < 3 s 也在第一个 PR 里量(sidecar 启动到 `/healthz` 返回)。
 
+**第一个 PR 的实测(Linux x64,Node 22,开发容器)**:
+
+- esbuild 单文件:`server.mjs` 约 1.3 MB(压缩),另有 `mail-worker.mjs`、`docs-worker.mjs` 各约 2–3 MB(它们是子进程 / Worker 入口,不能并进主文件)和插件预加载 `preload.js` 5 KB;`better-sqlite3` 只带 `lib` 和当前平台的 prebuild。整个 sidecar 目录(不含 node)约 8 MB。
+- 启动到 `/healthz` 返回约 240 ms,空闲 RSS 约 95 MB。
+- `node` 二进制 123.5 MB,gzip 后 42.6 MB,xz 后 29.0 MB;所以 node 用 xz 压缩进安装包,安装包预计在预算内,最终数字由第六个 PR 的 CI 量。
+- 三处子进程入口(邮件 worker、文档解析 Worker、插件预加载)在打包布局里按并列文件名查找(`mail-worker.mjs`、`docs-worker.mjs`、`preload.js`),原有构建布局不变。
+- 壳退出后的清理:`FATCAT_AI_EXIT_WITH_PARENT=1` 时核心监听 stdin 关闭并走正常关闭流程(`apps/desktop/scripts/check-sidecar.mjs` 验证)。
+
 ### 3. 原生能力
 
 系统托盘(关窗驻留)、全局快捷键唤起「快速提问」小窗、开机自启、系统通知、文件拖拽(只传路径给对话,文件工具仍受授权目录限制)、深链接 `fatcat-ai://`、「本地模式 ⇄ 连接远程服务器」切换(远程模式不启动 sidecar,窗口指向用户填的 HTTPS 地址,登录走普通登录页)。使用 Tauri 官方插件(MIT / Apache-2.0)。
