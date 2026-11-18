@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+# cargo-deny 配置(ADR 0044 第 7 节):Rust 依赖与 `pnpm check:licenses` 用同一条原则——只允许宽松许可,
+# GPL / LGPL / AGPL / SSPL 一律拒绝;不允许遥测 / 崩溃上报 crate;只从 crates.io 拉依赖。
+# 运行:cargo deny check(在本目录)。
+
+[graph]
+all-features = true
+
+[licenses]
+confidence-threshold = 0.9
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+    "0BSD",
+    "Unlicense",
+    "CC0-1.0",
+    # MPL-2.0 只允许以未修改库的形式使用(与 check:licenses 一致)。
+    "MPL-2.0",
+]
+
+[licenses.private]
+# 本 crate 自己(AGPL-3.0-only)不参与白名单。
+ignore = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+deny = [
+    # 遥测 / 崩溃上报:项目不含任何遥测。
+    { crate = "sentry" },
+    { crate = "sentry-core" },
+    { crate = "sentry-tauri" },
+    { crate = "tauri-plugin-sentry" },
+    { crate = "posthog-rs" },
+    { crate = "segment" },
+    { crate = "amplitude" },
+    { crate = "mixpanel" },
+    { crate = "opentelemetry" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

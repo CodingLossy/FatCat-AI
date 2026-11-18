@@ -31,6 +31,20 @@ fn sidecar_dir(resource_dir: Option<&Path>) -> Result<PathBuf, String> {
     }
 }
 
+/// node 可执行文件:FATCAT_AI_NODE(开发 / 测试)优先,其次安装包资源里的 `node/`,最后退回 PATH 里的 node。
+fn node_binary(resource_dir: Option<&Path>) -> PathBuf {
+    if let Ok(path) = std::env::var("FATCAT_AI_NODE") {
+        return PathBuf::from(path);
+    }
+    let exe = if cfg!(windows) { "node.exe" } else { "node" };
+    if let Some(bundled) = resource_dir.map(|dir| dir.join("node").join(exe)) {
+        if bundled.exists() {
+            return bundled;
+        }
+    }
+    PathBuf::from("node")
+}
+
 fn free_port() -> std::io::Result<u16> {
     let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))?;
     Ok(listener.local_addr()?.port())
@@ -53,7 +67,7 @@ fn healthy(port: u16) -> bool {
 impl Sidecar {
     pub fn start(data_dir: &Path, resource_dir: Option<&Path>) -> Result<Sidecar, Box<dyn std::error::Error>> {
         let dir = sidecar_dir(resource_dir)?;
-        let node = std::env::var("FATCAT_AI_NODE").unwrap_or_else(|_| "node".to_string());
+        let node = node_binary(resource_dir);
         let port = free_port()?;
         std::fs::create_dir_all(data_dir)?;
         let mut command = Command::new(node);
@@ -112,6 +126,20 @@ mod tests {
         let port = free_port().unwrap();
         assert!(port > 0);
         assert!(TcpListener::bind((Ipv4Addr::LOCALHOST, port)).is_ok());
+    }
+
+    #[test]
+    fn node_binary_prefers_the_bundled_runtime_and_falls_back_to_path() {
+        let dir = std::env::temp_dir().join(format!("fatcat-node-test-{}", std::process::id()));
+        let exe = if cfg!(windows) { "node.exe" } else { "node" };
+        std::fs::create_dir_all(dir.join("node")).unwrap();
+        std::fs::write(dir.join("node").join(exe), b"").unwrap();
+        // 测试进程里不设 FATCAT_AI_NODE;若外部设了,这条用例没有意义,直接跳过。
+        if std::env::var("FATCAT_AI_NODE").is_err() {
+            assert_eq!(node_binary(Some(&dir)), dir.join("node").join(exe));
+            assert_eq!(node_binary(None), PathBuf::from("node"));
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

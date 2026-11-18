@@ -18,6 +18,8 @@ const BASE = '/FatCat-AI';
 export const PAGES = [
     ['docs/deploy/docker.md', 'guides/docker.md'],
     ['docs/deploy/docker.en.md', 'en/guides/docker.md'],
+    ['docs/deploy/desktop.md', 'guides/desktop.md'],
+    ['docs/deploy/desktop.en.md', 'en/guides/desktop.md'],
     ['docs/plugins/developing-plugins.zh-CN.md', 'guides/plugins.md'],
     ['docs/plugins/developing-plugins.md', 'en/guides/plugins.md'],
 ];

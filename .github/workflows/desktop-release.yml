@@ -1,0 +1,115 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+# 桌面安装包(ADR 0044 第 7 节):在三个系统的 runner 上构建未签名安装包,检查体积(≤ 80 MB),
+# 生成 SHA-256 校验和并用 cosign(无密钥、GitHub OIDC)签名校验和文件。
+# 只在手动触发或推送 desktop-v* 标签时运行;标签由业主打,这个工作流自己不打标签。
+# 推送标签时才把产物上传到同名 GitHub Release(需要业主先创建好 Release,或由 gh 创建草稿);手动触发只留下工作流产物。
+# 不使用付费代码签名:macOS 为 ad-hoc 签名,Windows 不签。自动更新(Tauri updater)需要业主生成的密钥,不在这里。
+name: Desktop release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['desktop-v*']
+
+permissions:
+  contents: read
+
+jobs:
+  deny:
+    name: cargo deny
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo install cargo-deny --locked --version 0.21.0
+      - run: cargo deny check licenses bans sources
+        working-directory: apps/desktop/src-tauri
+
+  build:
+    name: installers (${{ matrix.os }})
+    needs: deny
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Install Tauri system libraries (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf rpm
+      - run: node apps/desktop/scripts/bundle-sidecar.mjs
+      - run: node apps/desktop/scripts/fetch-node.mjs
+      - name: Build installers
+        run: pnpm --filter @fatcat-ai/desktop exec tauri build
+      - name: Check installer size and write SHA-256 sums
+        run: node apps/desktop/scripts/check-installers.mjs
+      - name: Collect installers
+        shell: bash
+        run: |
+          mkdir -p release
+          cd apps/desktop/src-tauri/target/release/bundle
+          find . -type f \( -iname '*.msi' -o -iname '*.exe' -o -iname '*.dmg' -o -iname '*.deb' -o -iname '*.rpm' -o -iname '*.AppImage' \) -exec cp {} "$GITHUB_WORKSPACE/release/" \;
+          cp "$GITHUB_WORKSPACE"/apps/desktop/dist/SHA256SUMS-* "$GITHUB_WORKSPACE/release/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ runner.os }}
+          path: release/*
+          if-no-files-found: error
+
+  checksums:
+    name: checksums and cosign signature
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          pattern: installers-*
+          merge-multiple: true
+      - name: Merge SHA-256 sums
+        run: |
+          cd release
+          cat SHA256SUMS-* | sort -k2 > SHA256SUMS
+          rm SHA256SUMS-*
+          cat SHA256SUMS
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign SHA256SUMS (keyless)
+        run: cosign sign-blob --yes --bundle release/SHA256SUMS.cosign.bundle release/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: release/*
+          if-no-files-found: error
+
+  publish:
+    name: attach to the GitHub Release
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: checksums
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-files
+          path: release
+      - name: Upload to the draft Release for this tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --title "$GITHUB_REF_NAME" --notes "Unsigned desktop installers. Verify SHA256SUMS (and its cosign bundle) before installing."
+          gh release upload "$GITHUB_REF_NAME" release/* --repo "$GITHUB_REPOSITORY" --clobber

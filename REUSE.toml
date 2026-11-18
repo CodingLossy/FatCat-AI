@@ -13,6 +13,8 @@ path = [
     "pnpm-lock.yaml",
     "**/Cargo.lock",
     "apps/desktop/src-tauri/icons/*.png",
+    "apps/desktop/src-tauri/icons/*.icns",
+    "apps/desktop/src-tauri/icons/*.ico",
     ".gitignore",
     ".gitattributes",
     ".editorconfig",
