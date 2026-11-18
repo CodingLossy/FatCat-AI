@@ -5,11 +5,12 @@
 // 在业主本机给 index.json 签名(ADR 0040 第 5.2 节):对 index.json 的原始字节做 Ed25519 签名,写出 index.json.sig。
 //
 //   node scripts/plugins/sign-index.mjs --key <私钥 PKCS#8 PEM 文件> --key-id fatcat-main-2026 [--index index.json] [--out index.json.sig]
-//   node scripts/plugins/sign-index.mjs --verify [--index index.json] [--out index.json.sig]   (只用内置公钥核对,可在 CI 里跑)
+//   node scripts/plugins/sign-index.mjs --verify [--index index.json] [--out index.json.sig]   (只用内置公钥核对,可在 CI 里跑;
+//   不接受 --key / --key-id / --allow-unknown-key-id)
 //
 // 约束(业主已定):
 // - 私钥只从命令行给出的本地文件路径读取;不读环境变量、不读标准输入、不在 CI 或 GitHub Secrets 里运行
-//   (检测到 CI 环境变量时直接拒绝)。
+//   (签名时检测到 CI 环境变量直接拒绝;只有 --verify 允许在 CI 里运行)。
 // - 只依赖 node:crypto 与 node:fs,可以单独拷到任何机器上运行。
 // - 默认只接受两把官方 keyId(fatcat-main-2026、fatcat-backup-2026),并且私钥推出的公钥必须与内置的那把一致,
 //   防止拿错密钥或写错 keyId 签出一份客户端会拒绝的索引。给第三方市场签名时加 --allow-unknown-key-id。
@@ -134,10 +135,17 @@ function parseArgs(argv) {
 }
 
 export function main(argv, env = process.env) {
-    if (env.CI || env.GITHUB_ACTIONS) {
+    // 先解析参数:--verify 只用内置公钥核对,在 CI 里允许;签名在 CI 里永远拒绝
+    const args = parseArgs(argv);
+    const inCi = Boolean(env.CI || env.GITHUB_ACTIONS);
+    if (args.verify && (args.key !== undefined || args.keyId !== undefined || args.allowUnknownKeyId)) {
+        throw new SignError(
+            '--verify only uses the built-in public keys; it cannot be combined with --key, --key-id or --allow-unknown-key-id',
+        );
+    }
+    if (inCi && !args.verify) {
         throw new SignError('refusing to run in CI: signing keys must never be available to CI or GitHub Secrets');
     }
-    const args = parseArgs(argv);
     if (args.verify) {
         // 只用公钥核对已发布的一对文件,不需要也不接受私钥
         const indexPath = resolve(args.index ?? 'index.json');

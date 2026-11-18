@@ -163,7 +163,7 @@ M7 没有、因此一律拒绝的能力:读写用户文件夹(ADR 0011 的授权
 Node 24 的权限模型管文件、子进程、worker、addon、WASI,**不管网络**。所以「声明了 `net` 才能联网」在 M7 由多层共同保证,不是一道硬墙:
 
 1. **运行时预加载**(`--import` 主程序自带的预加载脚本,在插件代码之前运行):删除全局 `fetch`、`WebSocket`、`EventSource`;用同步模块钩子(`module.registerHooks`,同时覆盖 ESM `import`、CJS `require` 以及 `module.createRequire` 得到的 `require`)拒绝 `node:net`、`node:tls`、`node:http`、`node:https`、`node:http2`、`node:dgram`、`node:dns`、`node:child_process`、`node:worker_threads`、`node:cluster`、`node:inspector`、`node:vm`、`node:repl`、`node:sqlite`;`process.binding` 与 `process.dlopen` 置为抛错(后者另有权限模型不给 `--allow-addons` 兜底)。SDK 的 `ctx.fetch` 走 `fatcat/net.fetch`。
-2. **市场审核**:索引仓库的 CI 对包做静态检查(打包产物里不得出现上述模块名、`process.binding`、`process.dlopen`,以及 `eval` / `new Function` 动态拼接这些名字),人工审核 PR(第 5.2 节)。
+2. **市场审核**:索引仓库的 CI 对包做静态检查(`scripts/plugins/check-index.mjs`),人工审核 PR(第 5.2 节)。静态检查**只认真正加载模块的写法**:`import … from 'm'`、`import 'm'`、`export … from 'm'`、`import('m')`、`require('m')`(含 esbuild 的 `__require('m')`)、`process.getBuiltinModule('m')`、`createRequire(…)('m')`,模块名可带 `node:` 前缀与 `/promises`;另外查 `process.binding`、`process.dlopen`、`process._linkedBinding`、`eval(`、`new Function(`。普通字符串里出现的模块名(例如打包进来的 shared 里的 `'net'`、`'tls'` 选项名)不算命中,否则任何带 shared 的打包产物都会被误拒。**局限**:只看字面量,运行时拼出来的名字、先把 `createRequire` 的结果存进变量再调用、把加载函数当参数传递都识别不出来;这些由第 1 层的预加载钩子与操作系统层拦截,静态检查只是人工审核前的初筛,不是第二道硬墙。
 3. **将来的硬隔离**:Node 的网络权限进入 LTS 后,运行时检测到就启用,第 1 层变为后备。
 
 越权用例对上面每个模块名、`import` / `require` / `createRequire` 三种加载方式、`process.binding`、`process.dlopen` 各写一条;**`node:sqlite` 这类不涉及网络、但能绕开文件限制的内置模块,在权限模型下能否被拦住要在三个平台实测**(第 11 节 PR 2b 的第一步),拦不住的进入第 1 层的拒绝名单。安装界面对「本地目录、未签名」的插件额外显示「未经市场审核」。

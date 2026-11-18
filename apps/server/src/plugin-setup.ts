@@ -190,11 +190,15 @@ export function protectionTable(
         { key: 'environment', level: 'enforced', detail: 'The server environment is not inherited.' },
         {
             key: 'brokered-network',
-            level: 'none',
-            detail: 'Requests through the server (fatcat/net.fetch) arrive in a later release; the plugin has no network access through the server yet.',
+            level: 'enforced',
+            detail: 'Requests through the server (fatcat/net.fetch) can only reach the domains listed under permissions.net, go through the same SSRF checks as the built-in web tools, and are limited in time and size (2 MiB).',
         },
         direct,
-        { key: 'items-quota', level: 'none', detail: 'Knowledge-map items from plugins arrive in a later release.' },
+        {
+            key: 'items-quota',
+            level: 'enforced',
+            detail: 'A plugin can keep at most 50,000 knowledge-map items; larger pushes are rejected.',
+        },
         memory,
         {
             key: 'review',

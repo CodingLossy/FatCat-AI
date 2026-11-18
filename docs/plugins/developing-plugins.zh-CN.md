@@ -14,7 +14,35 @@ my-plugin/
   server.mjs      # 一个文件:把依赖打包进去
 ```
 
-清单与代码见英文版第 1 节(两者相同)。带设置、经服务器代发的网络请求、知识地图条目和任务模板的完整示例在
+```json
+{
+  "manifestVersion": 1,
+  "id": "hello",
+  "version": "0.1.0",
+  "name": { "en": "Hello" },
+  "description": { "en": "Greets people" },
+  "author": "You",
+  "license": "Apache-2.0",
+  "engines": { "fatcat": ">=1.1.0" },
+  "entry": { "type": "mcp-stdio", "main": "server.mjs" },
+  "permissions": { "tools": [{ "name": "hello", "risk": "read" }] }
+}
+```
+
+```js
+import { definePlugin } from '@fatcat-ai/plugin-sdk';
+
+const plugin = definePlugin({ name: 'hello', version: '0.1.0' });
+plugin.registerTool({
+  name: 'hello',
+  description: 'Greet someone by name.',
+  inputSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
+  handler: (args) => `Hello, ${String(args.name)}!`,
+});
+await plugin.run();
+```
+
+带设置、经服务器代发的网络请求、知识地图条目和任务模板的完整示例在
 [`examples/plugins/hello`](../../examples/plugins/hello)。也可以把已有的 JavaScript MCP 服务器打包成插件:把它打成单个
 `.mjs` 文件,在 `permissions.tools` 里列出它的工具名,`entry.main` 指向它即可;这种情况下不需要 SDK,因为协议就是普通的 MCP。
 
@@ -22,14 +50,14 @@ my-plugin/
 
 清单的 `permissions` 就是全部契约。用户安装前能看到全部内容,没写在里面的一律不能用:
 
-| 字段                 | 含义                                                                                                            |
-| -------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `tools[]`            | 工具名与级别:`read`、`write`、`external`,不允许 `dangerous`。`sendsData: true` 表示工具会把用户的数据发到外部。 |
-| `net[]`              | 插件可以经服务器(`ctx.fetch`)访问的域名;`*.com` 这类过宽的写法会被拒绝。                                        |
-| `secrets[]`          | 密钥名(大写下划线,不能以 `FATCAT_AI_` 开头);用户把每个密钥绑定到 `env:名字` 引用,值不会被保存。                 |
-| `items.categories[]` | 插件提供的知识地图条目类别。                                                                                    |
+| 字段                 | 含义                                                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `tools[]`            | 工具名与声明的级别:`read`、`write`、`external`(不允许 `dangerous`)。`sendsData: true` 表示工具会把用户的数据发到外部。  |
+| `net[]`              | 插件可以经服务器(`ctx.fetch`)访问的域名;`*.com` 这类过宽的写法会被拒绝。                                                |
+| `secrets[]`          | 密钥名(大写下划线,不能以 `FATCAT_AI_` 或改名前的旧前缀 `AIP_` 开头);用户把每个密钥绑定到 `env:名字` 引用,值不会被保存。 |
+| `items.categories[]` | 插件提供的知识地图条目类别。                                                                                            |
 
-插件提供了但没声明的工具不会被注册。带 `sendsData` 或 `net` 权限的工具至少按 `external` 处理,不能预授权。
+插件提供了但没声明的工具不会被注册。工具实际的级别是声明的级别加两条下限:只要插件声明了任何 `net` 域名,`read` 工具就被提到 `write`;带 `sendsData: true` 的工具一律是 `external`,不能预授权。单有 `net` 权限不会让工具变成 `external`。
 
 ## 3. SDK 提供什么
 
@@ -49,7 +77,7 @@ my-plugin/
 尤其是直接联网:只有在有操作系统层隔离的平台上才由系统拦截;没有的平台上,本地目录里的插件根本不能声明 `net`,只有经过审核的市场插件可以。
 安装页没有标为「强制」的事,不要指望沙箱兜底。
 
-插件自己的数据放在服务器提供的目录里(`ctx.dataDir`,即 `plugin-data/<id>/`);它不在服务器的自动备份里,但升级前服务器会复制一份。
+插件自己的数据放在服务器提供的目录里(`ctx.dataDir`,即 `plugin-data/<id>/`)。它不在服务器的常规备份里,但每次升级前服务器会复制一份。如果这个目录超过 500 MiB,服务器不复制:升级会被拒绝(`plugin_backup_too_large`),直到用户确认「不备份直接升级」(`skipDataBackup`);这样升级后如果失败,数据无法恢复。大缓存请放在别处,或者保持很小。
 
 ## 5. 本地安装与测试
 
@@ -62,8 +90,8 @@ my-plugin/
 ## 6. 版本、升级与回退
 
 使用语义化版本。安装已装插件的更高版本时,对话框会列出权限变化:新工具、级别升高、新增 `sendsData`、新域名、新密钥和新类别都需要用户同意。
-服务器会备份 `plugin-data/<id>/`,启动新版本,检查握手和 `tools/list` 正常且**你声明的每个工具都在**;不通过就恢复旧版本和数据。
-用户可以在插件页回退到上一个版本,所以请让插件的数据格式向后兼容一个版本,这样回退后仍能工作。
+服务器会备份 `plugin-data/<id>/`(超过 500 MiB 的例外见第 4 节),启动新版本,检查握手和 `tools/list` 正常且**你声明的每个工具都在**;不通过就恢复旧版本和数据。
+用户也可以在插件页回退到上一个版本,所以请让插件的数据格式向后兼容一个版本,这样回退后仍能工作。
 
 `engines.fatcat` 是你支持的服务器版本范围(`>=1.1.0` 或 `>=1.1.0 <2.0.0`)。服务器之后升级到范围之外时,插件会被标为不兼容、不启动,直到你发布兼容的版本。
 
@@ -71,8 +99,13 @@ my-plugin/
 
 官方市场是公开仓库里的一份签名的 `index.json`。包是根目录有 `plugin.json` 的 `.tgz`(不能有符号链接、硬链接、`..`、盘符或 Windows 保留名;大小与文件数有上限)。
 索引按版本列出下载地址、大小、sha256、权限与 `engines`;客户端会验证签名、校验和,以及包内 `plugin.json` 与索引条目一致。
-先过维护者的 CI 检查与审核,再离线签名;索引工具见 [`scripts/plugins/README.md`](../../scripts/plugins/README.md)。
-签名与校验和只说明包就是审核时的那个,不保证它无害。
+先过维护者的 CI 检查与审核,再离线签名。
+
+打包方法:把入口打成单个文件(例如 esbuild 的 `--bundle --platform=node --format=esm`),放在 `plugin.json` 旁边,运行
+`node scripts/plugins/pack-plugin.mjs <目录>`。输出可复现(同一个目录永远得到同样的字节),并用与索引 CI 相同的读取器和静态扫描自检,
+最后打印大小、sha256 和 `index.json` 里这个版本的条目草稿。静态扫描只查加载被拒绝内置模块的写法(`import`、`import()`、`require`、`createRequire`、
+`getBuiltinModule`)、`process.binding`、`process.dlopen`、`eval` 和 `new Function`;运行时拼出来的名字它看不到,那部分由第 4 节的沙箱负责。
+索引工具见 [`scripts/plugins/README.md`](../../scripts/plugins/README.md)。签名与校验和只说明包就是审核时的那个,不保证它无害。
 
 ## 8. 许可
 
