@@ -121,6 +121,19 @@ export function ChatView({
         }
     });
     const [error, setError] = useState<string | null>(null);
+    // 会话地图的「分叉点」链接:/s/<id>?m=<消息 id> 滚动到该消息并短暂高亮,然后去掉参数。
+    const located = useRef(false);
+    useEffect(() => {
+        if (located.current || messages.length === 0) return;
+        const id = new URLSearchParams(window.location.search).get('m');
+        if (!id) return;
+        located.current = true;
+        window.history.replaceState(null, '', window.location.pathname);
+        const el = document.querySelector(`[data-message-id="${CSS.escape(id)}"]`);
+        el?.scrollIntoView?.({ block: 'center' });
+        el?.classList.add('located');
+        setTimeout(() => el?.classList.remove('located'), 2500);
+    }, [messages]);
     /** 最近一轮用到的记忆;下一轮开始时清空。 */
     const [used, setUsed] = useState<{
         runId: string | null;
@@ -620,7 +633,7 @@ export function ChatView({
             <div className="messages" data-testid="messages">
                 {messages.length === 0 && !live ? <p className="muted empty">{t('chat.empty')}</p> : null}
                 {messages.map((m) => (
-                    <div key={m.id} className={`message ${m.role}`} data-status={m.status}>
+                    <div key={m.id} className={`message ${m.role}`} data-status={m.status} data-message-id={m.id}>
                         {m.role === 'user' ? <p className="user-text">{textOf(m)}</p> : <Markdown text={textOf(m)} />}
                         {m.role === 'user' ? <MessageImages message={m} /> : null}
                         {toolsOf(m, results).map((tool) => (

@@ -1194,3 +1194,47 @@ td .badge {
     outline: 2px solid var(--accent, #2563eb);
     outline-offset: 2px;
 }
+
+.map-view {
+    display: flex;
+    justify-content: center;
+}
+
+.map-canvas {
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.map-canvas:focus-visible {
+    outline: 2px solid var(--accent, #2563eb);
+    outline-offset: 2px;
+}
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    list-style: none;
+    padding: 0;
+    margin: 0.4rem 0;
+}
+
+.legend .swatch {
+    display: inline-block;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 50%;
+    margin-right: 0.3rem;
+    vertical-align: middle;
+}
+
+.legend .swatch.conflict {
+    border: 2px solid #dc2626;
+    background: transparent;
+}
+
+.message.located {
+    outline: 2px solid #16a34a;
+    outline-offset: 2px;
+}

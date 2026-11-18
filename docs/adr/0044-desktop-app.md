@@ -67,6 +67,8 @@
 
 按《记忆模块补充设计》第 7、9 节:记忆簇按类型着色、亮度表示置信度与分层、冲突描边;会话地图 2D 画布(fork 关系、点击定位到消息、与知识地图互跳)。数据来自现有 `/memory` 与 `/sessions` API,不新增端点;如果缺字段(比如 fork 关系)先写 ADR 再增量加。
 
+**实现(第五个 PR)**:与粒子球一样用 Canvas 2D,布局与命中测试是 `packages/ui/src/map-viz` 里的纯函数。记忆簇按 `memType` 分簇着色,亮度 = 置信度 × 分层(active 1、cold 0.7、archive 0.45;钉住的至少 0.8;已更替 / 撤回 / 过期很淡),`status` 为 conflicted 或在未处理冲突里的记忆红色描边,点击定位到下面的记忆卡片。会话地图是新页面 `/session-map`,只画有 `forkedFromSessionId` 关系的会话(其余只显示个数);选中后可打开会话、定位到分叉点消息(`/s/<id>?m=<消息 id>`,滚动并短暂高亮)、在知识地图里定位该会话条目(`/items?session=<id>`)。**已知缺口**:目前应用里还没有创建分叉的入口(只有数据字段),所以真实数据里会话地图暂时是空状态;创建分叉另做一个 PR,先写方案。分叉点消息只在它已加载的消息页内才能定位。
+
 ### 7. 安装包、更新与发布
 
 - 三平台安装包(Windows MSI / NSIS、macOS dmg、Linux AppImage / deb / rpm)在 CI 的三个系统 runner 上构建。**不买付费代码签名**:macOS ad-hoc 签名、Windows 不签,安装说明写「右键 → 打开」/ `xattr -dr com.apple.quarantine` / SmartScreen「仍要运行」(进文档站)。
