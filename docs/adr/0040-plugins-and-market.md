@@ -466,6 +466,7 @@ ALTER TABLE tasks ADD COLUMN disabled_reason TEXT;
 - **`fatcat/net.fetch`、`fatcat/items.upsert`**:授权判定与 `denied` 事件已实现(未授权 → `permission_denied`,1 分钟内超过 20 次停用插件);已授权时回「当前版本不可用」,真正的代发与条目写入在 PR 3。外连清单已经列出每个授权域名(类别 `plugin`)。
 - **新增的错误码**(ADR 0030 允许的增量):`plugin_package_invalid`、`plugin_manifest_invalid`、`plugin_incompatible`、`plugin_secrets_missing`、`plugin_staging_not_found`;另有 `GET /plugins/{id}`(含卸载会停用的任务),方便 PR 2c 的卸载对话框。
 - **拒绝名单再加三个、并封死钩子入口**(X 审查 @ 3be4791):`module`(否则插件能 `registerHooks` 注册后到先执行的钩子,用 `shortCircuit` 把别名指向 `node:http` 绕过拒绝)、`wasi`、`v8`;同时把 `Module.registerHooks` / `Module.register` 置为抛错(`module.constructor` 在 CommonJS 里不经 `import` 也能拿到)。越权用例覆盖这些模块的 7 种加载方式、钩子绕过(并起本机端口确认连不上)、运行中建符号链接 / 硬链接。
+- **网络隔离靠预加载,不靠 Node**:Node 24 没有 `--allow-net`。除模块加载入口外还要盘点「已经存在的对象」能拿到的类:插件的 stdin / stdout 是 `net.Socket`(管道),`process.stdin.constructor` 不 import 任何模块就能 `new` 并 `connect`(TCP 与 Unix socket / 命名管道),底层 `Pipe` handle 也有 `connect` / `open` / `bind` / `listen`。预加载先创建三条标准流,再把 `net.Socket.prototype.connect` 与这些 handle 方法封死(spawn 时的管道不走 `connect`,JSON-RPC 不受影响),`tty` 也加入拒绝名单。解析入口(`Module._resolveFilename` / `_load` / `_findPath`)锁死,resolve 钩子按**解析结果**再检查一次,另有 load 钩子。以后每加一个入口,回归用例按「最终能否连上本机端口」写。
 - **已知限制**:同一用户下插件仍能给主进程发信号;预加载把 `process.kill` 对父进程与进程组的调用挡掉,这只防误用,不是边界。密钥脱敏按原文、base64、base64url、URL 编码替换,插件自己做的其他变换(例如拆开再拼)不保证被发现。
 - **不在 PR 2b**:市场与下载(PR 4)、升级与回退(PR 5)、Web 与 CLI(PR 2c)、`fatcat/net.fetch` 与知识地图条目(PR 3)。
 

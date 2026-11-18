@@ -3,6 +3,7 @@
 
 // 插件运行时的越权用例与生命周期(ADR 0040 第 11 节 PR 2b 验收)。用的是一个真实的 node 子进程,不是替身。
 import { createServer } from 'node:http';
+import { createServer as createNetServer } from 'node:net';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -139,7 +140,7 @@ describe('plugin runtime', () => {
         const table = JSON.parse(await run(h, 'probe', { attack: 'builtins' })) as Record<string, string>;
         const allowed = Object.entries(table).filter(([, v]) => v !== 'blocked');
         expect(allowed).toEqual([]);
-        expect(Object.keys(table)).toHaveLength(17 * 7);
+        expect(Object.keys(table)).toHaveLength(18 * 7);
         for (const attack of ['binding', 'dlopen', 'fetch']) {
             expect(await run(h, 'probe', { attack })).toMatch(/^blocked/);
         }
@@ -178,6 +179,34 @@ describe('plugin runtime', () => {
             }
         } finally {
             server.close();
+        }
+    }, 60_000);
+
+    it('cannot connect through the stdio sockets that already exist, over TCP or a Unix socket, and JSON-RPC still works', async () => {
+        await h.runtime.apply(h.record);
+        const tcp = createNetServer((socket) => socket.end('SERVER-SECRET'));
+        await new Promise<void>((resolve) => tcp.listen(0, '127.0.0.1', resolve));
+        const port = String((tcp.address() as { port: number }).port);
+        const socketPath = join(h.root, 'local.sock');
+        const unix = createNetServer((socket) => socket.end('SERVER-SECRET'));
+        await new Promise<void>((resolve) => unix.listen(socketPath, resolve));
+        try {
+            for (const [attack, arg] of [
+                ['stdin-socket', port],
+                ['stdout-socket', port],
+                ['stdin-socket', socketPath],
+                ['stdout-socket', socketPath],
+                ['pipe-handle', socketPath],
+            ] as const) {
+                const result = await run(h, 'probe', { attack, arg });
+                expect(result, `${attack} ${arg}`).toContain('ERR_ACCESS_DENIED');
+                expect(result).not.toContain('SERVER-SECRET');
+            }
+            // 正向对照:标准流上的 JSON-RPC 照常工作
+            expect(await run(h, 'echo', { text: 'still works' })).toBe('still works');
+        } finally {
+            tcp.close();
+            unix.close();
         }
     }, 60_000);
 

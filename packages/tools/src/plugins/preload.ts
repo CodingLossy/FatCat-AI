@@ -5,6 +5,7 @@
 // 这是多层防护的第一层,不是硬墙:Node 的权限模型管文件、子进程、worker、addon,不管网络。
 // 本文件只依赖 node:module,不能引入别的模块(权限模型下只允许读本文件与插件目录)。
 import Module, { registerHooks } from 'node:module';
+import net from 'node:net';
 
 /** 被拒绝的内置模块(同时拒绝带 `node:` 前缀与不带前缀的写法,以及它们的子路径如 `dns/promises`)。 */
 export const DENIED_BUILTINS = [
@@ -26,6 +27,7 @@ export const DENIED_BUILTINS = [
     'module',
     'wasi',
     'v8',
+    'tty',
     '_http_agent',
     '_http_client',
     '_http_common',
@@ -107,6 +109,22 @@ Object.defineProperty(process, 'kill', {
     writable: false,
     configurable: false,
 });
+
+// 「已经存在的对象」也能连网:插件的 stdin / stdout 是 net.Socket(管道),`process.stdin.constructor` 就是 net.Socket,
+// 底层 handle(Pipe)有 connect / open / bind / listen。先创建好三条标准流(spawn 时的管道不走 connect),再把这些入口封死。
+const lockedConnect = () => deny('Opening network connections');
+const lock = (target: object | null | undefined, names: readonly string[]): void => {
+    if (!target) return;
+    for (const name of names) {
+        if (typeof (target as Record<string, unknown>)[name] !== 'function') continue;
+        Object.defineProperty(target, name, { value: lockedConnect, writable: false, configurable: false });
+    }
+};
+lock(net.Socket.prototype, ['connect', '_connect']);
+for (const stream of [process.stdin, process.stdout, process.stderr]) {
+    const handle = (stream as unknown as { _handle?: object | null })._handle;
+    lock(handle ? Object.getPrototypeOf(handle) : null, ['connect', 'connect6', 'open', 'bind', 'bind6', 'listen']);
+}
 
 for (const name of ['binding', '_linkedBinding', 'dlopen', '_kill', '_debugProcess'] as const) {
     Object.defineProperty(process, name, {

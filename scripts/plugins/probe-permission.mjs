@@ -6,6 +6,7 @@
 // 用法:先 `pnpm build`,再 `node scripts/plugins/probe-permission.mjs`。Windows、Linux、macOS 各跑一次。
 import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
+import { createServer as createNetServer } from 'node:net';
 import { cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -116,8 +117,8 @@ try {
         .filter(([, v]) => v !== 'blocked')
         .map(([k]) => k);
     record(
-        'all 17 denied built-in modules blocked under import, bare import, createRequire, getBuiltinModule, Module._load and data URLs',
-        allowed.length === 0 && Object.keys(table).length === 119,
+        'all 18 denied built-in modules blocked under import, bare import, createRequire, getBuiltinModule, Module._load and data URLs',
+        allowed.length === 0 && Object.keys(table).length === 126,
         allowed.join(', '),
     );
     // 绕过检查:用 Module.registerHooks 把别名指向 node:http 再连本机端口;给父进程发信号;运行中新建链接
@@ -136,6 +137,24 @@ try {
         await expectBlocked('rewrite Module._load to reach node:http', 'loadpatch', port);
     } finally {
         patched.close();
+    }
+    // 已经存在的标准流是 net.Socket / Pipe:不 import 任何模块也能连网,必须被拦(Windows 上 Unix socket 用命名管道)
+    const sockPath =
+        process.platform === 'win32' ? `\\\\.\\pipe\\fatcat-probe-${process.pid}` : join(base, 'probe.sock');
+    const tcpServer = createNetServer((socket) => socket.end('SERVER-SECRET'));
+    const unixServer = createNetServer((socket) => socket.end('SERVER-SECRET'));
+    await new Promise((resolve) => tcpServer.listen(0, '127.0.0.1', resolve));
+    await new Promise((resolve) => unixServer.listen(sockPath, resolve));
+    try {
+        const tcpPort = String(tcpServer.address().port);
+        await expectBlocked('process.stdin.constructor (net.Socket) to TCP', 'stdin-socket', tcpPort);
+        await expectBlocked('process.stdout.constructor (net.Socket) to TCP', 'stdout-socket', tcpPort);
+        await expectBlocked('process.stdin.constructor to a Unix socket / named pipe', 'stdin-socket', sockPath);
+        await expectBlocked('process.stdin._handle.constructor (Pipe) connect', 'pipe-handle', sockPath);
+        record('JSON-RPC over stdio still works after the socket lock', (await probe('env')).startsWith('['));
+    } finally {
+        tcpServer.close();
+        unixServer.close();
     }
     await expectBlocked('process._kill on the parent', 'kill2');
     await expectBlocked('Module.register', 'register');

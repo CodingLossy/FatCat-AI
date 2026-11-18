@@ -51,6 +51,7 @@ const BUILTINS = [
     'module',
     'wasi',
     'v8',
+    'tty',
 ];
 const HOWS = ['import', 'importbare', 'require', 'createRequire', 'getBuiltinModule', 'moduleLoad', 'dataUrl'];
 const Module = module.constructor;
@@ -136,6 +137,26 @@ async function attack(kind, arg) {
                     res.on('data', (d) => (data += d));
                     res.on('end', () => resolve(data));
                 }).on('error', reject);
+            });
+            return `ALLOWED: reached local server: ${body}`;
+        }
+        if (kind === 'stdin-socket' || kind === 'stdout-socket' || kind === 'pipe-handle') {
+            // 不 import 任何模块:从已经存在的标准流拿到 net.Socket / Pipe,连本机 TCP 端口或 Unix socket(arg)
+            const target = /^\d+$/.test(arg) ? [Number(arg), '127.0.0.1'] : [arg];
+            if (kind === 'pipe-handle') {
+                const Handle = process.stdin._handle.constructor;
+                const handle = new Handle(0);
+                handle.connect({}, arg);
+                return 'ALLOWED: Pipe.connect';
+            }
+            const Socket = (kind === 'stdin-socket' ? process.stdin : process.stdout).constructor;
+            const body = await new Promise((resolve, reject) => {
+                const socket = new Socket();
+                let data = '';
+                socket.on('error', reject);
+                socket.on('data', (d) => (data += d));
+                socket.on('end', () => resolve(data));
+                socket.connect(...target, () => socket.write('GET / HTTP/1.0\r\n\r\n'));
             });
             return `ALLOWED: reached local server: ${body}`;
         }
