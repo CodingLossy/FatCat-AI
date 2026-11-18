@@ -21,7 +21,8 @@ export interface PluginLaunchInput {
     dataDir: string;
     /** 清单 `entry.main`(包内相对路径)。 */
     main: string;
-    preload?: string | undefined;
+    /** 预加载脚本;null 表示不加(只用于测试操作系统层是否独立生效)。 */
+    preload?: string | null | undefined;
     /** 可选:V8 堆上限(MiB);默认不传。 */
     maxOldSpaceMiB?: number | undefined;
     maxSemiSpaceMiB?: number | undefined;
@@ -29,19 +30,16 @@ export interface PluginLaunchInput {
 
 /** `node` 的参数(不含可执行文件本身)。不给 --allow-child-process / --allow-worker / --allow-addons / --allow-wasi。 */
 export function pluginNodeArgs(input: PluginLaunchInput): string[] {
-    const preload = input.preload ?? preloadScriptPath();
+    const preload = input.preload === null ? null : (input.preload ?? preloadScriptPath());
     const code = resolve(input.codeDir);
     const data = resolve(input.dataDir);
-    const args = [
-        '--permission',
-        `--allow-fs-read=${code}`,
-        `--allow-fs-read=${data}`,
-        `--allow-fs-read=${preload}`,
-        `--allow-fs-write=${data}`,
-    ];
+    const args = ['--permission', `--allow-fs-read=${code}`, `--allow-fs-read=${data}`];
+    if (preload) args.push(`--allow-fs-read=${preload}`);
+    args.push(`--allow-fs-write=${data}`);
     if (input.maxOldSpaceMiB) args.push(`--max-old-space-size=${Math.floor(input.maxOldSpaceMiB)}`);
     if (input.maxSemiSpaceMiB) args.push(`--max-semi-space-size=${Math.floor(input.maxSemiSpaceMiB)}`);
-    args.push(`--import=${pathToFileUrlSafe(preload)}`, join(code, input.main));
+    if (preload) args.push(`--import=${pathToFileUrlSafe(preload)}`);
+    args.push(join(code, input.main));
     return args;
 }
 

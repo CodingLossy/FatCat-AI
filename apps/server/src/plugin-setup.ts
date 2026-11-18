@@ -23,6 +23,7 @@ import type {
     PluginRuntime,
     PluginRuntimeRecord,
     PluginRuntimeSettings,
+    NetIsolation,
 } from '@fatcat-ai/tools/plugins';
 import { ApiError, notFound } from './errors.js';
 import { SERVER_VERSION } from './version.js';
@@ -61,7 +62,23 @@ interface Staged {
     createdAt: number;
 }
 
-export function protectionTable(platform: NodeJS.Platform = process.platform, unreviewed = true): PluginProtection[] {
+export function protectionTable(
+    platform: NodeJS.Platform = process.platform,
+    unreviewed = true,
+    netIsolation: 'unshare' | 'sandbox-exec' | 'none' = 'none',
+): PluginProtection[] {
+    const direct: PluginProtection =
+        netIsolation === 'none'
+            ? {
+                  key: 'direct-network',
+                  level: 'layered',
+                  detail: 'This platform cannot deny network access to the plugin process without extra privileges; network modules and sockets are blocked by a preload script, which is layered protection, not a guarantee.',
+              }
+            : {
+                  key: 'direct-network',
+                  level: 'enforced',
+                  detail: `The operating system denies network access to the plugin process (${netIsolation === 'unshare' ? 'empty Linux network namespace' : 'macOS sandbox profile'}); the preload script is an extra layer.`,
+              };
     const hostFiles: PluginProtection =
         platform === 'linux'
             ? {
@@ -96,11 +113,7 @@ export function protectionTable(platform: NodeJS.Platform = process.platform, un
             level: 'none',
             detail: 'Requests through the server (fatcat/net.fetch) arrive in a later release; the plugin has no network access through the server yet.',
         },
-        {
-            key: 'direct-network',
-            level: 'layered',
-            detail: 'Network modules and global fetch are blocked by a preload script; this is layered protection, not a guarantee.',
-        },
+        direct,
         { key: 'items-quota', level: 'none', detail: 'Knowledge-map items from plugins arrive in a later release.' },
         memory,
         {
@@ -113,6 +126,7 @@ export function protectionTable(platform: NodeJS.Platform = process.platform, un
 
 export class PluginService {
     private runtime: PluginRuntime | null = null;
+    private netIsolation: NetIsolation | null = null;
     private loading: Promise<PluginRuntime> | null = null;
     private readonly staged = new Map<string, Staged>();
     readonly codeRoot: string;
@@ -132,8 +146,11 @@ export class PluginService {
     private async load(): Promise<PluginRuntime> {
         const registry = this.options.registry;
         if (!registry) throw new Error('tools are not enabled on this server');
-        this.loading ??= import('@fatcat-ai/tools/plugins').then(({ PluginRuntime: Runtime }) => {
+        this.loading ??= import('@fatcat-ai/tools/plugins').then(({ PluginRuntime: Runtime, detectNetIsolation }) => {
+            this.netIsolation ??= detectNetIsolation();
+            this.options.log?.info({ netIsolation: this.netIsolation.kind }, 'plugin network isolation');
             const runtime = new Runtime({
+                netIsolation: this.netIsolation,
                 registry,
                 codeRoot: this.codeRoot,
                 dataRoot: this.dataRoot,
@@ -305,7 +322,9 @@ export class PluginService {
 
     /** 复制并检查本地目录;不运行插件的任何代码。 */
     async prepareLocal(ownerId: string, sourcePath: string): Promise<PluginPrepared> {
-        const { prepareLocalPackage, PluginPackageError } = await import('@fatcat-ai/tools/plugins');
+        const { prepareLocalPackage, PluginPackageError, detectNetIsolation } =
+            await import('@fatcat-ai/tools/plugins');
+        this.netIsolation ??= detectNetIsolation();
         mkdirSync(this.stagingRoot, { recursive: true });
         let prepared;
         try {
@@ -332,7 +351,7 @@ export class PluginService {
         return {
             stagingId,
             manifest: prepared.manifest,
-            protections: protectionTable(process.platform, true),
+            protections: protectionTable(process.platform, true, this.netIsolation.kind),
             unreviewed: true,
             installed:
                 existing && existing.state !== 'uninstalled'

@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const { StdioMcpClient } = await import(pathToFileURL(join(root, 'packages/tools/dist/mcp/index.js')).href);
-const { pluginEnv, pluginNodeArgs, preloadScriptPath, findReparsePoint } = await import(
+const { pluginEnv, pluginNodeArgs, preloadScriptPath, findReparsePoint, detectNetIsolation } = await import(
     pathToFileURL(join(root, 'packages/tools/dist/plugins/index.js')).href
 );
 const fixture = join(root, 'packages/tools/src/plugins/fixtures/probe-plugin.js');
@@ -179,8 +179,55 @@ try {
     rmSync(base, { recursive: true, force: true });
 }
 
+// 操作系统层的网络隔离(不加预加载,只靠操作系统):可用时必须连不上本机端口;不可用时只报告,不算失败
+const isolation = detectNetIsolation();
+let isolationNote = `OS network isolation: ${isolation.kind === 'none' ? 'not available on this platform (direct network stays "layered")' : isolation.kind}`;
+if (isolation.kind !== 'none') {
+    const isoRoot = realpathSync(mkdtempSync(join(tmpdir(), 'fatcat-iso-')));
+    const isoCode = join(isoRoot, 'code');
+    const isoData = join(isoRoot, 'data');
+    for (const dir of [isoCode, join(isoData, 'home'), join(isoData, 'tmp')]) mkdirSync(dir, { recursive: true });
+    cpSync(fixture, join(isoCode, 'probe-plugin.js'));
+    const server = createNetServer((socket) => socket.end('SERVER-SECRET'));
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const launch = isolation.wrap(
+        process.execPath,
+        pluginNodeArgs({ codeDir: isoCode, dataDir: isoData, main: 'probe-plugin.js', preload: null }),
+    );
+    const isoClient = new StdioMcpClient(
+        {
+            command: launch.command,
+            args: launch.args,
+            cwd: isoData,
+            envPassthrough: [],
+            rawEnv: pluginEnv({ pluginId: 'probe', dataDir: isoData, secrets: {} }),
+        },
+        { timeoutMs: 20_000 },
+    );
+    try {
+        await isoClient.connect();
+        const reply = await isoClient.callTool('probe', { attack: 'stdin-socket', arg: String(server.address().port) });
+        const text = String(reply.content?.[0]?.text ?? '');
+        record(
+            `OS layer alone (${isolation.kind}, no preload) blocks a TCP connection`,
+            text.startsWith('blocked') && !text.includes('SERVER-SECRET'),
+            text.slice(0, 100),
+        );
+    } catch (error) {
+        record(
+            `OS layer alone (${isolation.kind}) starts the plugin`,
+            false,
+            error instanceof Error ? error.message : String(error),
+        );
+    } finally {
+        await isoClient.shutdown(1000, 500).catch(() => undefined);
+        server.close();
+        rmSync(isoRoot, { recursive: true, force: true });
+    }
+}
+
 const width = Math.max(...results.map((r) => r.name.length));
-console.log(`\nPlatform: ${process.platform} ${process.arch}, Node ${process.version}\n`);
+console.log(`\nPlatform: ${process.platform} ${process.arch}, Node ${process.version}\n${isolationNote}\n`);
 for (const r of results) console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name.padEnd(width)}  ${r.ok ? '' : r.detail}`);
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} passed`);

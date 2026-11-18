@@ -2,6 +2,13 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 插件运行时的独立入口(@fatcat-ai/tools/plugins):只在安装了插件时才动态导入(ADR 0040 第 8 节)。
+export {
+    detectNetIsolation,
+    NO_NET_ISOLATION,
+    type NetIsolation,
+    type NetIsolationKind,
+    SANDBOX_PROFILE,
+} from './isolation.js';
 export { findReparsePoint, pluginEnv, pluginNodeArgs, preloadScriptPath } from './launch.js';
 export {
     badPackagePath,

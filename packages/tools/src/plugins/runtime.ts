@@ -22,6 +22,7 @@ import { MAX_RESULT_CHARS, resultText, toolSegment } from '../mcp/manager.js';
 import type { ToolRegistry } from '../registry.js';
 import { type ToolDefinition, ToolDeniedError } from '../types.js';
 import { findReparsePoint, pluginEnv, pluginNodeArgs } from './launch.js';
+import { NO_NET_ISOLATION, type NetIsolation } from './isolation.js';
 import { hashPluginDir } from './package.js';
 
 const execFileAsync = promisify(execFile);
@@ -94,6 +95,8 @@ export interface PluginRuntimeOptions {
     onState: (ownerId: string, pluginId: string, state: 'error' | 'disabled', error: string) => void;
     log?: { info(obj: object, msg: string): void; warn(obj: object, msg: string): void };
     readRss?: (pid: number) => Promise<number | null>;
+    /** 操作系统层面的网络隔离(detectNetIsolation 的结果);不给时不包装。 */
+    netIsolation?: NetIsolation;
 }
 
 interface Entry {
@@ -302,10 +305,14 @@ export class PluginRuntime {
             maxSemiSpaceMiB: runtime.maxSemiSpaceMiB,
         });
         const redact = (text: string) => redactSecrets(text, entry.secretValues);
+        const launch = (this.options.netIsolation ?? NO_NET_ISOLATION).wrap(
+            this.options.nodePath ?? process.execPath,
+            args,
+        );
         const client = new StdioMcpClient(
             {
-                command: this.options.nodePath ?? process.execPath,
-                args,
+                command: launch.command,
+                args: launch.args,
                 cwd: dataDir,
                 envPassthrough: [],
                 rawEnv: pluginEnv({
