@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
+import { watchParentExit } from './parent-exit.js';
 import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -374,3 +375,4 @@ function shutdown(signal: string): void {
 }
 
 installShutdownHandlers({ proc: process, release: () => releaseLock(), shutdown });
+watchParentExit({ env: process.env, stdin: process.stdin, onParentExit: () => shutdown('parent-exit') });

@@ -18,6 +18,9 @@ export const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
 function workerEntry(): { url: URL; execArgv: string[] } {
     const js = new URL('./worker.js', import.meta.url);
     if (existsSync(fileURLToPath(js))) return { url: js, execArgv: [] };
+    // 打包成单文件后 worker 与入口并列,命名为 docs-worker.mjs。
+    const bundled = new URL('./docs-worker.mjs', import.meta.url);
+    if (existsSync(fileURLToPath(bundled))) return { url: bundled, execArgv: [] };
     return { url: new URL('./worker.ts', import.meta.url), execArgv: ['--import', 'tsx'] };
 }
 

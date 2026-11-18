@@ -39,6 +39,9 @@ const ENV_KEYS = ['PATH', 'Path', 'SystemRoot', 'TEMP', 'TMP', 'HOME', 'NODE_EXT
 function workerEntry(): { path: string; execArgv: string[] } {
     const js = fileURLToPath(new URL('./worker.js', import.meta.url));
     if (existsSync(js)) return { path: js, execArgv: [] };
+    // 打包成单文件后 worker 与入口并列,命名为 mail-worker.mjs。
+    const bundled = fileURLToPath(new URL('./mail-worker.mjs', import.meta.url));
+    if (existsSync(bundled)) return { path: bundled, execArgv: [] };
     return { path: fileURLToPath(new URL('./worker.ts', import.meta.url)), execArgv: ['--import', 'tsx'] };
 }
 

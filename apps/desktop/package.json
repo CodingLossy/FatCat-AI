@@ -1,0 +1,16 @@
+{
+  "name": "@fatcat-ai/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FatCat-AI desktop app (Tauri shell + sidecar server)",
+  "license": "AGPL-3.0-only",
+  "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
+  "type": "module",
+  "scripts": {
+    "bundle:sidecar": "node scripts/bundle-sidecar.mjs",
+    "check:sidecar": "node scripts/check-sidecar.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

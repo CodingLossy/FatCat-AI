@@ -61,6 +61,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/eval
 
+  apps/desktop:
+    devDependencies:
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
+
   apps/docs:
     dependencies:
       '@astrojs/starlight':
