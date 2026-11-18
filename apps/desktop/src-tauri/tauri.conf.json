@@ -8,5 +8,6 @@
     "windows": [],
     "security": { "csp": null }
   },
+  "plugins": { "deep-link": { "desktop": { "schemes": ["fatcat-ai"] } } },
   "bundle": { "active": false, "icon": ["icons/icon.png"] }
 }

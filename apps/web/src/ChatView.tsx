@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
+import { takeAskParam } from './ask-param.js';
 import type { RunStream } from '@fatcat-ai/client';
 import {
     MAX_ATTACHMENTS_PER_MESSAGE,
@@ -104,7 +105,12 @@ export function ChatView({
     const [live, setLive] = useState<LiveTurn | null>(null);
     // 从邮件「问 AI」进来时预填建议的第一句话(只含邮件 id)
     const [input, setInput] = useState(() => {
-        if (!sessionId) return '';
+        if (!sessionId) {
+            // 桌面深链接 fatcat-ai://ask?text=...:只预填,不自动发送。
+            const { text, rest } = takeAskParam(window.location.search);
+            if (text) window.history.replaceState(null, '', window.location.pathname + rest);
+            return text;
+        }
         try {
             const key = 'fatcat.prefill.' + sessionId;
             const text = sessionStorage.getItem(key) ?? '';
