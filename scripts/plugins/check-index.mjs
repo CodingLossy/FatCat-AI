@@ -161,7 +161,8 @@ export async function downloadChecked(url, allowedHosts, maxBytes = PACKAGE_MAX_
     throw new Error(`${url}: more than ${MAX_REDIRECTS} redirects`);
 }
 
-function listScripts(dir, base = dir) {
+/** 列出目录下的 .js/.mjs/.cjs;符号链接与特殊文件不跟随、直接跳过。 */
+export function listScripts(dir, base = dir) {
     const out = [];
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
         const full = join(dir, entry.name);

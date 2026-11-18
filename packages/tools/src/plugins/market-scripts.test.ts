@@ -5,7 +5,7 @@
 // 这里用测试时生成的密钥对,验证脚本签出的索引能被客户端的 verifyIndex 接受,以及 CI 检查会拒绝哪些改动。
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -154,6 +154,42 @@ describe('sign-index.mjs', () => {
         const sig = readFileSync(join(dir, 'index.json.sig'), 'utf8');
         expect(signer.verifySignature(indexOf(), sig, key.raw)).toBe(true);
         expect(JSON.parse(sig)).toMatchObject({ keyId: 'test-main', alg: 'ed25519' });
+    });
+
+    it('reports a missing key file as "key file not found"', () => {
+        const dir = tmp();
+        writeFileSync(join(dir, 'index.json'), indexOf());
+        const args = [
+            join(scriptsDir, 'sign-index.mjs'),
+            '--key',
+            join(dir, 'absent.pem'),
+            '--key-id',
+            'test-main',
+            '--allow-unknown-key-id',
+            '--index',
+            join(dir, 'index.json'),
+        ];
+        expect(() =>
+            execFileSync(process.execPath, args, { env: { PATH: process.env.PATH ?? '' }, stdio: 'pipe' }),
+        ).toThrow(/key file not found/);
+    });
+});
+
+describe('check-index.mjs listScripts', () => {
+    it('reads regular script files and does not follow symbolic links', () => {
+        const dir = tmp();
+        const outside = tmp();
+        writeFileSync(join(outside, 'secret.js'), 'secret');
+        mkdirSync(join(dir, 'lib'));
+        writeFileSync(join(dir, 'index.js'), 'a');
+        writeFileSync(join(dir, 'lib', 'b.mjs'), 'b');
+        symlinkSync(join(outside, 'secret.js'), join(dir, 'link.js'));
+        symlinkSync(outside, join(dir, 'linkdir'));
+        const found = checker
+            .listScripts(dir)
+            .map((f: { path: string }) => f.path)
+            .sort();
+        expect(found).toEqual(['index.js', 'lib/b.mjs']);
     });
 });
 
