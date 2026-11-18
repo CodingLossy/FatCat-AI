@@ -387,7 +387,7 @@ ALTER TABLE tasks ADD COLUMN disabled_reason TEXT;
 - `disabled_reason` 目前只有 `plugin_removed` 一个值,不加 CHECK(以后其他停用原因直接复用这一列);`tasks` API 增加可选只读字段 `disabledReason`(ADR 0030 允许的增量)。
 - `plugin_events` 保留 180 天,由现有每日维护任务清理(与 `audit_log` 的保留策略一致)。
 - `ownerId` 照常预留(1.0 单用户)。
-- 回滚说明:迁移只新增表和一个可为空的列;回退到旧版本时旧代码不读它们,也可直接用迁移前的自动备份恢复。
+- 回滚说明:迁移只新增表和一个可为空的列。旧版本**不能**直接打开已迁移到 18 的库(`migrate()` 会报 `database has migration 18 (plugins) unknown to this version` 并拒绝启动)。唯一的回退办法:停掉服务,用 `backups/` 里的 `db-…-pre-0018.sqlite` 恢复,再运行旧版本。代价:备份之后写入的数据(新对话、任务记录等)会丢失。
 - 不入库的:市场索引缓存(`plugins/.market/<market>.json` 与 `.sig`)、插件进程状态与内存读数(只在内存,同 ADR 0013 第 3 节)。
 
 ## 8. 内存:只测量和报告,不拦截(业主 2026-11-17 决定)
