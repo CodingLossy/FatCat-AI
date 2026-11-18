@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+
+# CI for the official plugin index repository (CodingLossy/fatcat-plugins). Copy this file to
+# .github/workflows/check-index.yml in that repository. See scripts/plugins/README.md.
+#
+# It never touches a signing key: there are no secrets in this workflow, and it only has read access.
+# The checks run from a checkout of the FatCat-AI repository, so they always use the same schema,
+# tar reader and rules as the client. Pin FATCAT_AI_REF to a commit of FatCat-AI that you reviewed.
+name: check index
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  FATCAT_AI_REF: main
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: CodingLossy/FatCat-AI
+          ref: ${{ env.FATCAT_AI_REF }}
+          path: fatcat-ai
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: fatcat-ai/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Build the schema and the package checks
+        working-directory: fatcat-ai
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec turbo run build --filter=@fatcat-ai/shared --filter=@fatcat-ai/tools
+      - name: Previous index (the base branch, or the previous commit on main)
+        run: |
+          base="${{ github.base_ref }}"
+          if [ -n "$base" ]; then ref="origin/$base"; else ref="HEAD^"; fi
+          git show "$ref:index.json" > previous.json 2>/dev/null || rm -f previous.json
+      - name: Check index.json
+        run: |
+          args="--index index.json"
+          if [ -f previous.json ]; then args="$args --previous previous.json"; fi
+          node fatcat-ai/scripts/plugins/check-index.mjs $args
+      - name: The published signature matches index.json (public keys only)
+        if: ${{ hashFiles('index.json.sig') != '' }}
+        run: node fatcat-ai/scripts/plugins/sign-index.mjs --verify

@@ -27,6 +27,10 @@
     "./plugins": {
       "types": "./dist/plugins/index.d.ts",
       "default": "./dist/plugins/index.js"
+    },
+    "./market": {
+      "types": "./dist/plugins/market-entry.d.ts",
+      "default": "./dist/plugins/market-entry.js"
     }
   },
   "files": [

@@ -13,7 +13,15 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
 import { navigate } from './router.js';
-import { formatRss, pickText, settingsDraft, settingsValues, type SettingsDraft } from './plugin-ui.js';
+import { PluginMarket } from './PluginMarket.js';
+import {
+    formatRss,
+    pickText,
+    secretRefChanges,
+    settingsDraft,
+    settingsValues,
+    type SettingsDraft,
+} from './plugin-ui.js';
 
 /**
  * 插件页(ADR 0040 第 9 节):已安装插件、本地目录安装确认(权限清单与保护程度表)、设置表单、密钥绑定、
@@ -28,6 +36,8 @@ export function PluginsPage() {
     const [accepted, setAccepted] = useState(false);
     const [busy, setBusy] = useState(false);
     const [open, setOpen] = useState<string | null>(null);
+    const [tab, setTab] = useState<'installed' | 'market'>('installed');
+    const [marketKey, setMarketKey] = useState(0);
 
     const reload = useCallback(
         () =>
@@ -61,7 +71,14 @@ export function PluginsPage() {
             setBusy(false);
         }
         await reload();
+        setMarketKey((n) => n + 1);
     };
+
+    const prepareMarket = (market: string, id: string, version: string) =>
+        act(async () => {
+            setPrepared(await api.plugins.prepareMarket(market, id, version));
+            setAccepted(false);
+        });
 
     const prepare = (e: FormEvent) => {
         e.preventDefault();
@@ -85,10 +102,25 @@ export function PluginsPage() {
         <div className="page" data-page="plugins">
             <h1>{t('plugins.title')}</h1>
             <p className="muted small">{t('plugins.hint')}</p>
+            <div className="row" role="tablist">
+                {(['installed', 'market'] as const).map((name) => (
+                    <button
+                        key={name}
+                        type="button"
+                        role="tab"
+                        aria-selected={tab === name}
+                        className={tab === name ? 'primary' : undefined}
+                        onClick={() => setTab(name)}
+                    >
+                        {t(`plugins.tab.${name}`)}
+                    </button>
+                ))}
+            </div>
             {error ? <p className="error">{error}</p> : null}
-            {plugins === null ? <p className="muted">{t('common.loading')}</p> : null}
-            {plugins?.length === 0 ? <p className="muted">{t('plugins.empty')}</p> : null}
-            <ul className="list">
+            {tab === 'market' ? <PluginMarket busy={busy} reloadKey={marketKey} onPrepare={prepareMarket} /> : null}
+            {tab === 'installed' && plugins === null ? <p className="muted">{t('common.loading')}</p> : null}
+            {tab === 'installed' && plugins?.length === 0 ? <p className="muted">{t('plugins.empty')}</p> : null}
+            <ul className="list" hidden={tab !== 'installed'}>
                 {plugins?.map((p) => (
                     <li key={p.id} className="card" data-plugin={p.id}>
                         <PluginCard
@@ -102,8 +134,8 @@ export function PluginsPage() {
                 ))}
             </ul>
 
-            <h2>{t('plugins.installTitle')}</h2>
-            <form className="card form" onSubmit={prepare}>
+            {tab === 'installed' ? <h2>{t('plugins.installTitle')}</h2> : null}
+            <form className="card form" onSubmit={prepare} hidden={tab !== 'installed'}>
                 <label>
                     {t('plugins.localPath')}
                     <input
@@ -129,6 +161,11 @@ export function PluginsPage() {
                     <h4>{t('plugins.protections')}</h4>
                     <ProtectionTable rows={prepared.protections} />
                     {prepared.unreviewed ? <p className="warn">{t('plugins.unreviewedWarn')}</p> : null}
+                    {prepared.market ? (
+                        <p className="small muted" data-testid="plugin-signed">
+                            {t('plugins.marketNote', { market: prepared.market.id, keyId: prepared.market.keyId })}
+                        </p>
+                    ) : null}
                     {prepared.installed ? (
                         <p className="error">
                             {t('plugins.alreadyInstalled', { version: prepared.installed.version })}
@@ -284,6 +321,16 @@ function PluginCard({
                         {t(`plugins.state.${plugin.state}`)}
                     </span>
                     {plugin.unreviewed ? <span className="badge">{t('plugins.unreviewed')}</span> : null}
+                    {plugin.sourceKind === 'market' ? (
+                        <span className="badge" title={plugin.signedKeyId ?? undefined}>
+                            {t('plugins.fromMarket')}
+                        </span>
+                    ) : null}
+                    {plugin.yanked ? (
+                        <p className="small warn" data-testid="plugin-yanked">
+                            {t('plugins.yanked', { reason: plugin.yanked.reason })}
+                        </p>
+                    ) : null}
                     <p className="small muted">{pickText(plugin.description, locale)}</p>
                     <p className="small muted">
                         {plugin.id} · {plugin.author} · {plugin.license}
@@ -460,10 +507,8 @@ function SecretBindings({ plugin, busy, act }: { plugin: PluginView; busy: boole
     const bad = Object.values(refs).some(invalid);
     const submit = (e: FormEvent) => {
         e.preventDefault();
-        const changed: Record<string, string> = {};
-        for (const [name, ref] of Object.entries(refs))
-            if (ref !== '' && ref !== plugin.secretRefs[name]) changed[name] = ref;
-        void act(() => api.plugins.update(plugin.id, { secretRefs: changed }));
+        // 清空已绑定的输入框 = 解除绑定
+        void act(() => api.plugins.update(plugin.id, { secretRefs: secretRefChanges(refs, plugin.secretRefs) }));
     };
     return (
         <form className="form" onSubmit={submit} data-testid="plugin-secrets">

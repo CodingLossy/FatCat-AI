@@ -72,6 +72,7 @@ export interface NewPlugin {
 export interface PluginPatch {
     version?: string | undefined;
     previousVersion?: string | null | undefined;
+    sourceKind?: 'local' | 'market' | undefined;
     sourceRef?: string | undefined;
     signedKeyId?: string | null | undefined;
     contentSha256?: string | undefined;
@@ -146,7 +147,7 @@ export function createPluginRepository(conn: Connection, now: () => Date) {
                @granted, @secretRefs, @settings, @state, @at, @at)`,
         ),
         update: sqlite.prepare(
-            `UPDATE plugins SET version = @version, previous_version = @previousVersion, source_ref = @sourceRef,
+            `UPDATE plugins SET version = @version, previous_version = @previousVersion, source_kind = @sourceKind, source_ref = @sourceRef,
                signed_key_id = @signedKeyId, content_sha256 = @sha, manifest_json = @manifest, granted_json = @granted,
                secret_refs_json = @secretRefs, settings_json = @settings, state = @state, error = @error, updated_at = @at
              WHERE owner_id = @ownerId AND plugin_id = @pluginId`,
@@ -210,6 +211,7 @@ export function createPluginRepository(conn: Connection, now: () => Date) {
                 pluginId,
                 version: patch.version ?? current.version,
                 previousVersion: patch.previousVersion !== undefined ? patch.previousVersion : current.previousVersion,
+                sourceKind: patch.sourceKind ?? current.sourceKind,
                 sourceRef: patch.sourceRef ?? current.sourceRef,
                 signedKeyId: patch.signedKeyId !== undefined ? patch.signedKeyId : current.signedKeyId,
                 sha: patch.contentSha256 ?? current.contentSha256,

@@ -30,6 +30,14 @@ export const ErrorCode = z.enum([
     'plugin_incompatible',
     'plugin_secrets_missing',
     'plugin_staging_not_found',
+    /** 以下自 M7 PR 4 起提供(插件市场,ADR 0040 第 5.2、5.3 节)。 */
+    'market_disabled',
+    'market_unavailable',
+    'plugin_download_failed',
+    'plugin_too_large',
+    'plugin_checksum_mismatch',
+    'plugin_manifest_mismatch',
+    'plugin_yanked',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 

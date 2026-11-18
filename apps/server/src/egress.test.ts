@@ -103,6 +103,8 @@ describe('egress targets match the real outbound destinations', () => {
             {
                 env,
                 mailRunner: hookedMailRunner(mailLog),
+                // 插件市场:地址校验用固定的公网地址(钩子不让连接真的出去),这样请求会走到 connect 而被记录
+                pluginMarket: { net: { resolve: async () => [{ address: '93.184.216.34', family: 4 }] } },
                 // 与生产一致:渠道由真实的微信适配器运行(工厂在服务器创建之后才可用)
                 channelAdapters: { wechat: (channel) => s!.wechat.factory(channel) },
             },
@@ -194,9 +196,11 @@ describe('egress targets match the real outbound destinations', () => {
         for (const category of ['model', 'embedding', 'voice', 'mail', 'channel', 'mcp'] as const) {
             expect(categories, `category ${category} should be configured by this test`).toContain(category);
         }
-        // 没有配置过的类别不能凭空出现(当前代码里没有更新检查,也没有插件)
+        // 没有配置过的类别不能凭空出现(当前代码里没有更新检查);插件市场默认开启,所以官方索引的地址在 plugin 类里
         expect(categories).not.toContain('update-check');
-        expect(categories).not.toContain('plugin');
+        expect(targets.filter((t) => t.category === 'plugin').map((t) => t.origin)).toEqual([
+            'https://codinglossy.github.io',
+        ]);
 
         // —— 驱动:每一类外连走真实的代码路径 ——
         // 模型:连接测试(openai 兼容、Anthropic 默认地址、Gemini 默认地址)
@@ -220,6 +224,8 @@ describe('egress targets match the real outbound destinations', () => {
         });
         expect(stt.status).not.toBe(401);
         expect((await send('POST', '/api/v1/voice/speech', { text: 'hi' })).status).not.toBe(401);
+        // 插件市场:打开市场页时下载索引(钩子不让请求出去,所以会失败,但目的地已被记录)
+        expect((await send('POST', '/api/v1/plugins/market/refresh')).status).toBe(200);
         // 邮件:连接测试在邮件子进程里跑(IMAP + SMTP;TLS 与 STARTTLS 各一个账户)
         for (const id of [tlsMail, plainMail]) {
             expect((await send('POST', `/api/v1/mail/accounts/${id}/test`)).status).toBe(200);

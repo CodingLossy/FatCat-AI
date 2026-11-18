@@ -28,7 +28,11 @@ export function pluginText(max: number) {
 }
 export type PluginText = z.infer<ReturnType<typeof pluginText>>;
 
-export const PluginId = z.string().regex(/^[a-z][a-z0-9-]{1,31}$/, 'lowercase letters, digits or "-" (2 to 32)');
+export const PluginId = z
+    .string()
+    .regex(/^[a-z][a-z0-9-]{1,31}$/, 'lowercase letters, digits or "-" (2 to 32)')
+    // `GET /plugins/market` 是市场入口,不能被一个叫 market 的插件抢走
+    .refine((id) => id !== 'market', 'the id "market" is reserved');
 
 // ───────────────────────── 版本与 engines ─────────────────────────
 
@@ -268,7 +272,8 @@ export function validatePluginSettings(schema: PluginSettings | undefined, value
     const issues: string[] = [];
     const properties = schema?.properties ?? {};
     for (const [key, value] of Object.entries(values)) {
-        const prop = properties[key];
+        // 只认自己声明的键:`constructor`、`__proto__` 这类原型链上的名字不算声明
+        const prop = Object.hasOwn(properties, key) ? properties[key] : undefined;
         if (!prop) {
             issues.push(`${key}: not declared by the plugin`);
         } else if (prop.type === 'string') {

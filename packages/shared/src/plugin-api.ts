@@ -3,7 +3,14 @@
 
 // 插件管理的 REST 契约(ADR 0040 第 9 节,/api/v1 的增量)。PR 2b 提供本地目录来源;市场与升级见后续 PR。
 import { z } from 'zod';
-import { PluginManifest, PluginPermissions, PluginSettings, PluginTaskTemplate } from './plugin.js';
+import {
+    PluginId,
+    PluginManifest,
+    PluginPermissions,
+    PluginSettings,
+    PluginTaskTemplate,
+    PluginVersion,
+} from './plugin.js';
 
 export const PluginState = z.enum([
     'enabled',
@@ -68,6 +75,10 @@ export const PluginView = z.object({
     sourceRef: z.string(),
     /** 本地目录安装:未经市场审核、未签名。 */
     unreviewed: z.boolean(),
+    /** 验证市场索引用的公钥 id(市场安装);本地安装为 null。 */
+    signedKeyId: z.string().nullable(),
+    /** 市场把已安装的这个版本下架了:不自动卸载或停用,只在界面警告(第 5.2 节)。 */
+    yanked: z.object({ reason: z.string() }).nullable(),
     permissions: PluginPermissions,
     /** 名字 -> `env:变量名`。 */
     secretRefs: z.record(z.string(), z.string()),
@@ -94,7 +105,15 @@ export const PluginDetail = PluginView.extend({
 export type PluginDetail = z.infer<typeof PluginDetail>;
 
 export const PluginPrepareInput = z.strictObject({
-    source: z.strictObject({ kind: z.literal('local'), path: z.string().min(1).max(1024) }),
+    source: z.discriminatedUnion('kind', [
+        z.strictObject({ kind: z.literal('local'), path: z.string().min(1).max(1024) }),
+        z.strictObject({
+            kind: z.literal('market'),
+            market: z.string().regex(/^[a-z][a-z0-9-]{0,31}$/),
+            id: PluginId,
+            version: PluginVersion,
+        }),
+    ]),
 });
 export type PluginPrepareInput = z.infer<typeof PluginPrepareInput>;
 
@@ -103,6 +122,8 @@ export const PluginPrepared = z.object({
     manifest: PluginManifest,
     protections: z.array(PluginProtection),
     unreviewed: z.boolean(),
+    /** 来自市场时:市场 id 与验证索引用的公钥 id。 */
+    market: z.object({ id: z.string(), keyId: z.string() }).nullable(),
     /** 已安装的同名插件(PR 2b 不支持升级,安装会被拒绝)。 */
     installed: z.object({ version: z.string(), state: PluginState }).nullable(),
 });
@@ -118,7 +139,14 @@ export type PluginInstallInput = z.infer<typeof PluginInstallInput>;
 export const PluginPatch = z.strictObject({
     enabled: z.boolean().optional(),
     secretRefs: z
-        .record(z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/), z.string().regex(/^env:[A-Za-z_][A-Za-z0-9_]{0,63}$/))
+        .record(
+            z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/),
+            // null:解除绑定(必需的密钥被解除时插件会被停用)
+            z
+                .string()
+                .regex(/^env:[A-Za-z_][A-Za-z0-9_]{0,63}$/)
+                .nullable(),
+        )
         .optional(),
     settings: z.record(z.string(), z.unknown()).optional(),
     runtime: PluginRuntimeSettingsInput.optional(),

@@ -3,11 +3,14 @@
 
 // 插件管理(ADR 0040 第 5.1、6.1、9 节):本地目录安装、启用 / 停用、停止、卸载,把运行时(@fatcat-ai/tools/plugins,
 // 按需 import())与存储、预授权、审批、定时任务接在一起。没有安装任何插件时,不加载运行时代码。
+import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import {
     type PluginDetail,
     type PluginManifest,
+    type PluginMarketListing,
+    type PluginPrepareInput,
     type PluginTaskTemplate,
     type PluginPatch,
     type PluginPermissions,
@@ -16,6 +19,7 @@ import {
     type PluginRunInfo,
     type PluginView,
     parsePluginManifest,
+    satisfiesEngine,
     validatePluginSettings,
 } from '@fatcat-ai/shared';
 import type { PluginRecord, Repositories } from '@fatcat-ai/storage';
@@ -29,7 +33,16 @@ import type {
     NetIsolation,
 } from '@fatcat-ai/tools/plugins';
 import type { ItemProvider } from '@fatcat-ai/items';
+import type { MarketConfig } from '@fatcat-ai/tools/market';
+import {
+    downloadPackage,
+    extractTgz,
+    MarketError,
+    PluginPackageError,
+    validateStagedPackage,
+} from '@fatcat-ai/tools/market';
 import { ApiError, notFound } from './errors.js';
+import { MarketService, type MarketNet } from './plugin-market.js';
 import { createPluginItemProvider, pluginSource, upsertPluginItems } from './plugin-items.js';
 import { SERVER_VERSION } from './version.js';
 
@@ -56,6 +69,8 @@ export interface PluginServiceOptions {
     now?: () => Date;
     /** 插件的条目来源有变化(安装、启用、停用、卸载)后调用,让知识地图在下一次读取前重新同步。 */
     onItemsChanged?: (ownerId: string) => void;
+    /** 市场配置(测试用):默认只有内置的官方市场;`net` 让测试把下载指向本机的假服务器。 */
+    market?: { markets?: readonly MarketConfig[]; net?: MarketNet };
     /** 运行时的可调参数(测试用)。 */
     runtime?: {
         idleMs?: number;
@@ -72,7 +87,26 @@ interface Staged {
     manifest: PluginManifest;
     contentSha256: string;
     sourceRef: string;
+    /** 市场安装:验证索引用的公钥 id 与市场 id;本地为 null。 */
+    market: { id: string; keyId: string } | null;
     createdAt: number;
+}
+
+/** 递归规范化后比较:对象键排序、数组按元素的规范化文本排序(权限清单里的顺序没有意义)。 */
+function canonical(value: unknown): string {
+    if (Array.isArray(value)) return `[${value.map(canonical).sort().join(',')}]`;
+    if (value !== null && typeof value === 'object') {
+        return `{${Object.entries(value)
+            .filter(([, v]) => v !== undefined)
+            .sort(([a], [b]) => (a < b ? -1 : 1))
+            .map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`)
+            .join(',')}}`;
+    }
+    return JSON.stringify(value);
+}
+
+export function samePermissions(a: PluginPermissions, b: PluginPermissions): boolean {
+    return canonical(a) === canonical(b);
 }
 
 export function protectionTable(
@@ -137,8 +171,10 @@ export function protectionTable(
         memory,
         {
             key: 'review',
-            level: 'none',
-            detail: unreviewed ? 'Local, unsigned and not reviewed by the marketplace.' : 'Marketplace review.',
+            level: unreviewed ? 'none' : 'layered',
+            detail: unreviewed
+                ? 'Local, unsigned and not reviewed by the marketplace.'
+                : 'Listed in a signed marketplace index and reviewed by its maintainers. The signature and checksum only show that this is the package that was reviewed, not that it is safe.',
         },
     ];
 }
@@ -152,8 +188,17 @@ export class PluginService {
     readonly codeRoot: string;
     readonly dataRoot: string;
     private readonly stagingRoot: string;
+    readonly market: MarketService;
 
     constructor(private readonly options: PluginServiceOptions) {
+        this.market = new MarketService({
+            repos: options.repos,
+            dataDir: options.dataDir,
+            ...(options.market?.markets ? { markets: options.market.markets } : {}),
+            ...(options.market?.net ? { net: options.market.net } : {}),
+            ...(options.now ? { now: options.now } : {}),
+            ...(options.log ? { log: options.log } : {}),
+        });
         this.codeRoot = join(options.dataDir, 'plugins');
         this.dataRoot = join(options.dataDir, 'plugin-data');
         this.stagingRoot = join(this.codeRoot, '.staging');
@@ -336,6 +381,8 @@ export class PluginService {
             sourceKind: record.sourceKind,
             sourceRef: record.sourceRef,
             unreviewed: record.sourceKind === 'local',
+            signedKeyId: record.signedKeyId,
+            yanked: this.yanked(record),
             permissions: record.granted as PluginPermissions,
             secretRefs: record.secretRefs,
             missingSecrets: this.missingSecrets(record),
@@ -347,6 +394,12 @@ export class PluginService {
             installedAt: record.installedAt,
             updatedAt: record.updatedAt,
         };
+    }
+
+    private yanked(record: PluginRecord): PluginView['yanked'] {
+        if (record.sourceKind !== 'market') return null;
+        const reason = this.market.yankedReason(record.sourceRef);
+        return reason === null ? null : { reason };
     }
 
     list(ownerId: string): PluginView[] {
@@ -421,19 +474,127 @@ export class PluginService {
             manifest: prepared.manifest,
             contentSha256: prepared.contentSha256,
             sourceRef: sourcePath,
+            market: null,
             createdAt: this.now().getTime(),
         });
-        const existing = this.options.repos.plugins.get(ownerId, prepared.manifest.id);
         return {
             stagingId,
             manifest: prepared.manifest,
             protections: protectionTable(process.platform, true, isolation.kind),
             unreviewed: true,
-            installed:
-                existing && existing.state !== 'uninstalled'
-                    ? { version: existing.version, state: existing.state }
-                    : null,
+            market: null,
+            installed: this.installedOf(ownerId, prepared.manifest.id),
         };
+    }
+
+    private installedOf(ownerId: string, pluginId: string) {
+        const existing = this.options.repos.plugins.get(ownerId, pluginId);
+        return existing && existing.state !== 'uninstalled'
+            ? { version: existing.version, state: existing.state }
+            : null;
+    }
+
+    prepare(ownerId: string, source: PluginPrepareInput['source']): Promise<PluginPrepared> {
+        return source.kind === 'local' ? this.prepareLocal(ownerId, source.path) : this.prepareMarket(ownerId, source);
+    }
+
+    // ───────────── 市场(ADR 0040 第 5.2、5.3 节) ─────────────
+
+    marketListing(ownerId: string): PluginMarketListing {
+        return this.market.listing(ownerId, {
+            coreVersion: pluginCoreVersion(),
+            installed: (pluginId) => this.installedOf(ownerId, pluginId),
+        });
+    }
+
+    async refreshMarket(ownerId: string): Promise<PluginMarketListing> {
+        await this.market.refresh(ownerId);
+        return this.marketListing(ownerId);
+    }
+
+    /**
+     * 从市场下载、解包并检查一个版本;下载地址、大小、sha256 只来自已验证的索引。任何一步失败都删除暂存目录,
+     * 已安装的东西一概不动。包内 plugin.json 的 id、版本与权限必须与索引条目一致(授权以包内清单为准)。
+     */
+    private async prepareMarket(
+        ownerId: string,
+        source: Extract<PluginPrepareInput['source'], { kind: 'market' }>,
+    ): Promise<PluginPrepared> {
+        const { market, keyId, index, entry, version } = this.market.resolve(
+            ownerId,
+            source.market,
+            source.id,
+            source.version,
+        );
+        const core = pluginCoreVersion();
+        if (!satisfiesEngine(core, version.engines.fatcat)) {
+            throw new ApiError(
+                400,
+                'plugin_incompatible',
+                'Bad Request',
+                `requires FatCat-AI ${version.engines.fatcat}, this is ${core}`,
+            );
+        }
+        const isolation = await this.detectIsolation();
+        mkdirSync(this.stagingRoot, { recursive: true });
+        const stagingDir = join(this.stagingRoot, randomBytes(8).toString('hex'));
+        try {
+            const bytes = await downloadPackage(version, index.downloadHosts, this.market.downloadNet(ownerId));
+            await extractTgz(bytes, stagingDir);
+            const { manifest, contentSha256 } = validateStagedPackage(stagingDir, core);
+            if (
+                manifest.id !== entry.id ||
+                manifest.version !== version.version ||
+                !samePermissions(manifest.permissions, version.permissions)
+            ) {
+                throw new ApiError(
+                    422,
+                    'plugin_manifest_mismatch',
+                    'Unprocessable Content',
+                    'The plugin.json inside the package does not match the signed index entry (id, version or permissions).',
+                );
+            }
+            const stagingId = stagingDir.slice(-16);
+            this.staged.set(stagingId, {
+                ownerId,
+                dir: stagingDir,
+                manifest,
+                contentSha256,
+                sourceRef: `${market.id}:${entry.id}@${version.version}`,
+                market: { id: market.id, keyId },
+                createdAt: this.now().getTime(),
+            });
+            return {
+                stagingId,
+                manifest,
+                protections: protectionTable(process.platform, false, isolation.kind),
+                unreviewed: false,
+                market: { id: market.id, keyId },
+                installed: this.installedOf(ownerId, manifest.id),
+            };
+        } catch (error) {
+            rmSync(stagingDir, { recursive: true, force: true });
+            throw this.marketError(ownerId, entry.id, version.version, error);
+        }
+    }
+
+    private marketError(ownerId: string, pluginId: string, version: string, error: unknown): unknown {
+        if (error instanceof PluginPackageError) return new ApiError(400, error.code, 'Bad Request', error.message);
+        if (!(error instanceof MarketError)) return error;
+        switch (error.code) {
+            case 'plugin_checksum_mismatch':
+                this.options.repos.plugins.addEvent(ownerId, {
+                    pluginId,
+                    version,
+                    kind: 'checksum-mismatch',
+                    detail: 'sha256',
+                });
+                return new ApiError(422, 'plugin_checksum_mismatch', 'Unprocessable Content', error.message);
+            case 'plugin_too_large':
+                return new ApiError(413, 'plugin_too_large', 'Content Too Large', error.message);
+            default:
+                return new ApiError(502, 'plugin_download_failed', 'Bad Gateway', error.message);
+        }
     }
 
     async install(ownerId: string, stagingId: string): Promise<PluginView> {
@@ -470,8 +631,9 @@ export class PluginService {
             ? repos.plugins.update(ownerId, manifest.id, {
                   version: manifest.version,
                   previousVersion: null,
+                  sourceKind: staged.market ? 'market' : 'local',
                   sourceRef: staged.sourceRef,
-                  signedKeyId: null,
+                  signedKeyId: staged.market?.keyId ?? null,
                   contentSha256: staged.contentSha256,
                   manifest,
                   granted: manifest.permissions,
@@ -481,8 +643,9 @@ export class PluginService {
             : repos.plugins.create(ownerId, {
                   pluginId: manifest.id,
                   version: manifest.version,
-                  sourceKind: 'local',
+                  sourceKind: staged.market ? 'market' : 'local',
                   sourceRef: staged.sourceRef,
+                  signedKeyId: staged.market?.keyId ?? null,
                   contentSha256: staged.contentSha256,
                   manifest,
                   granted: manifest.permissions,
@@ -492,7 +655,7 @@ export class PluginService {
             pluginId: manifest.id,
             kind: 'installed',
             version: manifest.version,
-            detail: 'local',
+            detail: staged.market ? `market ${staged.market.id}` : 'local',
         });
         if (state === 'enabled') void this.activate(record).catch(() => undefined);
         this.options.onItemsChanged?.(ownerId);
@@ -516,7 +679,8 @@ export class PluginService {
                     `The plugin does not declare the secret ${name}.`,
                 );
             }
-            secretRefs[name] = ref;
+            if (ref === null) delete secretRefs[name];
+            else secretRefs[name] = ref;
         }
         const settings: Record<string, unknown> = { ...record.settings };
         if (patch.settings) {
@@ -548,8 +712,12 @@ export class PluginService {
         }
         record = repos.plugins.update(ownerId, pluginId, { secretRefs, settings })!;
 
-        const wantEnabled = patch.enabled ?? record.state === 'enabled';
-        if (patch.enabled === true && this.missingSecrets(record).length > 0) {
+        // 解除了必需的密钥绑定:插件没有它就不能运行,同时停用(原因记在事件里)
+        const unboundRequired = patch.enabled === undefined && this.missingSecrets(record).length > 0;
+        const active = record.state === 'enabled' || record.state === 'error';
+        const enabled = unboundRequired && active ? false : patch.enabled;
+        const wantEnabled = enabled ?? record.state === 'enabled';
+        if (enabled === true && this.missingSecrets(record).length > 0) {
             throw new ApiError(
                 409,
                 'plugin_secrets_missing',
@@ -557,10 +725,15 @@ export class PluginService {
                 `Bind the required secrets first: ${this.missingSecrets(record).join(', ')}.`,
             );
         }
-        if (patch.enabled === false && record.state === 'enabled') {
+        if (enabled === false && active) {
             await this.runtime?.remove(pluginId);
             record = repos.plugins.update(ownerId, pluginId, { state: 'disabled', error: null })!;
-            repos.plugins.addEvent(ownerId, { pluginId, kind: 'disabled', version: record.version, detail: 'user' });
+            repos.plugins.addEvent(ownerId, {
+                pluginId,
+                kind: 'disabled',
+                version: record.version,
+                detail: unboundRequired ? 'required secret unbound' : 'user',
+            });
         } else if (wantEnabled) {
             const wasEnabled = record.state === 'enabled';
             record = repos.plugins.update(ownerId, pluginId, { state: 'enabled', error: null })!;

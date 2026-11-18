@@ -431,6 +431,19 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                     <p className="small muted">{t('settings.allowFakeIpRisk')}</p>
                 </section>
             ) : null}
+            <section className="card form" aria-label={t('settings.pluginMarket')}>
+                <h2>{t('plugins.title')}</h2>
+                <label className="inline">
+                    <input
+                        type="checkbox"
+                        name="pluginMarketEnabled"
+                        checked={settings.plugins?.marketEnabled !== false}
+                        onChange={(e) => void update({ plugins: { marketEnabled: e.target.checked } })}
+                    />{' '}
+                    {t('settings.pluginMarket')}
+                </label>
+                <p className="small muted">{t('settings.pluginMarketNote')}</p>
+            </section>
             <section className="card form" aria-label={t('settings.voice')}>
                 <h2>{t('settings.voice')}</h2>
                 <label>

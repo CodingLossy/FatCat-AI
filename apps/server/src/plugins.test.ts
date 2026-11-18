@@ -42,7 +42,14 @@ async function setup() {
     const settled = async () => {
         for (let i = 0; i < 200; i++) {
             const items = await list();
-            if (items.every((x) => x.state !== 'enabled' || x.run.state === 'running' || x.run.state === 'idle'))
+            // 进程起来(running)与工具注册完成之间有一小段窗口,所以还要等工具表出现
+            if (
+                items.every(
+                    (x) =>
+                        x.state !== 'enabled' ||
+                        ((x.run.state === 'running' || x.run.state === 'idle') && x.run.tools.length > 0),
+                )
+            )
                 return items;
             await new Promise((r) => setTimeout(r, 50));
         }
@@ -376,6 +383,36 @@ describe('插件 REST', () => {
         const events = s.repos.plugins.listEvents(owner, { pluginId: 'probe', limit: 50 }).items.map((e) => e.kind);
         expect(events).toEqual(expect.arrayContaining(['installed', 'uninstalled']));
     }, 90_000);
+});
+
+describe('密钥绑定', () => {
+    it('清空绑定(null)即解除;必需的密钥被解除时插件同时被停用,并记下原因', async () => {
+        const { send, settled, install } = await setup();
+        await install(
+            sourceDir((m) => {
+                ((m.permissions as { secrets: { required: boolean }[] }).secrets[0] as { required: boolean }).required =
+                    true;
+            }),
+        );
+        expect((await settled())[0]?.state).toBe('disabled'); // 缺必需的密钥,安装后不启用
+        const bound = await send('PATCH', '/api/v1/plugins/probe', {
+            secretRefs: { WEATHER_API_KEY: 'env:WEATHER_KEY' },
+            enabled: true,
+        });
+        expect(((await bound.json()) as { state: string }).state).toBe('enabled');
+        await settled();
+
+        const unbound = await send('PATCH', '/api/v1/plugins/probe', { secretRefs: { WEATHER_API_KEY: null } });
+        expect(unbound.status).toBe(200);
+        expect(await unbound.json()).toMatchObject({
+            state: 'disabled',
+            secretRefs: {},
+            missingSecrets: ['WEATHER_API_KEY'],
+        });
+        const owner = s.repos.owners.ids()[0]!;
+        const events = s.repos.plugins.listEvents(owner, { pluginId: 'probe', limit: 10 }).items;
+        expect(events.some((e) => e.kind === 'disabled' && e.detail === 'required secret unbound')).toBe(true);
+    }, 60_000);
 });
 
 describe('protectionTable', () => {

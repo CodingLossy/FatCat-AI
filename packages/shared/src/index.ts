@@ -21,6 +21,7 @@ export * from './models.js';
 export * from './pagination.js';
 export * from './plugin.js';
 export * from './plugin-api.js';
+export * from './plugin-market.js';
 export * from './sessions.js';
 export * from './secrets.js';
 export * from './settings.js';

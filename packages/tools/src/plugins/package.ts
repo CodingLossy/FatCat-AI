@@ -151,34 +151,40 @@ export function prepareLocalPackage(
         mkdirSync(stagingDir, { recursive: true });
         for (const dir of dirs) mkdirSync(join(stagingDir, dir), { recursive: true });
         for (const file of files) copyFileSync(file.abs, join(stagingDir, file.rel));
-        const manifestPath = join(stagingDir, 'plugin.json');
-        if (!existsSync(manifestPath)) throw new PluginPackageError('plugin_package_invalid', 'plugin.json is missing');
-        const result = parsePluginManifest(readFileSync(manifestPath));
-        if (!result.ok) {
-            throw new PluginPackageError(
-                'plugin_manifest_invalid',
-                result.issues.map((i) => `${i.path}: ${i.message}`).join('; '),
-            );
-        }
-        const { manifest } = result;
-        const mainPath = join(stagingDir, manifest.entry.main);
-        if (!existsSync(mainPath) || !fstatOk(mainPath)) {
-            throw new PluginPackageError(
-                'plugin_package_invalid',
-                `entry.main "${manifest.entry.main}" does not exist`,
-            );
-        }
-        if (!satisfiesEngine(options.coreVersion, manifest.engines.fatcat)) {
-            throw new PluginPackageError(
-                'plugin_incompatible',
-                `requires FatCat-AI ${manifest.engines.fatcat}, this is ${options.coreVersion}`,
-            );
-        }
-        return { stagingDir, manifest, contentSha256: hashPluginDir(stagingDir) };
+        const { manifest, contentSha256 } = validateStagedPackage(stagingDir, options.coreVersion);
+        return { stagingDir, manifest, contentSha256 };
     } catch (error) {
         rmSync(stagingDir, { recursive: true, force: true });
         throw error;
     }
+}
+
+/** 检查已放进暂存目录的包(本地复制或市场解包后共用):清单合法、入口存在、核心版本满足 engines,并算目录哈希。 */
+export function validateStagedPackage(
+    stagingDir: string,
+    coreVersion: string,
+): { manifest: PluginManifest; contentSha256: string } {
+    const manifestPath = join(stagingDir, 'plugin.json');
+    if (!existsSync(manifestPath)) throw new PluginPackageError('plugin_package_invalid', 'plugin.json is missing');
+    const result = parsePluginManifest(readFileSync(manifestPath));
+    if (!result.ok) {
+        throw new PluginPackageError(
+            'plugin_manifest_invalid',
+            result.issues.map((i) => `${i.path}: ${i.message}`).join('; '),
+        );
+    }
+    const { manifest } = result;
+    const mainPath = join(stagingDir, manifest.entry.main);
+    if (!existsSync(mainPath) || !fstatOk(mainPath)) {
+        throw new PluginPackageError('plugin_package_invalid', `entry.main "${manifest.entry.main}" does not exist`);
+    }
+    if (!satisfiesEngine(coreVersion, manifest.engines.fatcat)) {
+        throw new PluginPackageError(
+            'plugin_incompatible',
+            `requires FatCat-AI ${manifest.engines.fatcat}, this is ${coreVersion}`,
+        );
+    }
+    return { manifest, contentSha256: hashPluginDir(stagingDir) };
 }
 
 function fstatOk(path: string): boolean {

@@ -299,6 +299,18 @@ describe('validatePluginSettings', () => {
         expect(validatePluginSettings(schema, {})).toEqual(['city: required']);
     });
 
+    it('does not treat names on the prototype chain as declared keys', () => {
+        const values = JSON.parse('{"city":"Paris","constructor":true,"toString":false,"__proto__":1}') as Record<
+            string,
+            unknown
+        >;
+        expect(validatePluginSettings(schema, values)).toEqual([
+            'constructor: not declared by the plugin',
+            'toString: not declared by the plugin',
+            '__proto__: not declared by the plugin',
+        ]);
+    });
+
     it('rejects every value when the plugin declares no settings', () => {
         expect(validatePluginSettings(undefined, {})).toEqual([]);
         expect(validatePluginSettings(undefined, { a: 1 })).toEqual(['a: not declared by the plugin']);

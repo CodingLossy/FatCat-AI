@@ -8,6 +8,7 @@ import {
     PluginEventView,
     PluginId,
     PluginInstallInput,
+    PluginMarketListing,
     PluginPatch,
     PluginPrepareInput,
     PluginPrepared,
@@ -21,6 +22,29 @@ import { authErrors, json, problem, router } from './common.js';
 const tags = ['plugins'];
 const idParam = z.object({ id: PluginId });
 
+const marketRoute = createRoute({
+    method: 'get',
+    path: '/plugins/market',
+    tags,
+    summary: 'Browse the cached plugin market index (no network request); 409 market_disabled when the market is off',
+    responses: {
+        200: json(PluginMarketListing, 'Cached markets and their plugins'),
+        409: problem('The plugin market is turned off'),
+        ...authErrors,
+    },
+});
+const refreshRoute = createRoute({
+    method: 'post',
+    path: '/plugins/market/refresh',
+    tags,
+    summary:
+        'Download and verify the signed index again; a failed or rejected update keeps the cached index and is reported in the market status',
+    responses: {
+        200: json(PluginMarketListing, 'Markets after the refresh'),
+        409: problem('The plugin market is turned off'),
+        ...authErrors,
+    },
+});
 const listRoute = createRoute({
     method: 'get',
     path: '/plugins',
@@ -40,9 +64,20 @@ const prepareRoute = createRoute({
     method: 'post',
     path: '/plugins/prepare',
     tags,
-    summary: 'Copy and check a local plugin directory without running it; returns the permissions to confirm',
+    summary:
+        'Copy a local directory or download a market version, check it without running it, and return the permissions to confirm',
     request: { body: { content: { 'application/json': { schema: PluginPrepareInput } }, required: true } },
-    responses: { 200: json(PluginPrepared, 'Prepared'), 400: problem('The package is invalid'), ...authErrors },
+    responses: {
+        200: json(PluginPrepared, 'Prepared'),
+        400: problem('The package is invalid or incompatible'),
+        404: problem('Unknown market, plugin or version'),
+        409: problem('The market is off, or the version was withdrawn'),
+        413: problem('The package is larger than allowed'),
+        422: problem('Checksum or manifest does not match the signed index'),
+        502: problem('The download failed'),
+        503: problem('There is no valid index for this market'),
+        ...authErrors,
+    },
 });
 const installRoute = createRoute({
     method: 'post',
@@ -104,37 +139,44 @@ const eventsRoute = createRoute({
 
 export function pluginRoutes(deps: { plugins: PluginService }) {
     const { plugins } = deps;
-    return router()
-        .openapi(listRoute, (c) => c.json({ items: plugins.list(requireOwner(c)), nextCursor: null }, 200))
-        .openapi(getRoute, (c) => c.json(plugins.detail(requireOwner(c), c.req.valid('param').id), 200))
-        .openapi(prepareRoute, async (c) => {
-            const body = c.req.valid('json');
-            return c.json(await plugins.prepareLocal(requireOwner(c), body.source.path), 200);
-        })
-        .openapi(installRoute, async (c) => {
-            const { stagingId } = c.req.valid('json');
-            const view = await plugins.install(requireOwner(c), stagingId);
-            c.get('logger').info({ plugin: view.id, version: view.version }, 'plugin installed');
-            return c.json(view, 201);
-        })
-        .openapi(patchRoute, async (c) =>
-            c.json(await plugins.patch(requireOwner(c), c.req.valid('param').id, c.req.valid('json')), 200),
-        )
-        .openapi(stopRoute, async (c) => {
-            await plugins.stop(requireOwner(c), c.req.valid('param').id);
-            return c.body(null, 204);
-        })
-        .openapi(deleteRoute, async (c) => {
-            const { id } = c.req.valid('param');
-            await plugins.uninstall(requireOwner(c), id, c.req.valid('query').purgeData === 'true');
-            c.get('logger').info({ plugin: id }, 'plugin uninstalled');
-            return c.body(null, 204);
-        })
-        .openapi(eventsRoute, (c) => {
-            const ownerId = requireOwner(c);
-            const { id } = c.req.valid('param');
-            plugins.detail(ownerId, id); // 404 when unknown
-            const { cursor, limit } = c.req.valid('query');
-            return c.json(plugins.events(ownerId, id, { cursor, limit }), 200);
-        });
+    return (
+        router()
+            // /plugins/market 必须排在 /plugins/{id} 之前
+            .openapi(marketRoute, (c) => {
+                return c.json(plugins.marketListing(requireOwner(c)), 200);
+            })
+            .openapi(refreshRoute, async (c) => c.json(await plugins.refreshMarket(requireOwner(c)), 200))
+            .openapi(listRoute, (c) => c.json({ items: plugins.list(requireOwner(c)), nextCursor: null }, 200))
+            .openapi(getRoute, (c) => c.json(plugins.detail(requireOwner(c), c.req.valid('param').id), 200))
+            .openapi(prepareRoute, async (c) => {
+                const body = c.req.valid('json');
+                return c.json(await plugins.prepare(requireOwner(c), body.source), 200);
+            })
+            .openapi(installRoute, async (c) => {
+                const { stagingId } = c.req.valid('json');
+                const view = await plugins.install(requireOwner(c), stagingId);
+                c.get('logger').info({ plugin: view.id, version: view.version }, 'plugin installed');
+                return c.json(view, 201);
+            })
+            .openapi(patchRoute, async (c) =>
+                c.json(await plugins.patch(requireOwner(c), c.req.valid('param').id, c.req.valid('json')), 200),
+            )
+            .openapi(stopRoute, async (c) => {
+                await plugins.stop(requireOwner(c), c.req.valid('param').id);
+                return c.body(null, 204);
+            })
+            .openapi(deleteRoute, async (c) => {
+                const { id } = c.req.valid('param');
+                await plugins.uninstall(requireOwner(c), id, c.req.valid('query').purgeData === 'true');
+                c.get('logger').info({ plugin: id }, 'plugin uninstalled');
+                return c.body(null, 204);
+            })
+            .openapi(eventsRoute, (c) => {
+                const ownerId = requireOwner(c);
+                const { id } = c.req.valid('param');
+                plugins.detail(ownerId, id); // 404 when unknown
+                const { cursor, limit } = c.req.valid('query');
+                return c.json(plugins.events(ownerId, id, { cursor, limit }), 200);
+            })
+    );
 }

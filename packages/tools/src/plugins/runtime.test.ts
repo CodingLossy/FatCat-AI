@@ -430,6 +430,35 @@ describe('fatcat/net.fetch', () => {
             rmSync(local.root, { recursive: true, force: true });
         }
     }, 30_000);
+
+    it('reports a host that resolves to no address as a failed request (a network matter), not as a denied call', async () => {
+        const local = setup((m) => {
+            (m.permissions as Record<string, unknown>).net = ['api.example.org'];
+        });
+        const runtime = new PluginRuntime({
+            registry: local.registry,
+            codeRoot: local.codeRoot,
+            dataRoot: local.dataRoot,
+            env: { PATH: process.env.PATH ?? '' },
+            handshakeTimeoutMs: 15_000,
+            netFetchOverrides: { resolve: async () => [] },
+            onEvent: (_o, e) => local.events.push(e),
+            onState: () => undefined,
+        });
+        try {
+            await runtime.apply(local.record);
+            const out = await run(local, 'probe', {
+                attack: 'rpc',
+                arg: 'fatcat/net.fetch',
+                params: { url: 'https://api.example.org/' },
+            });
+            expect(out).toContain('fetch_failed');
+            expect(local.events.filter((e) => e.kind === 'denied')).toEqual([]);
+        } finally {
+            await runtime.closeAll();
+            rmSync(local.root, { recursive: true, force: true });
+        }
+    }, 30_000);
 });
 
 describe('fatcat/items.upsert', () => {

@@ -5,6 +5,7 @@ import { createRoute } from '@hono/zod-openapi';
 import { migrateSecrets, readSecretsStatus, type SecretStore, SecretsMigrateError } from '@fatcat-ai/providers';
 import {
     effectiveTimeZone,
+    type EgressTarget,
     EgressTargetList,
     SecretsMigrateRequest,
     SecretsMigrateResponse,
@@ -92,6 +93,8 @@ export function settingsRoutes(deps: {
     onTimeZoneChanged?: ((ownerId: string, timeZone: string) => void) | undefined;
     /** 外连清单里的插件域名(ADR 0040)。 */
     pluginDomains?: ((ownerId: string) => PluginEgressDomain[]) | undefined;
+    /** 外连清单里的插件市场地址(索引与下载主机);关闭市场时为空。 */
+    pluginMarkets?: ((ownerId: string) => EgressTarget[]) | undefined;
 }) {
     const { repos } = deps;
     return router()
@@ -111,6 +114,7 @@ export function settingsRoutes(deps: {
                         channels: repos.channels.list(ownerId),
                         mcpServers: repos.mcpServers.list(ownerId),
                         plugins: deps.pluginDomains?.(ownerId) ?? [],
+                        pluginMarkets: deps.pluginMarkets?.(ownerId) ?? [],
                     },
                     deps.log,
                 ),
