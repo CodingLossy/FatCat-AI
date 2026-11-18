@@ -30,6 +30,11 @@ test('sha256Sums matches the sha256sum format and is sorted', () => {
     );
 });
 
+test('nodeDistribution rejects versions that could change the download target', () => {
+    assert.throws(() => nodeDistribution('24.11.0/../../x', 'linux', 'x64'), /invalid Node version/);
+    assert.throws(() => nodeDistribution('24.11.0', 'linux', 'x64; rm'), /unsupported/);
+});
+
 test('nodeDistribution maps platforms to the official file names', () => {
     assert.equal(nodeDistribution('24.11.0', 'linux', 'x64').file, 'node-v24.11.0-linux-x64.tar.xz');
     assert.equal(nodeDistribution('24.11.0', 'darwin', 'arm64').inner, 'node-v24.11.0-darwin-arm64/bin/node');

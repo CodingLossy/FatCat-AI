@@ -35,6 +35,10 @@ export function sha256Sums(entries) {
 
 /** 官方 Node 发行包:返回下载文件名与其中 node 可执行文件的相对路径。 */
 export function nodeDistribution(version, platform, arch) {
+    // 版本号只允许 x.y.z,下载地址的主机固定为 nodejs.org,配置文件里的内容不能改变请求的目标。
+    if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(version)) throw new Error(`invalid Node version: ${version}`);
+    if (!/^(darwin|linux|win32)$/.test(platform) || !/^(x64|arm64)$/.test(arch))
+        throw new Error('unsupported platform');
     const target = `${platform}-${arch}`;
     const slug = platform === 'win32' ? `win-${arch}` : target;
     const ext = platform === 'win32' ? 'zip' : platform === 'linux' ? 'tar.xz' : 'tar.gz';
