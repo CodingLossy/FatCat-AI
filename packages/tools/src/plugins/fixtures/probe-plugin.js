@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
+/* eslint-disable @typescript-eslint/no-require-imports -- CommonJS on purpose, see below */
 // 探测插件:一个手写的、不依赖任何包的 MCP stdio 服务器(CommonJS,这样不用静态 import 任何可能被拒绝的内置模块),
 // 逐项尝试越权操作并回报结果(只用于测试与平台实测脚本)。工具 `probe` 的参数 `attack` 选择一项;
 // 结果是 "blocked: ..." 或 "ALLOWED: ...".
