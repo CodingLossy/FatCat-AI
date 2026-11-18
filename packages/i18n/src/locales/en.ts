@@ -700,6 +700,16 @@ export const en: Record<Key, string> = {
         'The number is how many content items are in that branch (memories, mail, sessions, files, and so on). Expanding shows the same items.',
     'items.sync': 'Sync now',
     'items.empty': '(empty)',
+    'items.view.list': 'List',
+    'items.view.sphere': 'Sphere',
+    'items.view.label': 'View',
+    'items.sphere.aria': 'Knowledge sphere: drag to rotate, arrow keys to move, Enter to open, Esc to go up',
+    'items.sphere.hint':
+        'Drag to rotate, click to select, double-click or Enter to open, Esc to go up. Orange is a category, blue is content.',
+    'items.sphere.fallback':
+        'The sphere is not available here (no canvas, or reduced motion is on), so the list is shown.',
+    'items.sphere.selected': 'Selected: {name}',
+    'items.sphere.more': 'There are more entries in this level that are not shown yet. Load more first.',
     'items.more': 'Load more',
     'items.expand': 'Expand',
     'items.collapse': 'Collapse',
