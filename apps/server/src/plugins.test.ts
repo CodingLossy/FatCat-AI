@@ -42,7 +42,14 @@ async function setup() {
     const settled = async () => {
         for (let i = 0; i < 200; i++) {
             const items = await list();
-            if (items.every((x) => x.state !== 'enabled' || x.run.state === 'running' || x.run.state === 'idle'))
+            // 进程起来(running)与工具注册完成之间有一小段窗口,所以还要等工具表出现
+            if (
+                items.every(
+                    (x) =>
+                        x.state !== 'enabled' ||
+                        ((x.run.state === 'running' || x.run.state === 'idle') && x.run.tools.length > 0),
+                )
+            )
                 return items;
             await new Promise((r) => setTimeout(r, 50));
         }
