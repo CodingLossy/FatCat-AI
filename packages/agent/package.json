@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@fatcat-ai/providers": "workspace:*",
+    "@fatcat-ai/i18n": "workspace:*",
     "@fatcat-ai/shared": "workspace:*",
     "@fatcat-ai/storage": "workspace:*",
     "@fatcat-ai/tools": "workspace:*"

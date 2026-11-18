@@ -24,7 +24,7 @@ function who(m: MailMessage): string {
 }
 
 export function MailPage() {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [accounts, setAccounts] = useState<MailAccount[]>([]);
     const [accountId, setAccountId] = useState<string>('');
     const [folder, setFolder] = useState<'inbox' | 'sent'>('inbox');
@@ -141,7 +141,7 @@ export function MailPage() {
                             >
                                 <span className="mail-subject">{m.subject || t('mail.noSubject')}</span>
                                 <span className="small muted">
-                                    {who(m)} · {new Date(m.date).toLocaleString()}
+                                    {who(m)} · {new Date(m.date).toLocaleString(locale)}
                                 </span>
                             </button>
                         </li>
@@ -171,7 +171,7 @@ export function MailPage() {
                             <p className="small muted">
                                 {who(open)} → {open.to.map((a) => a.address).join(', ')}
                                 {open.cc.length ? ` · cc ${open.cc.map((a) => a.address).join(', ')}` : ''} ·{' '}
-                                {new Date(open.date).toLocaleString()}
+                                {new Date(open.date).toLocaleString(locale)}
                             </p>
                             <div className="row">
                                 <button
@@ -224,7 +224,7 @@ export function MailPage() {
 }
 
 function Drafts({ drafts, onChanged }: { drafts: MailDraft[]; onChanged: () => void }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [editing, setEditing] = useState<MailDraft | null>(null);
     const [error, setError] = useState<string | null>(null);
     if (drafts.length === 0) return null;
@@ -284,7 +284,7 @@ function Drafts({ drafts, onChanged }: { drafts: MailDraft[]; onChanged: () => v
                             <div>
                                 <strong>{d.subject || t('mail.noSubject')}</strong>
                                 <div className="small muted">
-                                    → {d.to.join(', ')} · {new Date(d.updatedAt).toLocaleString()}
+                                    → {d.to.join(', ')} · {new Date(d.updatedAt).toLocaleString(locale)}
                                 </div>
                             </div>
                             <div className="row">

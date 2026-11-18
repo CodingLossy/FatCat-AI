@@ -4,6 +4,16 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### M9 · Internationalization and docs site (in progress)
+
+#### Added
+
+- `@fatcat-ai/i18n` (ADR 0043, first part): the Web UI dictionaries now live in one package with a small message format (`{name}`, `plural`, `select`), locale-aware dates and numbers, locale resolution (setting, then browser language, then English) and per-language templates for the short texts the server puts into prompts and status labels. `pnpm check:i18n` (also in CI) fails on hard-coded Chinese or English text in the Web UI; a unit test checks that both languages have the same keys and placeholders. A guide for adding a language is in `docs/contributing/translations.md`. Chinese summary: 界面文案迁到 `@fatcat-ai/i18n`,日期按所选语言显示,新增 `pnpm check:i18n` 防止硬编码文案,并附新增语言的流程文档(待校对)。
+
+#### Fixed
+
+- Dates and times in the mail pages and the approval countdown ignored the language chosen in Settings; they now follow it. The footer's source link text, the mail provider names and setup hints, and the names of the built-in top-level categories in the knowledge map (Sessions, Novels, Files, Characters) are now translated; with English selected no Chinese text is left on any page except names that were stored in the database earlier (such as the built-in agent roles).
+
 ### M8 · Multi-agent
 
 #### Added

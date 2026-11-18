@@ -2,9 +2,11 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import type { MetaResponse } from '@fatcat-ai/shared';
+import { useI18n } from './i18n.js';
 
 /** 页脚:展示许可证与源码链接(AGPL §13)。源码地址来自服务器 /api/v1/meta。 */
 export function Footer({ meta }: { meta: MetaResponse | null }) {
+    const { t } = useI18n();
     return (
         <footer className="footer">
             <span>FatCat-AI {meta?.serverVersion ? `v${meta.serverVersion}` : ''}</span>
@@ -14,7 +16,7 @@ export function Footer({ meta }: { meta: MetaResponse | null }) {
                 <>
                     <span> · </span>
                     <a href={meta.sourceUrl} rel="noreferrer" target="_blank">
-                        源代码 / Source
+                        {t('footer.source')}
                     </a>
                 </>
             ) : null}

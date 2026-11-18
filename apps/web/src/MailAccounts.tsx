@@ -5,7 +5,7 @@
 import type { MailAccount, MailPreset, MailSentCopy } from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
-import { useI18n } from './i18n.js';
+import { dictionaries, type Key, useI18n } from './i18n.js';
 import { sentCopyDuplicate, sentCopyNote } from './sent-copy.js';
 
 function without<T>(record: Record<string, T>, key: string): Record<string, T> {
@@ -17,7 +17,7 @@ function without<T>(record: Record<string, T>, key: string): Record<string, T> {
 const SENT_COPY: MailSentCopy[] = ['auto', 'append', 'off'];
 
 export function MailAccounts() {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [items, setItems] = useState<MailAccount[]>([]);
     const [presets, setPresets] = useState<MailPreset[]>([]);
     const [preset, setPreset] = useState('');
@@ -74,6 +74,11 @@ export function MailAccounts() {
     };
 
     const chosen = presets.find((p) => p.id === preset);
+    // 预置邮箱的名称与说明按界面语言显示;没有对应文字的新预置回退到服务器给的文字
+    const presetText = (p: MailPreset, field: 'label' | 'help') => {
+        const key = `mail.preset.${p.id}.${field}`;
+        return key in dictionaries.en ? t(key as Key) : p[field];
+    };
     const add = (e: FormEvent) => {
         e.preventDefault();
         if (!chosen) return;
@@ -122,7 +127,7 @@ export function MailAccounts() {
                                     ? t('mail.passwordMissing', { ref: a.passwordRef })
                                     : a.passwordRef}
                                 {a.lastSyncedAt
-                                    ? ` · ${t('mail.lastSync', { time: new Date(a.lastSyncedAt).toLocaleString() })}`
+                                    ? ` · ${t('mail.lastSync', { time: new Date(a.lastSyncedAt).toLocaleString(locale) })}`
                                     : ''}
                             </div>
                             <label className="small">
@@ -186,11 +191,11 @@ export function MailAccounts() {
                 <select aria-label={t('mail.provider')} value={preset} onChange={(e) => setPreset(e.target.value)}>
                     {presets.map((p) => (
                         <option key={p.id} value={p.id}>
-                            {p.label}
+                            {presetText(p, 'label')}
                         </option>
                     ))}
                 </select>
-                {chosen ? <p className="small muted">{chosen.help}</p> : null}
+                {chosen ? <p className="small muted">{presetText(chosen, 'help')}</p> : null}
                 <input
                     aria-label={t('mail.label')}
                     placeholder={t('mail.label')}

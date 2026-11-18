@@ -2,6 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import type { ModelKind, ModelProfile, ModelPurpose, Settings, SettingsPatch } from '@fatcat-ai/shared';
+import { LOCALES, LOCALE_NAMES } from '@fatcat-ai/i18n';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
@@ -358,8 +359,11 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                         value={settings.locale}
                         onChange={(e) => void update({ locale: e.target.value as Settings['locale'] })}
                     >
-                        <option value="zh-CN">中文</option>
-                        <option value="en">English</option>
+                        {LOCALES.map((code) => (
+                            <option key={code} value={code}>
+                                {LOCALE_NAMES[code]}
+                            </option>
+                        ))}
                     </select>
                 </label>
                 <label>

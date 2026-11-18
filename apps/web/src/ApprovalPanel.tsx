@@ -24,7 +24,7 @@ export function ApprovalPanel({
     /** 全部待批数量变化时通知外层(侧栏角标与页面标题用)。 */
     onCount?: (n: number) => void;
 }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [pending, setPending] = useState<ApprovalRequest[]>([]);
     const [open, setOpen] = useState(false);
 
@@ -99,7 +99,7 @@ export function ApprovalPanel({
                                     {t('approvals.openSession')}
                                 </button>
                                 <span className="small muted">
-                                    {t('approvals.expires', { time: new Date(a.expiresAt).toLocaleTimeString() })}
+                                    {t('approvals.expires', { time: new Date(a.expiresAt).toLocaleTimeString(locale) })}
                                 </span>
                             </div>
                             <ApprovalActions

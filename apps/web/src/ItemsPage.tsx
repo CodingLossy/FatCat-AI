@@ -6,6 +6,7 @@ import { breadcrumbOf, type Crumb, mergePage, toggleExpanded, virtualWindow } fr
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { itemTitle } from './item-title.js';
 import { navigate } from './router.js';
 
 /** 列表行高(像素,固定;虚拟滚动只渲染视口附近的行)。触摸目标不小于 44px。 */
@@ -65,7 +66,7 @@ function TreeBranch(props: {
                                 {open ? '▾' : '▸'}
                             </button>
                             <button type="button" className="link tree-toggle" onClick={() => props.onGo(item)}>
-                                {item.title}
+                                {itemTitle(item, t)}
                             </button>
                             <Count item={item} />
                         </div>
@@ -122,7 +123,7 @@ function VirtualList(props: { items: Item[]; onPick: (item: Item) => void; onNea
                             >
                                 <span className="item-row-title">
                                     {isBranch(item) ? '▸ ' : ''}
-                                    {item.title}
+                                    {itemTitle(item, t)}
                                 </span>
                                 <span className="small muted item-row-meta">
                                     {item.type} · {item.updatedAt.slice(0, 10)}
@@ -217,7 +218,12 @@ export function ItemsPage() {
                     api.items.ancestors(item.id),
                     api.items.counts(item.id),
                 ]);
-                setTrail(breadcrumbOf(ancestors.items, item));
+                setTrail(
+                    breadcrumbOf(
+                        ancestors.items.map((a) => ({ id: a.id, title: itemTitle(a, t) })),
+                        { id: item.id, title: itemTitle(item, t) },
+                    ),
+                );
                 setTypes(Object.keys(counts.byType).sort());
                 const path = [...ancestors.items.map((a) => a.id), item.id];
                 setExpanded((old) => new Set([...old, ...path]));
@@ -227,7 +233,7 @@ export function ItemsPage() {
             }
             void loadList(item.id, 'position', '');
         },
-        [kids, loadKids, loadList],
+        [kids, loadKids, loadList, t],
     );
 
     const toggle = (item: Item) => {
@@ -255,7 +261,12 @@ export function ItemsPage() {
             .catch(() => undefined);
         try {
             const ancestors = await api.items.ancestors(item.id);
-            setTrail(breadcrumbOf(ancestors.items, item));
+            setTrail(
+                breadcrumbOf(
+                    ancestors.items.map((a) => ({ id: a.id, title: itemTitle(a, t) })),
+                    { id: item.id, title: itemTitle(item, t) },
+                ),
+            );
         } catch (e) {
             fail(e);
         }
@@ -408,7 +419,7 @@ export function ItemsPage() {
                     )}
                     {detail ? (
                         <article className="item-content">
-                            <h2>{detail.title}</h2>
+                            <h2>{itemTitle(detail, t)}</h2>
                             <p className="small muted">{detail.type}</p>
                             <button type="button" className="primary" onClick={() => ask(detail, 'item')}>
                                 {t('items.ask')}
@@ -434,7 +445,7 @@ export function ItemsPage() {
                                                     className="link"
                                                     onClick={() => void pick(r.item)}
                                                 >
-                                                    {r.item.title}
+                                                    {itemTitle(r.item, t)}
                                                 </button>{' '}
                                                 <span className="small muted">{r.rel}</span>
                                             </li>

@@ -124,6 +124,9 @@ importers:
       '@fatcat-ai/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@fatcat-ai/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@fatcat-ai/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -182,6 +185,9 @@ importers:
 
   packages/agent:
     dependencies:
+      '@fatcat-ai/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@fatcat-ai/providers':
         specifier: workspace:*
         version: link:../providers
