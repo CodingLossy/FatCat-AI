@@ -7,16 +7,23 @@ import { execFile } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import type { z } from 'zod';
 import {
     FATCAT_METHODS,
     HeartbeatParams,
+    ItemsListResult,
+    ItemsOpenResult,
+    ItemsUpsertParams,
     LogParams,
+    NetFetchParams,
+    PLUGIN_RPC_ERRORS,
     type PluginManifest,
     type PluginPermissions,
     type PluginToolPermission,
     type ToolRisk,
     type UntrustedContent,
 } from '@fatcat-ai/shared';
+import { WebFetchError } from '../builtin/web-fetch.js';
 import { type McpToolInfo, McpRpcError, StdioMcpClient } from '../mcp/client.js';
 import { MAX_RESULT_CHARS, resultText, toolSegment } from '../mcp/manager.js';
 import type { ToolRegistry } from '../registry.js';
@@ -24,6 +31,7 @@ import { type ToolDefinition, ToolDeniedError } from '../types.js';
 import { findReparsePoint, pluginEnv, pluginNodeArgs } from './launch.js';
 import { NO_NET_ISOLATION, type NetIsolation } from './isolation.js';
 import { hashPluginDir } from './package.js';
+import { NetScopeError, pluginNetFetch, type PluginNetFetchOptions } from './net-fetch.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -97,6 +105,22 @@ export interface PluginRuntimeOptions {
     readRss?: (pid: number) => Promise<number | null>;
     /** 操作系统层面的网络隔离(detectNetIsolation 的结果);不给时不包装。 */
     netIsolation?: NetIsolation;
+    /** 该 owner 是否允许 fake-IP 段(ADR 0038);fatcat/net.fetch 与 web.fetch 一致。 */
+    allowFakeIp?: (ownerId: string) => boolean;
+    /** 测试用:替换 DNS 解析与地址判断。 */
+    netFetchOverrides?: Pick<PluginNetFetchOptions, 'resolve' | 'isBlocked' | 'timeoutMs' | 'maxBytes'>;
+    /**
+     * 写入插件推来的条目(fatcat/items.upsert)。参数已校验、类别已核对;配额超出时抛 PluginQuotaError。
+     * 不给时该方法回「当前版本不可用」。
+     */
+    upsertItems?: (ownerId: string, pluginId: string, items: PluginUpsertItem[]) => number;
+}
+
+export type PluginUpsertItem = z.infer<typeof ItemsUpsertParams>['items'][number];
+
+/** 条目配额超出(每个插件 50,000 条)。 */
+export class PluginQuotaError extends Error {
+    override readonly name = 'PluginQuotaError';
 }
 
 interface Entry {
@@ -131,6 +155,19 @@ export function redactSecrets(text: string, values: readonly string[]): string {
             encodeURIComponent(value),
         ]);
         for (const form of forms) out = out.split(form).join('[redacted]');
+    }
+    return out;
+}
+
+/** 传给插件的设置:清单声明的每一项,用户填的值优先,其次是声明的默认值;未声明的键和保留键(`__` 开头)不传。 */
+export function pluginSettingsValues(
+    manifest: PluginManifest,
+    saved: Record<string, unknown>,
+): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [key, prop] of Object.entries(manifest.settings?.properties ?? {})) {
+        const value = saved[key] ?? prop.default;
+        if (value !== undefined) out[key] = value;
     }
     return out;
 }
@@ -320,6 +357,7 @@ export class PluginRuntime {
                     dataDir,
                     secrets,
                     timeZone: this.options.timeZone?.(),
+                    settings: pluginSettingsValues(record.manifest, record.settings),
                     source,
                 }),
                 priority: 5,
@@ -423,6 +461,61 @@ export class PluginRuntime {
         }
     }
 
+    // ───────────── 宿主 → 插件:知识地图提供者(fatcat/items.*) ─────────────
+
+    /** 调用插件的提供者方法;需要时先启动进程,结果按 schema 校验。 */
+    private async pull<T>(
+        pluginId: string,
+        ownerId: string,
+        method: string,
+        params: unknown,
+        schema: { parse(value: unknown): T },
+    ): Promise<T> {
+        const entry = this.entries.get(pluginId);
+        if (!entry || entry.record.ownerId !== ownerId) throw new ToolDeniedError('This plugin is not available.');
+        if (entry.state === 'error' || entry.state === 'disabled') {
+            throw new ToolDeniedError(`This plugin is not running: ${entry.error ?? entry.state}`);
+        }
+        let client: StdioMcpClient;
+        try {
+            client = await this.ensureRunning(entry);
+        } catch (error) {
+            await this.fail(entry, error);
+            throw new ToolDeniedError(`This plugin could not be started: ${entry.error ?? 'unknown error'}`);
+        }
+        if (entry.idleTimer) clearTimeout(entry.idleTimer);
+        try {
+            return schema.parse(await client.request(method, params));
+        } finally {
+            this.armIdle(entry);
+        }
+    }
+
+    /** 插件当前是否正在运行(不启动它);同步时据此决定要不要为了刷新而拉起进程。 */
+    isRunning(pluginId: string): boolean {
+        return this.entries.get(pluginId)?.client != null;
+    }
+
+    itemsRoots(ownerId: string, pluginId: string, type?: string) {
+        return this.pull(pluginId, ownerId, FATCAT_METHODS.itemsRoots, type ? { type } : {}, ItemsListResult);
+    }
+
+    itemsChildren(ownerId: string, pluginId: string, type: string, parentId: string, cursor?: string) {
+        return this.pull(
+            pluginId,
+            ownerId,
+            FATCAT_METHODS.itemsChildren,
+            { type, parentId, ...(cursor ? { cursor } : {}) },
+            ItemsListResult,
+        );
+    }
+
+    async itemsOpen(ownerId: string, pluginId: string, type: string, id: string) {
+        const result = await this.pull(pluginId, ownerId, FATCAT_METHODS.itemsOpen, { type, id }, ItemsOpenResult);
+        const secrets = this.entries.get(pluginId)?.secretValues ?? [];
+        return { ...result, content: redactSecrets(result.content, secrets) };
+    }
+
     // ───────────── fatcat/* 请求(第 3.3 节) ─────────────
 
     private async handle(entry: Entry, method: string, params: unknown): Promise<unknown> {
@@ -444,18 +537,75 @@ export class PluginRuntime {
                 if (parsed.success) entry.reportedRss = parsed.data.rss;
                 return {};
             }
-            case FATCAT_METHODS.netFetch:
+            case FATCAT_METHODS.netFetch: {
                 if (entry.record.granted.net.length === 0) return this.deny(entry, method, 'net is not granted');
-                throw new McpRpcError('fatcat/net.fetch is not available in this version', -32601);
-            case FATCAT_METHODS.itemsUpsert:
-                if (!entry.record.granted.items) return this.deny(entry, method, 'items is not granted');
-                throw new McpRpcError('fatcat/items.upsert is not available in this version', -32601);
+                const parsed = NetFetchParams.safeParse(params);
+                if (!parsed.success) throw new McpRpcError('invalid params', -32602, { code: 'invalid_params' });
+                try {
+                    return await pluginNetFetch(parsed.data, {
+                        domains: entry.record.granted.net,
+                        allowFakeIp: this.options.allowFakeIp?.(entry.record.ownerId) === true,
+                        ...this.options.netFetchOverrides,
+                    });
+                } catch (error) {
+                    if (error instanceof NetScopeError) return this.deny(entry, method, 'domain is not granted');
+                    if (error instanceof WebFetchError) {
+                        // 私网地址、fake-IP、带凭据的 URL、非 https 都是策略拒绝:记 denied;其余(超时、连接失败)只是请求失败
+                        if (
+                            error.code !== 'fake_ip_blocked' &&
+                            /not allowed|disallowed|credentials|only https|only http|no address/.test(error.message)
+                        ) {
+                            return this.deny(entry, method, 'destination is not allowed');
+                        }
+                        throw new McpRpcError(redactSecrets(error.message, entry.secretValues).slice(0, 300), -32003, {
+                            code: 'fetch_failed',
+                        });
+                    }
+                    throw error;
+                }
+            }
+            case FATCAT_METHODS.itemsUpsert: {
+                const granted = entry.record.granted.items;
+                if (!granted) return this.deny(entry, method, 'items is not granted');
+                const parsed = ItemsUpsertParams.safeParse(params);
+                if (!parsed.success) {
+                    if (parsed.error.issues.some((i) => i.message.includes('meta is larger'))) {
+                        return this.deny(entry, method, 'meta is larger than 8 KiB', 'quota_exceeded');
+                    }
+                    throw new McpRpcError('invalid params', -32602, { code: 'invalid_params' });
+                }
+                const types = new Set(granted.categories.map((c) => c.type));
+                if (parsed.data.items.some((item) => !types.has(item.type))) {
+                    return this.deny(entry, method, 'item type is not a registered category');
+                }
+                if (!this.options.upsertItems) {
+                    throw new McpRpcError('fatcat/items.upsert is not available in this version', -32601);
+                }
+                try {
+                    return {
+                        upserted: this.options.upsertItems(
+                            entry.record.ownerId,
+                            entry.record.pluginId,
+                            parsed.data.items,
+                        ),
+                    };
+                } catch (error) {
+                    if (error instanceof PluginQuotaError)
+                        return this.deny(entry, method, 'item quota exceeded', 'quota_exceeded');
+                    throw error;
+                }
+            }
             default:
                 throw new McpRpcError('Method not found', -32601);
         }
     }
 
-    private deny(entry: Entry, method: string, reason: string): never {
+    private deny(
+        entry: Entry,
+        method: string,
+        reason: string,
+        code: 'permission_denied' | 'quota_exceeded' = 'permission_denied',
+    ): never {
         const now = this.now();
         this.options.onEvent(entry.record.ownerId, {
             pluginId: entry.record.pluginId,
@@ -476,7 +626,7 @@ export class PluginRuntime {
             this.options.onState(entry.record.ownerId, entry.record.pluginId, 'disabled', message);
             void this.remove(entry.record.pluginId);
         }
-        throw new McpRpcError('permission_denied', -32001, { code: 'permission_denied' });
+        throw new McpRpcError(code, PLUGIN_RPC_ERRORS[code], { code });
     }
 
     // ───────────── 停止、崩溃、空闲、内存 ─────────────

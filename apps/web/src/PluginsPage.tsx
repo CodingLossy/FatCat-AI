@@ -12,6 +12,7 @@ import type {
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { navigate } from './router.js';
 import { formatRss, pickText, settingsDraft, settingsValues, type SettingsDraft } from './plugin-ui.js';
 
 /**
@@ -356,6 +357,31 @@ function PluginManage({
             {plugin.permissions.secrets.length > 0 ? <SecretBindings plugin={plugin} busy={busy} act={act} /> : null}
             {plugin.settingsSchema ? <SettingsForm plugin={plugin} busy={busy} act={act} /> : null}
             <RuntimeForm plugin={plugin} busy={busy} act={act} />
+            {plugin.taskTemplates.length > 0 && plugin.state === 'enabled' ? (
+                <div data-testid="plugin-templates">
+                    <h4>{t('plugins.templatesTitle')}</h4>
+                    <p className="small muted">{t('plugins.templatesHint')}</p>
+                    <ul className="small">
+                        {plugin.taskTemplates.map((template, index) => (
+                            <li key={index}>
+                                {pickText(template.title, locale)}{' '}
+                                <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() =>
+                                        void act(async () => {
+                                            await api.tasks.fromPluginTemplate(plugin.id, index);
+                                            navigate({ name: 'tasks' });
+                                        })
+                                    }
+                                >
+                                    {t('plugins.templateCreate')}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            ) : null}
             <h4>{t('plugins.permissions')}</h4>
             <PermissionList permissions={plugin.permissions} />
             {detail ? (

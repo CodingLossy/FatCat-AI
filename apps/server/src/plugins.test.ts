@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { PluginDetail, PluginPrepared, PluginView, pageOf, ToolInfo } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { protectionTable } from './plugin-setup.js';
+import { PLUGIN_ITEM_QUOTA, upsertPluginItems } from './plugin-items.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 const fixtures = fileURLToPath(new URL('../../../packages/tools/src/plugins/fixtures/', import.meta.url));
@@ -199,6 +200,111 @@ describe('插件 REST', () => {
         expect(detail.settingsSchema?.required).toEqual(['city']);
         expect(detail.protections.find((r) => r.key === 'direct-network')?.level).toBe('layered');
     });
+
+    it('插件条目出现在知识地图、能打开,卸载后消失;推送的条目按配额拒绝', async () => {
+        const { send, install, settled } = await setup();
+        const src = sourceDir((m) => {
+            (m.permissions as Record<string, unknown>).items = {
+                categories: [{ type: 'video', title: { en: 'Videos', 'zh-CN': '视频' } }],
+            };
+        });
+        expect((await install(src)).res.status).toBe(201);
+        await settled();
+        await send('POST', '/api/v1/items/sync');
+        const roots = (await (await send('GET', '/api/v1/items/roots')).json()) as {
+            items: { id: string; title: string; source: string }[];
+        };
+        const category = roots.items.find((r) => r.source === 'plugin:probe')!;
+        expect(category.title).toBe('视频');
+        const level1 = (await (await send('GET', `/api/v1/items/${category.id}/children`)).json()) as {
+            items: { id: string; title: string }[];
+        };
+        expect(level1.items.map((i) => i.title)).toEqual(['Video one']);
+        const level2 = (await (await send('GET', `/api/v1/items/${level1.items[0]!.id}/children`)).json()) as {
+            items: { id: string; title: string }[];
+        };
+        expect(level2.items.map((i) => i.title)).toEqual(['First clip']);
+        const opened = (await (await send('GET', `/api/v1/items/${level2.items[0]!.id}/content`)).json()) as {
+            content: string;
+        };
+        expect(opened.content).toContain('Content of v1-clip');
+
+        // 配额:每个插件最多 50,000 条,超过整批拒绝、什么都不写
+        const owner = s.repos.owners.ids()[0]!;
+        const granted = s.repos.plugins.get(owner, 'probe')!.granted as never;
+        const before = s.repos.items.countBySource(owner, 'plugin:probe');
+        for (let i = 0; i < 3; i++) {
+            upsertPluginItems(s.repos, owner, 'probe', granted, [
+                { id: `p${i}`, type: 'video', title: `P${i}`, hasChildren: false },
+            ]);
+        }
+        expect(s.repos.items.countBySource(owner, 'plugin:probe')).toBe(before + 3);
+        const many = Array.from({ length: 500 }, (_, i) => ({
+            id: `q${i}`,
+            type: 'video',
+            title: `Q${i}`,
+            hasChildren: false,
+        }));
+        const insert = s.conn.sqlite.prepare(
+            "INSERT INTO items (id, owner_id, kind, type, source, source_ref, title, created_at, updated_at) VALUES (?, ?, 'content', 'video', 'plugin:probe', ?, 'x', 't', 't')",
+        );
+        s.conn.sqlite.transaction(() => {
+            for (let i = 0; i < PLUGIN_ITEM_QUOTA - before - 3; i++) insert.run(`filler${i}`, owner, `n:filler${i}`);
+        })();
+        expect(() => upsertPluginItems(s.repos, owner, 'probe', granted, many.slice(0, 1))).toThrow(/at most/);
+        expect(s.repos.items.countBySource(owner, 'plugin:probe')).toBe(PLUGIN_ITEM_QUOTA);
+        // 已存在的条目更新不算新增
+        expect(
+            upsertPluginItems(s.repos, owner, 'probe', granted, [
+                { id: 'p0', type: 'video', title: 'P0 renamed', hasChildren: false },
+            ]),
+        ).toBe(1);
+
+        expect((await send('DELETE', '/api/v1/plugins/probe')).status).toBe(204);
+        expect(s.repos.items.countBySource(owner, 'plugin:probe')).toBe(0);
+        const after = (await (await send('GET', '/api/v1/items/roots')).json()) as { items: { source: string }[] };
+        expect(after.items.some((r) => r.source === 'plugin:probe')).toBe(false);
+    }, 60_000);
+
+    it('任务模板只能建草稿(确认前不运行),卸载插件时停用由模板建出的任务', async () => {
+        const { send, install, settled } = await setup();
+        const src = sourceDir((m) => {
+            m.taskTemplates = [
+                {
+                    title: { en: 'Morning probe', 'zh-CN': '早上探测' },
+                    prompt: 'Run the probe tool',
+                    trigger: { kind: 'cron', expression: '0 7 * * *' },
+                },
+            ];
+        });
+        expect((await install(src)).res.status).toBe(201);
+        await settled();
+        expect((await send('POST', '/api/v1/tasks/from-plugin-template', { pluginId: 'probe', index: 3 })).status).toBe(
+            404,
+        );
+        const res = await send('POST', '/api/v1/tasks/from-plugin-template', { pluginId: 'probe', index: 0 });
+        expect(res.status).toBe(201);
+        const draft = (await res.json()) as {
+            task: { id: string; name: string; status: string; enabled: boolean; policy: { fromPlugin?: string } };
+        };
+        expect(draft.task).toMatchObject({
+            name: '早上探测',
+            status: 'draft',
+            enabled: false,
+            policy: { fromPlugin: 'probe' },
+        });
+        // 确认前:草稿不能启用也不能运行
+        expect((await send('PATCH', `/api/v1/tasks/${draft.task.id}`, { enabled: true })).status).toBe(409);
+        expect((await send('POST', `/api/v1/tasks/${draft.task.id}/run`)).status).toBe(409);
+        const detail = PluginDetail.parse(await (await send('GET', '/api/v1/plugins/probe')).json());
+        expect(detail.taskTemplates).toHaveLength(1);
+        expect(detail.affectedTasks.map((t) => t.id)).toContain(draft.task.id);
+        // 停用后不能再从模板建草稿
+        await send('PATCH', '/api/v1/plugins/probe', { enabled: false });
+        expect((await send('POST', '/api/v1/tasks/from-plugin-template', { pluginId: 'probe', index: 0 })).status).toBe(
+            404,
+        );
+    }, 60_000);
 
     it('卸载:勾选删除数据后文件树与表行数回到安装前;预授权撤销并审计,任务停用并写原因', async () => {
         const { send, settled, install } = await setup();

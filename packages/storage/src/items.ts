@@ -149,6 +149,12 @@ export function createItemRepository(conn: Connection, now: () => Date) {
         countsByType: sqlite.prepare<{ root: string }, { type: string; n: number }>(
             `${DESCENDANTS} SELECT i.type, count(*) AS n FROM d JOIN items i ON i.id = d.id GROUP BY i.type`,
         ),
+        countBySource: sqlite.prepare<[string, string], { n: number }>(
+            'SELECT count(*) AS n FROM items WHERE owner_id = ? AND source = ? AND deleted_at IS NULL',
+        ),
+        liveBySource: sqlite.prepare<[string, string], { id: string }>(
+            'SELECT id FROM items WHERE owner_id = ? AND source = ? AND deleted_at IS NULL',
+        ),
         softDelete: sqlite.prepare<[string, string, string]>(
             'UPDATE items SET deleted_at = ?, updated_at = ?, child_count = 0, descendant_count = 0 WHERE id = ?',
         ),
@@ -386,6 +392,16 @@ export function createItemRepository(conn: Connection, now: () => Date) {
                 if (!keep.has(c.sourceRef) && softDelete(ownerId, c.id)) removed++;
             }
             return removed;
+        },
+        /** 某个来源的未删除条目数(插件配额用,ADR 0040 第 3.3 节)。 */
+        countBySource(ownerId: string, source: string): number {
+            return q.countBySource.get(ownerId, source)!.n;
+        },
+        /** 软删除某个来源的全部条目(插件卸载时);返回删除的条数。 */
+        removeSource(ownerId: string, source: string): number {
+            const before = q.countBySource.get(ownerId, source)!.n;
+            for (const row of q.liveBySource.all(ownerId, source)) softDelete(ownerId, row.id); // 已随父项删除的返回 false
+            return before - q.countBySource.get(ownerId, source)!.n;
         },
         roots(ownerId: string): Item[] {
             return q.roots.all(ownerId).map((row) => present(row, true));

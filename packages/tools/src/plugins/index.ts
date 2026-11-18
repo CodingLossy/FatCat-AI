@@ -21,7 +21,10 @@ export {
 } from './package.js';
 export {
     effectiveRisk,
+    PluginQuotaError,
     PluginRuntime,
+    pluginSettingsValues,
+    type PluginUpsertItem,
     type PluginEventInput,
     type PluginRunState,
     type PluginRuntimeOptions,
@@ -31,3 +34,4 @@ export {
     redactSecrets,
     RUNTIME_SETTINGS_KEY,
 } from './runtime.js';
+export { NET_FETCH_MAX_BYTES, NET_FETCH_TIMEOUT_MS, NetScopeError, pluginNetFetch } from './net-fetch.js';

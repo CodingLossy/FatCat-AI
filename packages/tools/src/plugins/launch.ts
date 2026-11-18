@@ -57,6 +57,8 @@ export interface PluginEnvInput {
     secrets: Record<string, string>;
     /** 用户时区(ADR 0023)。 */
     timeZone?: string | undefined;
+    /** 用户填的设置(含默认值);以 JSON 放进 FATCAT_PLUGIN_SETTINGS,启动时一次性传入,改了设置会重启插件。 */
+    settings?: Record<string, unknown> | undefined;
     source?: NodeJS.ProcessEnv | undefined;
 }
 
@@ -79,6 +81,7 @@ export function pluginEnv(input: PluginEnvInput): Record<string, string> {
     env.TMP = tmp;
     env.FATCAT_PLUGIN_ID = input.pluginId;
     env.FATCAT_PLUGIN_DATA = input.dataDir;
+    if (input.settings) env.FATCAT_PLUGIN_SETTINGS = JSON.stringify(input.settings);
     for (const [name, value] of Object.entries(input.secrets)) {
         if (isOwnEnvName(name) || name === 'NODE_OPTIONS' || name === 'NODE_PATH') continue;
         env[name] = value;

@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import {
     type PluginDetail,
     type PluginManifest,
+    type PluginTaskTemplate,
     type PluginPatch,
     type PluginPermissions,
     type PluginPrepared,
@@ -22,11 +23,14 @@ import { inputDigest, type ToolRegistry } from '@fatcat-ai/tools';
 import type {
     PluginEventInput,
     PluginRuntime,
+    PluginRuntimeOptions,
     PluginRuntimeRecord,
     PluginRuntimeSettings,
     NetIsolation,
 } from '@fatcat-ai/tools/plugins';
+import type { ItemProvider } from '@fatcat-ai/items';
 import { ApiError, notFound } from './errors.js';
+import { createPluginItemProvider, pluginSource, upsertPluginItems } from './plugin-items.js';
 import { SERVER_VERSION } from './version.js';
 
 const RUNTIME_KEY = '__runtime';
@@ -50,8 +54,16 @@ export interface PluginServiceOptions {
     env?: NodeJS.ProcessEnv;
     log?: { info(obj: object, msg: string): void; warn(obj: object, msg: string): void };
     now?: () => Date;
+    /** 插件的条目来源有变化(安装、启用、停用、卸载)后调用,让知识地图在下一次读取前重新同步。 */
+    onItemsChanged?: (ownerId: string) => void;
     /** 运行时的可调参数(测试用)。 */
-    runtime?: { idleMs?: number; graceMs?: number; termMs?: number; handshakeTimeoutMs?: number };
+    runtime?: {
+        idleMs?: number;
+        graceMs?: number;
+        termMs?: number;
+        handshakeTimeoutMs?: number;
+        netFetchOverrides?: PluginRuntimeOptions['netFetchOverrides'];
+    };
 }
 
 interface Staged {
@@ -168,6 +180,18 @@ export class PluginService {
             this.options.log?.info({ netIsolation: isolation.kind }, 'plugin network isolation');
             const runtime = new Runtime({
                 netIsolation: isolation,
+                allowFakeIp: (ownerId) => this.options.repos.settings.get(ownerId).network?.allowFakeIp === true,
+                upsertItems: (ownerId, pluginId, items) => {
+                    const record = this.options.repos.plugins.get(ownerId, pluginId);
+                    if (!record) throw new Error('unknown plugin');
+                    return upsertPluginItems(
+                        this.options.repos,
+                        ownerId,
+                        pluginId,
+                        record.granted as PluginPermissions,
+                        items,
+                    );
+                },
                 registry,
                 codeRoot: this.codeRoot,
                 dataRoot: this.dataRoot,
@@ -216,6 +240,24 @@ export class PluginService {
             );
         }
         void repos;
+    }
+
+    /** 已启用且有 `items` 授权的插件的条目提供者(第 3.3 节);运行时按需加载。 */
+    itemProviders(): ItemProvider[] {
+        return this.allRecords()
+            .filter((r) => r.state === 'enabled' && (r.granted as PluginPermissions).items !== undefined)
+            .map((r) =>
+                createPluginItemProvider({
+                    repos: this.options.repos,
+                    pluginId: r.pluginId,
+                    categories: () =>
+                        (
+                            this.options.repos.plugins.get(r.ownerId, r.pluginId)?.granted as
+                                PluginPermissions | undefined
+                        )?.items,
+                    runtime: () => this.load(),
+                }),
+            );
     }
 
     async closeAll(): Promise<void> {
@@ -299,6 +341,7 @@ export class PluginService {
             missingSecrets: this.missingSecrets(record),
             settings,
             settingsSchema: manifest.settings ?? null,
+            taskTemplates: manifest.taskTemplates ?? [],
             runtime: (runtime ?? {}) as PluginView['runtime'],
             run: this.runInfo(record),
             installedAt: record.installedAt,
@@ -332,13 +375,22 @@ export class PluginService {
         };
     }
 
+    /** 已启用插件的第 index 个任务模板(从模板建草稿用);插件不存在、没启用或没有这个模板时 404。 */
+    taskTemplate(ownerId: string, pluginId: string, index: number): { name: string; template: PluginTaskTemplate } {
+        const record = this.require(ownerId, pluginId);
+        const template = (record.manifest as PluginManifest).taskTemplates?.[index];
+        if (record.state !== 'enabled' || !template) throw notFound('Task template');
+        return { name: (record.manifest as PluginManifest).name.en ?? record.pluginId, template };
+    }
+
     private affectedTasks(ownerId: string, pluginId: string) {
         const prefix = `plugin.${pluginId}.`;
         return this.options.repos.tasks.list(ownerId).filter((task) => {
             const policy = task.policy;
             return (
                 (policy.toolSet ?? []).some((name) => name.startsWith(prefix) || name === prefix) ||
-                (policy.allowedTools ?? []).some((t) => t.tool.startsWith(prefix))
+                (policy.allowedTools ?? []).some((t) => t.tool.startsWith(prefix)) ||
+                policy.fromPlugin === pluginId
             );
         });
     }
@@ -443,6 +495,7 @@ export class PluginService {
             detail: 'local',
         });
         if (state === 'enabled') void this.activate(record).catch(() => undefined);
+        this.options.onItemsChanged?.(ownerId);
         return this.toView(record);
     }
 
@@ -516,6 +569,7 @@ export class PluginService {
             // 绑定、设置或启用状态变了:重新启动才生效
             void this.activate(record).catch(() => undefined);
         }
+        this.options.onItemsChanged?.(ownerId);
         return this.toView(record);
     }
 
@@ -539,6 +593,8 @@ export class PluginService {
         const { repos, redact } = this.options;
         const { ownerId, pluginId } = record;
         await this.runtime?.remove(pluginId);
+        // 知识地图里这个插件的条目与边:内容在插件里,留着打不开(第 6.1 节)
+        repos.items.removeSource(ownerId, pluginSource(pluginId));
         // 注销工具:运行时没加载时(服务刚启动)工具本来就没有注册
         const prefix = `plugin.${pluginId}.`;
         for (const p of repos.preauths.list(ownerId)) {
@@ -578,6 +634,7 @@ export class PluginService {
             version: record.version,
             detail: purgeData ? 'data removed' : 'data kept',
         });
+        this.options.onItemsChanged?.(ownerId);
     }
 
     events(ownerId: string, pluginId: string, page: { cursor?: string | undefined; limit: number }) {

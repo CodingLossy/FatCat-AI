@@ -3,7 +3,11 @@
 The smallest useful plugin: a `plugin.json` manifest plus a JavaScript entry that speaks MCP over stdio.
 
 - `plugin.json` declares the plugin (see ADR 0040, section 2). Anything not listed under `permissions` is denied.
-- `server.mjs` registers one read-only tool with `@fatcat-ai/plugin-sdk`.
+- `server.mjs` registers two read-only tools with `@fatcat-ai/plugin-sdk`. It reads its settings from `ctx.settings`
+  (declared under `settings` in `plugin.json` and filled in on the Plugins page), fetches a page through the server with
+  `ctx.fetch` (only `example.com` is granted under `permissions.net`), and offers a few notes to the knowledge map with
+  `registerItemProvider`.
+- `taskTemplates` in `plugin.json` offers a task draft you can create from the Plugins page and confirm on the Tasks page.
 
 Because it is a plain MCP server, any MCP client can talk to it:
 

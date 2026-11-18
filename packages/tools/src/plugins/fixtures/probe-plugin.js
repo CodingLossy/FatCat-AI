@@ -80,7 +80,7 @@ async function load(how, name) {
     }
 }
 
-async function attack(kind, arg) {
+async function attack(kind, arg, params = {}) {
     try {
         const [head, rest] = [kind.split(':')[0], kind.split(':').slice(1).join(':')];
         if (HOWS.includes(head)) {
@@ -191,7 +191,7 @@ async function attack(kind, arg) {
             process.exit(3);
         }
         if (kind === 'rpc') {
-            const reply = await hostRequest(arg, {});
+            const reply = await hostRequest(arg, params);
             return JSON.stringify(reply.error ?? reply.result);
         }
         if (kind === 'builtins') {
@@ -238,9 +238,31 @@ rl.on('line', async (line) => {
         const { name, arguments: args = {} } = msg.params;
         let text;
         if (name === 'echo') text = String(args.text ?? '');
-        else if (name === 'probe') text = await attack(String(args.attack), String(args.arg ?? ''));
+        else if (name === 'probe') text = await attack(String(args.attack), String(args.arg ?? ''), args.params ?? {});
         else text = 'undeclared tool ran';
         send({ jsonrpc: '2.0', id: msg.id, result: { content: [{ type: 'text', text }] } });
+    } else if (msg.method === 'fatcat/items.roots') {
+        // 知识地图提供者(测试夹具):一个有子项的根节点
+        send({
+            jsonrpc: '2.0',
+            id: msg.id,
+            result: { items: [{ id: 'v1', type: 'video', title: 'Video one', hasChildren: true }] },
+        });
+    } else if (msg.method === 'fatcat/items.children') {
+        const items =
+            msg.params.parentId === 'v1'
+                ? [{ id: 'v1-clip', type: 'video', title: 'First clip', hasChildren: false }]
+                : [];
+        send({ jsonrpc: '2.0', id: msg.id, result: { items } });
+    } else if (msg.method === 'fatcat/items.open') {
+        send({
+            jsonrpc: '2.0',
+            id: msg.id,
+            result: {
+                title: `Item ${msg.params.id}`,
+                content: `Content of ${msg.params.id} (key ${process.env.WEATHER_API_KEY ?? 'none'})`,
+            },
+        });
     } else {
         send({ jsonrpc: '2.0', id: msg.id, error: { code: -32601, message: 'Method not found' } });
     }

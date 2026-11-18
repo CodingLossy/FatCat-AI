@@ -214,7 +214,8 @@ export class StdioMcpClient {
         this.fail('the client was closed');
     }
 
-    private request(method: string, params: unknown): Promise<unknown> {
+    /** 发一个 JSON-RPC 请求并等待结果(插件的 fatcat/items.* 也走这里)。 */
+    request(method: string, params: unknown): Promise<unknown> {
         if (this.closed || !this.child) return Promise.reject(new McpError('the MCP server is not connected'));
         const id = this.nextId++;
         return new Promise((resolve, reject) => {

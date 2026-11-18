@@ -1,18 +1,84 @@
 {
   "manifestVersion": 1,
   "id": "hello",
-  "version": "0.1.0",
-  "name": { "zh-CN": "你好示例", "en": "Hello example" },
+  "version": "0.2.0",
+  "name": {
+    "zh-CN": "你好示例",
+    "en": "Hello example"
+  },
   "description": {
-    "zh-CN": "最小的示例插件:一个只读的问候工具。",
-    "en": "A minimal example plugin with one read-only greeting tool."
+    "zh-CN": "示例插件:问候工具、设置、经主程序代发的网络请求、知识地图条目和任务模板。",
+    "en": "Example plugin: a greeting tool, settings, brokered network requests, knowledge-map items and a task template."
   },
   "author": "尹绪柏 (Theodore Yin)",
   "license": "Apache-2.0",
-  "engines": { "fatcat": ">=1.1.0" },
-  "entry": { "type": "mcp-stdio", "main": "server.mjs" },
-  "permissions": {
-    "tools": [{ "name": "hello", "risk": "read" }]
+  "engines": {
+    "fatcat": ">=1.1.0"
   },
-  "licensing": { "model": "free" }
+  "entry": {
+    "type": "mcp-stdio",
+    "main": "server.mjs"
+  },
+  "permissions": {
+    "tools": [
+      {
+        "name": "hello",
+        "risk": "read"
+      },
+      {
+        "name": "fetch_title",
+        "risk": "read",
+        "constraint": "domain"
+      }
+    ],
+    "net": ["example.com"],
+    "items": {
+      "categories": [
+        {
+          "type": "note",
+          "title": {
+            "zh-CN": "示例笔记",
+            "en": "Example notes"
+          }
+        }
+      ]
+    }
+  },
+  "licensing": {
+    "model": "free"
+  },
+  "settings": {
+    "type": "object",
+    "properties": {
+      "greeting": {
+        "type": "string",
+        "title": {
+          "zh-CN": "问候语",
+          "en": "Greeting"
+        },
+        "default": "Hello",
+        "maxLength": 20
+      },
+      "shout": {
+        "type": "boolean",
+        "title": {
+          "zh-CN": "大写",
+          "en": "Shout"
+        }
+      }
+    }
+  },
+  "taskTemplates": [
+    {
+      "title": {
+        "zh-CN": "每天问候",
+        "en": "Daily greeting"
+      },
+      "prompt": "Use the hello tool to greet me.",
+      "trigger": {
+        "kind": "cron",
+        "expression": "0 9 * * *"
+      }
+    }
+  ]
 }

@@ -56,6 +56,13 @@ export interface WebFetchOptions {
     timeoutMs?: number;
     maxBytes?: number;
     userAgent?: string;
+    /** 请求方法;默认 GET。非 GET / HEAD 的请求不跟随跳转(插件的 fatcat/net.fetch 用,ADR 0040 第 3.3 节)。 */
+    method?: 'GET' | 'HEAD' | 'POST';
+    /** 额外的请求头;给出时不再发默认的 accept。 */
+    requestHeaders?: Record<string, string>;
+    requestBody?: string;
+    /** 每一跳(含第一跳)请求前都调用,可抛错拒绝,例如检查域名范围与 https。 */
+    onUrl?: (url: URL) => void;
 }
 
 const Input = z.strictObject({ url: z.string().min(1).max(2048) });
@@ -110,12 +117,16 @@ function guardedLookup(options: Required<Pick<WebFetchOptions, 'resolve' | 'isBl
     };
 }
 
-type FetchSettings = Required<Omit<WebFetchOptions, 'allowFakeIp'>>;
+type FetchSettings = Required<
+    Omit<WebFetchOptions, 'allowFakeIp' | 'method' | 'requestHeaders' | 'requestBody' | 'onUrl'>
+> &
+    Pick<WebFetchOptions, 'method' | 'requestHeaders' | 'requestBody' | 'onUrl'>;
 
 interface FetchResult {
     url: string;
     status: number;
     contentType: string;
+    headers: Record<string, string>;
     body: Buffer;
     truncated: boolean;
 }
@@ -126,13 +137,16 @@ function once(url: URL, options: FetchSettings, signal: AbortSignal): Promise<{ 
         const req = request(
             url,
             {
-                method: 'GET',
+                method: options.method ?? 'GET',
                 // 不复用连接池里的 socket:每次请求都经过 guardedLookup 校验
                 agent: false,
                 lookup: guardedLookup(options),
                 headers: {
                     'user-agent': options.userAgent,
-                    accept: 'text/html,application/xhtml+xml,text/plain,application/json;q=0.9,*/*;q=0.5',
+                    ...(options.requestHeaders
+                        ? {}
+                        : { accept: 'text/html,application/xhtml+xml,text/plain,application/json;q=0.9,*/*;q=0.5' }),
+                    ...options.requestHeaders,
                     'accept-encoding': 'identity',
                 },
                 signal,
@@ -140,7 +154,7 @@ function once(url: URL, options: FetchSettings, signal: AbortSignal): Promise<{ 
             (res) => resolve({ res }),
         );
         req.on('error', reject);
-        req.end();
+        req.end(options.requestBody);
     });
 }
 
@@ -152,12 +166,17 @@ export async function guardedFetch(raw: string, partial: WebFetchOptions = {}): 
         timeoutMs: partial.timeoutMs ?? TIMEOUT_MS,
         maxBytes: partial.maxBytes ?? MAX_BODY_BYTES,
         userAgent: partial.userAgent ?? 'FatCat-AI (+https://github.com/CodingLossy/FatCat-AI)',
+        method: partial.method,
+        requestHeaders: partial.requestHeaders,
+        requestBody: partial.requestBody,
+        onUrl: partial.onUrl,
     };
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), options.timeoutMs);
     try {
         let url = checkUrl(raw, options.isBlocked);
         for (let hop = 0; ; hop++) {
+            options.onUrl?.(url);
             let res: IncomingMessage;
             try {
                 ({ res } = await once(url, options, controller.signal));
@@ -170,6 +189,7 @@ export async function guardedFetch(raw: string, partial: WebFetchOptions = {}): 
             const location = res.headers.location;
             if (status >= 300 && status < 400 && location) {
                 res.resume();
+                if (options.method === 'POST') throw new WebFetchError('redirects are not followed for POST requests');
                 if (hop >= MAX_REDIRECTS) throw new WebFetchError(`more than ${MAX_REDIRECTS} redirects`);
                 url = checkUrl(new URL(location, url).href, options.isBlocked);
                 continue;
@@ -198,6 +218,11 @@ export async function guardedFetch(raw: string, partial: WebFetchOptions = {}): 
                 url: url.href,
                 status,
                 contentType: String(res.headers['content-type'] ?? ''),
+                headers: Object.fromEntries(
+                    Object.entries(res.headers)
+                        .filter(([name]) => name !== 'set-cookie')
+                        .map(([name, value]) => [name, Array.isArray(value) ? value.join(', ') : String(value ?? '')]),
+                ),
                 body: Buffer.concat(chunks),
                 truncated,
             };
