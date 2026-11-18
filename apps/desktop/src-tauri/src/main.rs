@@ -6,12 +6,40 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod deeplink;
 mod sidecar;
 
 use std::sync::Mutex;
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt as _};
+use tauri_plugin_deep_link::DeepLinkExt;
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+
+/// 唤起主窗口并让输入框获得焦点(全局快捷键用)。
+fn quick_ask(app: &AppHandle) {
+    show_main(app);
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.eval("document.querySelector('.composer textarea')?.focus()");
+    }
+}
+
+/// 处理深链接:只翻译白名单动作为窗口内相对地址,其余忽略。
+fn open_deep_link(app: &AppHandle, raw: &str) {
+    let Some(path) = deeplink::to_app_path(raw) else { return };
+    let Some(state) = app.try_state::<SidecarState>() else { return };
+    let port = match state.0.lock().unwrap().as_ref() {
+        Some(sc) => sc.port,
+        None => return,
+    };
+    show_main(app);
+    if let (Some(window), Ok(url)) =
+        (app.get_webview_window("main"), format!("http://127.0.0.1:{port}{path}").parse())
+    {
+        let _ = window.navigate(url);
+    }
+}
 
 struct SidecarState(Mutex<Option<sidecar::Sidecar>>);
 
@@ -24,8 +52,27 @@ fn show_main(app: &AppHandle) {
 }
 
 fn main() {
+    let quick_ask_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space);
     let app = tauri::Builder::default()
-        .setup(|app| {
+        // 第二次启动(含 Windows / Linux 上点深链接)只把参数交给已运行的实例。
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            show_main(app);
+            for arg in args.iter().skip(1) {
+                open_deep_link(app, arg);
+            }
+        }))
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(move |app, shortcut, event| {
+                    if shortcut == &quick_ask_shortcut && event.state() == ShortcutState::Pressed {
+                        quick_ask(app);
+                    }
+                })
+                .build(),
+        )
+        .setup(move |app| {
             let data_dir = app.path().app_data_dir()?;
             let resource_dir = app.path().resource_dir().ok();
             let sc = sidecar::Sidecar::start(&data_dir, resource_dir.as_deref())?;
@@ -39,12 +86,18 @@ fn main() {
 
             let show = MenuItem::with_id(app, "show", "Show FatCat-AI", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show, &quit])?;
+            let autostart_enabled = app.autolaunch().is_enabled().unwrap_or(false);
+            let autostart = CheckMenuItem::with_id(app, "autostart", "Start at login", true, autostart_enabled, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show, &autostart, &quit])?;
             let mut tray = TrayIconBuilder::new()
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => show_main(app),
+                    "autostart" => {
+                        let launch = app.autolaunch();
+                        let _ = if launch.is_enabled().unwrap_or(false) { launch.disable() } else { launch.enable() };
+                    }
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -59,6 +112,18 @@ fn main() {
                 tray = tray.icon(icon.clone());
             }
             tray.build(app)?;
+
+            // 快捷键被别的程序占用时注册会失败:不影响其余功能。
+            let _ = app.global_shortcut().register(quick_ask_shortcut);
+            let handle = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                for url in event.urls() {
+                    open_deep_link(&handle, url.as_str());
+                }
+            });
+            // Windows / Linux 开发期没有安装器登记协议,运行时补登记。
+            #[cfg(any(windows, target_os = "linux"))]
+            let _ = app.deep_link().register_all();
             Ok(())
         })
         .on_window_event(|window, event| {
