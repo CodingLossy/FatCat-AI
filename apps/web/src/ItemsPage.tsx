@@ -279,6 +279,25 @@ export function ItemsPage() {
         }
     };
 
+    // 从会话地图跳来:/items?session=<id> 定位到该会话条目(先进入它所在的分类,再打开)。
+    useEffect(() => {
+        const sessionId = new URLSearchParams(window.location.search).get('session');
+        if (!sessionId) return;
+        window.history.replaceState(null, '', window.location.pathname);
+        void (async () => {
+            const session = await api.sessions.get(sessionId);
+            const found = await api.items.search({ q: session.title || 'Untitled', limit: 50 });
+            const item = found.items.find((i) => i.type === 'session' && i.sourceRef === sessionId);
+            if (!item) return;
+            const ancestors = await api.items.ancestors(item.id);
+            const parent = ancestors.items[ancestors.items.length - 1];
+            if (parent) await go(parent);
+            await pick(item);
+        })().catch(fail);
+        // 只在进入页面时执行一次。
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const search = async () => {
         const q = query.trim();
         if (!q) return setResults(null);
@@ -344,6 +363,9 @@ export function ItemsPage() {
                 <div className="row">
                     <button type="button" className="items-drawer-button" onClick={() => setDrawer(!drawer)}>
                         {t('items.categories')}
+                    </button>
+                    <button type="button" onClick={() => navigate({ name: 'session-map' })}>
+                        {t('items.sessionMap')}
                     </button>
                     <button type="button" onClick={() => void sync()}>
                         {t('items.sync')}

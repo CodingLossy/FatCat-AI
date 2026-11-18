@@ -14,3 +14,4 @@ export {
 } from './voice-orb.js';
 export * from './category-browser/index.js';
 export * from './knowledge-sphere/index.js';
+export * from './map-viz/index.js';

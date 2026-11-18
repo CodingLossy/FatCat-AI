@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorText } from './api.js';
 import { ApprovalPanel } from './ApprovalPanel.js';
 import { AgentsPage } from './AgentsPage.js';
+import { SessionMapPage } from './SessionMapPage.js';
 import { AuditPage } from './AuditPage.js';
 import { ChatView } from './ChatView.js';
 import { ItemsPage } from './ItemsPage.js';
@@ -269,6 +270,8 @@ export function Shell({
                     <PluginsPage />
                 ) : route.name === 'agents' ? (
                     <AgentsPage />
+                ) : route.name === 'session-map' ? (
+                    <SessionMapPage />
                 ) : (
                     <ChatView key={activeId ?? 'new'} sessionId={activeId} onSessionsChanged={reloadSessions} />
                 )}

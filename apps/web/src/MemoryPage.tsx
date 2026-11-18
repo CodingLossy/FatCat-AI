@@ -13,6 +13,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
 import { AutoExtractNotice } from './AutoExtractNotice.js';
+import { MemoryMap } from './MemoryMap.js';
 import { MemorySources } from './MemorySources.js';
 
 function MemoryItem({ memory, onChanged }: { memory: Memory; onChanged: () => Promise<void> }) {
@@ -256,6 +257,7 @@ export function MemoryPage({ settings, onSettings }: { settings: Settings; onSet
         }
     };
     const [items, setItems] = useState<Memory[] | null>(null);
+    const [mapOpen, setMapOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [error, setError] = useState<string | null>(null);
 
@@ -296,6 +298,12 @@ export function MemoryPage({ settings, onSettings }: { settings: Settings; onSet
                 onTurnOff={() => void turnOffAutoExtract()}
             />
             {error ? <p className="error">{error}</p> : null}
+            <div className="row">
+                <button type="button" aria-pressed={mapOpen} onClick={() => setMapOpen(!mapOpen)}>
+                    {t('memory.map.toggle')}
+                </button>
+            </div>
+            {mapOpen && items && items.length > 0 ? <MemoryMap memories={items} /> : null}
             <Conflicts onChanged={reload} />
             <Quarantine onChanged={reload} />
             {items === null ? <p className="muted">{t('common.loading')}</p> : null}
