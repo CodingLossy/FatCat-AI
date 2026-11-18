@@ -9,7 +9,6 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openDatabase } from '@fatcat-ai/storage';
 import { expect, test } from '@playwright/test';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
