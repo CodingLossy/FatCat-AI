@@ -45,6 +45,9 @@ export function parseToolSet(text: string): string[] {
     return [...new Set(text.split(/[\s,]+/).filter(Boolean))];
 }
 
+/** 留空时用默认值,而不是 Number('') = 0。 */
+const numberOr = (text: string, fallback: number): number => (text.trim() === '' ? fallback : Number(text));
+
 const optionalNumber = (text: string): number | null => {
     const trimmed = text.trim();
     return trimmed === '' ? null : Number(trimmed);
@@ -58,8 +61,8 @@ export function inputOf(draft: AgentDraft): AgentInput {
         modelProfileId: draft.modelProfileId === '' ? null : draft.modelProfileId,
         toolSet: parseToolSet(draft.toolSet),
         memoryScope: draft.memoryScope,
-        maxDepth: Number(draft.maxDepth),
-        maxSteps: Number(draft.maxSteps),
+        maxDepth: numberOr(draft.maxDepth, 2),
+        maxSteps: numberOr(draft.maxSteps, 5),
         budgetTokens: optionalNumber(draft.budgetTokens),
         budgetSeconds: optionalNumber(draft.budgetSeconds),
     };

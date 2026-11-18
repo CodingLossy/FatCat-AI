@@ -88,6 +88,11 @@ export function runRoutes(deps: SessionRouteDeps) {
             const root = runOr404(ownerId, c.req.valid('param').id);
             const tree = repos.runs.listTree(ownerId, root.id);
             const depthOf = new Map<string, number>([[root.id, 0]]);
+            const names = new Map<string, string | null>();
+            const nameOf = (agentId: string) => {
+                if (!names.has(agentId)) names.set(agentId, repos.agents.get(ownerId, agentId)?.name ?? null);
+                return names.get(agentId) ?? null;
+            };
             const nodes = tree.map((r) => {
                 const depth = r.parentRunId ? (depthOf.get(r.parentRunId) ?? 0) + 1 : 0;
                 depthOf.set(r.id, depth);
@@ -95,7 +100,7 @@ export function runRoutes(deps: SessionRouteDeps) {
                     runId: r.id,
                     parentRunId: r.id === root.id ? null : (r.parentRunId ?? null),
                     agentId: r.agentId ?? null,
-                    agentName: r.agentId ? (repos.agents.get(ownerId, r.agentId)?.name ?? null) : null,
+                    agentName: r.agentId ? nameOf(r.agentId) : null,
                     status: r.status,
                     startedAt: r.startedAt,
                     finishedAt: r.finishedAt,
