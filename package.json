@@ -55,6 +55,9 @@
     "ignoredBuiltDependencies": [
       "better-sqlite3",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "sharp": "-"
+    }
   }
 }

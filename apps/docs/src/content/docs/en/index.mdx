@@ -1,0 +1,31 @@
+---
+title: FatCat-AI
+description: A self-hosted, open source, bring-your-own-model personal AI assistant.
+template: splash
+hero:
+    tagline: 'An AI assistant that is truly yours: self-hostable, open source, bring your own model, and nothing leaves your machine by default.'
+    actions:
+        - text: Quick start
+          link: /FatCat-AI/en/getting-started/quick-start/
+          icon: right-arrow
+        - text: GitHub
+          link: https://github.com/CodingLossy/FatCat-AI
+          variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+    <Card title="Bring your own model" icon="setting">
+        Any OpenAI-compatible endpoint (including Ollama, DeepSeek, SiliconFlow) plus native Anthropic and Gemini.
+    </Card>
+    <Card title="No telemetry" icon="approve-check">
+        No analytics or crash reporting. It only connects to the models, mailboxes and channels you configure.
+    </Card>
+    <Card title="Tools under control" icon="puzzle">
+        Files, mail, voice and scheduled tasks are risk-graded; dangerous actions need your approval by default.
+    </Card>
+    <Card title="Long-term memory" icon="open-book">
+        Typed, sourced, correctable and forgettable. Credentials are never remembered.
+    </Card>
+</CardGrid>

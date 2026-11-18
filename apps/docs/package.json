@@ -1,0 +1,29 @@
+{
+  "name": "@fatcat-ai/docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FatCat-AI documentation site (Astro Starlight, zh/en)",
+  "license": "AGPL-3.0-only",
+  "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/apps/docs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
+    "directory": "apps/docs"
+  },
+  "bugs": {
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
+  },
+  "type": "module",
+  "scripts": {
+    "sync": "node scripts/sync-docs.mjs",
+    "dev": "node scripts/sync-docs.mjs && node scripts/astro.mjs dev",
+    "build": "node scripts/sync-docs.mjs && node scripts/astro.mjs build",
+    "preview": "node scripts/astro.mjs preview",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.43.1",
+    "astro": "7.4.12"
+  }
+}

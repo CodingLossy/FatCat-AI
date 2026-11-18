@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+# 文档站(apps/docs,ADR 0043):PR 上只构建并检查(链接、中英文页面对应、搜索索引),合并到 main 后发布到 GitHub Pages。
+# 发布需要业主在仓库设置里启用 Pages(Settings → Pages → Source: GitHub Actions);没启用时 deploy 任务会失败,不影响其他检查。
+name: Docs
+
+on:
+  pull_request:
+    paths:
+      - 'apps/docs/**'
+      - 'docs/deploy/**'
+      - 'docs/plugins/**'
+      - 'docs/adr/**'
+      - 'CHANGELOG.md'
+      - '.github/workflows/docs.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/docs/**'
+      - 'docs/deploy/**'
+      - 'docs/plugins/**'
+      - 'docs/adr/**'
+      - 'CHANGELOG.md'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ASTRO_TELEMETRY_DISABLED: '1'
+  DO_NOT_TRACK: '1'
+
+jobs:
+  build:
+    name: build and check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Unit tests for the sync script
+        run: node --test apps/docs/scripts/sync-docs.test.mjs
+      - name: Build the site
+        run: pnpm --filter @fatcat-ai/docs build
+      - name: Links, zh/en page parity, search index
+        run: node apps/docs/scripts/check-site.mjs
+      - name: Upload the site
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/docs/dist
+
+  deploy:
+    name: deploy to GitHub Pages
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
