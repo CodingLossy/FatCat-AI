@@ -154,6 +154,30 @@ describe('agents API(ADR 0042)', () => {
         expect(JSON.stringify(requests[1]?.messages)).toContain('Speak like a pirate.');
     });
 
+    it('regenerate keeps the agent; once the agent is deleted the run has no agent (documented in ADR 0042 6.1)', async () => {
+        const { requests, post, send, untilIdle, session, req } = await setup();
+        const agent = Agent.parse(await (await post('/api/v1/agents', agentBody())).json());
+        const accepted = (await (await send({ text: 'hi', agentId: agent.id })).json()) as {
+            runId: string;
+            assistantMessageId: string;
+        };
+        await untilIdle();
+        const regenerate = async () =>
+            (await (
+                await post(
+                    `/api/v1/sessions/${session.id}/messages/${accepted.assistantMessageId}/regenerate?stream=false`,
+                )
+            ).json()) as { runId: string };
+        const again = await regenerate();
+        await untilIdle();
+        expect(Run.parse(await (await req(`/api/v1/runs/${again.runId}`)).json()).agentId).toBe(agent.id);
+        expect((requests.at(-1)?.tools ?? []).map((t) => t.name)).toEqual(['kb.search']);
+        expect((await req(`/api/v1/agents/${agent.id}`, { method: 'DELETE' })).status).toBe(204);
+        const third = await regenerate();
+        await untilIdle();
+        expect(Run.parse(await (await req(`/api/v1/runs/${third.runId}`)).json()).agentId).toBeUndefined();
+    });
+
     it('404 for an unknown agent id on send', async () => {
         const { send } = await setup();
         expect((await send({ text: 'x', agentId: '01HZZZZZZZZZZZZZZZZZZZZZZZ' })).status).toBe(404);

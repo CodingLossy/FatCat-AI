@@ -663,7 +663,8 @@ export class RunManager {
             persist(reason === 'cancelled' ? 'cancelled' : 'complete', usage ?? null);
             repos.runs.setStatus(run.runId, reason === 'cancelled' ? 'cancelled' : 'succeeded');
             emit({ type: 'run-finished', runId: run.runId, reason, ...(usage ? { usage } : {}) });
-            if (reason === 'cancelled' || !this.options.onTurnFinished) return;
+            // 记忆设置为 none 的代理不写记忆:自动抽取也不做(ADR 0042 第 4 节)
+            if (reason === 'cancelled' || !this.options.onTurnFinished || input.agent?.memoryScope === 'none') return;
             try {
                 this.options.onTurnFinished({
                     ownerId,
