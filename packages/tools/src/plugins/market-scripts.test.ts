@@ -5,7 +5,17 @@
 // 这里用测试时生成的密钥对,验证脚本签出的索引能被客户端的 verifyIndex 接受,以及 CI 检查会拒绝哪些改动。
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+    copyFileSync,
+    mkdirSync,
+    mkdtempSync,
+    readdirSync,
+    readFileSync,
+    rmSync,
+    symlinkSync,
+    writeFileSync,
+} from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -21,6 +31,7 @@ const scriptsDir = fileURLToPath(new URL('../../../../scripts/plugins/', import.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const signer: any = await import(pathToFileURL(join(scriptsDir, 'sign-index.mjs')).href);
 const checker: any = await import(pathToFileURL(join(scriptsDir, 'check-index.mjs')).href);
+const packer: any = await import(pathToFileURL(join(scriptsDir, 'pack-plugin.mjs')).href);
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 const dirs: string[] = [];
@@ -156,6 +167,69 @@ describe('sign-index.mjs', () => {
         expect(JSON.parse(sig)).toMatchObject({ keyId: 'test-main', alg: 'ed25519' });
     });
 
+    it('--verify is allowed in CI and uses the built-in keys only; signing in CI is still refused', () => {
+        const dir = tmp();
+        const key = generated();
+        const bytes = indexOf();
+        writeFileSync(join(dir, 'index.json'), bytes);
+        const sig = signer.signIndexBytes({
+            indexBytes: bytes,
+            keyPem: key.pem,
+            keyId: 'test-main',
+            allowUnknownKeyId: true,
+        });
+        writeFileSync(join(dir, 'index.json.sig'), sig.signature);
+        const script = join(scriptsDir, 'sign-index.mjs');
+        const ci = { PATH: process.env.PATH ?? '', CI: 'true', GITHUB_ACTIONS: 'true' };
+        const verify = ['--verify', '--index', join(dir, 'index.json')];
+        const fail = (args: string[], env: Record<string, string>, prefix: string[] = []) => {
+            try {
+                execFileSync(
+                    prefix[0] ?? process.execPath,
+                    [...prefix.slice(1), ...(prefix.length ? [process.execPath] : []), script, ...args],
+                    {
+                        env,
+                        stdio: 'pipe',
+                    },
+                );
+            } catch (error) {
+                return String((error as { stderr: Buffer }).stderr);
+            }
+            return '';
+        };
+        // CI 里 --verify 会真的去核对(测试密钥不是官方密钥,所以报 unknown keyId,而不是 refusing to run in CI)
+        const message = fail(verify, ci);
+        expect(message).toMatch(/unknown keyId/);
+        expect(message).not.toMatch(/refusing to run in CI/);
+        // 不用环境变量清空 CI 的写法:加了 `env -u CI` 前缀也照样能跑
+        if (process.platform !== 'win32')
+            expect(fail(verify, ci, ['env', '-u', 'CI', '-u', 'GITHUB_ACTIONS'])).toMatch(/unknown keyId/);
+        // --verify 不接受任何签名相关的参数
+        for (const extra of [
+            ['--key', join(dir, 'k.pem')],
+            ['--key-id', 'fatcat-main-2026'],
+            ['--allow-unknown-key-id'],
+        ]) {
+            expect(fail([...verify, ...extra], ci)).toMatch(/only uses the built-in public keys/);
+        }
+        // 签名在 CI 里仍然拒绝
+        writeFileSync(join(dir, 'key.pem'), key.pem, { mode: 0o600 });
+        expect(
+            fail(
+                [
+                    '--key',
+                    join(dir, 'key.pem'),
+                    '--key-id',
+                    'test-main',
+                    '--allow-unknown-key-id',
+                    '--index',
+                    join(dir, 'index.json'),
+                ],
+                ci,
+            ),
+        ).toMatch(/refusing to run in CI/);
+    });
+
     it('reports a missing key file as "key file not found"', () => {
         const dir = tmp();
         writeFileSync(join(dir, 'index.json'), indexOf());
@@ -285,6 +359,47 @@ describe('check-index.mjs', () => {
         expect((await run([entryFor(bytes)], bytes)).errors.join('\n')).toMatch(/forbidden module/);
     });
 
+    it('static scan only flags code that loads a module, not module names inside ordinary strings', () => {
+        const harmless = [
+            "const kinds = ['net', 'tls', 'http'];",
+            'const t = `dns`;',
+            "if (type === 'vm') return 'child_process';",
+            "const p = require('node:path'); import fs from 'node:fs';",
+        ].join('\n');
+        expect(checker.staticScan([{ path: 'a.js', text: harmless }])).toEqual([]);
+        const loads = [
+            "import { x } from 'node:dns/promises';",
+            "import 'child_process';",
+            "export * from 'worker_threads';",
+            "const a = await import('tls');",
+            "const b = __require('net');",
+            "const c = process.getBuiltinModule('vm');",
+            "const d = createRequire(import.meta.url)('node:http');",
+        ].join('\n');
+        expect(checker.staticScan([{ path: 'b.js', text: loads }])).toHaveLength(7);
+    });
+
+    const esbuildDir = (() => {
+        const store = join(fileURLToPath(new URL('../../../../node_modules/.pnpm/', import.meta.url)));
+        const found = readdirSync(store).find((n) => n.startsWith('esbuild@'));
+        return found ? join(store, found, 'node_modules', 'esbuild') : null;
+    })();
+    it.skipIf(esbuildDir === null)('the bundled hello example has no findings', () => {
+        const esbuild = createRequire(join(esbuildDir!, 'package.json'))('./lib/main.js');
+        const out = tmp();
+        const hello = fileURLToPath(new URL('../../../../examples/plugins/hello/server.mjs', import.meta.url));
+        esbuild.buildSync({
+            entryPoints: [hello],
+            bundle: true,
+            platform: 'node',
+            format: 'esm',
+            target: 'node24',
+            outfile: join(out, 'server.mjs'),
+            logLevel: 'silent',
+        });
+        expect(checker.staticScan(checker.listScripts(out))).toEqual([]);
+    });
+
     it('compares with the previous index: no removals, no rewrites, no un-yanking, serial moves forward', async () => {
         const bytes = makeTgz(goodFiles);
         const previous = indexOf({ plugins: [entryFor(bytes)], serial: 3 });
@@ -333,5 +448,56 @@ describe('check-index.mjs', () => {
         });
         expect(result.errors).toEqual([]);
         expect(urls).toEqual(['https://ok.test/weather-1.1.0.tgz']);
+    });
+});
+
+describe('pack-plugin.mjs', () => {
+    const helloDir = fileURLToPath(new URL('../../../../examples/plugins/hello/', import.meta.url));
+    const deps = { extractTgz, validateStagedPackage };
+    const plugin = () => {
+        const dir = tmp();
+        copyFileSync(join(helloDir, 'plugin.json'), join(dir, 'plugin.json'));
+        writeFileSync(join(dir, 'server.mjs'), 'console.log("hi");\n');
+        return dir;
+    };
+
+    it('packs Chinese and long paths, and two runs give identical bytes', async () => {
+        const dir = plugin();
+        const deep = join(dir, ...Array.from({ length: 6 }, (_, i) => `目录第${i}层-abcdefghij`));
+        mkdirSync(deep, { recursive: true });
+        writeFileSync(join(deep, '说明文档.txt'), '你好');
+        const first = await packer.packPlugin({ dir, deps });
+        const second = await packer.packPlugin({ dir, deps });
+        expect(Buffer.compare(first.bytes, second.bytes)).toBe(0);
+        expect(first.sha256).toBe(createHash('sha256').update(first.bytes).digest('hex'));
+        const longRel = first.files.find((f: string) => f.endsWith('说明文档.txt')) as string;
+        expect(Buffer.byteLength(longRel)).toBeGreaterThan(100);
+        // gzip 头:mtime 为 0,系统字节固定
+        expect([...first.bytes.subarray(4, 10)]).toEqual([0, 0, 0, 0, expect.any(Number), 3]);
+        const target = join(tmp(), 'pkg');
+        mkdirSync(target);
+        await extractTgz(first.bytes, target);
+        expect(readFileSync(join(target, ...longRel.split('/')), 'utf8')).toBe('你好');
+        expect(first.manifest.id).toBe('hello');
+        expect(packer.draftVersionEntry({ ...first, url: 'https://ok.test/h.tgz' })).toMatchObject({
+            version: first.manifest.version,
+            sha256: first.sha256,
+            yanked: false,
+        });
+    });
+
+    it('refuses links, node_modules, paths that need pax, and code the static check rejects', async () => {
+        const linked = plugin();
+        symlinkSync(join(linked, 'server.mjs'), join(linked, 'alias.mjs'));
+        await expect(packer.packPlugin({ dir: linked, deps })).rejects.toThrow(/symbolic links/);
+        const modules = plugin();
+        mkdirSync(join(modules, 'sub', 'node_modules'), { recursive: true });
+        await expect(packer.packPlugin({ dir: modules, deps })).rejects.toThrow(/node_modules/);
+        const tooLong = plugin();
+        writeFileSync(join(tooLong, `${'x'.repeat(101)}.txt`), '');
+        await expect(packer.packPlugin({ dir: tooLong, deps })).rejects.toThrow(/ustar/);
+        const bad = plugin();
+        writeFileSync(join(bad, 'server.mjs'), "import net from 'node:net';\n");
+        await expect(packer.packPlugin({ dir: bad, deps })).rejects.toThrow(/static check failed/);
     });
 });

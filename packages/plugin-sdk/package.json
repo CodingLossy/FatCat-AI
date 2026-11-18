@@ -1,7 +1,6 @@
 {
   "name": "@fatcat-ai/plugin-sdk",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "FatCat-AI plugin SDK",
   "license": "Apache-2.0",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
@@ -22,8 +21,13 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",

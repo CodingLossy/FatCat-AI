@@ -20,4 +20,4 @@ await plugin.run();
 - `ctx.log` writes to the host log; `ctx.secret(name)` reads a secret the user bound to the plugin; `ctx.items.upsert` adds knowledge-map items.
 - A heartbeat with the process RSS is sent every 30 seconds.
 
-Status: not published to npm yet (planned after the example plugins work end to end). A complete example is in `examples/plugins/hello`.
+Install: `npm install @fatcat-ai/plugin-sdk` (it depends on `@fatcat-ai/shared`). Bundle the SDK into your entry file before you ship the plugin: the host never runs `npm install`. A complete example is in `examples/plugins/hello`.

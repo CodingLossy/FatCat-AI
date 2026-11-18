@@ -12,7 +12,9 @@
 //     下架只能标 yanked: true 并写 yankedReason,不能取消下架;serial 不得变小。
 //  3. 重新下载每个新增或修改的版本:大小与 sha256 与条目一致;用与客户端相同的 tar 读取器解包(符号链接、`..`、盘符、
 //     保留名、压缩炸弹等一律拒绝);包内 plugin.json 通过清单 schema,id、版本与权限与条目一致;
-//  4. 静态检查(第 3.4 节第 2 层):打包产物里不得出现被拒绝的内置模块名、process.binding、process.dlopen、eval / new Function。
+//  4. 静态检查(第 3.4 节第 2 层):打包产物里不得出现加载被拒绝内置模块的写法(import / import() / require /
+//     createRequire / getBuiltinModule,含 node: 前缀与 /promises)、process.binding、process.dlopen、eval / new Function。
+//     只看字面量,不认普通字符串里的模块名;局限见 MODULE 模式上方的注释与 ADR 0040 第 3.4 节。
 // 需要先构建 packages/shared 与 packages/tools(`pnpm build`);索引仓库的工作流见 scripts/plugins/README.md。
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
@@ -46,7 +48,19 @@ export const FORBIDDEN_MODULES = [
     'tty',
 ];
 
-const MODULE_PATTERN = new RegExp(`['"\`](?:node:)?(?:${FORBIDDEN_MODULES.join('|')})(?:/promises)?['"\`]`);
+// 只认真正加载模块的写法,不认出现在普通字符串里的模块名(例如打包进来的 shared 里的 'net' / 'tls' 字样):
+//   静态:`import x from 'm'`、`import 'm'`、`export ... from 'm'`
+//   动态:`import('m')`、`require('m')`、`__require('m')`(esbuild 的垫片)、`process.getBuiltinModule('m')`、
+//         `createRequire(...)('m')`
+// 局限:只看字面量。拼接出来的名字、先把 createRequire 的结果存进变量再调用、把加载函数当参数传递,这里都识别不出来;
+// 这些由运行时的预加载钩子和操作系统层拦截(第 3.4 节第 1、2 层),扫描只是上架前的一道初筛。
+const MODULE_NAME = `(?:node:)?(?:${FORBIDDEN_MODULES.join('|')})(?:/promises)?`;
+const QUOTED = `(['"\`])${MODULE_NAME}\\1`;
+const LOAD_PATTERNS = [
+    new RegExp(`\\b(?:from|import)\\s*${QUOTED}`),
+    new RegExp(`\\b(?:import|(?:__)?require(?:\\.resolve)?|getBuiltinModule)\\s*\\(\\s*${QUOTED}`),
+    new RegExp(`\\bcreateRequire\\s*\\([^()]*(?:\\([^()]*\\)[^()]*)*\\)\\s*\\(\\s*${QUOTED}`),
+];
 const OTHER_PATTERNS = [
     [/\bprocess\s*\.\s*binding\b|\bprocess\s*\[\s*['"]binding['"]\s*\]/, 'process.binding'],
     [/\bprocess\s*\.\s*dlopen\b|\bprocess\s*\[\s*['"]dlopen['"]\s*\]/, 'process.dlopen'],
@@ -61,8 +75,13 @@ export function staticScan(files) {
     for (const { path, text } of files) {
         const lines = text.split('\n');
         lines.forEach((line, i) => {
-            const module = MODULE_PATTERN.exec(line);
-            if (module) findings.push(`${path}:${i + 1}: mentions the forbidden module ${module[0]}`);
+            for (const pattern of LOAD_PATTERNS) {
+                const module = pattern.exec(line);
+                if (module) {
+                    findings.push(`${path}:${i + 1}: loads the forbidden module ${module[0]}`);
+                    break;
+                }
+            }
             for (const [pattern, label] of OTHER_PATTERNS) {
                 if (pattern.test(line)) findings.push(`${path}:${i + 1}: uses ${label}`);
             }

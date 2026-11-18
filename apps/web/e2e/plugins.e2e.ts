@@ -119,6 +119,9 @@ test('plugins page: install, configure, stop, uninstall and see the disabled tas
     await expect(confirm).toContainText('WEATHER_API_KEY');
     await expect(confirm.getByTestId('plugin-protections').locator('tr')).toHaveCount(9);
     await expect(confirm.locator('[data-protection="direct-network"]')).toContainText('多层防护');
+    await expect(confirm.locator('[data-protection="brokered-network"]')).toContainText('强制');
+    await expect(confirm.locator('[data-protection="brokered-network"]')).not.toContainText('later release');
+    await expect(confirm.locator('[data-protection="items-quota"]')).toContainText('强制');
     await expect(confirm).toContainText('没有经过市场审核');
     await expect(confirm.getByRole('button', { name: '安装' })).toBeDisabled();
     if (SHOTS) await page.screenshot({ path: join(SHOTS, 'plugins-confirm.png'), fullPage: true });

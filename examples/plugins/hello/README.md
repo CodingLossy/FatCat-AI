@@ -20,4 +20,5 @@ node examples/plugins/hello/server.mjs
 A plugin is installed from one self-contained folder and the installer never runs `npm install`. Bundle your entry and its
 dependencies into a single `.js` / `.mjs` file (any bundler works), keep `plugin.json` at the package root, and make
 `entry.main` point at the bundle. This example skips bundling and imports the SDK from the workspace, so it only runs
-inside this repository.
+inside this repository. To package it for the market, bundle it and run `scripts/plugins/pack-plugin.mjs` (the commands
+are in [`scripts/plugins/README.md`](../../../scripts/plugins/README.md), "Packing a plugin").

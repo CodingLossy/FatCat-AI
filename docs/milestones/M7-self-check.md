@@ -48,3 +48,26 @@
 
 - `docs/plugins/developing-plugins.md` 与 `developing-plugins.zh-CN.md`:插件开发指南(英文标注待校对)。
 - 本自检报告与 CHANGELOG。
+
+## 五、市场收尾(`fix/m7-market-wrapup`)带来的变化
+
+- **静态扫描(`check-index.mjs`)**:原来按「引号里出现模块名」匹配,打包进来的 `@fatcat-ai/shared` 里普通的 `'net'` / `'tls'` 字符串让 hello 打包后被拒。现在只认真正加载模块的写法(`import` / `import()` / `require` / `__require` / `createRequire(…)(…)` / `getBuiltinModule`,含 `node:` 与 `/promises`);`process.binding`、`process.dlopen`、`eval`、`new Function` 检查不变。hello 打包后零命中(有测试)。范围与局限写在 `scripts/plugins/README.md` 与 ADR 0040 第 3.4 节。
+- **打包脚本(`pack-plugin.mjs`)**:只用 Node 内置模块,输出逐字节可复现;链接、junction、`node_modules`、放不进 ustar 的长路径都报错;打包后用客户端同一套读取器、清单检查和静态扫描自检。hello 已在云容器上打成单文件并通过自检(esbuild 只作为示例打包器,不是仓库依赖)。
+- **SDK 可发布**:`@fatcat-ai/shared`、`@fatcat-ai/plugin-sdk` 版本 0.1.0、`publishConfig.access: public`,`pnpm pack` 产物无 `workspace:*`。**只 pack,没有 publish**;业主步骤见 `docs/plugins/publishing-sdk.md`。
+- **`sign-index.mjs`**:先解析参数;`--verify` 在 CI 里允许且只用内置公钥,拒绝 `--key` / `--key-id` / `--allow-unknown-key-id`;签名在 CI 里仍然拒绝。索引仓库工作流不再需要 `env -u`,加了前缀也能跑。**合并后业主要把索引仓库的 `FATCAT_AI_REF` 改到新的合并提交。**
+- **#74 遗留**:开发指南的工具级别与 `runtime.ts` 的 `effectiveRisk()` 一致;补了 500 MiB 备份例外、`AIP_` 保留前缀;中英文逐段对齐;`protectionTable()` 里 `brokered-network` 与 `items-quota` 改为 `enforced` 并写明实际限制。
+- **`server.lock`**:`exit` 里本来就同步释放(只删自己 pid 的锁);新增 Windows 的 `SIGBREAK`、关闭卡住时的超时强制退出、第二次信号立即释放并退出。真机上两次残留的根因没能在云容器里复现(见 PR 描述):最可能是 `node --watch` 的父进程在 Windows 上用 `TerminateProcess` 结束子进程,子进程的 `exit` 处理没机会运行;这种情况只能靠下次启动识别过期锁。
+
+### Windows 真机结果(业主 2026-11-18 提供)
+
+| 项                                 | 结果       |
+| ---------------------------------- | ---------- |
+| 平台实测脚本 W1                    | ✅ 33 / 33 |
+| 升级时文件被占用后回滚             | ✅         |
+| 健康检查失败后回滚                 | ✅         |
+| 两种卸载(保留数据 / 删除数据)      | ✅         |
+| 市场开关                           | ✅         |
+| Clash fake-IP 开与关时下载索引和包 | ✅         |
+| fake-IP 下插件直连                 | 未测       |
+
+仍未验证:Windows 上用 `pack-plugin.mjs` 打包并通过索引 CI;业主改 `FATCAT_AI_REF` 后索引 CI 变绿;npm 真发布;从官方市场安装 hello 和第三方 MCP 插件;macOS `sandbox-exec`;`pnpm dev` 的 Ctrl+C 后锁文件(Windows 真机复测)。

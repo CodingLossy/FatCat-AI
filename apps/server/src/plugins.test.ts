@@ -616,4 +616,11 @@ describe('protectionTable', () => {
             /Unix socket/,
         );
     });
+
+    it('describes brokered network and the item quota as implemented', () => {
+        const table = protectionTable('linux', true, 'none');
+        expect(table.find((p) => p.key === 'brokered-network')).toMatchObject({ level: 'enforced' });
+        expect(table.find((p) => p.key === 'items-quota')).toMatchObject({ level: 'enforced' });
+        expect(JSON.stringify(table)).not.toMatch(/later release/);
+    });
 });

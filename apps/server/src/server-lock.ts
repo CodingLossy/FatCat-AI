@@ -47,3 +47,49 @@ export function acquireServerLock(dataDir: string, pid: number = process.pid, no
         }
     };
 }
+
+/** 要处理的退出信号:Windows 上关闭控制台窗口、Ctrl+Break 给的是 SIGBREAK。 */
+export function shutdownSignals(platform: NodeJS.Platform = process.platform): NodeJS.Signals[] {
+    return platform === 'win32' ? ['SIGINT', 'SIGTERM', 'SIGBREAK'] : ['SIGINT', 'SIGTERM'];
+}
+
+export interface ShutdownProcess {
+    on(event: string, listener: () => void): unknown;
+    exit(code?: number): void;
+}
+
+/**
+ * 注册退出处理:
+ * - `exit` 事件里同步释放锁(rmSync 是同步的,exit 里可以做),覆盖 process.exit、未捕获异常和正常退出;
+ * - 第一次收到信号走正常关闭,并设一个定时器:关闭卡住(例如有一直不断开的连接)超时后释放锁并强制退出;
+ * - 关闭过程中再收到一次信号(用户又按了一次 Ctrl+C)立即释放锁并退出。
+ * 被 SIGKILL / TerminateProcess 直接杀掉时任何处理都不会运行,那种锁由下次启动按「进程已不存在」认出过期(runningServerPid)。
+ */
+export function installShutdownHandlers(options: {
+    proc: ShutdownProcess;
+    release: () => void;
+    shutdown: (signal: string) => void;
+    platform?: NodeJS.Platform;
+    forceAfterMs?: number;
+    setTimer?: (fn: () => void, ms: number) => { unref?: () => unknown };
+}): void {
+    const { proc, release, shutdown } = options;
+    const setTimer = options.setTimer ?? setTimeout;
+    let closing = false;
+    proc.on('exit', () => release());
+    for (const signal of shutdownSignals(options.platform)) {
+        proc.on(signal, () => {
+            if (closing) {
+                release();
+                proc.exit(1);
+                return;
+            }
+            closing = true;
+            setTimer(() => {
+                release();
+                proc.exit(0);
+            }, options.forceAfterMs ?? 10_000).unref?.();
+            shutdown(signal);
+        });
+    }
+}
