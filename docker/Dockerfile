@@ -12,7 +12,7 @@ ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
 WORKDIR /repo
 COPY . .
-RUN pnpm install --frozen-lockfile && pnpm build --filter='!@fatcat-ai/docs'
+RUN pnpm install --frozen-lockfile --filter='!@fatcat-ai/docs' && pnpm build --filter='!@fatcat-ai/docs'
 # 只重新安装 server 及其工作区依赖的生产依赖(pnpm deploy --legacy 在这里会跳过安装,产出空的 node_modules)
 RUN rm -rf node_modules apps/*/node_modules packages/*/node_modules \
     && pnpm install --frozen-lockfile --prod --filter "@fatcat-ai/server..."

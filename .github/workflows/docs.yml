@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright (C) 2026 尹绪柏 (Theodore Yin)
 # 文档站(apps/docs,ADR 0043):PR 上只构建并检查(链接、中英文页面对应、搜索索引),合并到 main 后发布到 GitHub Pages。
-# 发布需要业主在仓库设置里启用 Pages(Settings → Pages → Source: GitHub Actions);没启用时 deploy 任务会失败,不影响其他检查。
+# 发布需要仓库启用 Pages(Settings → Pages → Source: GitHub Actions,已启用);要暂停发布,把仓库变量 DOCS_DEPLOY 设为 false。
 name: Docs
 
 on:
@@ -11,6 +11,7 @@ on:
       - 'docs/deploy/**'
       - 'docs/plugins/**'
       - 'docs/adr/**'
+      - 'apps/server/openapi/**'
       - 'CHANGELOG.md'
       - '.github/workflows/docs.yml'
   push:
@@ -20,6 +21,7 @@ on:
       - 'docs/deploy/**'
       - 'docs/plugins/**'
       - 'docs/adr/**'
+      - 'apps/server/openapi/**'
       - 'CHANGELOG.md'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
@@ -49,7 +51,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Unit tests for the sync script
-        run: node --test apps/docs/scripts/sync-docs.test.mjs
+        run: node --test apps/docs/scripts/sync-docs.test.mjs apps/docs/scripts/check-site.test.mjs
       - name: Build the site
         run: pnpm --filter @fatcat-ai/docs build
       - name: Links, zh/en page parity, search index
@@ -63,7 +65,8 @@ jobs:
   deploy:
     name: deploy to GitHub Pages
     needs: build
-    if: github.event_name != 'pull_request'
+    # 仓库变量 DOCS_DEPLOY 设为 false 可以关掉发布(例如暂时停用 Pages),避免 main 上一直显示红色
+    if: github.event_name != 'pull_request' && vars.DOCS_DEPLOY != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

@@ -29,9 +29,19 @@ export default defineConfig({
                     items: [{ slug: 'getting-started/quick-start' }, { slug: 'getting-started/models' }],
                 },
                 {
-                    label: '部署与安全',
-                    translations: { en: 'Deployment and security' },
-                    items: [{ slug: 'guides/docker' }, { slug: 'security' }],
+                    label: '指南',
+                    translations: { en: 'Guides' },
+                    items: [
+                        { slug: 'guides/docker' },
+                        { slug: 'guides/channels' },
+                        { slug: 'guides/plugins' },
+                        { slug: 'security' },
+                    ],
+                },
+                {
+                    label: '参考',
+                    translations: { en: 'Reference' },
+                    items: [{ slug: 'reference/api' }, { slug: 'reference/adr' }, { slug: 'changelog' }],
                 },
                 { slug: 'faq' },
             ],
