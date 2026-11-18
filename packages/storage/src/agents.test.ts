@@ -77,6 +77,23 @@ describe('delegated runs', () => {
         expect(repos.runs.rootOf(ownerId, root.id)?.id).toBe(root.id);
         cleanup();
     });
+
+    it('a parent_run_id cycle in bad data neither hangs the tree query nor the root lookup', async () => {
+        const { repos, ownerId, conn, cleanup } = await createTestDb();
+        const session = repos.sessions.create(ownerId);
+        const user = repos.messages.append(ownerId, session.id, { role: 'user', parts: [], status: 'complete' });
+        const a = repos.runs.create(ownerId, { sessionId: session.id, inputMessageId: user.id });
+        const b = repos.runs.create(ownerId, { sessionId: session.id, inputMessageId: user.id, parentRunId: a.id });
+        conn.sqlite.prepare('UPDATE runs SET parent_run_id = ? WHERE id = ?').run(b.id, a.id);
+        expect(
+            repos.runs
+                .listTree(ownerId, a.id)
+                .map((r) => r.id)
+                .sort(),
+        ).toEqual([a.id, b.id].sort());
+        expect(repos.runs.rootOf(ownerId, a.id)).not.toBeNull();
+        cleanup();
+    });
 });
 
 describe('migration 0019', () => {

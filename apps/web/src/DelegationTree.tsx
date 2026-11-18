@@ -10,13 +10,18 @@ import { useI18n } from './i18n.js';
 export function DelegationTree({ runId, active }: { runId: string; active: boolean }) {
     const { t } = useI18n();
     const [tree, setTree] = useState<RunTree | null>(null);
+    const [failed, setFailed] = useState(false);
 
     useEffect(() => {
         let alive = true;
         const load = () =>
             api.runs.tree(runId).then(
-                (next) => alive && setTree(next),
-                () => undefined,
+                (next) => {
+                    if (!alive) return;
+                    setTree(next);
+                    setFailed(false);
+                },
+                () => alive && setFailed(true),
             );
         void load();
         // 运行中每 2 秒刷新一次状态
@@ -27,7 +32,9 @@ export function DelegationTree({ runId, active }: { runId: string; active: boole
         };
     }, [runId, active]);
 
-    if (!tree || tree.nodes.length < 2) return null;
+    // 已经加载过的树继续显示,刷新失败只在树下面加一行提示;还没加载过时只显示提示
+    const notice = failed && active ? <p className="small muted">{t('agents.tree.unavailable')}</p> : null;
+    if (!tree || tree.nodes.length < 2) return notice;
     return (
         <div className="delegation-tree card" data-testid="delegation-tree">
             <p className="small muted">{t('agents.tree.title')}</p>
@@ -44,6 +51,7 @@ export function DelegationTree({ runId, active }: { runId: string; active: boole
                     </li>
                 ))}
             </ul>
+            {notice}
         </div>
     );
 }

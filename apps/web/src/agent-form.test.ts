@@ -21,4 +21,9 @@ describe('agent form', () => {
             budgetSeconds: 90,
         });
     });
+
+    it('falls back to the default depth and steps when they are left empty', () => {
+        const input = inputOf({ ...emptyDraft(), name: 'x', toolSet: 'time', maxDepth: '', maxSteps: ' ' });
+        expect([input.maxDepth, input.maxSteps]).toEqual([2, 5]);
+    });
 });

@@ -185,6 +185,14 @@ test('agents page and delegation tree', async ({ page }) => {
     await expect(tree.getByTestId('tree-node').nth(1)).toContainText('完成');
     if (SHOTS) await page.screenshot({ path: join(SHOTS, 'agents-delegation-tree.png'), fullPage: true });
 
+    // 手机宽度:代理页不横向溢出
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${base}/agents`);
+    await expect(page.getByTestId('agent-card').first()).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (SHOTS) await page.screenshot({ path: join(SHOTS, 'agents-page-mobile.png') });
+    await page.setViewportSize({ width: 1280, height: 720 });
+
     // 选「不使用代理」后行为和以前一样:没有委派树
     await page.getByRole('link', { name: '新对话' }).click();
     await page.getByTestId('agent-picker').selectOption({ label: '不使用代理' });

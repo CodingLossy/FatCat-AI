@@ -411,7 +411,7 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
         tree: sqlite.prepare<[string, string, string], RunRow>(
             `WITH RECURSIVE t(id) AS (
                  SELECT id FROM runs WHERE owner_id = ? AND id = ?
-                 UNION ALL
+                 UNION
                  SELECT r.id FROM runs r JOIN t ON r.parent_run_id = t.id AND r.owner_id = ?
              )
              ${runSelect} WHERE id IN (SELECT id FROM t) ORDER BY started_at, id`,
