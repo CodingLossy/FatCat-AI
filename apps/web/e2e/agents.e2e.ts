@@ -187,10 +187,6 @@ test('agents page and delegation tree', async ({ page }) => {
 
     // 手机宽度:代理页不横向溢出
     await page.setViewportSize({ width: 390, height: 844 });
-    await page
-        .getByRole('button', { name: '菜单' })
-        .click()
-        .catch(() => undefined);
     await page.goto(`${base}/agents`);
     await expect(page.getByTestId('agent-card').first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

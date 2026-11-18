@@ -32,10 +32,9 @@ export function DelegationTree({ runId, active }: { runId: string; active: boole
         };
     }, [runId, active]);
 
-    if (failed && active) {
-        return <p className="small muted">{t('agents.tree.unavailable')}</p>;
-    }
-    if (!tree || tree.nodes.length < 2) return null;
+    // 已经加载过的树继续显示,刷新失败只在树下面加一行提示;还没加载过时只显示提示
+    const notice = failed && active ? <p className="small muted">{t('agents.tree.unavailable')}</p> : null;
+    if (!tree || tree.nodes.length < 2) return notice;
     return (
         <div className="delegation-tree card" data-testid="delegation-tree">
             <p className="small muted">{t('agents.tree.title')}</p>
@@ -52,6 +51,7 @@ export function DelegationTree({ runId, active }: { runId: string; active: boole
                     </li>
                 ))}
             </ul>
+            {notice}
         </div>
     );
 }
