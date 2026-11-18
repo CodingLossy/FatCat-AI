@@ -11,6 +11,8 @@ path = [
     "**/*.sse",
     "**/*.toml",
     "pnpm-lock.yaml",
+    "**/Cargo.lock",
+    "apps/desktop/src-tauri/icons/*.png",
     ".gitignore",
     ".gitattributes",
     ".editorconfig",

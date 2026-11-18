@@ -8,6 +8,7 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 #### Added
 
+- Desktop shell skeleton (ADR 0044): `apps/desktop/src-tauri` is a Tauri v2 app that starts the server as a sidecar on a random loopback port, waits for `/healthz`, opens it in a window, keeps running in the tray when the window is closed, and quits from the tray menu. If the shell dies, the sidecar exits on its own. It is not an installer yet (packaging comes with the release PR) and it does not sign you in automatically; you sign in on the normal page. Chinese summary: 新增 Tauri 桌面壳骨架(随机端口启动核心、托盘驻留、壳崩溃后核心自动退出),尚未打包安装包。
 - Desktop sidecar packaging (ADR 0044, first part): `apps/desktop` can bundle the server into a few single files plus the platform's SQLite prebuild, and a smoke script starts it and checks `/healthz` (about 240 ms here) and that it exits when the parent closes its stdin (`FATCAT_AI_EXIT_WITH_PARENT=1`). CI runs this check on Linux. Chinese summary: 新增桌面 sidecar 打包与冒烟检查,核心可随桌面壳退出。
 
 ### M9 · Internationalization and docs site (in progress)
