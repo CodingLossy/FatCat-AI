@@ -73,6 +73,8 @@ export const SendMessageRequest = z.object({
     text: z.string().min(1).max(100_000),
     /** 覆盖会话默认的模型配置档。 */
     modelProfileId: Id.optional(),
+    /** 用这个代理(人格、模型、工具集)运行这一条消息(ADR 0042);不给就是原来的行为。自 M8 起提供。 */
+    agentId: Id.optional(),
     /** 随消息发送的图片附件,先经 POST /api/v1/attachments 上传(ADR 0020 第 4 节)。自 M4 起提供。 */
     attachmentIds: AttachmentIds.optional(),
     /** 幂等键:同一会话内重复提交相同值时返回已有运行(ADR 0004)。 */
@@ -102,6 +104,10 @@ export const Run = z.object({
     outputMessageId: Id.nullable(),
     startedAt: IsoDateTime,
     finishedAt: IsoDateTime.nullable(),
+    /** 这次运行用的代理(ADR 0042);没有用代理时省略。 */
+    agentId: Id.optional(),
+    /** 由哪次运行委派而来(ADR 0042,随委派提供);顶层运行省略。 */
+    parentRunId: Id.optional(),
 });
 export type Run = z.infer<typeof Run>;
 

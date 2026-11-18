@@ -55,6 +55,14 @@ export {
     type PluginRepository,
     type PluginState,
 } from './plugins.js';
+export {
+    AgentNameTakenError,
+    BuiltinAgentError,
+    createAgentRepository,
+    type AgentChanges,
+    type AgentRecord,
+    type NewAgent,
+} from './agents.js';
 export type { ChannelPairingRecord, ChannelRecord, ChannelRepository } from './channels.js';
 export type { ModelProfileRecord } from './profiles.js';
 export type { NewApprovalRequest, NewAuditEntry } from './tools.js';

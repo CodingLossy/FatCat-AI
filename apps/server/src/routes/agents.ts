@@ -1,0 +1,253 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 尹绪柏 (Theodore Yin)
+
+// 代理(ADR 0042)的 REST:只有登录的主人能管理,没有对应的 Agent 工具。
+import { createRoute, z } from '@hono/zod-openapi';
+import type { RunManager, StartRunInput } from '@fatcat-ai/agent';
+import {
+    Agent,
+    AgentCopyInput,
+    AgentInput,
+    AgentPatch,
+    BUILTIN_AGENT_ROLES,
+    effectiveAgentPrompt,
+    Id,
+    pageOf,
+    toolInSet,
+} from '@fatcat-ai/shared';
+import { AgentNameTakenError, BuiltinAgentError, type AgentRecord, type Repositories } from '@fatcat-ai/storage';
+import { requireOwner } from '../auth/middleware.js';
+import { ApiError, notFound } from '../errors.js';
+import { authErrors, json, problem, router } from './common.js';
+
+const tags = ['agents'];
+const idParam = z.object({ id: Id });
+
+const listRoute = createRoute({
+    method: 'get',
+    path: '/agents',
+    tags,
+    summary: 'List agents: the built-in roles (read-only) and your own',
+    responses: { 200: json(pageOf(Agent), 'Agents'), ...authErrors },
+});
+const createAgentRoute = createRoute({
+    method: 'post',
+    path: '/agents',
+    tags,
+    summary:
+        'Create an agent: a persona with its own model profile and a tool set that can only narrow what is allowed',
+    request: { body: { content: { 'application/json': { schema: AgentInput } }, required: true } },
+    responses: {
+        201: json(Agent, 'Created'),
+        400: problem('Invalid request, unknown tool or model profile'),
+        409: problem('An agent with this name already exists'),
+        ...authErrors,
+    },
+});
+const getRoute = createRoute({
+    method: 'get',
+    path: '/agents/{id}',
+    tags,
+    summary: 'One agent',
+    request: { params: idParam },
+    responses: { 200: json(Agent, 'The agent'), 404: problem('Not found'), ...authErrors },
+});
+const patchRoute = createRoute({
+    method: 'patch',
+    path: '/agents/{id}',
+    tags,
+    summary: 'Change a custom agent (built-in roles are read-only: copy them first)',
+    request: { params: idParam, body: { content: { 'application/json': { schema: AgentPatch } }, required: true } },
+    responses: {
+        200: json(Agent, 'Updated'),
+        400: problem('Invalid request, unknown tool or model profile'),
+        404: problem('Not found'),
+        409: problem('Built-in role, or the name is taken'),
+        ...authErrors,
+    },
+});
+const deleteRoute = createRoute({
+    method: 'delete',
+    path: '/agents/{id}',
+    tags,
+    summary: 'Delete a custom agent; past runs keep their history',
+    request: { params: idParam },
+    responses: {
+        204: { description: 'Deleted' },
+        404: problem('Not found'),
+        409: problem('Built-in roles cannot be deleted'),
+        ...authErrors,
+    },
+});
+const copyRoute = createRoute({
+    method: 'post',
+    path: '/agents/{id}/copy',
+    tags,
+    summary: 'Copy an agent (for example a built-in role) into a custom one you can edit',
+    request: {
+        params: idParam,
+        body: { content: { 'application/json': { schema: AgentCopyInput } }, required: false },
+    },
+    responses: {
+        201: json(Agent, 'The copy'),
+        404: problem('Not found'),
+        409: problem('The name is taken'),
+        ...authErrors,
+    },
+});
+
+type Locale = 'zh-CN' | 'en';
+const localeOf = (repos: Repositories, ownerId: string): Locale =>
+    repos.settings.get(ownerId).locale === 'en' ? 'en' : 'zh-CN';
+
+export function agentView(agent: AgentRecord, locale: Locale): Agent {
+    return {
+        id: agent.id,
+        name: agent.name,
+        role: agent.role,
+        builtin: agent.builtin,
+        systemPrompt: effectiveAgentPrompt(agent, locale),
+        modelProfileId: agent.modelProfileId,
+        toolSet: agent.toolSet,
+        memoryScope: agent.memoryScope,
+        maxDepth: agent.maxDepth,
+        maxSteps: agent.maxSteps,
+        budgetTokens: agent.budgetTokens,
+        budgetSeconds: agent.budgetSeconds,
+        createdAt: agent.createdAt,
+        updatedAt: agent.updatedAt,
+    };
+}
+
+/**
+ * 发消息 / 重试 / 重新生成时用的代理:找不到(例如已删除)返回 404;返回 RunManager 需要的 `agent` 字段。
+ * 模型配置档由调用方按「请求 > 代理 > 会话」的顺序选(见 sessions.ts)。
+ */
+export function loadRunAgent(
+    repos: Repositories,
+    ownerId: string,
+    agentId: string,
+): { record: AgentRecord; runAgent: NonNullable<StartRunInput['agent']> } {
+    const record = repos.agents.get(ownerId, agentId);
+    if (!record) throw notFound('Agent');
+    return {
+        record,
+        runAgent: {
+            id: record.id,
+            prompt: effectiveAgentPrompt(record, localeOf(repos, ownerId)),
+            toolSet: record.toolSet,
+            memoryScope: record.memoryScope,
+            maxSteps: record.maxSteps,
+        },
+    };
+}
+
+export function agentRoutes(deps: { repos: Repositories; runs: Pick<RunManager, 'tools'> }) {
+    const { repos } = deps;
+    const issue = (path: (string | number)[], message: string, reason: string) =>
+        new ApiError(400, 'validation_failed', 'Bad Request', message, { issues: [{ path, message }], reason });
+    /** 工具集的每一项必须是已注册的工具名,或至少匹配一个已注册工具的前缀(与任务的 toolSet 同一规则)。 */
+    const checkToolSet = (toolSet: string[] | undefined) => {
+        const known = deps.runs.tools?.info() ?? [];
+        toolSet?.forEach((entry, i) => {
+            if (!known.some((tool) => toolInSet(tool.name, [entry]))) {
+                throw issue(['toolSet', i], 'Unknown tool or prefix.', 'agent_toolset_unknown');
+            }
+        });
+    };
+    const checkProfile = (ownerId: string, profileId: string | null | undefined) => {
+        if (profileId && !repos.modelProfiles.get(ownerId, profileId)) {
+            throw issue(['modelProfileId'], 'The model profile does not exist.', 'agent_profile_missing');
+        }
+    };
+    const taken = () => new ApiError(409, 'conflict', 'Conflict', 'An agent with this name already exists.');
+    const builtin = () =>
+        new ApiError(409, 'conflict', 'Conflict', 'Built-in roles are read-only. Copy it to make your own.', {
+            reason: 'agent_builtin',
+        });
+    const get = (ownerId: string, id: string) => {
+        const agent = repos.agents.get(ownerId, id);
+        if (!agent) throw notFound('Agent');
+        return agent;
+    };
+
+    return router()
+        .openapi(listRoute, (c) => {
+            const ownerId = requireOwner(c);
+            const locale = localeOf(repos, ownerId);
+            repos.agents.ensureBuiltins(ownerId, BUILTIN_AGENT_ROLES, locale);
+            return c.json(
+                { items: repos.agents.list(ownerId).map((a) => agentView(a, locale)), nextCursor: null },
+                200,
+            );
+        })
+        .openapi(createAgentRoute, (c) => {
+            const ownerId = requireOwner(c);
+            const body = AgentInput.parse(c.req.valid('json'));
+            checkToolSet(body.toolSet);
+            checkProfile(ownerId, body.modelProfileId);
+            try {
+                const agent = repos.agents.create(ownerId, body);
+                return c.json(agentView(agent, localeOf(repos, ownerId)), 201);
+            } catch (error) {
+                if (error instanceof AgentNameTakenError) throw taken();
+                throw error;
+            }
+        })
+        .openapi(getRoute, (c) => {
+            const ownerId = requireOwner(c);
+            return c.json(agentView(get(ownerId, c.req.valid('param').id), localeOf(repos, ownerId)), 200);
+        })
+        .openapi(patchRoute, (c) => {
+            const ownerId = requireOwner(c);
+            const { id } = c.req.valid('param');
+            const body = c.req.valid('json');
+            get(ownerId, id);
+            checkToolSet(body.toolSet);
+            checkProfile(ownerId, body.modelProfileId);
+            try {
+                const changes = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
+                const agent = repos.agents.update(ownerId, id, changes);
+                if (!agent) throw notFound('Agent');
+                return c.json(agentView(agent, localeOf(repos, ownerId)), 200);
+            } catch (error) {
+                if (error instanceof AgentNameTakenError) throw taken();
+                if (error instanceof BuiltinAgentError) throw builtin();
+                throw error;
+            }
+        })
+        .openapi(deleteRoute, (c) => {
+            const ownerId = requireOwner(c);
+            const { id } = c.req.valid('param');
+            try {
+                if (!repos.agents.delete(ownerId, id)) throw notFound('Agent');
+            } catch (error) {
+                if (error instanceof BuiltinAgentError) throw builtin();
+                throw error;
+            }
+            return c.body(null, 204);
+        })
+        .openapi(copyRoute, (c) => {
+            const ownerId = requireOwner(c);
+            const source = get(ownerId, c.req.valid('param').id);
+            const locale = localeOf(repos, ownerId);
+            const body = c.req.valid('json') ?? {};
+            try {
+                const copy = repos.agents.create(ownerId, {
+                    name: body.name ?? `${source.name} (copy)`.slice(0, 80),
+                    systemPrompt: effectiveAgentPrompt(source, locale),
+                    modelProfileId: source.modelProfileId,
+                    toolSet: source.toolSet,
+                    memoryScope: source.memoryScope,
+                    maxDepth: source.maxDepth,
+                    maxSteps: source.maxSteps,
+                    budgetTokens: source.budgetTokens,
+                    budgetSeconds: source.budgetSeconds,
+                });
+                return c.json(agentView(copy, locale), 201);
+            } catch (error) {
+                if (error instanceof AgentNameTakenError) throw taken();
+                throw error;
+            }
+        });
+}

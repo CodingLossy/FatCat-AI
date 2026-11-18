@@ -1,0 +1,161 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 尹绪柏 (Theodore Yin)
+
+import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
+import { Agent, ProblemDetails, Run, Session } from '@fatcat-ai/shared';
+import { afterEach, describe, expect, it } from 'vitest';
+import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
+
+let s: TestServer;
+afterEach(async () => {
+    await s?.cleanup();
+});
+
+type Script = (request: ChatRequest) => AsyncGenerator<ChatChunk>;
+
+async function setup() {
+    const steps: Script[] = [];
+    const requests: ChatRequest[] = [];
+    const provider: ModelProvider = {
+        profileId: 'fake',
+        stream: (request) => {
+            requests.push(request);
+            const step = steps.shift();
+            if (step) return step(request);
+            return (async function* (): AsyncGenerator<ChatChunk> {
+                yield { type: 'text-delta', delta: 'ok' };
+                yield { type: 'finish', reason: 'stop' };
+            })();
+        },
+        test: () => Promise.resolve({ ok: true, latencyMs: 0 }),
+    };
+    s = await createTestServer({}, { provider, env: {} });
+    const res = await s.app.request('/api/v1/auth/setup', jsonBody({ username: 'owner', password: TEST_PASSWORD }));
+    const { cookie, csrf } = sessionFrom(res);
+    const headers = { cookie, 'X-CSRF-Token': csrf, 'content-type': 'application/json' };
+    const req = (path: string, init: RequestInit = {}) =>
+        s.app.request(path, { ...init, headers: { ...headers, ...(init.headers as Record<string, string>) } });
+    const post = (path: string, body: unknown = {}) => req(path, { method: 'POST', body: JSON.stringify(body) });
+    await post('/api/v1/models', {
+        label: 'fake',
+        kind: 'openai-compatible',
+        baseURL: 'http://fake.test/v1',
+        apiKeyRef: null,
+        model: 'm',
+        purpose: ['chat'],
+    });
+    const session = Session.parse(await (await post('/api/v1/sessions')).json());
+    const send = (body: unknown) => post(`/api/v1/sessions/${session.id}/messages?stream=false`, body);
+    const untilIdle = async () => {
+        await s.runs.idle();
+    };
+    return { steps, requests, req, post, session, send, untilIdle };
+}
+
+const agentBody = (over: Record<string, unknown> = {}) => ({ name: 'Reader', toolSet: ['kb.search'], ...over });
+
+describe('agents API(ADR 0042)', () => {
+    it('lists the built-in roles, lets you create / edit / copy / delete your own and keeps built-ins read-only', async () => {
+        const { req, post } = await setup();
+        const list = (await (await req('/api/v1/agents')).json()) as { items: unknown[] };
+        const agents = list.items.map((a) => Agent.parse(a));
+        const roles = agents.filter((a) => a.builtin).map((a) => a.role);
+        expect(roles).toEqual(
+            expect.arrayContaining(['researcher', 'mail-secretary', 'file-keeper', 'schedule-assistant']),
+        );
+        const researcher = agents.find((a) => a.role === 'researcher')!;
+        expect(researcher.systemPrompt.length).toBeGreaterThan(10);
+
+        const created = await post('/api/v1/agents', agentBody());
+        expect(created.status).toBe(201);
+        const mine = Agent.parse(await created.json());
+        expect(mine).toMatchObject({ builtin: false, role: 'custom', toolSet: ['kb.search'], memoryScope: 'shared' });
+        expect((await post('/api/v1/agents', agentBody())).status).toBe(409);
+
+        const patched = await req(`/api/v1/agents/${mine.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ maxSteps: 2, memoryScope: 'none' }),
+        });
+        expect(Agent.parse(await patched.json())).toMatchObject({ maxSteps: 2, memoryScope: 'none' });
+
+        const builtinPatch = await req(`/api/v1/agents/${researcher.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ name: 'x' }),
+        });
+        expect(builtinPatch.status).toBe(409);
+        expect(ProblemDetails.parse(await builtinPatch.json()).reason).toBe('agent_builtin');
+        expect((await req(`/api/v1/agents/${researcher.id}`, { method: 'DELETE' })).status).toBe(409);
+
+        const copy = await post(`/api/v1/agents/${researcher.id}/copy`, { name: 'My researcher' });
+        expect(copy.status).toBe(201);
+        expect(Agent.parse(await copy.json())).toMatchObject({ builtin: false, name: 'My researcher' });
+        expect((await req(`/api/v1/agents/${mine.id}`, { method: 'DELETE' })).status).toBe(204);
+        expect((await req(`/api/v1/agents/${mine.id}`)).status).toBe(404);
+    });
+
+    it('🔒 rejects unknown tools, unknown model profiles and the unsupported "own" memory scope', async () => {
+        const { post } = await setup();
+        const unknown = await post('/api/v1/agents', agentBody({ toolSet: ['nope.tool'] }));
+        expect(unknown.status).toBe(400);
+        expect(ProblemDetails.parse(await unknown.json()).reason).toBe('agent_toolset_unknown');
+        expect((await post('/api/v1/agents', agentBody({ toolSet: [] }))).status).toBe(400);
+        expect((await post('/api/v1/agents', agentBody({ memoryScope: 'own' }))).status).toBe(400);
+        const missing = await post('/api/v1/agents', agentBody({ modelProfileId: '01HZZZZZZZZZZZZZZZZZZZZZZZ' }));
+        expect(missing.status).toBe(400);
+    });
+
+    it("🔒 only gives the model the agent's tools, and a made-up call outside the set is refused and not run", async () => {
+        const { steps, requests, post, send, untilIdle, session, req } = await setup();
+        const agent = Agent.parse(await (await post('/api/v1/agents', agentBody({ toolSet: ['kb.search'] }))).json());
+        steps.push(async function* () {
+            yield { type: 'tool-call', callId: 'c1', name: 'items.search', input: {} };
+            yield { type: 'finish', reason: 'tool-calls' };
+        });
+        const res = await send({ text: 'hi', agentId: agent.id });
+        expect(res.status).toBe(202);
+        await untilIdle();
+        const names = (requests[0]?.tools ?? []).map((t) => t.name);
+        expect(names).toEqual(['kb.search']);
+        expect(JSON.stringify(requests[1]?.messages)).toContain(
+            "unknown tool: items.search (not in this agent's tool set)",
+        );
+        const accepted = (await res.json()) as { runId: string };
+        const run = Run.parse(await (await req(`/api/v1/runs/${accepted.runId}`)).json());
+        expect(run.agentId).toBe(agent.id);
+        expect(session.id).toBeTruthy();
+    });
+
+    it('without an agent nothing changes, and an agent with memory "none" gets no memory tools; its persona is sent', async () => {
+        const { requests, post, send, untilIdle } = await setup();
+        await send({ text: 'plain' });
+        await untilIdle();
+        const all = (requests[0]?.tools ?? []).map((t) => t.name);
+        expect(all.length).toBeGreaterThan(3);
+        expect(all).toContain('memory.search');
+
+        const agent = Agent.parse(
+            await (
+                await post(
+                    '/api/v1/agents',
+                    agentBody({
+                        name: 'Quiet',
+                        toolSet: ['kb.', 'memory.'],
+                        memoryScope: 'none',
+                        systemPrompt: 'Speak like a pirate.',
+                    }),
+                )
+            ).json(),
+        );
+        await send({ text: 'arr', agentId: agent.id });
+        await untilIdle();
+        const names = (requests[1]?.tools ?? []).map((t) => t.name);
+        expect(names.filter((n) => n.startsWith('memory.'))).toEqual([]);
+        expect(names).toContain('kb.search');
+        expect(JSON.stringify(requests[1]?.messages)).toContain('Speak like a pirate.');
+    });
+
+    it('404 for an unknown agent id on send', async () => {
+        const { send } = await setup();
+        expect((await send({ text: 'x', agentId: '01HZZZZZZZZZZZZZZZZZZZZZZZ' })).status).toBe(404);
+    });
+});
