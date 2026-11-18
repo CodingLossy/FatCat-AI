@@ -69,6 +69,30 @@ jobs:
       - name: Tools tests (with coverage gate)
         run: pnpm turbo run test --filter=@fatcat-ai/tools
 
+  desktop:
+    name: desktop shell (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Install Tauri system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xvfb
+      - run: node apps/desktop/scripts/bundle-sidecar.mjs
+      - run: cargo test --locked
+        working-directory: apps/desktop/src-tauri
+      - run: cargo build --locked
+        working-directory: apps/desktop/src-tauri
+      - name: Shell starts the sidecar and the sidecar exits when the shell is killed
+        run: node apps/desktop/scripts/check-shell.mjs
+
   openapi-compat:
     name: OpenAPI breaking changes
     # 只在 PR 上比较基线分支与本分支的 OpenAPI 文档(ADR 0010 第 10 节);oasdiff 以容器运行,不是项目依赖

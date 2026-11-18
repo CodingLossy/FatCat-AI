@@ -24,3 +24,6 @@ secrets.yaml.migrated.*
 
 # Docker 部署的密钥文件(主密钥、腾讯云 API 密钥)
 docker/secrets/
+# Rust build output (apps/desktop)
+target/
+gen/

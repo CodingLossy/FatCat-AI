@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 尹绪柏 (Theodore Yin)
+
+[package]
+name = "fatcat-ai-desktop"
+version = "0.0.0"
+description = "FatCat-AI desktop shell"
+authors = ["尹绪柏 (Theodore Yin) <x19169738916@163.com>"]
+license = "AGPL-3.0-only"
+edition = "2021"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
