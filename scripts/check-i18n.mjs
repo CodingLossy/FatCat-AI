@@ -10,7 +10,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const root = new URL('..', import.meta.url).pathname;
-const webSrc = join(root, 'apps/web/src');
+// 测试可以传入别的目录(scripts/check-i18n.test.mjs)
+const webSrc = process.argv[2] ?? join(root, 'apps/web/src');
 const allow = JSON.parse(readFileSync(join(root, 'scripts/i18n-allowlist.json'), 'utf8'));
 
 function walk(dir) {
@@ -24,7 +25,7 @@ function walk(dir) {
 const CJK = /[\u3400-\u9fff\uff00-\uffef\u3000-\u303f]/;
 const ATTR = /\b(?:placeholder|title|aria-label|alt)=(?:"([^"{}]*)"|'([^'{}]*)')/g;
 const JSX_TEXT = />([^<>{}\n]+)</g;
-const SENTENCE = /[A-Za-z]{2,}\s+[A-Za-z]{2,}/;
+const SENTENCE = /\b[A-Za-z]{3,}\s+[A-Za-z]+\b|\b[A-Za-z]+\s+[A-Za-z]{3,}\b/;
 
 function stripComments(line, state) {
     let out = '';
@@ -49,7 +50,7 @@ function stripComments(line, state) {
 const problems = [];
 const used = new Set();
 for (const file of walk(webSrc)) {
-    const rel = relative(root, file);
+    const rel = relative(root, file).replaceAll('\\', '/');
     const state = { block: false };
     readFileSync(file, 'utf8')
         .split('\n')

@@ -117,7 +117,9 @@ jobs:
       - name: SPDX headers and package.json license/author
         run: pnpm check:spdx
       - name: No hardcoded UI text (i18n)
-        run: pnpm check:i18n
+        run: |
+          node --test scripts/check-i18n.test.mjs
+          pnpm check:i18n
       - name: Leftover placeholders
         run: pnpm check:placeholders
       - name: Memory budget checks (unit tests)
