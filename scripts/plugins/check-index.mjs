@@ -15,7 +15,7 @@
 //  4. 静态检查(第 3.4 节第 2 层):打包产物里不得出现被拒绝的内置模块名、process.binding、process.dlopen、eval / new Function。
 // 需要先构建 packages/shared 与 packages/tools(`pnpm build`);索引仓库的工作流见 scripts/plugins/README.md。
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -163,10 +163,10 @@ export async function downloadChecked(url, allowedHosts, maxBytes = PACKAGE_MAX_
 
 function listScripts(dir, base = dir) {
     const out = [];
-    for (const name of readdirSync(dir)) {
-        const full = join(dir, name);
-        if (statSync(full).isDirectory()) out.push(...listScripts(full, base));
-        else if (/\.(c|m)?js$/.test(name))
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) out.push(...listScripts(full, base));
+        else if (entry.isFile() && /\.(c|m)?js$/.test(entry.name))
             out.push({ path: full.slice(base.length + 1), text: readFileSync(full, 'utf8') });
     }
     return out;

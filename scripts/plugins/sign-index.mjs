@@ -14,7 +14,7 @@
 // - 默认只接受两把官方 keyId(fatcat-main-2026、fatcat-backup-2026),并且私钥推出的公钥必须与内置的那把一致,
 //   防止拿错密钥或写错 keyId 签出一份客户端会拒绝的索引。给第三方市场签名时加 --allow-unknown-key-id。
 import { createPrivateKey, createPublicKey, sign, verify } from 'node:crypto';
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, fstatSync, openSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -154,15 +154,31 @@ export function main(argv, env = process.env) {
         );
     if (!args.keyId) throw new SignError('--key-id is required (fatcat-main-2026 or fatcat-backup-2026)');
     const keyPath = resolve(args.key);
-    if (!existsSync(keyPath) || !statSync(keyPath).isFile()) throw new SignError(`key file not found: ${keyPath}`);
-    if (process.platform !== 'win32' && (statSync(keyPath).mode & 0o077) !== 0) {
+    // Open once and check the same descriptor, so the file cannot change between the check and the read.
+    let keyPem;
+    let keyMode;
+    try {
+        const fd = openSync(keyPath, 'r');
+        try {
+            const stat = fstatSync(fd);
+            if (!stat.isFile()) throw new SignError(`key file not found: ${keyPath}`);
+            keyMode = stat.mode;
+            keyPem = readFileSync(fd);
+        } finally {
+            closeSync(fd);
+        }
+    } catch (error) {
+        if (error instanceof SignError) throw error;
+        throw new SignError(`key file not found: ${keyPath}`);
+    }
+    if (process.platform !== 'win32' && (keyMode & 0o077) !== 0) {
         console.warn(`warning: ${keyPath} is readable by other users; run chmod 600 on it`);
     }
     const indexPath = resolve(args.index ?? 'index.json');
     const outPath = resolve(args.out ?? `${indexPath}.sig`);
     const result = signIndexBytes({
         indexBytes: readFileSync(indexPath),
-        keyPem: readFileSync(keyPath),
+        keyPem,
         keyId: args.keyId,
         allowUnknownKeyId: args.allowUnknownKeyId,
     });
