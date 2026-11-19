@@ -8,6 +8,7 @@ import { migrations } from './migrations/index.js';
 
 export { AttachmentLinkError, type AttachmentRepository, type NewAttachment } from './attachments.js';
 export type { AccessTokenRecord, AuthSessionRecord } from './auth.js';
+export { MAX_OPEN_PAIRING_CODES, type DeviceRepository, type DeviceTokenHashes, type RotateResult } from './devices.js';
 export {
     rekeyTotpSecrets,
     resetTotpOffline,

@@ -11,6 +11,10 @@ export const TABLE_COLUMNS = {
     totp_credentials: ['owner_id', 'secret_enc', 'enabled', 'last_used_step', 'created_at', 'enabled_at'],
     totp_recovery_codes: ['id', 'owner_id', 'salt', 'code_hash', 'used_at', 'created_at'],
     access_tokens: ['id', 'owner_id', 'name', 'token_hash', 'created_at', 'last_used_at', 'expires_at', 'revoked_at'],
+    pairing_codes: ['id', 'owner_id', 'code_hash', 'created_at', 'expires_at', 'used_at'],
+    devices: ['id', 'owner_id', 'name', 'created_at', 'last_used_at', 'revoked_at', 'revoke_reason'],
+    device_tokens: ['token_hash', 'device_id', 'kind', 'created_at', 'expires_at', 'used_at'],
+    device_events: ['id', 'owner_id', 'device_id', 'at', 'event', 'summary'],
     model_profiles: [
         'id',
         'owner_id',

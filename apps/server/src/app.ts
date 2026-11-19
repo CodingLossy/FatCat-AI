@@ -52,6 +52,7 @@ import { toolRoutes } from './routes/tools.js';
 import { sessionRoutes } from './routes/sessions.js';
 import { attachmentRoutes, UPLOAD_OVERHEAD_BYTES } from './routes/attachments.js';
 import { type AttachmentFiles, createMemoryAttachmentFiles } from './attachment-files.js';
+import { deviceRoutes } from './routes/devices.js';
 import { tokenRoutes } from './routes/tokens.js';
 import { channelRoutes } from './routes/channels.js';
 import { hashToken, taskRoutes } from './routes/tasks.js';
@@ -98,6 +99,8 @@ export interface AppDeps {
     /** 请求来源地址;默认取 TCP 对端地址(不信任 X-Forwarded-For)。 */
     clientIp?: (c: Context<AppEnv>) => string;
     loginLimiter?: AttemptLimiter;
+    /** 设备配对 / 刷新的失败限速(测试注入)。 */
+    pairLimiter?: AttemptLimiter;
     /** 第二因素的失败限速(ADR 0027 第 5 节);不给时每分钟 5 次。 */
     totpLimiter?: AttemptLimiter;
     /** 登录临时凭证(内存);测试可注入带假时钟的实例。 */
@@ -313,6 +316,10 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             }),
         )
         .route('/', tokenRoutes({ repos, now }))
+        .route(
+            '/',
+            deviceRoutes({ repos, now, clientIp, ...(deps.pairLimiter ? { pairLimiter: deps.pairLimiter } : {}) }),
+        )
         .route(
             '/',
             modelRoutes({

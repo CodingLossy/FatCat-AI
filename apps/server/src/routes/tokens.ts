@@ -6,6 +6,8 @@ import { AccessToken, CreatedAccessToken, CreateTokenRequest, Id, pageOf } from 
 import type { Repositories } from '@fatcat-ai/storage';
 import { newAccessToken, sha256 } from '../auth/crypto.js';
 import { requireOwner } from '../auth/middleware.js';
+import type { Context } from 'hono';
+import type { AppEnv } from '../env.js';
 import { ApiError, notFound } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
 
@@ -37,12 +39,20 @@ const revokeRoute = createRoute({
     responses: { 204: { description: 'Revoked' }, 404: problem('Token not found'), ...authErrors },
 });
 
+/** 已配对设备的令牌不能创建或吊销访问令牌(ADR 0045 第 1 节)。 */
+function rejectDevice(c: Context<AppEnv>): void {
+    if (c.get('auth')?.kind === 'device') {
+        throw new ApiError(403, 'forbidden', 'Forbidden', 'A paired device cannot manage access tokens.');
+    }
+}
+
 export function tokenRoutes(deps: { repos: Repositories; now: () => Date }) {
     const { repos, now } = deps;
     return router()
         .openapi(listRoute, (c) => c.json({ items: repos.accessTokens.list(requireOwner(c)), nextCursor: null }, 200))
         .openapi(createTokenRoute, (c) => {
             const ownerId = requireOwner(c);
+            rejectDevice(c);
             // 账户启用了 TOTP:只有通过第二因素的会话才能创建令牌(令牌自己不行;ADR 0027 第 6 节)
             if (repos.totp.get(ownerId)?.enabled) {
                 const auth = c.get('auth');
@@ -69,6 +79,7 @@ export function tokenRoutes(deps: { repos: Repositories; now: () => Date }) {
             return c.json({ ...created, token }, 201);
         })
         .openapi(revokeRoute, (c) => {
+            rejectDevice(c);
             if (!repos.accessTokens.revoke(requireOwner(c), c.req.valid('param').id)) throw notFound('Token');
             return c.body(null, 204);
         });

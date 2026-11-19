@@ -243,12 +243,7 @@ export function authRoutes(deps: AuthRouteDeps) {
         const auth = c.get('auth');
         if (!auth) throw unauthorized();
         if (auth.kind !== 'session') {
-            throw new ApiError(
-                403,
-                'forbidden',
-                'Forbidden',
-                'Personal access tokens cannot manage two-factor settings.',
-            );
+            throw new ApiError(403, 'forbidden', 'Forbidden', 'Only a browser session can manage two-factor settings.');
         }
         return auth;
     }

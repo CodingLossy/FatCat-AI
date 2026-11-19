@@ -11,7 +11,7 @@ const PATTERNS = [
     ['bearer token', /\b(Bearer|Basic)\s+(?!\[REDACTED\])[A-Za-z0-9._~+/=-]{8,}/i],
     ['OpenAI-style key', /\bsk-[A-Za-z0-9_-]{16,}/],
     ['GitHub token', /\b(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/],
-    ['FatCat-AI token', /\baip_pat_[A-Za-z0-9_-]{20,}/],
+    ['FatCat-AI token', /\baip_(?:pat|dev|ref)_[A-Za-z0-9_-]{20,}/],
     ['Google API key', /\bAIza[A-Za-z0-9_-]{30,}/],
     ['Slack token', /\bxox[abpsr]-[A-Za-z0-9-]{10,}/],
     ['AWS access key', /\bAKIA[A-Z0-9]{16}\b/],

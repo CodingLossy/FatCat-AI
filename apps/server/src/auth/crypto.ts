@@ -32,6 +32,22 @@ export function newAccessToken(): string {
     return PAT_PREFIX + randomToken();
 }
 
+/** 设备令牌(ADR 0045):access 短期、refresh 长期且每次使用都轮换;前缀便于识别与密钥扫描。 */
+export const DEVICE_ACCESS_PREFIX = 'aip_dev_';
+export const DEVICE_REFRESH_PREFIX = 'aip_ref_';
+export const newDeviceAccessToken = () => DEVICE_ACCESS_PREFIX + randomToken();
+export const newDeviceRefreshToken = () => DEVICE_REFRESH_PREFIX + randomToken();
+
+const PAIRING_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+/** 配对码:10 位 Crockford Base32(约 50 位熵),显示为 XXXXX-XXXXX;32 个符号,按位取低 5 位没有取模偏差。 */
+export function newPairingCode(): string {
+    const bytes = randomBytes(10);
+    const chars = Array.from(bytes, (b) => PAIRING_ALPHABET[b & 31]).join('');
+    return `${chars.slice(0, 5)}-${chars.slice(5)}`;
+}
+/** 去掉连字符、转大写;库里存的是规范化后的哈希。 */
+export const normalizePairingCode = (code: string) => code.replaceAll('-', '').toUpperCase();
+
 // scrypt 参数:N=2^16、r=8、p=1,约占 64MB 内存、在普通机器上约 100ms;登录有限速,2GB 机器可承受。
 const SCRYPT = { N: 65_536, r: 8, p: 1, maxmem: 128 * 1024 * 1024 } as const;
 const KEY_LEN = 32;
