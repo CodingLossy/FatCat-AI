@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" fill="none" stroke="#E2E8FF" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <!-- SPDX-License-Identifier: AGPL-3.0-only -->
+    <!-- Copyright (C) 2026 尹绪柏 (Theodore Yin) -->
     <title>FatCat-AI app icon (draft)</title>
     <rect x="64" y="64" width="896" height="896" rx="200" fill="#0B0D1D" stroke="#1F2633" stroke-width="8"/>
     <g transform="rotate(12 512 512) translate(512 520) scale(26) translate(-12 -12)" stroke-width="1.1">
