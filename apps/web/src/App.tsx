@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, errorText } from './api.js';
 import { deviceAuth } from './device-session.js';
 import { AuthForm } from './AuthForm.js';
+import { resolveAuth } from './auth-state.js';
+import { clearCache, isOffline, offlineStartup, rememberSettings } from './cache.js';
 import { Footer } from './Footer.js';
 import { I18nContext, translator, type Locale } from './i18n.js';
 import { PairPage } from './PairPage.js';
@@ -22,9 +24,14 @@ function applyTheme(theme: Settings['theme']): void {
     document.documentElement.dataset.theme = theme;
 }
 
-async function loadAuth(): Promise<{ status: AuthStatus; settings: Settings | null }> {
-    const status = await api.auth.status();
-    return { status, settings: status.authenticated ? await api.settings.get() : null };
+function loadAuth(): Promise<{ status: AuthStatus; settings: Settings | null }> {
+    return resolveAuth({
+        status: () => api.auth.status(),
+        settings: () => api.settings.get(),
+        isOffline,
+        device: { isPaired: () => deviceAuth.isPaired(), refresh: () => deviceAuth.refresh() },
+        cache: { remember: rememberSettings, clear: clearCache, offlineStartup },
+    });
 }
 
 export function App() {
@@ -68,12 +75,20 @@ export function App() {
             .catch(() => setMeta(null));
     }, []);
 
+    // 网络恢复后重新确认登录状态(离线时显示的是缓存)
+    useEffect(() => {
+        const onOnline = () => void refresh();
+        window.addEventListener('online', onOnline);
+        return () => window.removeEventListener('online', onOnline);
+    }, [refresh]);
+
     useEffect(() => {
         applyTheme(settings?.theme ?? 'system');
         document.documentElement.lang = locale;
     }, [settings?.theme, locale]);
 
     const logout = async () => {
+        await clearCache();
         if (deviceAuth.isPaired()) {
             await api.devices.signOut().catch(() => undefined);
             deviceAuth.forget();

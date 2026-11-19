@@ -36,8 +36,10 @@ async function put(request, response) {
     if (!response || !response.ok) return;
     const control = response.headers.get('Cache-Control') || '';
     if (/no-store/i.test(control)) return;
+    // 必须在任何 await 之前 clone:页面一开始读 body,之后再 clone 会失败,缓存就悄悄写不进去。
+    const copy = response.clone();
     const cache = await caches.open(CACHE);
-    await cache.put(request, response.clone());
+    await cache.put(request, copy);
 }
 
 self.addEventListener('install', (event) => {
@@ -71,7 +73,7 @@ self.addEventListener('fetch', (event) => {
                     // 直接在地址栏打开 /offline.html、图标、manifest 等也是导航请求,它们不是应用壳,不能覆盖 `/`。
                     const type = response.headers.get('Content-Type') || '';
                     if (/text\/html/i.test(type) && url.pathname !== '/offline.html') {
-                        void put(new Request('/'), response);
+                        event.waitUntil(put(new Request('/'), response));
                     }
                     return response;
                 })
@@ -88,7 +90,7 @@ self.addEventListener('fetch', (event) => {
                 (hit) =>
                     hit ||
                     fetch(request).then((response) => {
-                        void put(request, response);
+                        event.waitUntil(put(request, response));
                         return response;
                     }),
             ),
@@ -100,7 +102,7 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(request)
                 .then((response) => {
-                    void put(request, response);
+                    event.waitUntil(put(request, response));
                     return response;
                 })
                 .catch(async () => (await caches.match(request)) || Response.error()),

@@ -8,6 +8,7 @@ import { ApprovalPanel } from './ApprovalPanel.js';
 import { AgentsPage } from './AgentsPage.js';
 import { SessionMapPage } from './SessionMapPage.js';
 import { AuditPage } from './AuditPage.js';
+import { cachedSessions, clearCache, isOffline, isUnauthorized, refreshCache } from './cache.js';
 import { ChatView } from './ChatView.js';
 import { ItemsPage } from './ItemsPage.js';
 import { MailPage } from './MailPage.js';
@@ -82,25 +83,38 @@ export function Shell({
         return () => window.removeEventListener('keydown', onKey);
     }, [navOpen]);
 
+    /** 联网时读服务器并在后台追平离线缓存;连不上服务器时给出缓存里的会话;其他错误返回 null(保持现状)。 */
+    const loadSessions = useCallback(async (): Promise<Session[] | null> => {
+        try {
+            const page = await api.sessions.list({ limit: 100 });
+            void refreshCache();
+            return page.items;
+        } catch (error) {
+            if (isUnauthorized(error)) void clearCache();
+            if (!isOffline(error)) return null;
+            const cached = await cachedSessions();
+            return cached.length > 0 ? cached.slice(0, 100) : null;
+        }
+    }, []);
     const reloadSessions = useCallback(
-        () =>
-            api.sessions
-                .list({ limit: 100 })
-                .then((page) => setSessions(page.items))
-                .catch(() => undefined),
-        [],
+        () => loadSessions().then((items) => (items ? setSessions(items) : undefined)),
+        [loadSessions],
     );
 
     useEffect(() => {
         let alive = true;
-        api.sessions
-            .list({ limit: 100 })
-            .then((page) => alive && setSessions(page.items))
-            .catch(() => undefined);
+        void loadSessions().then((items) => alive && items && setSessions(items));
         return () => {
             alive = false;
         };
-    }, []);
+    }, [loadSessions]);
+
+    // 网络恢复后刷新一次
+    useEffect(() => {
+        const onOnline = () => void reloadSessions();
+        window.addEventListener('online', onOnline);
+        return () => window.removeEventListener('online', onOnline);
+    }, [reloadSessions]);
 
     const activeId = route.name === 'session' ? route.id : null;
 

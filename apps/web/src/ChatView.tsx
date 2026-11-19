@@ -21,6 +21,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import { cachedMessages, isOffline, refreshCache } from './cache.js';
 import { api, errorText } from './api.js';
 import { DelegationTree } from './DelegationTree.js';
 import { useI18n } from './i18n.js';
@@ -232,8 +233,17 @@ export function ChatView({
     }, [sessionId]);
 
     const loadMessages = useCallback(async (id: string, hideRunId: string | null) => {
-        const page = await api.sessions.messages(id, { limit: 200 });
-        setMessages(page.items.filter((m) => !(hideRunId && m.runId === hideRunId && m.role === 'assistant')));
+        let items: Message[];
+        try {
+            items = (await api.sessions.messages(id, { limit: 200 })).items;
+            void refreshCache();
+        } catch (error) {
+            // 连不上服务器时显示离线缓存里的消息(只读)
+            if (!isOffline(error)) throw error;
+            items = await cachedMessages(id);
+            if (items.length === 0) throw error;
+        }
+        setMessages(items.filter((m) => !(hideRunId && m.runId === hideRunId && m.role === 'assistant')));
     }, []);
 
     /** 读完一次运行的事件流;结束后以服务器保存的消息为准。 */

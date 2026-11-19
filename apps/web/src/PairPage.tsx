@@ -6,6 +6,7 @@ import { PairingCode } from '@fatcat-ai/shared';
 import { type FormEvent, useState } from 'react';
 import { api, errorText } from './api.js';
 import { deviceAuth, unauthenticatedApi } from './device-session.js';
+import { clearCache } from './cache.js';
 import { useI18n } from './i18n.js';
 import { takePairingCode } from './pair-code.js';
 
@@ -52,6 +53,7 @@ export function PairPage() {
     const signOut = async () => {
         await api.devices.signOut().catch(() => undefined);
         deviceAuth.forget();
+        await clearCache();
         window.location.reload();
     };
 

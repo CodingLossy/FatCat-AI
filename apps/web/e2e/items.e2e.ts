@@ -125,7 +125,10 @@ async function drill(page: Page, mobile: boolean): Promise<void> {
     // 手机宽度下导航在抽屉里
     if (mobile) await page.getByRole('button', { name: '菜单' }).click();
     await page.getByRole('link', { name: '知识地图' }).click();
-    await page.getByRole('button', { name: '立即同步' }).click();
+    const sync = page.getByRole('button', { name: '立即同步' });
+    await sync.click();
+    // 先等同步结束(按钮恢复可用)再开始下钻,否则列表可能还在重新加载
+    await expect(sync).toBeEnabled();
 
     // 小说 → 凡人 → 第二章
     await open('小说');
@@ -145,9 +148,11 @@ async function drill(page: Page, mobile: boolean): Promise<void> {
         .poll(
             async () => {
                 await page.locator('.item-list').evaluate((el) => (el.scrollTop = el.scrollHeight));
+                // 虚拟列表的行会随滚动被卸载,不能对行调 scrollIntoView;给下一页请求留出时间
+                await page.waitForTimeout(250);
                 return page.locator('.item-row').filter({ hasText: '测试邮件 100' }).count();
             },
-            { timeout: 15_000 },
+            { timeout: 30_000 },
         )
         .toBeGreaterThan(0);
     await page.locator('.item-list').evaluate((el) => (el.scrollTop = 0));
@@ -182,7 +187,10 @@ test('手机宽度:树收进抽屉,列表整宽,同样能下钻', async ({ brows
     await page.getByLabel('用户名').fill('owner');
     await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: /登录/ }).click();
-    await expect(page.getByRole('button', { name: '菜单' })).toBeVisible();
-    await drill(page, true);
-    await ctx.close();
+    try {
+        await expect(page.getByRole('button', { name: '菜单' })).toBeVisible();
+        await drill(page, true);
+    } finally {
+        await ctx.close();
+    }
 });
