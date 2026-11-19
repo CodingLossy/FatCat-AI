@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright (C) 2026 尹绪柏 (Theodore Yin)
-# 桌面安装包(ADR 0044 第 7 节):在三个系统的 runner 上构建未签名安装包,检查体积(≤ 80 MB),
+# 桌面安装包(ADR 0044 第 7 节):在三个系统的 runner 上构建未签名安装包,检查体积(≤ 80 MB,AppImage ≤ 140 MB),
 # 生成 SHA-256 校验和并用 cosign(无密钥、GitHub OIDC)签名校验和文件。
 # 只在手动触发或推送 desktop-v* 标签时运行;标签由业主打,这个工作流自己不打标签。
 # 推送标签时才把产物上传到同名 GitHub Release(需要业主先创建好 Release,或由 gh 创建草稿);手动触发只留下工作流产物。
@@ -52,9 +52,13 @@ jobs:
       - name: Build installers
         shell: bash
         run: |
-          # AppImage 默认 gzip 压缩;xz 压得更小。只在 Linux 上设置,不影响其他平台。
-          if [ "$RUNNER_OS" = "Linux" ]; then export LDAI_COMP=xz; fi
-          pnpm --filter @fatcat-ai/desktop exec tauri build
+          # Linux 上加 --verbose:tauri 会把 linuxdeploy / appimagetool 的完整输出打进日志,
+          # 否则 AppImage 失败时只有一行「failed to run linuxdeploy」。不再设 LDAI_COMP,用 appimagetool 默认的 zstd(ADR 0044 第 7 节)。
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            pnpm --filter @fatcat-ai/desktop exec tauri build --verbose
+          else
+            pnpm --filter @fatcat-ai/desktop exec tauri build
+          fi
       - name: Install and launch smoke test (Windows)
         if: runner.os == 'Windows'
         run: node apps/desktop/scripts/check-windows-install.mjs

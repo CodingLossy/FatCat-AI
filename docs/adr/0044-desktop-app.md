@@ -83,6 +83,12 @@
 - Windows:`CREATE_NO_WINDOW` 只是不显示窗口,系统仍会给 `node.exe` 配一个隐藏的 `conhost.exe` 子进程,`check-windows-install.mjs` 因此报「sidecar owns a console window」。改用 `DETACHED_PROCESS`,sidecar 完全没有控制台;核心自己再启动的子进程(邮件 worker)补上 `windowsHide: true`,否则没有控制台的父进程下它们会各弹一个黑窗(MCP、图标等其他子进程原来就带了 `windowsHide`)。
 - Linux AppImage 126.9 MB(deb / rpm 52.4 MB):AppImage 自带 WebKitGTK 及其依赖库,deb / rpm 用系统库,所以体积差是结构性的,砍不掉。先把 AppImage 的压缩从 gzip 换成 xz(`LDAI_COMP=xz`);仍然只有 AppImage 单独放宽到 100 MB,其他格式保持 80 MB。100 MB 是临时上限:重跑 Desktop release 看到 xz 后的真实体积后,再收紧到「实测值 + 少量余量」。
 
+**第二次手动发布(run 44475609731)后的修正**:
+
+- Windows:安装、启动、`/healthz` 200、sidecar 无控制台都已通过;失败在最后一步「壳被杀后 sidecar 是否退出」。`Get-Process -Id <pid> -ErrorAction SilentlyContinue` 在进程已经不存在时 PowerShell 返回非零,脚本用 `execFileSync` 调用,把这当成了异常。改为不看退出码:查不到进程 = 已退出 = 通过;15 秒后仍查得到才失败,并打印进程名和 PID。判断逻辑是 `release-lib.mjs` 里的纯函数 `processState`,有单测。
+- Linux AppImage:加了 `LDAI_COMP=xz` 后 `failed to run linuxdeploy`(deb / rpm 正常,上一次不带 xz 时 AppImage 能打出来)。在分支上带 `--verbose` 重跑(run 44478386364)确认了根因:`LDAI_COMP` 原样转成 `appimagetool --comp`,而 appimagetool 自带的 mksquashfs 只编译了 zstd,日志是 `mksquashfs: Compressor "xz" is not supported! Compressors available: zstd (default)`。也就是说 AppImage 本来就用 zstd(不是 gzip),xz 在这套工具链里不可用。结论:去掉 `LDAI_COMP`;Linux 构建保留 `tauri build --verbose`,以后再失败时日志里直接有 linuxdeploy / appimagetool 的输出。
+- AppImage 体积:压缩回到默认 zstd,体积就是上次实测的 126.9 MB。差额来自 AppImage 必须自带的 WebKitGTK 及其依赖(结构性,见上),在不删库、不换 runtime 的前提下没有安全的办法压到 100 MB 以下。因此 **只给 AppImage 放宽到 140 MB**(实测 + 约 10% 余量),Windows / macOS / deb / rpm 仍是 80 MB。需要更小的 Linux 安装包时用 deb / rpm。
+
 ### 8. 不做的事
 
 不做付费签名与公证;不做移动端(M11);不做自带的自动登录以外的账号体系;不在壳里加遥测或崩溃上报;不把核心嵌进壳的进程(保持 sidecar,崩溃互不影响)。

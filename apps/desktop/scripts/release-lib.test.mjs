@@ -8,8 +8,25 @@ import {
     MAX_APPIMAGE_BYTES,
     MAX_INSTALLER_BYTES,
     nodeDistribution,
+    parsePsJson,
+    processState,
     sha256Sums,
 } from './release-lib.mjs';
+
+test('a process that Get-Process cannot find counts as exited; a live one reports its name and pid', () => {
+    // 进程已退出:SilentlyContinue 下没有任何输出(退出码可能非零,不参与判断)。
+    assert.deepEqual(processState(''), { alive: false });
+    assert.deepEqual(processState('\r\n'), { alive: false });
+    assert.deepEqual(processState(undefined), { alive: false });
+    assert.deepEqual(processState('{"Id":10236,"ProcessName":"node"}'), {
+        alive: true,
+        pid: 10236,
+        name: 'node',
+    });
+    assert.deepEqual(parsePsJson('[{"ProcessId":1},{"ProcessId":2}]'), [{ ProcessId: 1 }, { ProcessId: 2 }]);
+    // 非空但不是 JSON 说明脚本真的出错了,不能当成「已退出」。
+    assert.throws(() => processState('Get-Process : something broke'));
+});
 
 test('installer size check fails over the limit, ignores non-installers, and fails when nothing is found', () => {
     const ok = checkInstallerSizes([
@@ -24,7 +41,7 @@ test('installer size check fails over the limit, ignores non-installers, and fai
     // AppImage 有自己的上限,其他格式不受影响。
     const image = { name: 'appimage/FatCat-AI.AppImage', size: MAX_INSTALLER_BYTES + 1 };
     assert.deepEqual(checkInstallerSizes([image]).errors, []);
-    assert.match(checkInstallerSizes([{ ...image, size: MAX_APPIMAGE_BYTES + 1 }]).errors[0], /exceeds 100 MB/);
+    assert.match(checkInstallerSizes([{ ...image, size: MAX_APPIMAGE_BYTES + 1 }]).errors[0], /exceeds 140 MB/);
     assert.deepEqual(checkInstallerSizes([{ name: 'readme.md', size: 1 }]).errors, ['no installer found']);
 });
 

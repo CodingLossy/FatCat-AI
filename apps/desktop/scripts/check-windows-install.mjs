@@ -10,6 +10,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parsePsJson, processState } from './release-lib.mjs';
 
 if (process.platform !== 'win32') {
     console.error('check-windows-install only runs on Windows');
@@ -20,14 +21,16 @@ const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const nsisDir = join(desktop, 'src-tauri/target/release/bundle/nsis');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** 跑一段 PowerShell,返回标准输出。不看退出码:查询没有结果时 PowerShell 可能返回非零,那不是错误。 */
+function psOut(script) {
+    const r = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' });
+    if (r.error) throw r.error;
+    return r.stdout;
+}
+
 /** 跑一段 PowerShell,把输出当 JSON 解析(空输出返回 [])。 */
 function ps(script) {
-    const out = execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], {
-        encoding: 'utf8',
-    }).trim();
-    if (!out) return [];
-    const value = JSON.parse(out);
-    return Array.isArray(value) ? value : [value];
+    return parsePsJson(psOut(script));
 }
 
 function children(pid, name) {
@@ -36,10 +39,12 @@ function children(pid, name) {
     ).map((p) => p.ProcessId);
 }
 
-function alive(pid) {
-    return (
-        ps(`Get-Process -Id ${pid} -ErrorAction SilentlyContinue | Select-Object Id | ConvertTo-Json -Compress`)
-            .length > 0
+/** 查不到进程 = 已退出;仍在时返回 { alive: true, pid, name }。 */
+function processInfo(pid) {
+    return processState(
+        psOut(
+            `Get-Process -Id ${pid} -ErrorAction SilentlyContinue | Select-Object Id, ProcessName | ConvertTo-Json -Compress`,
+        ),
     );
 }
 
@@ -114,7 +119,10 @@ try {
 
     // 强杀壳本身(不带子进程树),模拟崩溃:sidecar 必须自己退出。
     execFileSync('taskkill', ['/F', '/PID', String(shellPid)]);
-    if (!(await waitFor(() => !alive(nodePid), 15_000))) throw new Error('sidecar survived the shell');
+    if (!(await waitFor(() => !processInfo(nodePid).alive, 15_000))) {
+        const left = processInfo(nodePid);
+        if (left.alive) throw new Error(`sidecar survived the shell (${left.name} pid ${left.pid})`);
+    }
     console.log('sidecar exited after the shell was killed');
     ok = true;
 } catch (error) {
