@@ -138,6 +138,8 @@ export function checkWritableTarget(real: string): 'missing' | 'file' {
     }
     if (info.isSymbolicLink()) throw new PathError('the target is a link; links are never written through');
     if (info.isDirectory()) throw new PathError('the target is a folder');
+    // FIFO、socket、设备文件:打开它们可能一直阻塞,覆盖写也没有意义
+    if (!info.isFile()) throw new PathError('the target is not a regular file');
     return 'file';
 }
 

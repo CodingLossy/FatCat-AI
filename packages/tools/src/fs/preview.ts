@@ -102,7 +102,7 @@ function readOld(target: string): string | 'too-large' | null {
     // 先打开再用句柄取大小,不在检查和读取之间留空档;不跟随符号链接(平台支持时)
     let fd: number;
     try {
-        fd = openSync(target, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+        fd = openSync(target, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0));
     } catch {
         return null;
     }

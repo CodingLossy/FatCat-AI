@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -52,6 +53,23 @@ describe('previewWrite', () => {
         const p = previewWrite('t.txt', file, Array.from({ length: 1500 }, (_, i) => `line ${i}`).join('\n'));
         expect(p.truncated).toBe(true);
         expect(p.text.split('\n').length).toBeLessThanOrEqual(500);
+    });
+});
+
+describe.skipIf(process.platform === 'win32')('🔒 a FIFO never blocks the preview or the write', () => {
+    it('is refused without being opened', () => {
+        const fifo = path.join(root, 'p');
+        execFileSync('mkfifo', [fifo]);
+        const started = Date.now();
+        expect(() => previewWrite('p', fifo, 'hello\n')).toThrow(/not a regular file/);
+        expect(Date.now() - started).toBeLessThan(1000);
+        const tool = createFsTools({ roots: () => [root] }).find((t) => t.name === 'fs.write')!;
+        expect(
+            tool.preview!({ path: fifo, content: 'x', overwrite: true }, {
+                ownerId: 'o',
+                sessionId: 's',
+            } as ToolContext),
+        ).toBeUndefined();
     });
 });
 
