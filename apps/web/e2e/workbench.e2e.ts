@@ -158,6 +158,11 @@ test('workbench: top bar, running tools, file panel follows fs tools', async ({ 
     await expect(search).toBeFocused();
     await search.fill('设置');
     await expect(page.getByRole('option', { name: '打开设置' })).toBeVisible();
+    if (SHOTS)
+        await page.screenshot({
+            path: join(SHOTS, 'workbench-search.png'),
+            clip: { x: 0, y: 0, width: 1360, height: 330 },
+        });
     await search.fill('帮我看看项目文件夹');
     await page.getByRole('option', { name: /向助手提问/ }).click();
     await expect(page.getByRole('textbox', { name: /输入消息/ })).toHaveValue('帮我看看项目文件夹');

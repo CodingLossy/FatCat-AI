@@ -5,11 +5,13 @@ import { describe, expect, it } from 'vitest';
 import type { LiveTool } from './live-turn.js';
 import {
     INITIAL_PANEL,
+    PREVIEW_MAX_CHARS,
     buildFilesModel,
     followTool,
     parseFsList,
     pinPanel,
     runningRows,
+    shortcutHint,
     startRun,
 } from './workbench.js';
 
@@ -61,5 +63,35 @@ describe('workbench', () => {
         const src = model.roots[0]?.children?.find((c) => c.name === 'src');
         expect(src?.children?.map((c) => c.name)).toEqual(['b.ts']);
         expect(model.latest?.lines).toEqual(['one', 'two']);
+    });
+
+    it('Windows 反斜杠路径、根目录 / 、重复 fs.list 以最后一次为准、超长内容标记截断', () => {
+        const win = buildFilesModel([
+            tool('1', 'fs.list', { result: { output: untrusted('C:\\work', 'dir\tsrc') } }),
+            tool('2', 'fs.list', { result: { output: untrusted('C:\\work\\src', 'file\ta.ts') } }),
+        ]);
+        expect(win.roots[0]?.name).toBe('work');
+        expect(win.roots[0]?.children?.[0]?.children?.[0]?.path).toBe('C:\\work\\src\\a.ts');
+
+        const slash = buildFilesModel([tool('1', 'fs.list', { result: { output: untrusted('/', 'dir\tetc') } })]);
+        expect(slash.roots[0]?.path).toBe('/');
+        expect(slash.roots[0]?.children?.[0]?.path).toBe('/etc');
+
+        const again = buildFilesModel([
+            tool('1', 'fs.list', { result: { output: untrusted('/p', 'file\told.ts') } }),
+            tool('2', 'fs.list', { result: { output: untrusted('/p', 'file\tnew.ts') } }),
+        ]);
+        expect(again.roots[0]?.children?.map((c) => c.name)).toEqual(['new.ts']);
+
+        const big = buildFilesModel([
+            tool('1', 'fs.read', { result: { output: untrusted('/p/big.txt', 'x'.repeat(PREVIEW_MAX_CHARS + 10)) } }),
+        ]);
+        expect(big.latest?.truncated).toBe(true);
+        expect(big.latest?.lines.join('').length).toBe(PREVIEW_MAX_CHARS);
+    });
+
+    it('搜索框快捷键提示按平台显示', () => {
+        expect(shortcutHint('MacIntel')).toBe('⌘K');
+        expect(shortcutHint('Win32')).toBe('Ctrl K');
     });
 });

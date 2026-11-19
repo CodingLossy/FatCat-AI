@@ -229,3 +229,8 @@ export function filterCommands(commands: readonly CommandItem[], query: string):
     const q = query.trim().toLowerCase();
     return q ? commands.filter((c) => c.label.toLowerCase().includes(q)) : [];
 }
+
+/** 搜索框里的快捷键提示:macOS 显示 ⌘K,其他平台显示 Ctrl K(键名不随语言变化)。 */
+export function shortcutHint(platform: string): string {
+    return /mac|iphone|ipad/i.test(platform) ? '⌘K' : 'Ctrl K';
+}

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { Avatar } from './Avatar.js';
-import { ASK_EVENT } from './GlobalSearch.js';
+import { ASK_EVENT, NEW_CHAT_PREFILL_KEY } from './GlobalSearch.js';
 import { FilesPanel } from './FilesPanel.js';
 import { Icon } from './Icon.js';
 import { RunningTools } from './RunningTools.js';
@@ -30,7 +30,7 @@ import { cachedMessages, isOffline, refreshCache } from './cache.js';
 import { api, errorText } from './api.js';
 import { DelegationTree } from './DelegationTree.js';
 import { useI18n } from './i18n.js';
-import { effectiveProfile, prepareImage, precheck } from './images.js';
+import { effectiveProfile, prepareImage, precheck, previewSrc } from './images.js';
 import { applyEvent, newTurn, type LiveTool, type LiveTurn } from './live-turn.js';
 import { Markdown } from './Markdown.js';
 import { navigate } from './router.js';
@@ -124,7 +124,15 @@ export function ChatView({
             // 桌面深链接 fatcat-ai://ask?text=...:只预填,不自动发送。
             const { text, rest } = takeAskParam(window.location.search);
             if (text) window.history.replaceState(null, '', window.location.pathname + rest);
-            return text;
+            if (text) return text;
+            // 顶栏搜索的「提问」从别的页面来:同样只预填
+            try {
+                const prefilled = sessionStorage.getItem(NEW_CHAT_PREFILL_KEY) ?? '';
+                sessionStorage.removeItem(NEW_CHAT_PREFILL_KEY);
+                return prefilled;
+            } catch {
+                return '';
+            }
         }
         try {
             const key = 'fatcat.prefill.' + sessionId;
@@ -793,7 +801,7 @@ export function ChatView({
                                     {livePreviews.length > 0 ? (
                                         <div className="message-images">
                                             {livePreviews.map((url) => (
-                                                <img key={url} src={url} alt="" />
+                                                <img key={url} src={previewSrc(url)} alt="" />
                                             ))}
                                         </div>
                                     ) : null}
@@ -838,7 +846,7 @@ export function ChatView({
                                         {images.map((image) => (
                                             <li key={image.key}>
                                                 <img
-                                                    src={image.url}
+                                                    src={previewSrc(image.url)}
                                                     alt={t('chat.imageAlt', { name: image.file.name })}
                                                 />
                                                 <button

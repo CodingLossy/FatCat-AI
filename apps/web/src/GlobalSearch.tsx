@@ -10,7 +10,7 @@ import { Icon } from './Icon.js';
 import { useI18n, type Key } from './i18n.js';
 import { itemTitle } from './item-title.js';
 import { navigate, parseRoute, type Route } from './router.js';
-import { filterCommands, type CommandItem } from './workbench.js';
+import { filterCommands, shortcutHint, type CommandItem } from './workbench.js';
 
 const COMMANDS: { id: string; key: Key; route: Route }[] = [
     { id: 'new', key: 'wb.cmd.newChat', route: { name: 'home' } },
@@ -21,7 +21,10 @@ const COMMANDS: { id: string; key: Key; route: Route }[] = [
     { id: 'tasks', key: 'wb.cmd.tasks', route: { name: 'tasks' } },
 ];
 
+const NO_ITEMS: Item[] = [];
+
 export const ASK_EVENT = 'fatcat-ask';
+export const NEW_CHAT_PREFILL_KEY = 'fatcat.prefill.new';
 
 /** 把文字放进当前会话的输入框;不在聊天页时先回到首页再预填。只预填,从不自动发送。 */
 export function askInChat(text: string): void {
@@ -30,7 +33,12 @@ export function askInChat(text: string): void {
         window.dispatchEvent(new CustomEvent<string>(ASK_EVENT, { detail: text }));
         return;
     }
-    window.history.pushState(null, '', `/?ask=${encodeURIComponent(text.slice(0, 2000))}`);
+    // 用 sessionStorage 预填(与 fatcat.prefill.* 一致),不把问题写进地址栏和浏览器历史
+    try {
+        sessionStorage.setItem(NEW_CHAT_PREFILL_KEY, text.slice(0, 2000));
+    } catch {
+        // 不能写 sessionStorage 时只是没有预填
+    }
     navigate({ name: 'home' });
 }
 
@@ -45,7 +53,7 @@ export function GlobalSearch() {
     const listId = useId();
     const [query, setQuery] = useState('');
     const [open, setOpen] = useState(false);
-    const [files, setFiles] = useState<Item[]>([]);
+    const [found, setFound] = useState<{ q: string; items: Item[] }>({ q: '', items: [] });
     const [error, setError] = useState<string | null>(null);
     const [active, setActive] = useState(0);
 
@@ -78,12 +86,12 @@ export function GlobalSearch() {
                 .search({ q, limit: 6 })
                 .then((page) => {
                     if (controller.signal.aborted) return;
-                    setFiles(page.items);
+                    setFound({ q, items: page.items });
                     setError(null);
                 })
                 .catch((e: unknown) => {
                     if (controller.signal.aborted) return;
-                    setFiles([]);
+                    setFound({ q, items: [] });
                     setError(errorText(e));
                 });
         }, 250);
@@ -93,6 +101,8 @@ export function GlobalSearch() {
         };
     }, [query]);
 
+    // 只显示与当前查询词对应的结果,新请求返回前不显示旧结果
+    const files = found.q === query.trim() ? found.items : NO_ITEMS;
     const close = () => {
         setOpen(false);
         setActive(0);
@@ -180,7 +190,7 @@ export function GlobalSearch() {
                 }}
             />
             <kbd className="search-hint" aria-hidden="true">
-                Ctrl K
+                {shortcutHint(navigator.platform)}
             </kbd>
             {open && rows.length > 0 ? (
                 <div className="search-results" id={listId} role="listbox">
