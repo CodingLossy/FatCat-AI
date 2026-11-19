@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, errorText } from './api.js';
 import { deviceAuth } from './device-session.js';
 import { AuthForm } from './AuthForm.js';
+import { resolveAuth } from './auth-state.js';
 import { clearCache, isOffline, offlineStartup, rememberSettings } from './cache.js';
 import { Footer } from './Footer.js';
 import { I18nContext, translator, type Locale } from './i18n.js';
@@ -23,20 +24,14 @@ function applyTheme(theme: Settings['theme']): void {
     document.documentElement.dataset.theme = theme;
 }
 
-async function loadAuth(): Promise<{ status: AuthStatus; settings: Settings | null }> {
-    try {
-        const status = await api.auth.status();
-        const settings = status.authenticated ? await api.settings.get() : null;
-        if (settings) rememberSettings(settings);
-        // 服务器明确说未登录(登出、会话过期、设备被吊销):缓存不该留在这台设备上
-        else await clearCache();
-        return { status, settings };
-    } catch (error) {
-        // 连不上服务器:登录过的设备只读地显示离线缓存(ADR 0045 第 2 节),恢复联网后会重新确认登录状态
-        const settings = isOffline(error) ? await offlineStartup() : null;
-        if (!settings) throw error;
-        return { status: { initialized: true, authenticated: true }, settings };
-    }
+function loadAuth(): Promise<{ status: AuthStatus; settings: Settings | null }> {
+    return resolveAuth({
+        status: () => api.auth.status(),
+        settings: () => api.settings.get(),
+        isOffline,
+        device: { isPaired: () => deviceAuth.isPaired(), refresh: () => deviceAuth.refresh() },
+        cache: { remember: rememberSettings, clear: clearCache, offlineStartup },
+    });
 }
 
 export function App() {

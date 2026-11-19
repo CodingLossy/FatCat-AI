@@ -86,6 +86,7 @@ export async function offlineStartup(): Promise<Settings | null> {
  */
 export async function clearCache(): Promise<void> {
     generation += 1;
+    // 等待期间新调用的 refreshCache() 会复用这个已被取消的 inflight:这一次不同步,无害
     await inflight?.catch(() => undefined);
     await wipe();
 }
