@@ -71,6 +71,7 @@ describe('core orb model', () => {
         const peak = (state: 'speaking' | 'listening') => Math.max(...waveHeights(56, state, 1, 0.37, 48));
         expect(peak('speaking')).toBeGreaterThan(peak('listening'));
         expect(Math.min(...waveHeights(56, 'speaking', 0, 0, 48))).toBeGreaterThanOrEqual(3);
+        expect(new Set(waveHeights(56, 'speaking', 1, 0.37, 48, true))).toEqual(new Set([3])); // 减少动效:全部最低
     });
 
     it('Canvas 不可用时返回 null', () => {

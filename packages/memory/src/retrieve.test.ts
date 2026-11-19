@@ -11,10 +11,10 @@ import {
     openStorage,
     type Repositories,
 } from '@fatcat-ai/storage';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryContext } from './context.js';
 import { createDigestBuilder } from './digest.js';
-import { createRetriever, qualify, rerank } from './retrieve.js';
+import { createRetriever, qualify, type Retriever, rerank } from './retrieve.js';
 import { createMemoryService, type MemoryService } from './service.js';
 import { estimateTokens } from './tokens.js';
 
@@ -77,7 +77,15 @@ describe('retrieve 与 digest', () => {
         memory = createMemoryService(repos);
         ownerId = repos.owners.create({ username: 'owner', passwordHash: 'x' }).id;
     });
+    // 每个测试建的 retriever 都要在关库之前 close,否则 5 秒的刷新定时器会对已关闭的库写入
+    const retrievers: Retriever[] = [];
+    const newRetriever = (options: Parameters<typeof createRetriever>[0]) => {
+        const r = createRetriever(options);
+        retrievers.push(r);
+        return r;
+    };
     afterEach(() => {
+        for (const r of retrievers.splice(0)) r.close();
         conn.close();
         rmSync(dir, { recursive: true, force: true });
     });
@@ -88,7 +96,7 @@ describe('retrieve 与 digest', () => {
     it('中文问句靠二字词命中,带可信度说明的固定格式,访问计数批量写入', async () => {
         const id = write('用户常住杭州', { entityKey: 'user.location.city' });
         write('用户喜欢喝龙井');
-        const retriever = createRetriever({ repos, now: () => NOW, flushMs: 60_000 });
+        const retriever = newRetriever({ repos, now: () => NOW, flushMs: 60_000 });
         const result = await retriever.retrieve(ownerId, { query: '我还住在杭州吗?' });
         expect(result.items.map((i) => i.id)).toEqual([id]);
         expect(result.items[0]).toMatchObject({ qualifier: 'reliable', channels: ['fts'] });
@@ -121,7 +129,7 @@ describe('retrieve 与 digest', () => {
             .prepare("INSERT INTO item_edges (parent_id, child_id, rel) VALUES (?, ?, 'mentions')")
             .run(person, b);
 
-        const retriever = createRetriever({
+        const retriever = newRetriever({
             repos,
             vectors: () => Promise.resolve([{ itemId: a }, { itemId: 'not-a-memory' }]),
         });
@@ -131,14 +139,14 @@ describe('retrieve 与 digest', () => {
             [b]: ['graph'],
         });
 
-        const failing = createRetriever({ repos, vectors: () => Promise.reject(new Error('down')) });
+        const failing = newRetriever({ repos, vectors: () => Promise.reject(new Error('down')) });
         expect((await failing.retrieve(ownerId, { query: 'Mochi' })).items.map((i) => i.id)).toEqual([a]);
     });
 
     it('向量召回超时:中止嵌入请求,只用全文结果', async () => {
         const a = write('用户的猫叫 Mochi');
         let aborted = false;
-        const slow = createRetriever({
+        const slow = newRetriever({
             repos,
             vectorTimeoutMs: 20,
             // 模拟一个不理会 signal 的慢嵌入接口
@@ -157,7 +165,7 @@ describe('retrieve 与 digest', () => {
 
     it('向量召回超时:实现理会 signal、中止后抛出 AbortError 时也按 timeout 算,不按 error', async () => {
         const a = write('用户的猫叫 Mochi');
-        const honoring = createRetriever({
+        const honoring = newRetriever({
             repos,
             vectorTimeoutMs: 20,
             vectors: (_owner, _query, _k, signal) =>
@@ -189,7 +197,7 @@ describe('retrieve 与 digest', () => {
         ];
         for (const [error, reason, httpStatus] of cases) {
             const logged: unknown[] = [];
-            const retriever = createRetriever({
+            const retriever = newRetriever({
                 repos,
                 vectors: () => Promise.reject(error as Error),
                 onDegraded: (detail, context) => logged.push({ ...detail, ...context }),
@@ -213,7 +221,7 @@ describe('retrieve 与 digest', () => {
 
         // 没有向量这一路(没有 embed 配置档)、维度不符(返回 null)、正常返回:都不算降级
         for (const vectors of [undefined, () => Promise.resolve(null), () => Promise.resolve([{ itemId: a }])]) {
-            const result = await createRetriever({ repos, vectors }).retrieve(ownerId, { query: 'Mochi' });
+            const result = await newRetriever({ repos, vectors }).retrieve(ownerId, { query: 'Mochi' });
             expect(result).not.toHaveProperty('degraded');
         }
     });
@@ -221,7 +229,7 @@ describe('retrieve 与 digest', () => {
     it('默认不含已更替的记录;问「以前」时带上', async () => {
         write('用户住在杭州', { entityKey: 'user.location.city' });
         write('用户搬到了上海', { entityKey: 'user.location.city' });
-        const retriever = createRetriever({ repos });
+        const retriever = newRetriever({ repos });
         expect((await retriever.retrieve(ownerId, { query: '用户住在杭州' })).items).toEqual([]);
         expect((await retriever.retrieve(ownerId, { query: '我以前住在杭州吗' })).items.map((i) => i.status)).toEqual([
             'superseded',
@@ -231,7 +239,7 @@ describe('retrieve 与 digest', () => {
     it('渠道过滤:群聊排除 sensitivity ≥ 1;sensitivity 2 只在私聊且原文命中时给出', async () => {
         write('我妈妈的生日是 5 月 3 日');
         write('用户的手机号是 13812345678');
-        const retriever = createRetriever({ repos });
+        const retriever = newRetriever({ repos });
         expect((await retriever.retrieve(ownerId, { query: '生日' })).items).toHaveLength(1);
         expect((await retriever.retrieve(ownerId, { query: '生日' }, { channel: 'group' })).items).toEqual([]);
         expect((await retriever.retrieve(ownerId, { query: '手机号' })).items).toHaveLength(1);
@@ -240,7 +248,7 @@ describe('retrieve 与 digest', () => {
 
     it('预算:超出时截断并注明未展示的条数;每条不超过 80 tokens', async () => {
         for (let i = 0; i < 20; i++) write(`用户的项目记录第 ${i} 条:${'很长的说明'.repeat(30)}`.slice(0, 200));
-        const retriever = createRetriever({ repos });
+        const retriever = newRetriever({ repos });
         const result = await retriever.retrieve(ownerId, { query: '项目记录', tokenBudget: 300, limit: 20 });
         expect(result.omitted).toBeGreaterThan(0);
         expect(result.items.length + result.omitted).toBe(20);
@@ -268,7 +276,7 @@ describe('retrieve 与 digest', () => {
         expect(d.tokenEstimate).toBeLessThanOrEqual(400);
         expect(digest.get(ownerId).body).toBe(d.body);
 
-        const context = createMemoryContext({ repos, retriever: createRetriever({ repos }), digest });
+        const context = createMemoryContext({ repos, retriever: newRetriever({ repos }), digest });
         const first = await context({ ownerId, query: '杭州', firstTurn: true });
         expect(first.messages).toHaveLength(1); // 杭州已经在 digest 里,记忆块为空
         expect(first.ids).toEqual(d.ids);
@@ -285,5 +293,23 @@ describe('retrieve 与 digest', () => {
         const d = createDigestBuilder({ repos }).build(ownerId);
         expect(d.tokenEstimate).toBeLessThanOrEqual(100);
         expect(d.ids.length).toBeGreaterThan(0);
+    });
+    it('close 之后定时器不再对数据库写入,新的 markUsed 被忽略', async () => {
+        vi.useFakeTimers();
+        try {
+            const id = write('用户常住杭州', { entityKey: 'user.location.city' });
+            const retriever = newRetriever({ repos, now: () => NOW, flushMs: 5000 });
+            await retriever.retrieve(ownerId, { query: '杭州' });
+            const touch = vi.spyOn(repos.memoryRead, 'touch');
+            retriever.close(); // 先 flush:累积的计数写入一次
+            expect(touch).toHaveBeenCalledTimes(1);
+            expect(touch).toHaveBeenCalledWith([id]);
+            await retriever.retrieve(ownerId, { query: '杭州' });
+            vi.advanceTimersByTime(10_000);
+            expect(touch).toHaveBeenCalledTimes(1); // close 后既没有新的定时器,也没有新的写入
+            retriever.close(); // 重复 close 无害
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });

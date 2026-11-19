@@ -238,11 +238,18 @@ function drawSphere(
 
 const WAVE_BARS = 56;
 
-function drawWave(canvas: HTMLCanvasElement, palette: Palette, state: OrbState, energy: number, tSec: number): void {
+function drawWave(
+    canvas: HTMLCanvasElement,
+    palette: Palette,
+    state: OrbState,
+    energy: number,
+    tSec: number,
+    reduced: boolean,
+): void {
     const fit = fitCanvas(canvas);
     if (!fit) return;
     const { ctx: g, w, h } = fit;
-    const heights = waveHeights(WAVE_BARS, state, energy, tSec, h);
+    const heights = waveHeights(WAVE_BARS, state, energy, tSec, h, reduced);
     const step = w / WAVE_BARS;
     g.fillStyle = palette.accent;
     for (let i = 0; i < WAVE_BARS; i++) {
@@ -268,15 +275,24 @@ export function createVoiceOrb(canvas: HTMLCanvasElement, options: VoiceOrbOptio
     let destroyed = false;
     const start = performance.now();
 
+    let frames = 0;
     const render = (nowMs: number) => {
+        if (!reduced && ++frames % 120 === 0) palette = readPalette(canvas); // 同一状态下切换主题也会跟上
         const t = reduced ? 4.2 : (nowMs - start) / 1000; // 静态图固定相位,截图可复现
         const energy = reduced ? 0 : orbEnergy(state, level, t);
         drawSphere(canvas, palette, state, energy, t, reduced);
-        if (options.waveCanvas) drawWave(options.waveCanvas, palette, state, reduced ? 0 : energy, t);
+        if (options.waveCanvas) drawWave(options.waveCanvas, palette, state, energy, t, reduced);
     };
 
     render(performance.now());
     const remove = reduced ? () => undefined : addTick(render);
+    // 系统明暗切换:刷新颜色(减少动效时没有帧循环,所以同时重画一帧)
+    const scheme = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
+    const onScheme = () => {
+        palette = readPalette(canvas);
+        if (reduced) render(performance.now());
+    };
+    scheme?.addEventListener?.('change', onScheme);
 
     return {
         setState(next) {
@@ -291,6 +307,7 @@ export function createVoiceOrb(canvas: HTMLCanvasElement, options: VoiceOrbOptio
         destroy() {
             destroyed = true;
             remove();
+            scheme?.removeEventListener?.('change', onScheme);
         },
     };
 }

@@ -176,8 +176,16 @@ export function orbEnergy(state: OrbState, level: number | null, t: number): num
     return state === 'speaking' ? syntheticEnvelope(t) : 0;
 }
 
-/** 声波条的高度(像素),两端低中间高;减少动态时全部为最低高度。 */
-export function waveHeights(count: number, state: OrbState, energy: number, t: number, maxPx: number): number[] {
+/** 声波条的高度(像素),两端低中间高;reducedMotion 时全部为最低高度(3px)。 */
+export function waveHeights(
+    count: number,
+    state: OrbState,
+    energy: number,
+    t: number,
+    maxPx: number,
+    reducedMotion = false,
+): number[] {
+    if (reducedMotion) return new Array<number>(count).fill(3);
     const amp = presetFor(state).wave;
     const out: number[] = [];
     for (let i = 0; i < count; i++) {

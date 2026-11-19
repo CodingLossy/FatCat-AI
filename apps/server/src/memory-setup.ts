@@ -62,7 +62,7 @@ export function createMemoryStack(
             digest.schedule(ownerId);
         },
         stop() {
-            retriever.flush();
+            retriever.close();
             digest.stop();
         },
     };
