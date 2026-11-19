@@ -4,7 +4,7 @@
 
 The desktop app is a small window plus a tray icon with the full FatCat-AI server inside; all data stays on your machine. **The installers are not code-signed with a paid certificate** (the project does not buy one), so your system will warn about an "unknown publisher". Below is how to allow it on each system and how to check that the file you downloaded was not altered.
 
-> These steps were run on Linux (the package was unpacked and run with its bundled Node, writing to its own data directory). The Windows and macOS steps have **not been verified on real machines yet**; the owner's real-device results take precedence.
+> These steps were run on Linux and Windows 11 (bundled Node, own data directory; install, start, quit and deep links were checked on Windows). macOS has **not been verified on a real machine yet**, and the tray, start-at-login and global shortcut still wait for the owner's manual check on Windows.
 
 ## 1. Download and verify
 
@@ -46,7 +46,7 @@ The desktop app has its own data directory, **separate** from the `~/.fatcat-ai`
 | macOS   | `~/Library/Application Support/ai.fatcat.desktop` |
 | Linux   | `~/.local/share/ai.fatcat.desktop`                |
 
-Uninstalling does not delete this directory. To bring existing data in, back it up and copy it by hand for now; an import feature in the UI is not built yet.
+On Windows the web view (WebView2) keeps its cache in `%LOCALAPPDATA%\ai.fatcat.desktop`. Uninstalling does **not** delete either directory. The core service writes its output to `logs\sidecar.log` inside the data directory (overwritten at each start, local only); if it fails to start, the app shows an error box with this path. To bring existing data in, back it up and copy it by hand for now; an import feature in the UI is not built yet.
 
 ## 5. Not available yet
 

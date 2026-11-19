@@ -159,6 +159,10 @@ jobs:
         run: node --test scripts/perf/budget.test.mjs
       - name: No credentials in recorded fixtures
         run: pnpm check:secrets
+      - name: No signing private keys in workflows
+        run: |
+          node --test scripts/check-workflow-secrets.test.mjs
+          pnpm check:workflow-secrets
       - name: Dependency license allowlist and telemetry denylist
         run: pnpm check:licenses
       - name: Egress registry (every network call site is listed)

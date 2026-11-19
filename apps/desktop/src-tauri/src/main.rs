@@ -14,6 +14,7 @@ use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as _};
 use tauri_plugin_deep_link::DeepLinkExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
@@ -61,6 +62,7 @@ fn main() {
                 open_deep_link(app, arg);
             }
         }))
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .plugin(
@@ -75,7 +77,18 @@ fn main() {
         .setup(move |app| {
             let data_dir = app.path().app_data_dir()?;
             let resource_dir = app.path().resource_dir().ok();
-            let sc = sidecar::Sidecar::start(&data_dir, resource_dir.as_deref())?;
+            let sc = match sidecar::Sidecar::start(&data_dir, resource_dir.as_deref()) {
+                Ok(sc) => sc,
+                Err(err) => {
+                    // 窗口模式下没有控制台,失败时必须让用户看到原因和日志位置,而不是静默退出。
+                    app.dialog()
+                        .message(format!("FatCat-AI could not start its core service.\n\n{err}"))
+                        .title("FatCat-AI")
+                        .kind(MessageDialogKind::Error)
+                        .blocking_show();
+                    return Err(err);
+                }
+            };
             let url = format!("http://127.0.0.1:{}/", sc.port);
             app.manage(SidecarState(Mutex::new(Some(sc))));
 
