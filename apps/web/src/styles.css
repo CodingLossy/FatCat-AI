@@ -487,15 +487,46 @@ fieldset {
 /* 语音状态指示器(ADR 0021 第 7 节) */
 .voice-indicator {
     display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 0.5rem;
-    min-height: 40px;
+}
+
+.voice-orb-wrap {
+    position: relative;
+    width: 168px;
+    height: 168px;
+    flex: none;
 }
 
 .voice-orb {
-    width: 40px;
-    height: 40px;
-    flex: none;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.voice-cat {
+    position: absolute;
+    inset: 25%;
+    width: 50%;
+    height: 50%;
+    color: var(--fg);
+}
+
+.voice-cat .cat-line {
+    stroke: currentcolor;
+    stroke-width: 1.6;
+    vector-effect: non-scaling-stroke;
+}
+
+.voice-cat .cat-line * {
+    vector-effect: non-scaling-stroke;
+}
+
+.voice-wave {
+    width: 100%;
+    max-width: 280px;
+    height: 32px;
 }
 
 .voice-label {
@@ -504,7 +535,14 @@ fieldset {
 }
 
 .voice-indicator:not([data-state='idle']) .voice-label {
-    color: inherit;
+    color: var(--accent);
+}
+
+@media (max-width: 600px) {
+    .voice-orb-wrap {
+        width: 120px;
+        height: 120px;
+    }
 }
 
 .voice-button {
