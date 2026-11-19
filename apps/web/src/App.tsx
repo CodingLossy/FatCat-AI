@@ -4,10 +4,13 @@
 import type { AuthStatus, MetaResponse, Settings } from '@fatcat-ai/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, errorText } from './api.js';
+import { deviceAuth } from './device-session.js';
 import { AuthForm } from './AuthForm.js';
 import { Footer } from './Footer.js';
 import { I18nContext, translator, type Locale } from './i18n.js';
+import { PairPage } from './PairPage.js';
 import { useOnline } from './pwa.js';
+import { useRoute } from './router.js';
 import { Shell } from './Shell.js';
 
 function browserLocale(): Locale {
@@ -31,6 +34,7 @@ export function App() {
     const [error, setError] = useState<string | null>(null);
 
     const online = useOnline();
+    const route = useRoute();
     const locale = settings?.locale ?? browserLocale();
     const i18n = useMemo(() => ({ locale, t: translator(locale) }), [locale]);
 
@@ -48,16 +52,20 @@ export function App() {
     );
 
     useEffect(() => {
+        // 已配对的手机:先确保 access 令牌有效,再读登录状态
+        void deviceAuth
+            .start()
+            .then(() => loadAuth())
+            .then(
+                (r) => {
+                    setStatus(r.status);
+                    setSettings(r.settings);
+                },
+                (e: unknown) => setError(errorText(e)),
+            );
         api.meta()
             .then(setMeta)
             .catch(() => setMeta(null));
-        loadAuth().then(
-            (r) => {
-                setStatus(r.status);
-                setSettings(r.settings);
-            },
-            (e: unknown) => setError(errorText(e)),
-        );
     }, []);
 
     useEffect(() => {
@@ -66,12 +74,16 @@ export function App() {
     }, [settings?.theme, locale]);
 
     const logout = async () => {
-        await api.auth.logout().catch(() => undefined);
+        if (deviceAuth.isPaired()) {
+            await api.devices.signOut().catch(() => undefined);
+            deviceAuth.forget();
+        } else await api.auth.logout().catch(() => undefined);
         await refresh();
     };
 
     let body;
-    if (error) body = <p className="error page-message">{i18n.t('common.error', { msg: error })}</p>;
+    if (route.name === 'pair') body = <PairPage />;
+    else if (error) body = <p className="error page-message">{i18n.t('common.error', { msg: error })}</p>;
     else if (!status) body = <p className="muted page-message">{i18n.t('common.loading')}</p>;
     else if (!status.authenticated) body = <AuthForm initialized={status.initialized} onDone={refresh} />;
     else if (settings) body = <Shell settings={settings} onSettings={setSettings} onLogout={logout} />;

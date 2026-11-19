@@ -652,18 +652,22 @@ export function createClient(options: ClientOptions) {
         /** WebSocket 事件订阅,断线自动带 lastSeq 重连补发(ADR 0004 第 5 节)。 */
         connectEvents: (connect: ConnectEventsOptions): EventConnection => {
             const url = t.url('/ws').replace(/^http/, 'ws');
-            const headers: Record<string, string> = t.token ? { authorization: `Bearer ${t.token}` } : {};
-            const factory: WebSocketFactory =
+            const base: WebSocketFactory =
                 options.webSocket ??
                 ((u, h) => {
                     const Ctor = globalThis.WebSocket as unknown as new (
                         url: string,
-                        init?: { headers: Record<string, string> },
+                        init?: string[] | { headers: Record<string, string> },
                     ) => WebSocketLike;
-                    // 浏览器里没有 headers 参数,靠同源 Cookie 鉴权
+                    const bearer = /^Bearer\s+(aip_dev_\S+)$/i.exec(h.authorization ?? '')?.[1];
+                    // 浏览器里 WebSocket 不能设请求头:设备令牌放在子协议里(服务器只回选 fatcat.v1)
+                    if (bearer) return new Ctor(u, ['fatcat.v1', `fatcat.bearer.${bearer}`]);
+                    // 其余情况靠同源 Cookie 鉴权(Node 的全局 WebSocket 支持 headers 参数)
                     return Object.keys(h).length > 0 ? new Ctor(u, { headers: h }) : new Ctor(u);
                 });
-            return connectEvents(url, headers, factory, connect);
+            // 令牌会刷新,所以每次(重)连接时现取
+            const factory: WebSocketFactory = (u) => base(u, t.token ? { authorization: `Bearer ${t.token}` } : {});
+            return connectEvents(url, {}, factory, connect);
         },
     };
 }

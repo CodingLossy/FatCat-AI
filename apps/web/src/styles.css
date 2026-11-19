@@ -1415,3 +1415,11 @@ td .badge {
     letter-spacing: 0.12em;
     user-select: all;
 }
+
+/* 手机配对页:配对码用等宽大字,方便核对 */
+.pair-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 1.25rem;
+    letter-spacing: 0.12em;
+    text-align: center;
+}

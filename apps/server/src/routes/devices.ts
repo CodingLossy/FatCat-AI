@@ -15,6 +15,7 @@ import {
 } from '@fatcat-ai/shared';
 import type { DeviceTokenHashes, Repositories } from '@fatcat-ai/storage';
 import type { Context } from 'hono';
+import { closeDeviceSockets } from '../device-sockets.js';
 import {
     newDeviceAccessToken,
     newDeviceRefreshToken,
@@ -241,6 +242,7 @@ export function deviceRoutes(deps: DeviceRouteDeps) {
                     event: 'replay-revoked',
                     summary: 'A used refresh token was presented again; the device was revoked',
                 });
+                closeDeviceSockets(result.deviceId);
                 c.get('logger').warn({ deviceId: result.deviceId }, 'device refresh token reuse; device revoked');
                 throw new ApiError(401, 'unauthorized', 'Unauthorized', 'The refresh token is invalid or has expired.');
             }
@@ -264,6 +266,7 @@ export function deviceRoutes(deps: DeviceRouteDeps) {
             if (!auth) throw unauthorized();
             if (auth.kind !== 'device') throw forbidden('Only a paired device can sign itself out.');
             if (repos.devices.revoke(auth.ownerId, auth.deviceId, 'self')) {
+                closeDeviceSockets(auth.deviceId);
                 repos.devices.events.append(auth.ownerId, {
                     deviceId: auth.deviceId,
                     event: 'self-revoked',
@@ -290,6 +293,7 @@ export function deviceRoutes(deps: DeviceRouteDeps) {
             const ownerId = requireFullSession(c);
             const { id } = c.req.valid('param');
             if (!repos.devices.revoke(ownerId, id, 'owner')) throw notFound('Device');
+            closeDeviceSockets(id);
             repos.devices.events.append(ownerId, { deviceId: id, event: 'revoked', summary: 'A device was revoked' });
             return c.body(null, 204);
         });
