@@ -76,5 +76,11 @@
     "kind": "local-only",
     "listedAs": "-",
     "reason": "Workbench status line polls same-origin GET /healthz only; it never opens a connection to another host"
+  },
+  {
+    "file": "apps/web/src/SettingsCards.tsx",
+    "kind": "local-only",
+    "listedAs": "-",
+    "reason": "Settings core-status card probes same-origin GET /healthz only; it never opens a connection to another host"
   }
 ]

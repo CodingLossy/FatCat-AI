@@ -78,6 +78,8 @@ test('switching to English leaves no Chinese text on any page', async ({ page })
     await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
 
     await page.getByRole('link', { name: '设置' }).click();
+    await page.getByRole('tab', { name: /工作台/ }).click();
+    await page.getByRole('button', { name: '通用' }).click();
     await page.locator('select[name="locale"]').selectOption('en');
     await expect(page.getByRole('link', { name: 'New chat' })).toBeVisible();
 

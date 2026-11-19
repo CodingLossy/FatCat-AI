@@ -78,6 +78,8 @@ test('添加设备:配对码、配对后出现在列表、改名、吊销', asyn
     await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: '创建并登录' }).click();
     await page.getByRole('link', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: /系统设置/ }).click();
+    await page.getByRole('button', { name: '账户与设备' }).click();
     const section = page.getByRole('region', { name: '已配对设备' });
     await expect(section).toBeVisible();
     await expect(section.getByText('还没有配对的设备')).toBeVisible();
@@ -139,6 +141,8 @@ test('手机视口:配对码与设备列表不横向溢出', async ({ page }) =>
     await page.getByRole('button', { name: '登录' }).click();
     await page.getByRole('button', { name: '菜单' }).click();
     await page.getByRole('link', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: /系统设置/ }).click();
+    await page.getByRole('button', { name: '账户与设备' }).click();
     const section = page.getByRole('region', { name: '已配对设备' });
     await section.getByRole('button', { name: '添加设备' }).click();
     await expect(page.getByTestId('pairing-code')).toBeVisible();
@@ -154,6 +158,8 @@ test('手机配对页:用链接里的配对码配对后以设备令牌登录,吊
     await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: '登录' }).click();
     await page.getByRole('link', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: /系统设置/ }).click();
+    await page.getByRole('button', { name: '账户与设备' }).click();
     const section = page.getByRole('region', { name: '已配对设备' });
     await section.getByRole('button', { name: '添加设备' }).click();
     const code = (await page.getByTestId('pairing-code').locator('.pairing-code').innerText()).trim();
