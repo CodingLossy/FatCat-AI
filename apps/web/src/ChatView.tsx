@@ -89,6 +89,12 @@ function textOf(message: Message): string {
     return message.parts.map((p) => (p.type === 'text' ? p.text : '')).join('');
 }
 
+/** 输入框里待发送图片的缩略图:地址只接受本地 blob:,文件名只进 alt 属性(React 会转义,不当作 HTML)。 */
+function ComposerPreview({ url, name }: { url: string; name: string }) {
+    const { t } = useI18n();
+    return <img src={previewSrc(url)} alt={t('chat.imageAlt', { name })} />;
+}
+
 function MessageImages({ message }: { message: Message }) {
     const { t } = useI18n();
     const images = message.parts.filter((p) => p.type === 'image');
@@ -845,10 +851,7 @@ export function ChatView({
                                     <ul className="image-previews">
                                         {images.map((image) => (
                                             <li key={image.key}>
-                                                <img
-                                                    src={previewSrc(image.url)}
-                                                    alt={t('chat.imageAlt', { name: image.file.name })}
-                                                />
+                                                <ComposerPreview url={image.url} name={image.file.name} />
                                                 <button
                                                     type="button"
                                                     className="remove-image"
