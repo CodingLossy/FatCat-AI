@@ -2,7 +2,7 @@
 
 桌面版是一个小窗口加托盘图标,里面带着完整的 FatCat-AI 服务,数据全在本机。**安装包没有付费代码签名**(项目暂不购买),所以系统会提示「未知发布者」;下面写了每个系统怎么放行,以及怎么自己校验下载的文件没被改过。
 
-> 这页的步骤在 Linux 上实际跑过(安装包解包后运行,带自带的 Node,数据写入自己的目录)。Windows 和 macOS 的步骤**还没有在真机上验证**,以业主实测后的版本为准。
+> 这页的步骤在 Linux 和 Windows 11 上实际跑过(带自带的 Node,数据写入自己的目录;Windows 的安装、启动、退出、深链接已实测)。macOS **还没有在真机上验证**,托盘、开机自启和全局快捷键也还在等业主在 Windows 上手动确认。
 
 ## 1. 下载与校验
 
@@ -44,7 +44,7 @@ cosign verify-blob --bundle SHA256SUMS.cosign.bundle \
 | macOS   | `~/Library/Application Support/ai.fatcat.desktop` |
 | Linux   | `~/.local/share/ai.fatcat.desktop`                |
 
-卸载程序不会删除这个目录。要「导入已有数据」目前需要手动备份后复制,界面里的导入功能还没有做。
+Windows 上网页组件(WebView2)的缓存在 `%LOCALAPPDATA%\ai.fatcat.desktop`。卸载程序**不会**删除这两个目录。核心服务的输出写在数据目录下的 `logs\sidecar.log`(每次启动覆盖,只在本机);启动失败时窗口会弹出错误框并给出这个路径。要「导入已有数据」目前需要手动备份后复制,界面里的导入功能还没有做。
 
 ## 5. 目前没有的
 

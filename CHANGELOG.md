@@ -12,6 +12,10 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ### M10 · Desktop app (in progress)
 
+#### Fixed
+
+- Windows desktop launch (found on a real Windows 11 machine): the installed app exited at once (code 101) because Tauri's resource path carries a `\\?\` prefix that Node rejects; the prefix is now removed. The core service no longer opens a console window, its output goes to `logs\sidecar.log` in the data directory, and a failed start shows an error box with that path instead of dying silently. The release workflow now installs the Windows installer into a folder with spaces and Chinese characters, starts it without any override variables, checks `/healthz`, checks there is no console window, and checks the service exits when the shell is killed. The desktop guide notes the WebView2 cache location. Signing private keys stay on the owner's machine: docs say so and CI (`pnpm check:workflow-secrets`) fails if a workflow references a `*PRIVATE_KEY*` secret. Chinese summary: 修复 Windows 桌面版装完即闪退(路径前缀)、弹控制台窗口、失败无提示;发布工作流新增 Windows 安装冒烟;私钥只留本机并由 CI 检查。
+
 #### Added
 
 - Desktop installers (ADR 0044): a `Desktop release` workflow builds unsigned installers for Windows, macOS and Linux (with a pinned, checksum-verified Node inside), fails if any installer is over 80 MB, publishes SHA-256 sums with a keyless cosign signature, and only runs when started by hand or by a `desktop-v*` tag. CI also runs `cargo deny` (permissive licences only, no telemetry crates). The Linux `.deb` built here is 52 MB. A desktop installation guide (zh/en) is on the docs site, and `docs/milestones/M10-self-check.md` lists what is verified and what the owner still has to check. Auto-update, notifications, file drop and the remote mode are not included yet. Chinese summary: 新增三平台桌面安装包的发布工作流(体积上限、SHA-256、cosign 签名、cargo deny)、桌面安装指南和 M10 自检;自动更新等待业主生成密钥。
