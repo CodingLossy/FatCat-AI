@@ -118,6 +118,7 @@ test('桌面宽度:滚动右侧内容时侧边栏高度等于视口且不动', a
                 contentScrollable: content.scrollHeight > content.clientHeight,
             };
         });
+    const topbarBottom = await page.locator('.topbar').evaluate((el) => Math.round(el.getBoundingClientRect().bottom));
     const before = await metrics();
     expect(before.contentScrollable, '设置页应比 640px 视口长').toBe(true);
     // 侧边栏占满页脚以上的全部高度(页脚固定在视口底部)
@@ -126,7 +127,9 @@ test('桌面宽度:滚动右侧内容时侧边栏高度等于视口且不动', a
     await shot(page, 'settings-top');
     await page.locator('.content').evaluate((el) => (el.scrollTop = el.scrollHeight));
     const after = await metrics();
-    expect(after.sideTop).toBe(0);
+    // 侧边栏在顶栏下方,不随右侧内容滚动
+    expect(after.sideTop).toBe(before.sideTop);
+    expect(after.sideTop).toBe(topbarBottom);
     expect(after.sideHeight).toBe(before.sideHeight);
     expect(after.pageScroll).toBeLessThanOrEqual(after.viewport);
     await shot(page, 'settings-bottom');

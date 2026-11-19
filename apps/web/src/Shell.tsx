@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { Session, Settings } from '@fatcat-ai/shared';
+import type { ModelProfile, Session, Settings } from '@fatcat-ai/shared';
 import { Icon } from './Icon.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorText } from './api.js';
@@ -11,6 +11,8 @@ import { SessionMapPage } from './SessionMapPage.js';
 import { AuditPage } from './AuditPage.js';
 import { cachedSessions, clearCache, isOffline, isUnauthorized, refreshCache } from './cache.js';
 import { ChatView } from './ChatView.js';
+import { effectiveProfile } from './images.js';
+import { GlobalSearch } from './GlobalSearch.js';
 import { ItemsPage } from './ItemsPage.js';
 import { MailPage } from './MailPage.js';
 import { PluginsPage } from './PluginsPage.js';
@@ -37,14 +39,43 @@ function Link({ to, className, children }: { to: Route; className?: string; chil
     );
 }
 
+/** 顶栏上的模型胶囊:下一轮会用的对话配置档的名称;没有则「未选择模型」。点击进入设置。 */
+function ModelCapsule({ settings }: { settings: Settings }) {
+    const { t } = useI18n();
+    const routeKey = routePath(useRoute());
+    const [profiles, setProfiles] = useState<ModelProfile[]>([]);
+    useEffect(() => {
+        let alive = true;
+        api.models
+            .list()
+            .then((page) => alive && setProfiles(page.items))
+            .catch(() => undefined);
+        return () => {
+            alive = false;
+        };
+        // 在设置页里增删配置档后回到别的页面时刷新
+    }, [settings.defaultChatProfileId, routeKey]);
+    const profile = effectiveProfile(profiles, settings, null);
+    const name = profile?.label ?? t('wb.model.none');
+    return (
+        <Link to={{ name: 'settings' }} className="model-capsule">
+            <Icon name="cat" size={16} />
+            <span title={profile ? t('wb.model.label', { name }) : undefined}>{name}</span>
+        </Link>
+    );
+}
+
 export function Shell({
     settings,
     onSettings,
     onLogout,
+    serverVersion,
 }: {
     settings: Settings;
     onSettings: (s: Settings) => void;
     onLogout: () => Promise<void>;
+    /** GET /api/v1/meta 的 serverVersion:顶栏显示正在运行的核心版本。 */
+    serverVersion?: string | undefined;
 }) {
     const { t } = useI18n();
     const { canInstall, install } = useInstallPrompt();
@@ -158,6 +189,13 @@ export function Shell({
                 </button>
                 <img className="brand-logo" src="/icons/app-icon.svg" alt="" width={24} height={24} />
                 <span className="topbar-title">FatCat-AI</span>
+                {serverVersion ? (
+                    <span className="topbar-version small muted" data-testid="server-version">
+                        v{serverVersion}
+                    </span>
+                ) : null}
+                <GlobalSearch />
+                <ModelCapsule settings={settings} />
                 {canInstall ? (
                     <button type="button" className="button small" onClick={() => void install()}>
                         {t('pwa.install')}
@@ -165,154 +203,156 @@ export function Shell({
                 ) : null}
             </header>
 
-            {navOpen ? (
-                <div
-                    className="sidebar-backdrop"
-                    onClick={() => {
-                        setNavOpen(false);
-                        menuRef.current?.focus();
-                    }}
-                    aria-hidden="true"
-                />
-            ) : null}
-            <aside
-                id="sidebar"
-                ref={sidebarRef}
-                className={`sidebar${navOpen ? ' open' : ''}`}
-                // 点了指向当前页的链接时路由不变,抽屉不会因换页而关闭,这里补上
-                onClick={(e) => {
-                    if (navOpen && (e.target as HTMLElement).closest('a')) setNavOpenAt(null);
-                }}
-            >
-                <div className="sidebar-brand">
-                    <img className="brand-logo" src="/icons/app-icon.svg" alt="" width={28} height={28} />
-                    <span>FatCat-AI</span>
-                </div>
-                <Link to={{ name: 'home' }} className="button primary new-chat">
-                    <Icon name="chat" size={16} />
-                    {t('nav.newChat')}
-                </Link>
-                <nav className="session-list" aria-label="sessions">
-                    {sessions.length === 0 ? <p className="muted small">{t('nav.noSessions')}</p> : null}
-                    {sessions.map((s) => (
-                        <div key={s.id} className="session-row">
-                            <Link
-                                to={{ name: 'session', id: s.id }}
-                                className={`session-link${s.id === activeId ? ' active' : ''}`}
-                            >
-                                {s.title || t('nav.untitled')}
-                            </Link>
-                            <button
-                                type="button"
-                                className="link small"
-                                aria-label={`${t('chat.delete')}: ${s.title || t('nav.untitled')}`}
-                                onClick={() => setPending({ kind: 'one', id: s.id })}
-                            >
-                                {t('nav.deleteSession')}
-                            </button>
-                        </div>
-                    ))}
-                </nav>
-                {sessionError ? <p className="error small">{sessionError}</p> : null}
-                <button
-                    type="button"
-                    className="link small"
-                    disabled={sessions.length === 0}
-                    onClick={() => setPending({ kind: 'all' })}
-                >
-                    {t('nav.clearSessions')}
-                </button>
-                {pending ? (
-                    <div className="card" role="dialog" aria-labelledby="session-confirm-title">
-                        <p id="session-confirm-title">
-                            {pending.kind === 'all' ? t('nav.clearSessionsConfirm') : t('chat.deleteConfirm')}
-                        </p>
-                        <div className="row">
-                            <button
-                                type="button"
-                                className="danger"
-                                onClick={() =>
-                                    void (pending.kind === 'all' ? clearSessions() : deleteSession(pending.id))
-                                }
-                            >
-                                {t('nav.confirm')}
-                            </button>
-                            <button type="button" onClick={() => setPending(null)}>
-                                {t('nav.cancel')}
-                            </button>
-                        </div>
-                    </div>
+            <div className="shell-body">
+                {navOpen ? (
+                    <div
+                        className="sidebar-backdrop"
+                        onClick={() => {
+                            setNavOpen(false);
+                            menuRef.current?.focus();
+                        }}
+                        aria-hidden="true"
+                    />
                 ) : null}
-                <div className="sidebar-foot">
-                    <Link to={{ name: 'items' }} className={route.name === 'items' ? 'active' : ''}>
-                        <Icon name="globe" size={16} />
-                        {t('nav.items')}
+                <aside
+                    id="sidebar"
+                    ref={sidebarRef}
+                    className={`sidebar${navOpen ? ' open' : ''}`}
+                    // 点了指向当前页的链接时路由不变,抽屉不会因换页而关闭,这里补上
+                    onClick={(e) => {
+                        if (navOpen && (e.target as HTMLElement).closest('a')) setNavOpenAt(null);
+                    }}
+                >
+                    <div className="sidebar-brand">
+                        <img className="brand-logo" src="/icons/app-icon.svg" alt="" width={28} height={28} />
+                        <span>FatCat-AI</span>
+                    </div>
+                    <Link to={{ name: 'home' }} className="button primary new-chat">
+                        <Icon name="chat" size={16} />
+                        {t('nav.newChat')}
                     </Link>
-                    <Link to={{ name: 'mail' }} className={route.name === 'mail' ? 'active' : ''}>
-                        <Icon name="mail" size={16} />
-                        {t('nav.mail')}
-                    </Link>
-                    <Link to={{ name: 'tasks' }} className={route.name === 'tasks' ? 'active' : ''}>
-                        <Icon name="clock" size={16} />
-                        {t('nav.tasks')}
-                        {approvalCount > 0 ? (
-                            <span
-                                className="badge badge-alert"
-                                aria-label={t('approvals.waiting', { n: approvalCount })}
-                            >
-                                {approvalCount}
-                            </span>
-                        ) : null}
-                    </Link>
-                    <Link to={{ name: 'agents' }} className={route.name === 'agents' ? 'active' : ''}>
-                        <Icon name="cat" size={16} />
-                        {t('nav.agents')}
-                    </Link>
-                    <Link to={{ name: 'plugins' }} className={route.name === 'plugins' ? 'active' : ''}>
-                        <Icon name="plug" size={16} />
-                        {t('nav.plugins')}
-                    </Link>
-                    <Link to={{ name: 'memory' }} className={route.name === 'memory' ? 'active' : ''}>
-                        <Icon name="brain" size={16} />
-                        {t('nav.memory')}
-                    </Link>
-                    <Link to={{ name: 'audit' }} className={route.name === 'audit' ? 'active' : ''}>
-                        <Icon name="pulse" size={16} />
-                        {t('nav.audit')}
-                    </Link>
-                    <Link to={{ name: 'settings' }} className={route.name === 'settings' ? 'active' : ''}>
-                        <Icon name="gear" size={16} />
-                        {t('nav.settings')}
-                    </Link>
-                    <button type="button" className="link" onClick={() => void onLogout()}>
-                        {t('auth.logout')}
+                    <nav className="session-list" aria-label="sessions">
+                        {sessions.length === 0 ? <p className="muted small">{t('nav.noSessions')}</p> : null}
+                        {sessions.map((s) => (
+                            <div key={s.id} className="session-row">
+                                <Link
+                                    to={{ name: 'session', id: s.id }}
+                                    className={`session-link${s.id === activeId ? ' active' : ''}`}
+                                >
+                                    {s.title || t('nav.untitled')}
+                                </Link>
+                                <button
+                                    type="button"
+                                    className="link small"
+                                    aria-label={`${t('chat.delete')}: ${s.title || t('nav.untitled')}`}
+                                    onClick={() => setPending({ kind: 'one', id: s.id })}
+                                >
+                                    {t('nav.deleteSession')}
+                                </button>
+                            </div>
+                        ))}
+                    </nav>
+                    {sessionError ? <p className="error small">{sessionError}</p> : null}
+                    <button
+                        type="button"
+                        className="link small"
+                        disabled={sessions.length === 0}
+                        onClick={() => setPending({ kind: 'all' })}
+                    >
+                        {t('nav.clearSessions')}
                     </button>
-                </div>
-            </aside>
-            <main className="content">
-                <ApprovalPanel currentSessionId={activeId} onCount={setApprovalCount} />
-                {route.name === 'settings' ? (
-                    <SettingsPage settings={settings} onSettings={onSettings} />
-                ) : route.name === 'memory' ? (
-                    <MemoryPage settings={settings} onSettings={onSettings} />
-                ) : route.name === 'audit' ? (
-                    <AuditPage />
-                ) : route.name === 'items' ? (
-                    <ItemsPage />
-                ) : route.name === 'mail' ? (
-                    <MailPage />
-                ) : route.name === 'tasks' ? (
-                    <TasksPage />
-                ) : route.name === 'plugins' ? (
-                    <PluginsPage />
-                ) : route.name === 'agents' ? (
-                    <AgentsPage />
-                ) : route.name === 'session-map' ? (
-                    <SessionMapPage />
-                ) : (
-                    <ChatView key={activeId ?? 'new'} sessionId={activeId} onSessionsChanged={reloadSessions} />
-                )}
-            </main>
+                    {pending ? (
+                        <div className="card" role="dialog" aria-labelledby="session-confirm-title">
+                            <p id="session-confirm-title">
+                                {pending.kind === 'all' ? t('nav.clearSessionsConfirm') : t('chat.deleteConfirm')}
+                            </p>
+                            <div className="row">
+                                <button
+                                    type="button"
+                                    className="danger"
+                                    onClick={() =>
+                                        void (pending.kind === 'all' ? clearSessions() : deleteSession(pending.id))
+                                    }
+                                >
+                                    {t('nav.confirm')}
+                                </button>
+                                <button type="button" onClick={() => setPending(null)}>
+                                    {t('nav.cancel')}
+                                </button>
+                            </div>
+                        </div>
+                    ) : null}
+                    <div className="sidebar-foot">
+                        <Link to={{ name: 'items' }} className={route.name === 'items' ? 'active' : ''}>
+                            <Icon name="globe" size={16} />
+                            {t('nav.items')}
+                        </Link>
+                        <Link to={{ name: 'mail' }} className={route.name === 'mail' ? 'active' : ''}>
+                            <Icon name="mail" size={16} />
+                            {t('nav.mail')}
+                        </Link>
+                        <Link to={{ name: 'tasks' }} className={route.name === 'tasks' ? 'active' : ''}>
+                            <Icon name="clock" size={16} />
+                            {t('nav.tasks')}
+                            {approvalCount > 0 ? (
+                                <span
+                                    className="badge badge-alert"
+                                    aria-label={t('approvals.waiting', { n: approvalCount })}
+                                >
+                                    {approvalCount}
+                                </span>
+                            ) : null}
+                        </Link>
+                        <Link to={{ name: 'agents' }} className={route.name === 'agents' ? 'active' : ''}>
+                            <Icon name="cat" size={16} />
+                            {t('nav.agents')}
+                        </Link>
+                        <Link to={{ name: 'plugins' }} className={route.name === 'plugins' ? 'active' : ''}>
+                            <Icon name="plug" size={16} />
+                            {t('nav.plugins')}
+                        </Link>
+                        <Link to={{ name: 'memory' }} className={route.name === 'memory' ? 'active' : ''}>
+                            <Icon name="brain" size={16} />
+                            {t('nav.memory')}
+                        </Link>
+                        <Link to={{ name: 'audit' }} className={route.name === 'audit' ? 'active' : ''}>
+                            <Icon name="pulse" size={16} />
+                            {t('nav.audit')}
+                        </Link>
+                        <Link to={{ name: 'settings' }} className={route.name === 'settings' ? 'active' : ''}>
+                            <Icon name="gear" size={16} />
+                            {t('nav.settings')}
+                        </Link>
+                        <button type="button" className="link" onClick={() => void onLogout()}>
+                            {t('auth.logout')}
+                        </button>
+                    </div>
+                </aside>
+                <main className="content">
+                    <ApprovalPanel currentSessionId={activeId} onCount={setApprovalCount} />
+                    {route.name === 'settings' ? (
+                        <SettingsPage settings={settings} onSettings={onSettings} />
+                    ) : route.name === 'memory' ? (
+                        <MemoryPage settings={settings} onSettings={onSettings} />
+                    ) : route.name === 'audit' ? (
+                        <AuditPage />
+                    ) : route.name === 'items' ? (
+                        <ItemsPage />
+                    ) : route.name === 'mail' ? (
+                        <MailPage />
+                    ) : route.name === 'tasks' ? (
+                        <TasksPage />
+                    ) : route.name === 'plugins' ? (
+                        <PluginsPage />
+                    ) : route.name === 'agents' ? (
+                        <AgentsPage />
+                    ) : route.name === 'session-map' ? (
+                        <SessionMapPage />
+                    ) : (
+                        <ChatView key={activeId ?? 'new'} sessionId={activeId} onSessionsChanged={reloadSessions} />
+                    )}
+                </main>
+            </div>
         </div>
     );
 }
