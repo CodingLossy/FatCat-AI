@@ -5,6 +5,12 @@
 import { createHash } from 'node:crypto';
 
 export const MAX_INSTALLER_BYTES = 80 * 1024 * 1024;
+/** AppImage 自带 WebKitGTK 等共享库(deb / rpm 依赖系统库),所以单独放宽,见 ADR 0044 第 7 节。其他格式仍是 80 MB。 */
+export const MAX_APPIMAGE_BYTES = 100 * 1024 * 1024;
+
+export function limitFor(name, limit = MAX_INSTALLER_BYTES) {
+    return name.toLowerCase().endsWith('.appimage') && limit === MAX_INSTALLER_BYTES ? MAX_APPIMAGE_BYTES : limit;
+}
 export const INSTALLER_EXTENSIONS = ['.msi', '.exe', '.dmg', '.deb', '.rpm', '.appimage'];
 
 export function isInstaller(name) {
@@ -18,7 +24,8 @@ export function checkInstallerSizes(files, limit = MAX_INSTALLER_BYTES) {
     const errors = [];
     if (installers.length === 0) errors.push('no installer found');
     for (const f of installers) {
-        if (f.size > limit) errors.push(`${f.name}: ${(f.size / 1048576).toFixed(1)} MB exceeds ${limit / 1048576} MB`);
+        const max = limitFor(f.name, limit);
+        if (f.size > max) errors.push(`${f.name}: ${(f.size / 1048576).toFixed(1)} MB exceeds ${max / 1048576} MB`);
     }
     return { installers, errors };
 }

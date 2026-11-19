@@ -78,6 +78,11 @@
 
 **第六个 PR 的实现与实测**:`desktop-release.yml` 在三个系统上构建(Tauri 打包,资源是 sidecar 目录和固定版本的 Node),`check-installers.mjs` 逐个检查 ≤ 80 MB 并写 SHA-256,汇总后用 cosign 无密钥签名校验和文件;只在手动触发或 `desktop-v*` 标签时运行。Node 版本和各平台 SHA-256 固定在 `apps/desktop/node-runtime.json`(校验和不来自下载源)。Linux 实测:`.deb` 52.2 MB,解包后在没有 node 的 PATH 下运行,用自带的 Node、写入 `~/.local/share/ai.fatcat.desktop`,壳被杀后 sidecar 退出。updater 不在本 PR(需要业主生成的密钥)。
 
+**首次手动发布(run 44464597415)后的修正**:
+
+- Windows:`CREATE_NO_WINDOW` 只是不显示窗口,系统仍会给 `node.exe` 配一个隐藏的 `conhost.exe` 子进程,`check-windows-install.mjs` 因此报「sidecar owns a console window」。改用 `DETACHED_PROCESS`,sidecar 完全没有控制台;核心自己再启动的子进程(邮件 worker)补上 `windowsHide: true`,否则没有控制台的父进程下它们会各弹一个黑窗(MCP、图标等其他子进程原来就带了 `windowsHide`)。
+- Linux AppImage 126.9 MB(deb / rpm 52.4 MB):AppImage 自带 WebKitGTK 及其依赖库,deb / rpm 用系统库,所以体积差是结构性的,砍不掉。先把 AppImage 的压缩从 gzip 换成 xz(`LDAI_COMP=xz`);仍然只有 AppImage 单独放宽到 100 MB,其他格式保持 80 MB。100 MB 是临时上限:重跑 Desktop release 看到 xz 后的真实体积后,再收紧到「实测值 + 少量余量」。
+
 ### 8. 不做的事
 
 不做付费签名与公证;不做移动端(M11);不做自带的自动登录以外的账号体系;不在壳里加遥测或崩溃上报;不把核心嵌进壳的进程(保持 sidecar,崩溃互不影响)。

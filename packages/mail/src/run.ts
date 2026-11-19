@@ -55,6 +55,8 @@ export const runInWorker: MailJobRunner = (job) => {
             env,
             stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
             serialization: 'advanced',
+            // Windows:核心没有控制台时,子进程会自己弹出一个黑窗。
+            windowsHide: true,
         });
         let settled = false;
         const finish = (fn: () => void) => {

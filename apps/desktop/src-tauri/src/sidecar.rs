@@ -11,8 +11,11 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use std::time::{Duration, Instant};
 
 const READY_TIMEOUT: Duration = Duration::from_secs(30);
+/// Windows 进程创建标志:DETACHED_PROCESS 让 sidecar 完全没有控制台。
+/// 不能用 CREATE_NO_WINDOW:它会给 node.exe 配一个看不见的 conhost.exe 子进程(仍然「拥有控制台」),
+/// 在 Release 版里被 check-windows-install 抓到,用户也可能在任务管理器里看到它。
 #[cfg(windows)]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+const DETACHED_PROCESS: u32 = 0x0000_0008;
 const EXIT_GRACE: Duration = Duration::from_secs(10);
 
 pub struct Sidecar {
@@ -100,11 +103,12 @@ impl Sidecar {
             .stdin(Stdio::piped())
             .stdout(Stdio::from(log.try_clone()?))
             .stderr(Stdio::from(log));
-        // Windows:不给 sidecar 单独开控制台窗口(用户关掉黑窗会连带关掉服务)。
+        // Windows:sidecar 不挂任何控制台(没有黑窗,也没有 conhost.exe)。它的子进程(邮件 / 文档 worker、MCP、
+        // 插件沙箱)由核心用 windowsHide 启动,同样不会弹窗。
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
-            command.creation_flags(CREATE_NO_WINDOW);
+            command.creation_flags(DETACHED_PROCESS);
         }
         let web_dir = dir.join("web");
         if web_dir.exists() {
