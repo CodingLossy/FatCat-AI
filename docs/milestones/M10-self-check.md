@@ -24,7 +24,7 @@
 ## 二、与 ADR 0044 不一致或没做的地方
 
 - **不用 Three.js**:粒子球与两张地图都用 Canvas 2D(原因与实测在 ADR 0044 第 5 节)。
-- **自动更新没做**:Tauri updater 需要业主生成的密钥对,私钥放 Actions secret,公钥我写进配置;密钥到位后再做一个小 PR(会加一个只访问 GitHub Releases 的更新检查和关闭开关)。
+- **自动更新没做**:Tauri updater 需要业主生成的密钥对,私钥只留在业主本机(不放仓库、不放 GitHub Secrets),公钥我写进配置;CI 只出未签名产物,业主在本机签名后再上传;密钥到位后再做一个小 PR(会加一个只访问 GitHub Releases 的更新检查和关闭开关)。
 - **系统通知、文件拖拽、本地 / 远程模式切换没做**:窗口里的网页没有任何 Tauri IPC 权限,这几项需要先设计带权限边界的桥,再写方案。
 - **快速提问小窗**用「唤起主窗口并聚焦输入框」代替。
 - **启动令牌登录没做**:它是新的认证入口,业主还没批准;桌面窗口里走普通的创建账户 / 登录页。
@@ -35,7 +35,7 @@
 
 ## 三、需要业主做的
 
-1. 生成 updater 密钥对:`pnpm --filter @fatcat-ai/desktop exec tauri signer generate`;私钥放仓库 Actions secret(例如 `TAURI_SIGNING_PRIVATE_KEY`),把**公钥**告诉 C。
+1. 生成 updater 密钥对:`pnpm --filter @fatcat-ai/desktop exec tauri signer generate`;**私钥只留在你本机**(不放仓库、不放 GitHub Secrets),把**公钥**告诉 C,C 写进 `tauri.conf.json`;发布时 CI 只出未签名产物,你在本机用 `tauri signer sign` 签名后再上传到 Release。CI 里有 `pnpm check:workflow-secrets`,工作流引用 `*PRIVATE_KEY*` secret 就会失败。
 2. 触发一次 `Desktop release` 工作流(Actions 页手动运行,不打标签),看三个系统都能构建、体积都 ≤ 80 MB;要正式发布时由你打 `desktop-v*` 标签。
 3. 三个系统的真机验证:安装说明(SmartScreen、右键打开 / `xattr`)、托盘(显示 / 隐藏 / 退出、无残留进程)、全局快捷键、开机自启、深链接 `fatcat-ai://`、冷启动时间、粒子球在真实 GPU 上的手感与帧率。
 4. 确认「桌面登录」方案(启动令牌,推荐批准)、是否要「导入已有数据」。

@@ -3,6 +3,7 @@
 
 //! 管理核心 sidecar 子进程:挑空闲回环端口、传环境变量、等 /healthz、退出时关 stdin 并等待。
 
+use std::fs::File;
 use std::io::{Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
@@ -10,6 +11,8 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use std::time::{Duration, Instant};
 
 const READY_TIMEOUT: Duration = Duration::from_secs(30);
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const EXIT_GRACE: Duration = Duration::from_secs(10);
 
 pub struct Sidecar {
@@ -18,12 +21,25 @@ pub struct Sidecar {
     stdin: Option<ChildStdin>,
 }
 
+/// Tauri 在 Windows 上给出的资源目录带 `\\?\` 前缀;Node 用这种路径当入口会报 EISDIR(`lstat 'D:'`)而退出,
+/// 所以传给子进程前一律去掉前缀(dunce 只在不改变含义时才去掉;非 Windows 上原样返回)。
+fn plain(path: &Path) -> PathBuf {
+    dunce::simplified(path).to_path_buf()
+}
+
+/// 资源目录下 sidecar 目录与自带 node 可执行文件的位置(纯路径计算,不检查文件是否存在)。
+fn bundled_paths(resource_dir: &Path) -> (PathBuf, PathBuf) {
+    let base = plain(resource_dir);
+    let exe = if cfg!(windows) { "node.exe" } else { "node" };
+    (base.join("sidecar"), base.join("node").join(exe))
+}
+
 /// 找 sidecar 目录:环境变量 FATCAT_AI_SIDECAR_DIR(开发 / 测试)优先,其次安装包资源里的 `sidecar/`。
 fn sidecar_dir(resource_dir: Option<&Path>) -> Result<PathBuf, String> {
     if let Ok(dir) = std::env::var("FATCAT_AI_SIDECAR_DIR") {
-        return Ok(PathBuf::from(dir));
+        return Ok(plain(Path::new(&dir)));
     }
-    let dir = resource_dir.ok_or("no resource dir")?.join("sidecar");
+    let dir = bundled_paths(resource_dir.ok_or("no resource dir")?).0;
     if dir.join("dist/server.mjs").exists() {
         Ok(dir)
     } else {
@@ -34,10 +50,9 @@ fn sidecar_dir(resource_dir: Option<&Path>) -> Result<PathBuf, String> {
 /// node 可执行文件:FATCAT_AI_NODE(开发 / 测试)优先,其次安装包资源里的 `node/`,最后退回 PATH 里的 node。
 fn node_binary(resource_dir: Option<&Path>) -> PathBuf {
     if let Ok(path) = std::env::var("FATCAT_AI_NODE") {
-        return PathBuf::from(path);
+        return plain(Path::new(&path));
     }
-    let exe = if cfg!(windows) { "node.exe" } else { "node" };
-    if let Some(bundled) = resource_dir.map(|dir| dir.join("node").join(exe)) {
+    if let Some(bundled) = resource_dir.map(|dir| bundled_paths(dir).1) {
         if bundled.exists() {
             return bundled;
         }
@@ -69,17 +84,28 @@ impl Sidecar {
         let dir = sidecar_dir(resource_dir)?;
         let node = node_binary(resource_dir);
         let port = free_port()?;
-        std::fs::create_dir_all(data_dir)?;
+        let data_dir = plain(data_dir);
+        std::fs::create_dir_all(&data_dir)?;
+        // 启动失败时没有任何线索,所以把 sidecar 的输出写到 <数据目录>/logs/sidecar.log(只在本地,每次启动覆盖)。
+        let log_path = data_dir.join("logs").join("sidecar.log");
+        std::fs::create_dir_all(data_dir.join("logs"))?;
+        let log = File::create(&log_path)?;
         let mut command = Command::new(node);
         command
             .arg(dir.join("dist/server.mjs"))
             .env("FATCAT_AI_HOST", "127.0.0.1")
             .env("FATCAT_AI_PORT", port.to_string())
-            .env("FATCAT_AI_DATA_DIR", data_dir)
+            .env("FATCAT_AI_DATA_DIR", &data_dir)
             .env("FATCAT_AI_EXIT_WITH_PARENT", "1")
             .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
+            .stdout(Stdio::from(log.try_clone()?))
+            .stderr(Stdio::from(log));
+        // Windows:不给 sidecar 单独开控制台窗口(用户关掉黑窗会连带关掉服务)。
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(CREATE_NO_WINDOW);
+        }
         let web_dir = dir.join("web");
         if web_dir.exists() {
             command.env("FATCAT_AI_WEB_DIR", web_dir);
@@ -91,7 +117,7 @@ impl Sidecar {
         let started = Instant::now();
         while started.elapsed() < READY_TIMEOUT {
             if let Some(status) = sidecar.child.try_wait()? {
-                return Err(format!("sidecar exited early: {status}").into());
+                return Err(format!("sidecar exited early: {status}. Log: {}", log_path.display()).into());
             }
             if healthy(port) {
                 return Ok(sidecar);
@@ -99,7 +125,7 @@ impl Sidecar {
             std::thread::sleep(Duration::from_millis(50));
         }
         sidecar.stop();
-        Err("sidecar did not become healthy in time".into())
+        Err(format!("sidecar did not become healthy in time. Log: {}", log_path.display()).into())
     }
 
     /// 关闭 stdin 让核心走正常关闭;超时仍未退出才强杀。
@@ -140,6 +166,25 @@ mod tests {
             assert_eq!(node_binary(None), PathBuf::from("node"));
         }
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn bundled_paths_join_under_the_resource_dir() {
+        let (sidecar, node) = bundled_paths(Path::new("/x"));
+        assert_eq!(sidecar, Path::new("/x").join("sidecar"));
+        assert_eq!(node, Path::new("/x").join("node").join(if cfg!(windows) { "node.exe" } else { "node" }));
+    }
+
+    /// 回归:Tauri 的资源目录带 `\\?\` 前缀时 Node 会 EISDIR 退出(退出码 101),必须去掉。
+    #[cfg(windows)]
+    #[test]
+    fn verbatim_prefix_is_stripped_from_bundled_paths() {
+        let (sidecar, node) = bundled_paths(Path::new(r"\\?\C:\x"));
+        assert_eq!(sidecar, PathBuf::from(r"C:\x\sidecar"));
+        assert_eq!(node, PathBuf::from(r"C:\x\node\node.exe"));
+        // 路径里有空格和中文时同样处理
+        let (sidecar, _) = bundled_paths(Path::new(r"\\?\D:\程序 文件\FatCat-AI"));
+        assert_eq!(sidecar, PathBuf::from(r"D:\程序 文件\FatCat-AI\sidecar"));
     }
 
     #[test]

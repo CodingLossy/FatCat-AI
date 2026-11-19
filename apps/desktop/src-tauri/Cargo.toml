@@ -21,3 +21,5 @@ tauri-plugin-global-shortcut = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 url = "2"
 serde_json = "1"
+dunce = "1"
+tauri-plugin-dialog = "2"

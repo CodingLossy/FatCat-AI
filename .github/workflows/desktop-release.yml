@@ -51,6 +51,9 @@ jobs:
       - run: node apps/desktop/scripts/fetch-node.mjs
       - name: Build installers
         run: pnpm --filter @fatcat-ai/desktop exec tauri build
+      - name: Install and launch smoke test (Windows)
+        if: runner.os == 'Windows'
+        run: node apps/desktop/scripts/check-windows-install.mjs
       - name: Check installer size and write SHA-256 sums
         run: node apps/desktop/scripts/check-installers.mjs
       - name: Collect installers

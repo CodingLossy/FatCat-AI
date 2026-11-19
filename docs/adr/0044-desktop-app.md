@@ -73,7 +73,7 @@
 
 - 三平台安装包(Windows MSI / NSIS、macOS dmg、Linux AppImage / deb / rpm)在 CI 的三个系统 runner 上构建。**不买付费代码签名**:macOS ad-hoc 签名、Windows 不签,安装说明写「右键 → 打开」/ `xattr -dr com.apple.quarantine` / SmartScreen「仍要运行」(进文档站)。
 - 发布页提供 SHA-256 校验和与 cosign 签名。
-- Tauri updater 的更新签名需要一对密钥:**私钥只能由业主生成并放进仓库的 Actions secret,C 不接触也不写进任何文件**;公钥写进配置。更新源是 GitHub Releases;用户可在设置里关闭更新检查(与「无遥测」一致,检查只访问 GitHub Releases)。
+- Tauri updater 的更新签名需要一对密钥:**私钥只能由业主在本机生成并只留在本机,不进仓库、不进 GitHub Secrets,C 不接触也不写进任何文件**;公钥写进配置。CI 只出未签名产物,业主在本机用 `tauri signer sign` 签名后再上传到 Release;`pnpm check:workflow-secrets` 在 CI 里保证工作流不引用 `*PRIVATE_KEY*` secret。更新源是 GitHub Releases;用户可在设置里关闭更新检查(与「无遥测」一致,检查只访问 GitHub Releases)。
 - Rust 依赖也要过许可证白名单:CI 加 `cargo deny`(与 `check:licenses` 同一份白名单),并检查没有遥测 crate。
 
 **第六个 PR 的实现与实测**:`desktop-release.yml` 在三个系统上构建(Tauri 打包,资源是 sidecar 目录和固定版本的 Node),`check-installers.mjs` 逐个检查 ≤ 80 MB 并写 SHA-256,汇总后用 cosign 无密钥签名校验和文件;只在手动触发或 `desktop-v*` 标签时运行。Node 版本和各平台 SHA-256 固定在 `apps/desktop/node-runtime.json`(校验和不来自下载源)。Linux 实测:`.deb` 52.2 MB,解包后在没有 node 的 PATH 下运行,用自带的 Node、写入 `~/.local/share/ai.fatcat.desktop`,壳被杀后 sidecar 退出。updater 不在本 PR(需要业主生成的密钥)。
