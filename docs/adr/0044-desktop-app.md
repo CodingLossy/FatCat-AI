@@ -86,7 +86,7 @@
 **第二次手动发布(run 44475609731)后的修正**:
 
 - Windows:安装、启动、`/healthz` 200、sidecar 无控制台都已通过;失败在最后一步「壳被杀后 sidecar 是否退出」。`Get-Process -Id <pid> -ErrorAction SilentlyContinue` 在进程已经不存在时 PowerShell 返回非零,脚本用 `execFileSync` 调用,把这当成了异常。改为不看退出码:查不到进程 = 已退出 = 通过;15 秒后仍查得到才失败,并打印进程名和 PID。判断逻辑是 `release-lib.mjs` 里的纯函数 `processState`,有单测。
-- Linux AppImage:加了 `LDAI_COMP=xz` 后 `failed to run linuxdeploy`(deb / rpm 正常,上一次不带 xz 时 AppImage 能打出来)。查 linuxdeploy-plugin-appimage 与新版 appimagetool 的源码:`LDAI_COMP` 原样转成 `appimagetool --comp`,而新版 appimagetool **默认就是 zstd**(不是 gzip),xz 只是换成另一种压缩,省下的体积有限;新 type2 静态 runtime 对 xz 的支持我们没有验证,而失败日志只有一行,在云端也不能运行下载来的 linuxdeploy 复现。结论:去掉 `LDAI_COMP`,回到已知可用的默认 zstd;Linux 构建加 `tauri build --verbose`,以后再失败时日志里有 linuxdeploy / appimagetool 的完整输出。
+- Linux AppImage:加了 `LDAI_COMP=xz` 后 `failed to run linuxdeploy`(deb / rpm 正常,上一次不带 xz 时 AppImage 能打出来)。在分支上带 `--verbose` 重跑(run 44478386364)确认了根因:`LDAI_COMP` 原样转成 `appimagetool --comp`,而 appimagetool 自带的 mksquashfs 只编译了 zstd,日志是 `mksquashfs: Compressor "xz" is not supported! Compressors available: zstd (default)`。也就是说 AppImage 本来就用 zstd(不是 gzip),xz 在这套工具链里不可用。结论:去掉 `LDAI_COMP`;Linux 构建保留 `tauri build --verbose`,以后再失败时日志里直接有 linuxdeploy / appimagetool 的输出。
 - AppImage 体积:压缩回到默认 zstd,体积就是上次实测的 126.9 MB。差额来自 AppImage 必须自带的 WebKitGTK 及其依赖(结构性,见上),在不删库、不换 runtime 的前提下没有安全的办法压到 100 MB 以下。因此 **只给 AppImage 放宽到 140 MB**(实测 + 约 10% 余量),Windows / macOS / deb / rpm 仍是 80 MB。需要更小的 Linux 安装包时用 deb / rpm。
 
 ### 8. 不做的事
