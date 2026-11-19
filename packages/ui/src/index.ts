@@ -4,13 +4,24 @@
 export {
     createVoiceOrb,
     fibonacciSphere,
-    ORB_COLORS,
-    orbScale,
+    generateParticles,
+    initialQuality,
+    MAX_PARTICLES,
+    MIN_QUALITY,
+    orbEnergy,
+    type OrbParticle,
+    type OrbPreset,
     type OrbState,
+    particleCount,
     type Point3,
-    spinRate,
+    presetFor,
+    projectPoint,
+    type Projection,
+    type QualityState,
+    stepQuality,
     type VoiceOrb,
     type VoiceOrbOptions,
+    waveHeights,
 } from './voice-orb.js';
 export * from './category-browser/index.js';
 export * from './knowledge-sphere/index.js';

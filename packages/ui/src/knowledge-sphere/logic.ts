@@ -4,7 +4,7 @@
 // 知识地图粒子球的纯逻辑(ADR 0044 第 5 节):布局、投影、命中测试、键盘邻居、是否改用列表。
 // 不碰 DOM,所以可以直接单测;渲染在 render.ts。
 
-import { fibonacciSphere, type Point3 } from '../voice-orb.js';
+import { fibonacciSphere, type Point3 } from '../orb-model.js';
 
 export interface SphereItem {
     id: string;
