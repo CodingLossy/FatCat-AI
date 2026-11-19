@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // fs.write 的审批预览(ADR 0046 第 12 节):按文件当前内容算出的有界行差异。只读、只用于显示。
-import { openSync, closeSync, readSync, statSync } from 'node:fs';
+import { closeSync, constants, fstatSync, openSync, readSync } from 'node:fs';
 import type { ApprovalPreview } from '@fatcat-ai/shared';
 import { checkWritableTarget } from './paths.js';
 
@@ -99,17 +99,18 @@ export function formatHunks(ops: Op[]): string[] {
 }
 
 function readOld(target: string): string | 'too-large' | null {
-    let size: number;
+    // 先打开再用句柄取大小,不在检查和读取之间留空档;不跟随符号链接(平台支持时)
+    let fd: number;
     try {
-        size = statSync(target).size;
+        fd = openSync(target, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
     } catch {
         return null;
     }
-    if (size > PREVIEW_MAX_OLD_BYTES) return 'too-large';
-    const fd = openSync(target, 'r');
     try {
-        const buffer = Buffer.alloc(size);
-        const read = size > 0 ? readSync(fd, buffer, 0, size, 0) : 0;
+        const info = fstatSync(fd);
+        if (!info.isFile() || info.size > PREVIEW_MAX_OLD_BYTES) return 'too-large';
+        const buffer = Buffer.alloc(info.size);
+        const read = info.size > 0 ? readSync(fd, buffer, 0, info.size, 0) : 0;
         const slice = buffer.subarray(0, read);
         return slice.includes(0) ? 'too-large' : slice.toString('utf8');
     } finally {
