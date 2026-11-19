@@ -63,7 +63,7 @@ export interface ChatActivity {
     profiles: ModelProfile[];
 }
 
-/** 输入框里待发送的图片(本地预览用 object URL)。 */
+/** 输入框里待发送的图片;`url`(object URL)只用于发送后消息里的临时预览,输入框缩略图不用它。 */
 interface PendingImage {
     key: string;
     file: File;
@@ -83,6 +83,55 @@ function toolsOf(message: Message, results: Map<string, LiveTool['result']>): Li
 
 function textOf(message: Message): string {
     return message.parts.map((p) => (p.type === 'text' ? p.text : '')).join('');
+}
+
+/** 缩略图的边长(CSS 像素 72,按 2 倍像素密度绘制)。 */
+const THUMB = 144;
+
+/**
+ * 输入框里待发送图片的缩略图:解码成位图后画在 canvas 上,不经过 img 的 src,也不再为它创建 object URL。
+ * 按「cover」居中裁成正方形;文件名只进 aria-label(React 会转义)。
+ */
+function ComposerPreview({ file }: { file: File }) {
+    const { t } = useI18n();
+    const canvas = useRef<HTMLCanvasElement>(null);
+    useEffect(() => {
+        let cancelled = false;
+        let bitmap: ImageBitmap | null = null;
+        void createImageBitmap(file)
+            .then((decoded) => {
+                bitmap = decoded;
+                const el = canvas.current;
+                const ctx = el?.getContext('2d');
+                if (cancelled || !ctx) return;
+                const side = Math.min(decoded.width, decoded.height);
+                ctx.drawImage(
+                    decoded,
+                    (decoded.width - side) / 2,
+                    (decoded.height - side) / 2,
+                    side,
+                    side,
+                    0,
+                    0,
+                    THUMB,
+                    THUMB,
+                );
+            })
+            .catch(() => undefined);
+        return () => {
+            cancelled = true;
+            bitmap?.close();
+        };
+    }, [file]);
+    return (
+        <canvas
+            ref={canvas}
+            role="img"
+            width={THUMB}
+            height={THUMB}
+            aria-label={t('chat.imageAlt', { name: file.name })}
+        />
+    );
 }
 
 function MessageImages({ message }: { message: Message }) {
@@ -751,7 +800,7 @@ export function ChatView({
                         <ul className="image-previews">
                             {images.map((image) => (
                                 <li key={image.key}>
-                                    <img src={image.url} alt={t('chat.imageAlt', { name: image.file.name })} />
+                                    <ComposerPreview file={image.file} />
                                     <button
                                         type="button"
                                         className="remove-image"

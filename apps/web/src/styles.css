@@ -688,7 +688,8 @@ fieldset {
     position: relative;
 }
 
-.image-previews img {
+.image-previews img,
+.image-previews canvas {
     display: block;
     width: 72px;
     height: 72px;
