@@ -1238,3 +1238,11 @@ td .badge {
     outline: 2px solid #16a34a;
     outline-offset: 2px;
 }
+
+.offline-banner {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    text-align: center;
+    border-bottom: 1px solid var(--warn);
+    color: var(--warn);
+}

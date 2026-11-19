@@ -73,10 +73,16 @@ export interface Recording {
     cancel(): void;
 }
 
+/** Safari 不支持 webm,按优先级挑浏览器能录的格式;都不支持时返回 undefined,交给浏览器默认。 */
+export function pickRecorderMimeType(isSupported: (mime: string) => boolean): string | undefined {
+    return ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus'].find((m) => isSupported(m));
+}
+
 /** 开始录音;onLimit 在达到 120 秒时调用(调用方随后应 stop)。 */
 export async function startRecording(onLevel: LevelListener, onLimit: () => void): Promise<Recording> {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new MediaRecorder(stream);
+    const mimeType = pickRecorderMimeType((m) => MediaRecorder.isTypeSupported(m));
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     const chunks: Blob[] = [];
     recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunks.push(e.data);

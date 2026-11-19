@@ -4,6 +4,12 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### M11 · Mobile (in progress)
+
+#### Added
+
+- PWA shell (ADR 0045): the web UI can be installed from the browser ("Install app" button where the browser offers it) and has a web app manifest and icons. A service worker caches only the app shell and static assets, never anything under `/api/`, so the interface opens offline with an "offline" notice while conversations, mail and memory stay on the server. The server sends `Cache-Control: no-cache` for `sw.js`, the manifest and the offline page so updates are picked up. Voice recording now falls back to `audio/mp4` on Safari. Placeholder icons are used until real artwork exists. Chinese summary: 新增 PWA 外壳(可安装、离线打开界面并提示、service worker 绝不缓存 API 响应、Safari 录音回退 mp4);图标为占位。
+
 ### M10 · Desktop app (in progress)
 
 #### Added

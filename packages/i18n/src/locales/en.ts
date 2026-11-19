@@ -31,6 +31,8 @@ export const en: Record<Key, string> = {
     'auth.logout': 'Sign out',
     'nav.newChat': 'New chat',
     'nav.menu': 'Menu',
+    'pwa.offline': 'You are offline. Showing the saved app shell; chats need a connection.',
+    'pwa.install': 'Install app',
     'mail.back': 'Back to list',
     'nav.settings': 'Settings',
     'nav.memory': 'Memory',

@@ -428,6 +428,13 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
     if (config.webDir) {
         // 托管 Web UI;非 /api 的未知路径回退到 index.html(前端路由)。
         const spaFallback = serveStatic({ root: config.webDir, path: 'index.html' });
+        // Service worker 与 manifest 必须每次向服务器校验,否则升级后旧 worker 会一直生效。
+        app.use('/*', async (c, next) => {
+            await next();
+            if (c.req.path === '/sw.js' || c.req.path === '/manifest.webmanifest' || c.req.path === '/offline.html') {
+                c.header('Cache-Control', 'no-cache');
+            }
+        });
         app.use('/*', serveStatic({ root: config.webDir }));
         app.get('*', (c, next) => (c.req.path.startsWith('/api/') ? next() : spaFallback(c, next)));
     }

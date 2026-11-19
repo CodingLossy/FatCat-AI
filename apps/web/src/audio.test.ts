@@ -2,7 +2,14 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { describe, expect, it } from 'vitest';
-import { isUsableRecording, MIN_LEVEL_SAMPLES, MIN_RECORDING_MS, playSegments, SILENCE_LEVEL } from './audio.js';
+import {
+    isUsableRecording,
+    pickRecorderMimeType,
+    MIN_LEVEL_SAMPLES,
+    MIN_RECORDING_MS,
+    playSegments,
+    SILENCE_LEVEL,
+} from './audio.js';
 
 describe('playSegments', () => {
     it('停止后被中止的预取段不会留下未处理的 rejection', async () => {
@@ -44,5 +51,13 @@ describe('isUsableRecording', () => {
         // 采样帧数差一帧才够时仍只看时长
         expect(isUsableRecording(2000, 0, MIN_LEVEL_SAMPLES - 1)).toBe(true);
         expect(isUsableRecording(MIN_RECORDING_MS - 1, 0, MIN_LEVEL_SAMPLES - 1)).toBe(false);
+    });
+});
+
+describe('pickRecorderMimeType', () => {
+    it('Chrome 优先 webm,Safari 退到 mp4,都不支持返回 undefined', () => {
+        expect(pickRecorderMimeType(() => true)).toBe('audio/webm;codecs=opus');
+        expect(pickRecorderMimeType((m) => m === 'audio/mp4')).toBe('audio/mp4');
+        expect(pickRecorderMimeType(() => false)).toBeUndefined();
     });
 });

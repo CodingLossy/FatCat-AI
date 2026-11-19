@@ -15,6 +15,7 @@ import { PluginsPage } from './PluginsPage.js';
 import { TasksPage } from './TasksPage.js';
 import { useI18n } from './i18n.js';
 import { MemoryPage } from './MemoryPage.js';
+import { useInstallPrompt } from './pwa.js';
 import { navigate, routePath, useRoute, type Route } from './router.js';
 import { SettingsPage } from './SettingsPage.js';
 
@@ -44,6 +45,7 @@ export function Shell({
     onLogout: () => Promise<void>;
 }) {
     const { t } = useI18n();
+    const { canInstall, install } = useInstallPrompt();
     const route = useRoute();
     const [sessions, setSessions] = useState<Session[]>([]);
     const [approvalCount, setApprovalCount] = useState(0);
@@ -140,7 +142,13 @@ export function Shell({
                     {t('nav.menu')}
                 </button>
                 <span className="topbar-title">FatCat-AI</span>
+                {canInstall ? (
+                    <button type="button" className="button small" onClick={() => void install()}>
+                        {t('pwa.install')}
+                    </button>
+                ) : null}
             </header>
+
             {navOpen ? (
                 <div
                     className="sidebar-backdrop"
