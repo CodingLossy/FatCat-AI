@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
+// REUSE-IgnoreStart(the generated header below contains SPDX keywords; keep reuse from parsing it as this file's own)
 // Writes version.js from the root package.json so the prototype shows the package version, not a typed-in number.
 // Usage: node docs/design/prototype/sync-version.mjs
 import { readFileSync, writeFileSync } from 'node:fs';
