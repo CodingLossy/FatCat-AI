@@ -95,6 +95,20 @@ export const ApprovalWarning = z.object({
 });
 export type ApprovalWarning = z.infer<typeof ApprovalWarning>;
 
+/**
+ * 审批预览(ADR 0046 第 12 节):只用于显示,从不影响批准什么。目前只有 fs.write 的差异。
+ * text 是带 `+` / `-` / 空格前缀的行(含 `@@` 分段行);state 说明为什么没有完整差异。
+ */
+export const ApprovalPreview = z.object({
+    kind: z.literal('diff'),
+    /** 相对已批准根目录的路径,只用于显示。 */
+    path: z.string().max(1024),
+    state: z.enum(['created', 'modified', 'unchanged', 'too-large']),
+    text: z.string().max(70_000),
+    truncated: z.boolean(),
+});
+export type ApprovalPreview = z.infer<typeof ApprovalPreview>;
+
 export const ApprovalRequest = z.object({
     callId: z.string(),
     runId: Id,

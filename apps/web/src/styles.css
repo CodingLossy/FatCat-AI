@@ -2051,3 +2051,106 @@ td .badge {
         animation: none;
     }
 }
+
+/* 工具结果可视化(ADR 0046 第 7 节、第 12 节) */
+.diff-view,
+.vis-card {
+    margin: 8px 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    overflow: hidden;
+}
+
+.diff-head {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.diff-body {
+    max-height: 360px;
+    overflow: auto;
+    font:
+        12px/1.5 ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        monospace;
+}
+
+.diff-ln {
+    display: flex;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.diff-ln.add {
+    background: var(--diff-add-bg);
+}
+
+.diff-ln.del {
+    background: var(--diff-del-bg);
+}
+
+.diff-ln.hunk {
+    color: var(--muted);
+    padding-left: 10px;
+}
+
+.diff-no {
+    flex: none;
+    width: 36px;
+    padding-right: 6px;
+    text-align: right;
+    color: var(--muted);
+    user-select: none;
+}
+
+.diff-mark {
+    flex: none;
+    width: 14px;
+    user-select: none;
+}
+
+.diff-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.risk-tag {
+    padding: 1px 6px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 11px;
+}
+
+.vis-card {
+    padding: 8px 10px;
+}
+
+.vis-text {
+    max-height: 320px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.vis-fields {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 2px 10px;
+    margin: 6px 0;
+}
+
+.vis-fields dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.vis-list {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}

@@ -2,7 +2,14 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 进行中的一轮对话:把一次运行的事件归并成可渲染的状态(ADR 0009 第 3 节)。纯函数,便于单测。
-import type { ApprovalWarning, EventEnvelope, MemoryDegradation, ProblemDetails, ToolRisk } from '@fatcat-ai/shared';
+import type {
+    ApprovalPreview,
+    ApprovalWarning,
+    EventEnvelope,
+    MemoryDegradation,
+    ProblemDetails,
+    ToolRisk,
+} from '@fatcat-ai/shared';
 
 export interface LiveTool {
     callId: string;
@@ -14,6 +21,8 @@ export interface LiveTool {
         risk?: ToolRisk;
         /** core 生成的审批警告(ADR 0016 第 8 节)。 */
         warnings?: ApprovalWarning[];
+        /** 只用于显示的差异预览(ADR 0046 第 12 节)。 */
+        preview?: ApprovalPreview;
         decision?: 'approve' | 'reject';
         reason?: 'user' | 'expired' | 'cancelled';
     };
@@ -63,6 +72,7 @@ export function applyEvent(turn: LiveTurn, envelope: EventEnvelope): LiveTurn {
                     summary: e.summary,
                     ...(e.risk ? { risk: e.risk } : {}),
                     ...(e.warnings?.length ? { warnings: e.warnings } : {}),
+                    ...(e.preview ? { preview: e.preview } : {}),
                 },
             }));
         case 'approval-resolved':

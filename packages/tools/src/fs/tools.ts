@@ -23,6 +23,7 @@ import { documentKind, type DocumentKind, type ExtractedDocument } from '../docs
 import { MAX_DOCUMENT_BYTES, parseInWorker } from '../docs/parse.js';
 import { DocumentError } from '../docs/zip.js';
 import { checkWritableTarget, isWithin, PathError, resolveInRoots } from './paths.js';
+import { previewWrite } from './preview.js';
 
 export const MAX_LIST_ENTRIES = 500;
 export const MAX_READ_BYTES = 256 * 1024;
@@ -264,6 +265,19 @@ export function createFsTools(options: FsToolOptions): ToolDefinition[] {
             const content = str(input, 'content');
             const bytes = typeof content === 'string' ? Buffer.byteLength(content) : 0;
             return `Write ${String(str(input, 'path') ?? '')} (${bytes} bytes)${str(input, 'overwrite') ? ', replacing it' : ''}`;
+        },
+        // 审批预览(ADR 0046 第 12 节):与 execute 用同一套路径检查;任何失败都不给预览,审批照常
+        preview: (raw, ctx) => {
+            const parsed = z
+                .strictObject({ path: z.string(), content: z.string(), overwrite: z.boolean().optional() })
+                .safeParse(raw);
+            if (!parsed.success || Buffer.byteLength(parsed.data.content) > MAX_WRITE_BYTES) return undefined;
+            try {
+                const { path: target, root } = resolve(ctx, parsed.data.path, true);
+                return previewWrite(path.relative(root, target) || path.basename(target), target, parsed.data.content);
+            } catch {
+                return undefined;
+            }
         },
         execute: async (raw, ctx) => {
             const input = z

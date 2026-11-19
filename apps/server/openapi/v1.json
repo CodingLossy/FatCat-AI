@@ -18192,6 +18192,44 @@
                                 ]
                               },
                               "maxItems": 20
+                            },
+                            "preview": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "diff"
+                                  ]
+                                },
+                                "path": {
+                                  "type": "string",
+                                  "maxLength": 1024
+                                },
+                                "state": {
+                                  "type": "string",
+                                  "enum": [
+                                    "created",
+                                    "modified",
+                                    "unchanged",
+                                    "too-large"
+                                  ]
+                                },
+                                "text": {
+                                  "type": "string",
+                                  "maxLength": 70000
+                                },
+                                "truncated": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "path",
+                                "state",
+                                "text",
+                                "truncated"
+                              ]
                             }
                           },
                           "required": [
@@ -19393,6 +19431,44 @@
                                 ]
                               },
                               "maxItems": 20
+                            },
+                            "preview": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "diff"
+                                  ]
+                                },
+                                "path": {
+                                  "type": "string",
+                                  "maxLength": 1024
+                                },
+                                "state": {
+                                  "type": "string",
+                                  "enum": [
+                                    "created",
+                                    "modified",
+                                    "unchanged",
+                                    "too-large"
+                                  ]
+                                },
+                                "text": {
+                                  "type": "string",
+                                  "maxLength": 70000
+                                },
+                                "truncated": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "path",
+                                "state",
+                                "text",
+                                "truncated"
+                              ]
                             }
                           },
                           "required": [
@@ -24518,6 +24594,44 @@
                                 ]
                               },
                               "maxItems": 20
+                            },
+                            "preview": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "diff"
+                                  ]
+                                },
+                                "path": {
+                                  "type": "string",
+                                  "maxLength": 1024
+                                },
+                                "state": {
+                                  "type": "string",
+                                  "enum": [
+                                    "created",
+                                    "modified",
+                                    "unchanged",
+                                    "too-large"
+                                  ]
+                                },
+                                "text": {
+                                  "type": "string",
+                                  "maxLength": 70000
+                                },
+                                "truncated": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "path",
+                                "state",
+                                "text",
+                                "truncated"
+                              ]
                             }
                           },
                           "required": [
@@ -25961,6 +26075,44 @@
                                 ]
                               },
                               "maxItems": 20
+                            },
+                            "preview": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "diff"
+                                  ]
+                                },
+                                "path": {
+                                  "type": "string",
+                                  "maxLength": 1024
+                                },
+                                "state": {
+                                  "type": "string",
+                                  "enum": [
+                                    "created",
+                                    "modified",
+                                    "unchanged",
+                                    "too-large"
+                                  ]
+                                },
+                                "text": {
+                                  "type": "string",
+                                  "maxLength": 70000
+                                },
+                                "truncated": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "path",
+                                "state",
+                                "text",
+                                "truncated"
+                              ]
                             }
                           },
                           "required": [

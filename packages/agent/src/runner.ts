@@ -3,6 +3,7 @@
 
 import type {
     AgentEvent,
+    ApprovalPreview,
     AuditEntry,
     ImageMessagePart,
     MemoryDegradation,
@@ -824,6 +825,12 @@ export class RunManager {
                 const base = tool.summarize(call.input, askContext);
                 const summary = ctx.initiator ? `[${ctx.initiator}] ${base}` : base;
                 const warnings = tool.warnings?.(call.input, askContext) ?? [];
+                let preview: ApprovalPreview | undefined;
+                try {
+                    preview = tool.preview?.(call.input, askContext);
+                } catch {
+                    // 预览只用于显示;失败时审批照常
+                }
                 const request = repos.approvals.create(ownerId, {
                     callId,
                     runId: ctx.runId,
@@ -848,6 +855,7 @@ export class RunManager {
                     risk: tool.risk,
                     expiresAt: expiresAt.toISOString(),
                     ...(warnings.length > 0 ? { warnings } : {}),
+                    ...(preview ? { preview } : {}),
                 });
                 const resolution = await this.waitForApproval(ownerId, callId, ctx.signal, timeout);
                 if (ctx.signal.aborted) {

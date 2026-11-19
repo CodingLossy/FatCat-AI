@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ActivityLabel, ApprovalWarning, PreauthConstraintKind, ToolRisk } from '@fatcat-ai/shared';
+import type { ActivityLabel, ApprovalPreview, ApprovalWarning, PreauthConstraintKind, ToolRisk } from '@fatcat-ai/shared';
 
 /**
  * 工具在执行中发现请求越权(例如路径在授权目录之外)时抛出的错误:core 把这次调用按「拒绝」审计,
@@ -95,5 +95,7 @@ export interface ToolDefinition {
     summarize(input: unknown, context?: ToolContext): string;
     /** 创建审批请求时由 core 计算的警告(ADR 0016 第 8 节);只能依据 core 已知的事实。 */
     warnings?: (input: unknown, context: ToolContext) => ApprovalWarning[];
+    /** 审批预览(ADR 0046 第 12 节):只读、有界、仅用于显示;失败时返回 undefined,不影响审批。 */
+    preview?: (input: unknown, context: ToolContext) => ApprovalPreview | undefined;
     execute(input: unknown, context: ToolContext): Promise<unknown>;
 }

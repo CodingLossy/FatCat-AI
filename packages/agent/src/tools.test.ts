@@ -519,3 +519,51 @@ describe('系统提示中的当前时间(ADR 0023)', () => {
         expect(currentTimeLine({ locale: 'en', timeZone: null }, at)).toContain(`(${server},`);
     });
 });
+
+describe('审批预览(ADR 0046 第 12 节)', () => {
+    const previewTool = (preview: ToolDefinition['preview']): ToolDefinition => ({ ...saveTool, preview });
+
+    it('预览随 approval-required 事件发出,但批准的仍是原入参,执行不受预览影响', async () => {
+        steps = [callTool('memory.save', { text: 'real' }), answer('ok')];
+        const m = manager({
+            tools: new ToolRegistry().register(
+                previewTool(() => ({
+                    kind: 'diff',
+                    path: 'x.txt',
+                    state: 'created',
+                    text: '+shown',
+                    truncated: false,
+                })),
+            ),
+        });
+        const session = repos.sessions.create(ownerId);
+        const required = waitFor('approval-required');
+        m.start({ ownerId, sessionId: session.id, profile, text: 'go' });
+        const event = (await required).event as { callId: string; preview?: { text: string } };
+        expect(event.preview?.text).toBe('+shown');
+        expect(m.resolveApproval(ownerId, event.callId, 'approve')).toBe('resolved');
+        await m.idle();
+        expect(saved).toEqual([{ text: 'real' }]);
+        // 预览不持久化
+        expect(JSON.stringify(repos.approvals.get(ownerId, event.callId))).not.toContain('shown');
+    });
+
+    it('预览抛错时审批照常,事件里没有 preview', async () => {
+        steps = [callTool('memory.save', { text: 'real' }), answer('ok')];
+        const m = manager({
+            tools: new ToolRegistry().register(
+                previewTool(() => {
+                    throw new Error('boom');
+                }),
+            ),
+        });
+        const session = repos.sessions.create(ownerId);
+        const required = waitFor('approval-required');
+        m.start({ ownerId, sessionId: session.id, profile, text: 'go' });
+        const event = (await required).event as { callId: string; preview?: unknown };
+        expect(event.preview).toBeUndefined();
+        expect(m.resolveApproval(ownerId, event.callId, 'reject')).toBe('resolved');
+        await m.idle();
+        expect(saved).toEqual([]);
+    });
+});
