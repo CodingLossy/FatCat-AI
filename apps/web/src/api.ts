@@ -3,6 +3,7 @@
 
 // 浏览器里的 SDK 实例:同源 Cookie 会话,修改类请求从 aip_csrf Cookie 读 CSRF 令牌(ADR 0009 第 1 节)。
 import { FatCatApiError, createClient } from '@fatcat-ai/client';
+import { deviceAuth } from './device-session.js';
 import { dictionaries, translator } from './i18n.js';
 
 function readCookie(name: string): string | null {
@@ -13,7 +14,13 @@ function readCookie(name: string): string | null {
     return null;
 }
 
-export const api = createClient({ baseUrl: window.location.origin, csrfToken: () => readCookie('aip_csrf') });
+// 已配对的手机用设备令牌(Bearer,过期自动刷新并重试一次);其余情况用同源 Cookie 会话
+export const api = createClient({
+    baseUrl: window.location.origin,
+    csrfToken: () => readCookie('aip_csrf'),
+    token: () => deviceAuth.accessToken(),
+    refreshToken: (stale) => deviceAuth.refresh(stale),
+});
 
 /** 服务器给了稳定原因码(reason)时,按当前界面语言显示;没有对应文字就返回 null,回退到英文 detail。 */
 export function reasonText(reason: string | undefined, detail?: string, lang?: string): string | null {

@@ -15,7 +15,7 @@ import {
 } from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
 import type { WebSocket, WebSocketServer } from 'ws';
-import { PAT_PREFIX, safeEqual, sha256 } from './auth/crypto.js';
+import { DEVICE_ACCESS_PREFIX, PAT_PREFIX, safeEqual, sha256 } from './auth/crypto.js';
 import { SESSION_COOKIE } from './auth/middleware.js';
 import type { Logger } from './log.js';
 import { SERVER_VERSION } from './version.js';
@@ -70,9 +70,19 @@ function cookieValue(header: string | undefined, name: string): string | null {
  */
 export function authenticateUpgrade(req: IncomingMessage, repos: Repositories): UpgradeAuth {
     const authorization = req.headers.authorization;
-    if (authorization !== undefined) {
-        const token = /^Bearer\s+(\S+)$/i.exec(authorization)?.[1];
-        const record = token?.startsWith(PAT_PREFIX) ? repos.accessTokens.findUsable(sha256(token)) : null;
+    // 浏览器的 WebSocket 不能设请求头,设备令牌可以放在子协议里:Sec-WebSocket-Protocol: fatcat.v1, fatcat.bearer.<token>
+    const viaProtocol = bearerFromProtocols(req.headers['sec-websocket-protocol']);
+    const bearer = authorization !== undefined ? /^Bearer\s+(\S+)$/i.exec(authorization)?.[1] : viaProtocol;
+    if (authorization !== undefined || viaProtocol !== undefined) {
+        if (bearer?.startsWith(DEVICE_ACCESS_PREFIX)) {
+            const device = repos.devices.findByAccess(sha256(bearer));
+            return device ? { ok: true, ownerId: device.ownerId } : { ok: false, status: 401 };
+        }
+        // 子协议里只接受设备令牌;长期有效的 PAT 不走这条路径(子协议可能出现在代理日志里)
+        const record =
+            authorization !== undefined && bearer?.startsWith(PAT_PREFIX)
+                ? repos.accessTokens.findUsable(sha256(bearer))
+                : null;
         return record ? { ok: true, ownerId: record.ownerId } : { ok: false, status: 401 };
     }
     const cookie = cookieValue(req.headers.cookie, SESSION_COOKIE);
@@ -90,6 +100,14 @@ export function authenticateUpgrade(req: IncomingMessage, repos: Repositories): 
         return { ok: false, status: 403 };
     }
     return { ok: true, ownerId: session.ownerId };
+}
+
+const WS_SUBPROTOCOL = 'fatcat.v1';
+const BEARER_PROTOCOL_PREFIX = 'fatcat.bearer.';
+
+function bearerFromProtocols(header: string | string[] | undefined): string | undefined {
+    const list = (Array.isArray(header) ? header.join(',') : (header ?? '')).split(',').map((p) => p.trim());
+    return list.find((p) => p.startsWith(BEARER_PROTOCOL_PREFIX))?.slice(BEARER_PROTOCOL_PREFIX.length);
 }
 
 function reject(socket: Duplex, status: 401 | 403 | 404): void {
@@ -115,7 +133,12 @@ export function attachWebSocket(server: Server, input: WsDeps): { close(): void 
         const auth = authenticateUpgrade(req, deps.repos);
         if (!auth.ok) return reject(socket, auth.status);
         void import('ws').then(({ WebSocketServer }) => {
-            wss ??= new WebSocketServer({ noServer: true, maxPayload: MAX_PAYLOAD_BYTES });
+            wss ??= new WebSocketServer({
+                noServer: true,
+                maxPayload: MAX_PAYLOAD_BYTES,
+                // 只回选 fatcat.v1,令牌子协议不回显
+                handleProtocols: (protocols) => (protocols.has(WS_SUBPROTOCOL) ? WS_SUBPROTOCOL : false),
+            });
             wss.handleUpgrade(req, socket, head, (ws) => handleConnection(ws, auth.ownerId, deps, voiceStates));
         });
     });

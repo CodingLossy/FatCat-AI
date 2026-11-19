@@ -146,3 +146,40 @@ test('手机视口:配对码与设备列表不横向溢出', async ({ page }) =>
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await shot(page, 'devices-mobile');
 });
+
+test('手机配对页:用链接里的配对码配对后以设备令牌登录,吊销后回到登录页', async ({ page, browser }) => {
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await page.goto(base);
+    await page.getByLabel('用户名').fill('owner');
+    await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
+    await page.getByRole('button', { name: '登录' }).click();
+    await page.getByRole('link', { name: '设置', exact: true }).click();
+    const section = page.getByRole('region', { name: '已配对设备' });
+    await section.getByRole('button', { name: '添加设备' }).click();
+    const code = (await page.getByTestId('pairing-code').locator('.pairing-code').innerText()).trim();
+
+    const phone = await browser.newContext({ viewport: { width: 390, height: 800 }, hasTouch: true });
+    const p = await phone.newPage();
+    await p.goto(`${base}/pair?code=${code}`);
+    // 配对码立即从地址栏去掉,并预填到表单
+    await expect(p).toHaveURL(`${base}/pair`);
+    await expect(p.getByLabel('配对码')).toHaveValue(code);
+    await p.getByLabel('设备名称').fill('E2E 手机');
+    await shot(p, 'pair-page-mobile');
+    await p.getByRole('button', { name: '配对设备' }).click();
+
+    // 整页跳到首页,已用设备令牌登录(没有 Cookie 会话)
+    await expect(p.getByRole('button', { name: '菜单' })).toBeVisible();
+    expect((await phone.cookies()).some((c) => c.name === 'aip_session')).toBe(false);
+    await shot(p, 'pair-home-mobile');
+
+    // 电脑上设备列表里能看到,吊销后手机下一次请求就回到登录页
+    await page.reload();
+    const list = page.getByRole('region', { name: '已配对设备' });
+    await expect(list.getByText('E2E 手机')).toBeVisible();
+    await list.getByRole('button', { name: '吊销' }).click();
+    await list.getByRole('button', { name: '确认吊销' }).click();
+    await p.reload();
+    await expect(p.getByLabel('用户名')).toBeVisible();
+    await phone.close();
+});

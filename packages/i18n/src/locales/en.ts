@@ -919,6 +919,17 @@ export const en: Record<Key, string> = {
     'auth.useRecovery': 'Use a recovery code',
     'auth.useCode': 'Use a verification code',
     'auth.totpBack': 'Back',
+    'pair.title': 'Pair this device',
+    'pair.hint':
+        'Enter the one-time pairing code shown on your computer (Settings → Paired devices). The code works once and expires after 5 minutes.',
+    'pair.code': 'Pairing code',
+    'pair.name': 'Device name',
+    'pair.namePlaceholder': 'My phone',
+    'pair.submit': 'Pair device',
+    'pair.done': 'Paired. Opening the app…',
+    'pair.alreadyPaired': 'This browser is already paired. Pairing again replaces its current sign-in.',
+    'pair.invalid': 'Enter the 10-character code.',
+    'pair.signOut': 'Sign out this device',
     'devices.title': 'Paired devices',
     'devices.hint':
         'Pair a phone or tablet with a one-time code instead of typing your password there. A paired device can chat and read, but cannot create devices or tokens or change security settings. Revoking takes effect immediately.',

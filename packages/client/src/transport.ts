@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import { FatCatNetworkError, errorFromResponse } from './errors.js';
+import { FatCatApiError, FatCatNetworkError, errorFromResponse } from './errors.js';
 
 export interface TransportOptions {
     /** 服务器根地址,如 http://127.0.0.1:8787(不含 /api/v1)。 */
     baseUrl: string;
     /** 个人访问令牌 aip_pat_…;不给时按浏览器方式使用 Cookie。 */
-    token?: string | undefined;
+    token?: string | (() => string | undefined) | undefined;
+    /**
+     * 令牌过期(401)时调用,返回 true 表示已换到新令牌,请求会用新令牌重试一次。
+     * 并发的 401 共用同一次刷新。只在使用令牌鉴权时有效。
+     */
+    refreshToken?: ((staleToken: string) => Promise<boolean>) | undefined;
     /** Cookie 鉴权时修改类请求要带的 CSRF 令牌。 */
     csrfToken?: string | (() => string | null | undefined) | undefined;
     fetch?: typeof fetch | undefined;
@@ -25,16 +30,25 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 export class Transport {
     readonly baseUrl: string;
-    readonly token: string | undefined;
+    private readonly tokenSource: TransportOptions['token'];
+    private readonly refresher: TransportOptions['refreshToken'];
+    private refreshing: Promise<boolean> | null = null;
     private readonly csrf: TransportOptions['csrfToken'];
     private readonly fetchImpl: typeof fetch;
 
     constructor(options: TransportOptions) {
         this.baseUrl = options.baseUrl.replace(/\/+$/, '');
-        this.token = options.token;
+        this.tokenSource = options.token;
+        this.refresher = options.refreshToken;
         this.csrf = options.csrfToken;
         // 绑定 globalThis,避免浏览器里 "Illegal invocation"
         this.fetchImpl = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
+    }
+
+    /** 当前令牌(可能随刷新变化);Cookie 鉴权时为 undefined。 */
+    get token(): string | undefined {
+        const source = this.tokenSource;
+        return (typeof source === 'function' ? source() : source) || undefined;
     }
 
     url(path: string, query?: RequestOptions['query']): string {
@@ -56,6 +70,28 @@ export class Transport {
 
     /** 发出请求;非 2xx 抛 FatCatApiError,网络失败抛 FatCatNetworkError。 */
     async raw(path: string, options: RequestOptions = {}): Promise<Response> {
+        const usedToken = this.token;
+        try {
+            return await this.send(path, options);
+        } catch (error) {
+            if (!usedToken || !this.refresher || !isUnauthorized(error) || options.signal?.aborted) throw error;
+            if (!(await this.refreshOnce(usedToken))) throw error;
+            return this.send(path, options);
+        }
+    }
+
+    private refreshOnce(staleToken: string): Promise<boolean> {
+        // 别的请求已经刷新过了,直接重试
+        if (this.token !== staleToken) return Promise.resolve(true);
+        this.refreshing ??= this.refresher!(staleToken)
+            .catch(() => false)
+            .finally(() => {
+                this.refreshing = null;
+            });
+        return this.refreshing;
+    }
+
+    private async send(path: string, options: RequestOptions): Promise<Response> {
         const method = options.method ?? 'GET';
         const extra: Record<string, string> = { ...options.headers };
         let body: string | FormData | undefined;
@@ -88,4 +124,8 @@ export class Transport {
         if (res.status === 204) return undefined as T;
         return (await res.json()) as T;
     }
+}
+
+function isUnauthorized(error: unknown): boolean {
+    return error instanceof FatCatApiError && error.problem.status === 401;
 }
