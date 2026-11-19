@@ -9,3 +9,4 @@ templates
 docs/plan
 apps/server/openapi
 .astro
+docs/design/prototype/index.html

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" fill="none" stroke="#E2E8FF" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <!-- SPDX-License-Identifier: AGPL-3.0-only -->
+    <!-- Copyright (C) 2026 尹绪柏 (Theodore Yin) -->
+    <title>FatCat-AI app icon (draft)</title>
+    <rect x="64" y="64" width="896" height="896" rx="200" fill="#0B0D1D" stroke="#1F2633" stroke-width="8"/>
+    <g transform="rotate(12 512 512) translate(512 520) scale(26) translate(-12 -12)" stroke-width="1.1">
+        <ellipse cx="5.6" cy="12" rx="1.7" ry="2.5" transform="rotate(-18 5.6 12)"/>
+        <ellipse cx="9.4" cy="6.9" rx="1.8" ry="2.7"/>
+        <ellipse cx="14.8" cy="6.5" rx="1.7" ry="2.5"/>
+        <ellipse cx="18.6" cy="11.6" rx="1.5" ry="2.1" transform="rotate(20 18.6 11.6)"/>
+        <path d="M12 12.6c-2.7 0-5 2.6-5 4.7 0 1.7 1.5 2.7 3.1 2.7 1 0 1.3-.5 1.9-.5s.9.5 1.9.5c1.6 0 3.1-1 3.1-2.7 0-2.1-2.3-4.7-5-4.7z"/>
+    </g>
+</svg>

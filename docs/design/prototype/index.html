@@ -1,0 +1,256 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<!-- Copyright (C) 2026 尹绪柏 (Theodore Yin) -->
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>FatCat-AI · M12 design prototype</title>
+        <link rel="stylesheet" href="prototype.css" />
+    </head>
+    <body>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+            <symbol id="i-paw" viewBox="0 0 24 24">
+                <g transform="rotate(12 12 12)">
+                    <ellipse cx="5.6" cy="12" rx="1.7" ry="2.5" transform="rotate(-18 5.6 12)" />
+                    <ellipse cx="9.4" cy="6.9" rx="1.8" ry="2.7" />
+                    <ellipse cx="14.8" cy="6.5" rx="1.7" ry="2.5" />
+                    <ellipse cx="18.6" cy="11.6" rx="1.5" ry="2.1" transform="rotate(20 18.6 11.6)" />
+                    <path
+                        d="M12 12.6c-2.7 0-5 2.6-5 4.7 0 1.7 1.5 2.7 3.1 2.7 1 0 1.3-.5 1.9-.5s.9.5 1.9.5c1.6 0 3.1-1 3.1-2.7 0-2.1-2.3-4.7-5-4.7z"
+                    />
+                </g>
+            </symbol>
+            <symbol id="i-folder" viewBox="0 0 24 24">
+                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            </symbol>
+            <symbol id="i-file" viewBox="0 0 24 24">
+                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                <path d="M14 3v5h5" />
+            </symbol>
+            <symbol id="i-files" viewBox="0 0 24 24">
+                <path d="M14 3H8a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z" />
+                <path d="M14 3v5h4M4 8v11a2 2 0 0 0 2 2h9" />
+            </symbol>
+            <symbol id="i-gear" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="3" />
+                <circle cx="12" cy="12" r="6.6" />
+                <path
+                    d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"
+                />
+            </symbol>
+            <symbol id="i-search" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="6.5" />
+                <path d="M20 20l-4.4-4.4" />
+            </symbol>
+            <symbol id="i-diff" viewBox="0 0 24 24">
+                <circle cx="6" cy="6" r="2" />
+                <circle cx="6" cy="18" r="2" />
+                <circle cx="18" cy="8" r="2" />
+                <path d="M6 8v8M18 10c0 4-6 3-10.5 6.7" />
+            </symbol>
+            <symbol id="i-mail" viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="M3.5 7l8.5 6 8.5-6" />
+            </symbol>
+            <symbol id="i-brain" viewBox="0 0 24 24">
+                <path
+                    d="M9.5 4.5a3 3 0 0 0-3 3 3 3 0 0 0-2 2.8 3 3 0 0 0 1.5 2.6 3 3 0 0 0 3.5 3.6 2.6 2.6 0 0 0 4.9 0 3 3 0 0 0 3.5-3.6 3 3 0 0 0 1.5-2.6 3 3 0 0 0-2-2.8 3 3 0 0 0-3-3 2.5 2.5 0 0 0-2.5-1.3 2.5 2.5 0 0 0-2.4 1.3z"
+                />
+                <path d="M12 5v14" />
+            </symbol>
+            <symbol id="i-globe" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <ellipse cx="12" cy="12" rx="4" ry="9" />
+                <path d="M3 12h18" />
+            </symbol>
+            <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" /></symbol>
+            <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+            <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+            <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v4.5h-4.5" /></symbol>
+            <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></symbol>
+            <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></symbol>
+            <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" /></symbol>
+            <symbol id="i-lock" viewBox="0 0 24 24">
+                <rect x="5" y="11" width="14" height="9" rx="2" />
+                <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+            </symbol>
+            <symbol id="i-mic" viewBox="0 0 24 24">
+                <rect x="9" y="3" width="6" height="11" rx="3" />
+                <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+            </symbol>
+            <symbol id="i-terminal" viewBox="0 0 24 24">
+                <rect x="3" y="4.5" width="18" height="15" rx="2" />
+                <path d="M7 10l3 2.5L7 15M12.5 15H17" />
+            </symbol>
+            <symbol id="i-trash" viewBox="0 0 24 24">
+                <path d="M4 7h16M9.5 7V4.5h5V7M6 7l1 13h10l1-13M10 11v5M14 11v5" />
+            </symbol>
+            <symbol id="i-cloud" viewBox="0 0 24 24">
+                <path d="M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9.6 4.2 4.2 0 0 1 17.5 18z" />
+            </symbol>
+            <symbol id="i-user" viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20a8 8 0 0 1 16 0" />
+            </symbol>
+            <symbol id="i-clock" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+            </symbol>
+            <symbol id="i-chat" viewBox="0 0 24 24">
+                <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H11l-4 3.5V17H6a2 2 0 0 1-2-2z" />
+            </symbol>
+            <symbol id="i-plug" viewBox="0 0 24 24">
+                <path d="M9 3v5M15 3v5M6.5 8h11v3.5a5.5 5.5 0 0 1-11 0zM12 17v4" />
+            </symbol>
+            <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12 2.5-6H21" /></symbol>
+            <symbol id="i-cat" viewBox="0 0 24 24">
+                <path
+                    d="M5 9.5V4l4 2.8h6L19 4v5.5c1 1 1.5 2.4 1.5 3.8 0 3.6-3.7 6.2-8.5 6.2S3.5 16.9 3.5 13.3C3.5 11.9 4 10.5 5 9.5z"
+                />
+                <path d="M9 12.5v1M15 12.5v1M11 15.5h2" />
+            </symbol>
+        <symbol id="i-paw-sm" viewBox="0 0 24 24"><g transform="rotate(10 12 12)"><path d="M6 8.6v.01M12 5.6v.01M18 8.6v.01" stroke-width="3.4"/><path d="M12 12.6c-3.4 0-5.8 2.4-5.8 4.8 0 2 1.7 3.2 3.6 3.2 1.1 0 1.6-.6 2.2-.6s1.1.6 2.2.6c1.9 0 3.6-1.2 3.6-3.2 0-2.4-2.4-4.8-5.8-4.8z" stroke-width="2.2"/></g></symbol>
+</svg>
+<div class="view" data-view="wb"><div class="topbar">
+<div class="brand"><svg class="ic"><use href="#i-paw"/></svg><span>FatCat-AI <small class="mono" data-version></small></span></div>
+<div class="search"><svg class="ic sm"><use href="#i-search"/></svg><span>搜索文件、命令,或直接提问…</span><kbd>Ctrl K</kbd></div>
+<span class="pill muted-pill"><svg class="ic sm"><use href="#i-cat"/></svg>未选择模型</span>
+</div><div class="workbench"><section class="stage">
+<div class="glass running"><h4>RUNNING TOOLS</h4>
+<div class="tool-row"><svg class="ic sm"><use href="#i-folder"/></svg><span>fs.read('test_deck.js')</span><span class="state"><svg class="ic sm"><use href="#i-check"/></svg></span></div>
+<div class="tool-row active"><svg class="ic sm"><use href="#i-diff"/></svg><span>fs.write(第 27 行)</span><span class="state"><span class="spin"></span></span></div></div>
+<div class="orb"><canvas data-orb></canvas><svg class="cat" viewBox="0 0 220 250" aria-hidden="true">
+<path d="M64 76L58 30l36 24M156 76l6-46-36 24"/>
+<path d="M64 76Q58 54 94 53Q110 49 126 53Q162 54 156 76Q168 98 156 120Q138 140 110 140Q82 140 64 120Q52 98 64 76Z"/>
+<path d="M110 55v11M100 57l2 9M120 57l-2 9"/>
+<path d="M56 84Q110 10 164 84"/>
+<rect x="45" y="82" width="12" height="30" rx="4"/><rect x="163" y="82" width="12" height="30" rx="4"/>
+<path d="M62 84h96a8 8 0 0 1 8 8v10a14 14 0 0 1-14 14h-24q-6 0-9-5t-9-5-9 5-9 5H68a14 14 0 0 1-14-14V92a8 8 0 0 1 8-8z"/>
+<path d="M72 94h26M122 94h26M72 102h14M134 102h14"/>
+<path d="M107 121h6l-3 4zM110 125v4M110 129q-5 5-10 1M110 129q5 5 10 1"/>
+<path d="M76 122L40 114M76 128L40 130M80 134L48 146M144 122l36-8M144 128l36 2M140 134l32 12"/>
+<path d="M78 138Q60 170 70 208Q90 224 110 224Q130 224 150 208Q160 170 142 138"/>
+<path d="M150 210Q200 204 194 158Q190 136 176 134"/>
+<path d="M92 216q-3-16 4-26M128 216q3-16-4-26"/>
+<path d="M98 150h24l-4 14h-16z"/>
+</svg></div>
+<div class="caption"><div class="state-line">
+<span class="label" data-state-label="listening">正在<b>聆听</b> <i class="dot"></i></span>
+<span class="label" data-state-label="thinking">正在<b>思考</b> <i class="dot"></i></span>
+<span class="label" data-state-label="speaking">FatCat 正在<b>说话</b></span>
+<div class="wave" aria-hidden="true"></div></div>
+<div class="sub"><b>你:</b>帮我看一下之前保留的 test_deck.js,看看第 27 行…<br><b>FatCat:</b>喵~ 找到了。现在定位到第 27 行的 timeout 设定…</div></div>
+</section><div class="right"><nav class="rail"><a href="#wb-files" title="files"><svg class="ic"><use href="#i-files"/></svg></a><a href="#wb-search" title="search"><svg class="ic"><use href="#i-search"/></svg></a><a href="#wb-diff" title="diff"><svg class="ic"><use href="#i-diff"/></svg></a><a href="#wb-mail" title="mail"><svg class="ic"><use href="#i-mail"/></svg></a><a href="#wb-memory" title="memory"><svg class="ic"><use href="#i-brain"/></svg></a><a href="#wb-browser" title="browser"><svg class="ic"><use href="#i-globe"/></svg></a><span class="gap"></span><a href="#settings-models" title="settings"><svg class="ic"><use href="#i-gear"/></svg></a></nav><div class="panel"><div class="pv" data-pv="files"><aside class="explorer"><h5>EXPLORER · test-project</h5><ul class="tree">
+<li style="--d:0"><svg class="ic sm"><use href="#i-down"/></svg><span>src</span></li>
+<li style="--d:1"><svg class="ic sm"><use href="#i-file"/></svg>index.ts</li>
+<li style="--d:1" class="sel"><svg class="ic sm"><use href="#i-file"/></svg>test_deck.js</li>
+<li style="--d:1"><svg class="ic sm"><use href="#i-file"/></svg>main.js</li>
+<li style="--d:1"><svg class="ic sm"><use href="#i-file"/></svg>theme.js</li>
+<li style="--d:0"><svg class="ic sm"><use href="#i-fwd"/></svg><span>docs</span></li>
+<li style="--d:0"><svg class="ic sm"><use href="#i-fwd"/></svg><span>assets</span></li>
+<li style="--d:0"><svg class="ic sm"><use href="#i-fwd"/></svg><span>node_modules</span></li>
+<li style="--d:0"><svg class="ic sm"><use href="#i-file"/></svg>package.json</li>
+<li style="--d:0"><svg class="ic sm"><use href="#i-file"/></svg>README.md</li></ul></aside><div class="editor"><div class="tabs"><span class="on"><svg class="ic sm"><use href="#i-file"/></svg>test_deck.js</span><span><svg class="ic sm"><use href="#i-file"/></svg>main.js</span></div><div class="crumbs">src › test_deck.js</div><div class="code"><div class="ln "><i>15</i><s></s><span>        }</span></div><div class="ln "><i>16</i><s></s><span>    }</span></div><div class="ln "><i>17</i><s></s><span>}</span></div><div class="ln "><i>18</i><s></s><span></span></div><div class="ln "><i>19</i><s></s><span><span class="c">// Load a deck and render it with a time limit.</span></span></div><div class="ln "><i>20</i><s></s><span><span class="k">export default function</span> <span class="t">loadDeck</span>(input: <span class="t">Deck</span>, opts = {}) {</span></div><div class="ln "><i>21</i><s></s><span>    <span class="k">const</span> deck = <span class="k">new</span> <span class="t">Deck</span>(input);</span></div><div class="ln "><i>22</i><s></s><span>    <span class="k">const</span> slides = deck.slides.filter((s) => !s.hidden);</span></div><div class="ln "><i>23</i><s></s><span>    <span class="k">if</span> (slides.length === <span class="n">0</span>) {</span></div><div class="ln "><i>24</i><s></s><span>        <span class="k">return</span> <span class="k">null</span>;</span></div><div class="ln "><i>25</i><s></s><span>    }</span></div><div class="ln "><i>26</i><s></s><span></span></div><div class="ln del"><i>27</i><s>−</s><span>    <span class="k">const</span> timeout = <span class="n">20000</span>;</span></div><div class="ln add"><i>28</i><s>+</s><span>    <span class="k">const</span> timeout = <span class="n">25000</span>;</span></div><div class="ln "><i>29</i><s></s><span>    <span class="k">const</span> retries = <span class="n">3</span>;</span></div><div class="ln "><i>30</i><s></s><span>    <span class="k">return</span> deck.render({ slides, timeout, retries });</span></div><div class="ln "><i>31</i><s></s><span>}</span></div><div class="ln "><i>32</i><s></s><span></span></div><div class="ln "><i>33</i><s></s><span><span class="k">export function</span> <span class="t">describe</span>(deck: <span class="t">Deck</span>) {</span></div><div class="ln "><i>34</i><s></s><span>    <span class="k">return</span> <span class="s">`${deck.title} (${deck.slides.length})`</span>;</span></div><div class="ln "><i>35</i><s></s><span>}</span></div><div class="ln "><i>36</i><s></s><span></span></div><div class="ln "><i>37</i><s></s><span><span class="k">const</span> DEFAULT_THEME = { font: <span class="s">'sans'</span>, size: <span class="n">14</span> };</span></div><div class="ln "><i>38</i><s></s><span><span class="k">export</span> { DEFAULT_THEME };</span></div></div></div></div><div class="pv" data-pv="diff"><div class="editor"><div class="tabs"><span class="on"><svg class="ic sm"><use href="#i-file"/></svg>test_deck.js · 待审批</span><span><svg class="ic sm"><use href="#i-file"/></svg>main.js</span></div><div class="crumbs">src › test_deck.js</div>
+<div class="code"><div class="ln "><i>15</i><s></s><span>        }</span></div><div class="ln "><i>16</i><s></s><span>    }</span></div><div class="ln "><i>17</i><s></s><span>}</span></div><div class="ln "><i>18</i><s></s><span></span></div><div class="ln "><i>19</i><s></s><span><span class="c">// Load a deck and render it with a time limit.</span></span></div><div class="ln "><i>20</i><s></s><span><span class="k">export default function</span> <span class="t">loadDeck</span>(input: <span class="t">Deck</span>, opts = {}) {</span></div><div class="ln "><i>21</i><s></s><span>    <span class="k">const</span> deck = <span class="k">new</span> <span class="t">Deck</span>(input);</span></div><div class="ln "><i>22</i><s></s><span>    <span class="k">const</span> slides = deck.slides.filter((s) => !s.hidden);</span></div><div class="ln "><i>23</i><s></s><span>    <span class="k">if</span> (slides.length === <span class="n">0</span>) {</span></div><div class="ln "><i>24</i><s></s><span>        <span class="k">return</span> <span class="k">null</span>;</span></div><div class="ln "><i>25</i><s></s><span>    }</span></div><div class="ln "><i>26</i><s></s><span></span></div><div class="ln del"><i>27</i><s>−</s><span>    <span class="k">const</span> timeout = <span class="n">20000</span>;</span></div><div class="ln add"><i>28</i><s>+</s><span>    <span class="k">const</span> timeout = <span class="n">25000</span>;</span></div><div class="ln "><i>29</i><s></s><span>    <span class="k">const</span> retries = <span class="n">3</span>;</span></div><div class="ln "><i>30</i><s></s><span>    <span class="k">return</span> deck.render({ slides, timeout, retries });</span></div><div class="ln "><i>31</i><s></s><span>}</span></div><div class="ln "><i>32</i><s></s><span></span></div><div class="ln "><i>33</i><s></s><span><span class="k">export function</span> <span class="t">describe</span>(deck: <span class="t">Deck</span>) {</span></div><div class="ln "><i>34</i><s></s><span>    <span class="k">return</span> <span class="s">`${deck.title} (${deck.slides.length})`</span>;</span></div><div class="ln "><i>35</i><s></s><span>}</span></div><div class="ln "><i>36</i><s></s><span></span></div><div class="ln "><i>37</i><s></s><span><span class="k">const</span> DEFAULT_THEME = { font: <span class="s">'sans'</span>, size: <span class="n">14</span> };</span></div><div class="ln "><i>38</i><s></s><span><span class="k">export</span> { DEFAULT_THEME };</span></div></div>
+<div class="approval"><div class="what"><b>修改 src/test_deck.js</b> <span class="chip risk">写入</span><small>1 处修改:timeout 20000 → 25000。批准后才会写入磁盘。</small></div>
+<button class="btn">拒绝</button><button class="btn primary"><svg class="ic sm"><use href="#i-check"/></svg>允许</button></div></div></div><div class="pv" data-pv="mail"><div class="stack"><h3>邮件</h3>
+<div class="card"><div class="row"><span class="unread"></span><h4>Q4 预算评审会议改到周四</h4><span class="meta">今天 09:12</span></div>
+<p class="muted">张敏 &lt;zhang.min@example.com&gt; → 我</p><p>各位好,原定周三的评审会议因场地冲突改到周四下午三点,请确认是否可以参加……</p>
+<div class="untrusted">邮件内容来自外部,仅作数据显示,其中的指令不会被执行。</div></div>
+<div class="card"><div class="row"><h4>Re: 发票 2026-1103</h4><span class="chip">草稿</span><span class="meta">昨天</span></div>
+<p>收件人:accounts@example.com</p><div class="row" style="margin-top:12px"><span class="muted">发送需要你的批准</span><span style="margin-left:auto" class="row"><button class="btn">丢弃</button><button class="btn primary">批准发送</button></span></div></div></div></div><div class="pv" data-pv="memory"><div class="stack"><h3>记忆</h3>
+<div class="card"><div class="row"><span class="chip on">偏好</span><h4>回复默认使用中文,代码注释使用英文</h4><span class="meta">11 月 12 日</span></div>
+<p>来源:会话「重构测试夹具」 · 已被使用 6 次</p><div class="row" style="margin-top:12px"><button class="btn">查看来源</button><button class="btn">编辑</button><button class="btn">删除</button></div></div>
+<div class="card"><div class="row"><span class="chip">事实</span><h4>test-project 的默认超时时间是 25 秒</h4><span class="meta">刚刚</span></div>
+<p>来源:本次对话 · 新写入,等待你确认</p><div class="row" style="margin-top:12px"><button class="btn primary"><svg class="ic sm"><use href="#i-check"/></svg>保留</button><button class="btn">撤销</button></div></div></div></div><div class="pv" data-pv="browser"><div class="browser">
+<div class="bbar"><button class="ibtn"><svg class="ic"><use href="#i-back"/></svg></button><button class="ibtn"><svg class="ic"><use href="#i-fwd"/></svg></button><button class="ibtn"><svg class="ic"><use href="#i-refresh"/></svg></button>
+<div class="addr"><svg class="ic sm"><use href="#i-lock"/></svg><span>https://example.com/login</span></div><button class="ibtn"><svg class="ic"><use href="#i-x"/></svg></button></div>
+<div class="page"><h2>登录</h2><span class="muted">示例页面 · 内置浏览器与主界面使用独立的会话</span>
+<div class="field"><label>邮箱</label><div class="input ai-target" data-tip="AI 正在填写">user@example.com</div></div>
+<div class="field"><label>密码</label><div class="input muted">••••••••</div></div>
+<div class="field"><div class="btn primary" style="width:100%">登录</div></div></div>
+<div class="approval"><div class="what"><b>browser.fill</b> <span class="chip risk">需审批</span><small>在 example.com 的「邮箱」输入框填写内容。导航与读取默认允许,点击、填写、提交每次都要批准。</small></div>
+<button class="btn">拒绝</button><button class="btn primary"><svg class="ic sm"><use href="#i-check"/></svg>允许</button></div></div></div><div class="statusbar"><span><svg class="ic sm"><use href="#i-pulse"/></svg> 核心运行中</span><span class="r"><span>第 27 行</span><span>JavaScript</span><span>UTF-8</span></span></div></div></div></div></div>
+<div class="view" data-view="settings"><div class="topbar">
+<div class="brand"><svg class="ic"><use href="#i-paw"/></svg><span>FatCat-AI <small class="mono" data-version></small></span></div>
+<div class="search"><svg class="ic sm"><use href="#i-search"/></svg><span>搜索文件、命令,或直接提问…</span><kbd>Ctrl K</kbd></div>
+<span class="pill muted-pill"><svg class="ic sm"><use href="#i-cat"/></svg>未选择模型</span>
+</div>
+<nav class="settings-tabs"><a href="#wb-files"><b>工作台</b><small>Workbench</small></a><a class="on" href="#settings-models"><b>模型与语音</b><small>Models &amp; Voice</small></a><a href="#settings-plugins"><b>工具插件</b><small>Tools &amp; Plugins</small></a><a href="#settings-system"><b>系统设置</b><small>System</small></a></nav>
+<div class="settings-body"><aside class="side"><a href="#settings-models" class="on"><svg class="ic"><use href="#i-paw"/></svg>概览</a><a href="#"><svg class="ic"><use href="#i-cat"/></svg>模型配置</a><a href="#"><svg class="ic"><use href="#i-mic"/></svg>语音引擎</a><a href="#"><svg class="ic"><use href="#i-chat"/></svg>语音交互</a><a href="#"><svg class="ic"><use href="#i-pulse"/></svg>用量</a></aside>
+<div class="grid">
+<div class="card"><h4><svg class="ic sm"><use href="#i-pulse"/></svg>核心状态<span class="chip tag">示意</span></h4><div class="row" style="margin-top:10px"><span class="pill accent"><i class="dot"></i>ONLINE</span><span class="muted mono">v<span data-version></span> · 协议 v1</span></div><svg class="spark" viewBox="0 0 200 48" preserveAspectRatio="none"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#38bdf8" stop-opacity=".28"/><stop offset="1" stop-color="#38bdf8" stop-opacity="0"/></linearGradient></defs><path d="M0 34L16 30L32 33L48 24L64 27L80 18L96 22L112 14L128 20L144 12L160 17L176 10L200 14V48H0Z" fill="url(#sg)"/><path d="M0 34L16 30L32 33L48 24L64 27L80 18L96 22L112 14L128 20L144 12L160 17L176 10L200 14" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-linejoin="round"/></svg><div class="muted" style="font-size:12px">本次会话内每 10 秒探测一次 /healthz 的响应时间</div><div class="src">GET /healthz · GET /api/v1/meta</div></div>
+<div class="card"><h4><svg class="ic sm"><use href="#i-cloud"/></svg>API 延迟</h4><div class="empty-row"><svg class="minicat" viewBox="0 0 220 250" aria-hidden="true"><path d="M64 76L58 30l36 24M156 76l6-46-36 24"/><path d="M64 76Q58 54 94 53Q110 49 126 53Q162 54 156 76Q168 98 156 120Q138 140 110 140Q82 140 64 120Q52 98 64 76Z"/><path d="M80 94q8-8 16 0M124 94q8-8 16 0"/><path d="M107 112h6l-3 4zM110 116v4M110 120q-5 5-10 1M110 120q5 5 10 1"/><path d="M76 112L40 104M76 118L40 120M144 112l36-8M144 118l36 2"/></svg><div><div class="big">—</div><div class="muted">尚未测试</div></div></div><div style="margin-top:8px"><button class="btn">测试连接</button></div><div class="src">POST /api/v1/models/{id}/test → latencyMs</div></div>
+<div class="card"><h4><svg class="ic sm"><use href="#i-chat"/></svg>Token 用量<span class="chip tag">示意</span></h4><div class="row" style="margin-top:10px;gap:16px"><svg class="ringsvg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="#1f2633" stroke-width="7"/><circle cx="40" cy="40" r="30" fill="none" stroke="#38bdf8" stroke-width="7" stroke-linecap="round" stroke-dasharray="118 189" transform="rotate(-90 40 40)"/><circle cx="40" cy="40" r="30" fill="none" stroke="#94a3b8" stroke-width="7" stroke-linecap="round" stroke-dasharray="52 189" stroke-dashoffset="-128" transform="rotate(-90 40 40)"/></svg><div class="kv" style="margin:0"><span><i class="lg-dot"></i>输入</span><span class="mono">—</span><span><i class="lg-dot o"></i>输出</span><span class="mono">—</span></div></div><div class="muted" style="font-size:12px;margin-top:6px">环形只表示输入 / 输出占比,不是额度</div><div class="src">GET /api/v1/sessions → usage</div></div>
+<div class="card"><h4><svg class="ic sm"><use href="#i-mic"/></svg>语音引擎</h4><div class="wavecard"><i style="--h:6px"></i><i style="--h:10px"></i><i style="--h:16px"></i><i style="--h:24px"></i><i style="--h:14px"></i><i style="--h:28px"></i><i style="--h:18px"></i><i style="--h:10px"></i><i style="--h:22px"></i><i style="--h:30px"></i><i style="--h:16px"></i><i style="--h:8px"></i><i style="--h:20px"></i><i style="--h:26px"></i><i style="--h:12px"></i><i style="--h:6px"></i><i style="--h:14px"></i><i style="--h:22px"></i><i style="--h:10px"></i><i style="--h:6px"></i></div><div class="kv"><span>识别(STT)</span><span>未配置</span><span>合成(TTS)</span><span>未配置</span></div><div class="src">GET /api/v1/models → purpose: stt / tts</div></div>
+<div class="card"><h4><svg class="ic sm"><use href="#i-cat"/></svg>模型配置</h4><div class="empty-row"><svg class="minicat" viewBox="0 0 220 250" aria-hidden="true"><path d="M64 76L58 30l36 24M156 76l6-46-36 24"/><path d="M64 76Q58 54 94 53Q110 49 126 53Q162 54 156 76Q168 98 156 120Q138 140 110 140Q82 140 64 120Q52 98 64 76Z"/><path d="M80 94q8-8 16 0M124 94q8-8 16 0"/><path d="M107 112h6l-3 4zM110 116v4M110 120q-5 5-10 1M110 120q5 5 10 1"/><path d="M76 112L40 104M76 118L40 120M144 112l36-8M144 118l36 2"/></svg><div><b>未选择模型</b><div class="muted">还没有配置模型</div></div></div><div style="margin-top:8px"><button class="btn primary">添加模型</button></div><div class="src">GET /api/v1/models · GET /api/v1/settings</div></div>
+<div class="card"><h4><svg class="ic sm"><use href="#i-chat"/></svg>语音交互</h4><div class="row" style="justify-content:space-between;margin-top:10px"><span>朗读回复</span><span class="switch"></span></div><div class="row" style="justify-content:space-between;margin-top:12px"><span>按住说话</span><span class="switch on"></span></div><div class="src">GET / PUT /api/v1/settings → voice</div></div>
+<div class="note">原型示意:带「示意」的图形只表示版式。卡片底部灰色的「原型注释」(接口路径)只是给评审看的说明,正式界面不显示接口路径;数值只来自这些接口,没有数据就显示空状态(小猫线稿),不写假数字。</div>
+</div></div></div>
+<div class="view" data-view="ds"><div class="topbar"><div class="brand"><svg class="ic"><use href="#i-paw"/></svg><span>FatCat-AI</span></div><span class="ds-title">FatCat-AI Design System <b>&amp; Component Kit</b></span></div>
+<div class="sheet">
+<div class="card"><h2>COLOR PALETTE</h2><div class="swatches"><div><div class="sw" style="background:#0b0d1d"></div><b>Deep Navy</b><span class="muted">底</span><br><span class="mono" style="font-size:11px">#0B0D1D</span></div><div><div class="sw" style="background:#121216"></div><b>Obsidian</b><span class="muted">面</span><br><span class="mono" style="font-size:11px">#121216</span></div><div><div class="sw" style="background:#12151e"></div><b>Slate</b><span class="muted">次面</span><br><span class="mono" style="font-size:11px">#12151E</span></div><div><div class="sw" style="background:#1f2633"></div><b>Border</b><span class="muted">边框</span><br><span class="mono" style="font-size:11px">#1F2633</span></div><div><div class="sw" style="background:#38bdf8"></div><b>Ice Cyan</b><span class="muted">强调</span><br><span class="mono" style="font-size:11px">#38BDF8</span></div><div><div class="sw" style="background:#e2e8ff"></div><b>Silver</b><span class="muted">正文</span><br><span class="mono" style="font-size:11px">#E2E8FF</span></div></div>
+<div class="bars"><i></i><i class="g1"></i><i class="g2"></i><i></i><i class="g1"></i><i class="g2"></i></div></div>
+<div class="card"><h2>TYPOGRAPHY &amp; STATUS BADGES</h2><div style="font-size:32px;font-weight:600;line-height:1.2">标题 32px</div><div style="font-size:16px;font-weight:600;margin-top:6px">卡片标题 16px</div><div style="margin-top:6px">正文 无衬线 14px</div><div class="mono" style="margin-top:6px">monospace 12px · git diff --color</div>
+<div class="row-gap" style="margin-top:12px"><span class="pill accent"><span class="dot"></span>ONLINE</span><span class="pill accent"><span class="dot"></span>RUNNING</span><span class="pill"><span class="dot"></span>IDLE</span><span class="pill err"><span class="dot"></span>ERROR</span></div>
+<div class="wavecard" style="margin-top:12px"><i style="--h:6px"></i><i style="--h:10px"></i><i style="--h:16px"></i><i style="--h:24px"></i><i style="--h:14px"></i><i style="--h:28px"></i><i style="--h:18px"></i><i style="--h:10px"></i><i style="--h:22px"></i><i style="--h:30px"></i><i style="--h:16px"></i><i style="--h:8px"></i><i style="--h:20px"></i><i style="--h:26px"></i><i style="--h:12px"></i><i style="--h:6px"></i><i style="--h:14px"></i><i style="--h:22px"></i><i style="--h:10px"></i><i style="--h:6px"></i></div></div>
+<div class="card"><h2>UI CONTROLS &amp; CARDS</h2><div class="row-gap"><button class="btn primary">主要</button><button class="btn">次要</button><button class="btn hover">悬停</button><button class="btn" disabled>禁用</button><span class="switch on"></span><span class="switch"></span></div>
+<div class="slider"><i style="width:38%"></i><b style="left:38%"></b></div><div class="slider"><i style="width:60%"></i><b style="left:60%"></b></div>
+<div class="search" style="margin:10px 0 0;max-width:none"><svg class="ic sm"><use href="#i-search"/></svg><span>搜索文件、命令…</span></div>
+<div class="glass" style="margin-top:12px;padding:12px"><div style="font-size:12px;letter-spacing:.12em;color:var(--accent);font-weight:600">RUNNING TOOLS</div><div class="tool-row active"><svg class="ic sm"><use href="#i-folder"/></svg><span>fs.read('test_deck.js')</span><span class="state"><svg class="ic sm"><use href="#i-play"/></svg></span></div></div></div>
+<div class="card"><h2>SINGLE-LINE ICONS · 1.75px · currentColor</h2><div class="icons"><div class=""><svg class="ic"><use href="#i-paw"/></svg><span>paw</span></div><div class="on"><svg class="ic"><use href="#i-folder"/></svg><span>folder</span></div><div class=""><svg class="ic"><use href="#i-files"/></svg><span>files</span></div><div class=""><svg class="ic"><use href="#i-gear"/></svg><span>gear</span></div><div class=""><svg class="ic"><use href="#i-search"/></svg><span>search</span></div><div class=""><svg class="ic"><use href="#i-diff"/></svg><span>diff</span></div><div class=""><svg class="ic"><use href="#i-mail"/></svg><span>mail</span></div><div class=""><svg class="ic"><use href="#i-brain"/></svg><span>brain</span></div><div class=""><svg class="ic"><use href="#i-globe"/></svg><span>globe</span></div><div class=""><svg class="ic"><use href="#i-terminal"/></svg><span>terminal</span></div><div class=""><svg class="ic"><use href="#i-mic"/></svg><span>mic</span></div><div class=""><svg class="ic"><use href="#i-lock"/></svg><span>lock</span></div><div class=""><svg class="ic"><use href="#i-cloud"/></svg><span>cloud</span></div><div class=""><svg class="ic"><use href="#i-trash"/></svg><span>trash</span></div><div class=""><svg class="ic"><use href="#i-clock"/></svg><span>clock</span></div><div class=""><svg class="ic"><use href="#i-cat"/></svg><span>cat</span></div></div>
+<div class="row-gap" style="margin-top:14px"><span class="muted">尺寸</span><svg class="ic sm"><use href="#i-folder"/></svg><svg class="ic"><use href="#i-folder"/></svg><svg class="ic lg"><use href="#i-folder"/></svg><span class="muted">默认 #94A3B8</span><span style="color:var(--accent)" class="row"><svg class="ic"><use href="#i-folder"/></svg>激活 #38BDF8</span>
+<span class="empty" style="flex-direction:row;margin-left:auto"><svg class="cat plain" viewBox="0 0 220 250" aria-hidden="true">
+<path d="M64 76L58 30l36 24M156 76l6-46-36 24"/>
+<path d="M64 76Q58 54 94 53Q110 49 126 53Q162 54 156 76Q168 98 156 120Q138 140 110 140Q82 140 64 120Q52 98 64 76Z"/>
+<path d="M110 55v11M100 57l2 9M120 57l-2 9"/>
+<path d="M56 84Q110 10 164 84"/>
+<rect x="45" y="82" width="12" height="30" rx="4"/><rect x="163" y="82" width="12" height="30" rx="4"/>
+<path d="M62 84h96a8 8 0 0 1 8 8v10a14 14 0 0 1-14 14h-24q-6 0-9-5t-9-5-9 5-9 5H68a14 14 0 0 1-14-14V92a8 8 0 0 1 8-8z"/>
+<path d="M72 94h26M122 94h26M72 102h14M134 102h14"/>
+<path d="M107 121h6l-3 4zM110 125v4M110 129q-5 5-10 1M110 129q5 5 10 1"/>
+<path d="M76 122L40 114M76 128L40 130M80 134L48 146M144 122l36-8M144 128l36 2M140 134l32 12"/>
+<path d="M78 138Q60 170 70 208Q90 224 110 224Q130 224 150 208Q160 170 142 138"/>
+<path d="M150 210Q200 204 194 158Q190 136 176 134"/>
+<path d="M92 216q-3-16 4-26M128 216q3-16-4-26"/>
+<path d="M98 150h24l-4 14h-16z"/>
+</svg><span>空状态插画<br>(仅用于空状态与装饰)</span></span></div></div>
+</div></div>
+<div class="view phone" data-view="phone"><div class="topbar">
+<div class="brand"><svg class="ic"><use href="#i-paw"/></svg><span>FatCat-AI <small class="mono" data-version></small></span></div>
+<div class="search"><svg class="ic sm"><use href="#i-search"/></svg><span>搜索文件、命令,或直接提问…</span><kbd>Ctrl K</kbd></div>
+<span class="pill muted-pill"><svg class="ic sm"><use href="#i-cat"/></svg>未选择模型</span>
+</div>
+<div class="workbench"><section class="stage">
+<div class="glass running"><h4>RUNNING TOOLS</h4>
+<div class="tool-row"><svg class="ic sm"><use href="#i-folder"/></svg><span>fs.read('test_deck.js')</span><span class="state"><svg class="ic sm"><use href="#i-check"/></svg></span></div>
+<div class="tool-row active"><svg class="ic sm"><use href="#i-diff"/></svg><span>fs.write(第 27 行)</span><span class="state"><span class="spin"></span></span></div></div>
+<div class="orb"><canvas data-orb></canvas><svg class="cat" viewBox="0 0 220 250" aria-hidden="true">
+<path d="M64 76L58 30l36 24M156 76l6-46-36 24"/>
+<path d="M64 76Q58 54 94 53Q110 49 126 53Q162 54 156 76Q168 98 156 120Q138 140 110 140Q82 140 64 120Q52 98 64 76Z"/>
+<path d="M110 55v11M100 57l2 9M120 57l-2 9"/>
+<path d="M56 84Q110 10 164 84"/>
+<rect x="45" y="82" width="12" height="30" rx="4"/><rect x="163" y="82" width="12" height="30" rx="4"/>
+<path d="M62 84h96a8 8 0 0 1 8 8v10a14 14 0 0 1-14 14h-24q-6 0-9-5t-9-5-9 5-9 5H68a14 14 0 0 1-14-14V92a8 8 0 0 1 8-8z"/>
+<path d="M72 94h26M122 94h26M72 102h14M134 102h14"/>
+<path d="M107 121h6l-3 4zM110 125v4M110 129q-5 5-10 1M110 129q5 5 10 1"/>
+<path d="M76 122L40 114M76 128L40 130M80 134L48 146M144 122l36-8M144 128l36 2M140 134l32 12"/>
+<path d="M78 138Q60 170 70 208Q90 224 110 224Q130 224 150 208Q160 170 142 138"/>
+<path d="M150 210Q200 204 194 158Q190 136 176 134"/>
+<path d="M92 216q-3-16 4-26M128 216q3-16-4-26"/>
+<path d="M98 150h24l-4 14h-16z"/>
+</svg></div>
+<div class="caption"><div class="state-line">
+<span class="label" data-state-label="listening">正在<b>聆听</b> <i class="dot"></i></span>
+<span class="label" data-state-label="thinking">正在<b>思考</b> <i class="dot"></i></span>
+<span class="label" data-state-label="speaking">FatCat 正在<b>说话</b></span>
+<div class="wave" aria-hidden="true"></div></div>
+<div class="sub"><b>你:</b>帮我看一下之前保留的 test_deck.js,看看第 27 行…<br><b>FatCat:</b>喵~ 找到了。现在定位到第 27 行的 timeout 设定…</div></div>
+</section><div class="panelwrap"><div class="panel" style="flex:1"><div class="pv on" data-pv="diff" style="flex-direction:column"><div class="editor"><div class="crumbs">待审批 · src/test_deck.js</div><div class="code" style="font-size:11px"><div class="ln "><i>15</i><s></s><span>        }</span></div><div class="ln "><i>16</i><s></s><span>    }</span></div><div class="ln "><i>17</i><s></s><span>}</span></div><div class="ln "><i>18</i><s></s><span></span></div><div class="ln "><i>19</i><s></s><span><span class="c">// Load a deck and render it with a time limit.</span></span></div><div class="ln "><i>20</i><s></s><span><span class="k">export default function</span> <span class="t">loadDeck</span>(input: <span class="t">Deck</span>, opts = {}) {</span></div><div class="ln "><i>21</i><s></s><span>    <span class="k">const</span> deck = <span class="k">new</span> <span class="t">Deck</span>(input);</span></div><div class="ln "><i>22</i><s></s><span>    <span class="k">const</span> slides = deck.slides.filter((s) => !s.hidden);</span></div><div class="ln "><i>23</i><s></s><span>    <span class="k">if</span> (slides.length === <span class="n">0</span>) {</span></div><div class="ln "><i>24</i><s></s><span>        <span class="k">return</span> <span class="k">null</span>;</span></div><div class="ln "><i>25</i><s></s><span>    }</span></div><div class="ln "><i>26</i><s></s><span></span></div><div class="ln del"><i>27</i><s>−</s><span>    <span class="k">const</span> timeout = <span class="n">20000</span>;</span></div><div class="ln add"><i>28</i><s>+</s><span>    <span class="k">const</span> timeout = <span class="n">25000</span>;</span></div><div class="ln "><i>29</i><s></s><span>    <span class="k">const</span> retries = <span class="n">3</span>;</span></div><div class="ln "><i>30</i><s></s><span>    <span class="k">return</span> deck.render({ slides, timeout, retries });</span></div><div class="ln "><i>31</i><s></s><span>}</span></div><div class="ln "><i>32</i><s></s><span></span></div><div class="ln "><i>33</i><s></s><span><span class="k">export function</span> <span class="t">describe</span>(deck: <span class="t">Deck</span>) {</span></div><div class="ln "><i>34</i><s></s><span>    <span class="k">return</span> <span class="s">`${deck.title} (${deck.slides.length})`</span>;</span></div><div class="ln "><i>35</i><s></s><span>}</span></div><div class="ln "><i>36</i><s></s><span></span></div><div class="ln "><i>37</i><s></s><span><span class="k">const</span> DEFAULT_THEME = { font: <span class="s">'sans'</span>, size: <span class="n">14</span> };</span></div><div class="ln "><i>38</i><s></s><span><span class="k">export</span> { DEFAULT_THEME };</span></div></div></div>
+<div class="approval" style="flex-wrap:wrap"><div class="what"><b>修改 src/test_deck.js</b> <span class="chip risk">写入</span></div><button class="btn">拒绝</button><button class="btn primary">允许</button></div></div></div>
+<nav class="tabbar"><a class="on" href="#phone-diff"><svg class="ic"><use href="#i-chat"/></svg>对话</a><a href="#phone-files"><svg class="ic"><use href="#i-files"/></svg>文件</a><a href="#phone-browser"><svg class="ic"><use href="#i-globe"/></svg>浏览器</a><a href="#settings-models"><svg class="ic"><use href="#i-gear"/></svg>设置</a></nav></div></div></div>
+<script src="version.js"></script>
+<script src="prototype.js"></script>
+    </body>
+</html>
