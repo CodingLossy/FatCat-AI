@@ -6,6 +6,10 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ### M11 · Mobile (in progress)
 
+#### Fixed
+
+- PWA service worker: opening `/offline.html`, an icon or the manifest directly no longer overwrites the saved app shell; the manifest and icons are fetched network-first so a changed icon or manifest reaches installed users; and the cache name now carries a build hash so each release drops the previous release's cached files. Chinese summary: 修复 PWA 缓存细节(直接打开离线页不再覆盖应用壳、manifest 与图标网络优先、缓存名带构建哈希,发布后清理旧文件)。
+
 #### Added
 
 - Web UI polish: on desktop widths the sidebar now keeps the full window height and stays put while the page on the right scrolls (it used to stretch with long pages such as Settings); the phone drawer is unchanged. The sign-in and first-run pages have a proper design: a centred card with the logo, a show/hide password button, a busy spinner on the submit button, a clearer error box and a hint that the setup code is the one-time code in the server startup log, in light and dark and on narrow screens. Authentication itself is unchanged. Chinese summary: 桌面宽度下侧边栏固定满高、不再随右侧长页面拉伸;登录 / 初始化页重做样式(居中卡片、密码显示切换、提交加载态、错误提示、设置码说明)。
