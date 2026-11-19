@@ -20,6 +20,7 @@ import { MemoryPage } from './MemoryPage.js';
 import { useInstallPrompt } from './pwa.js';
 import { navigate, routePath, useRoute, type Route } from './router.js';
 import { SettingsPage } from './SettingsPage.js';
+import { Workbench } from './Workbench.js';
 
 function Link({ to, className, children }: { to: Route; className?: string; children: React.ReactNode }) {
     return (
@@ -37,15 +38,31 @@ function Link({ to, className, children }: { to: Route; className?: string; chil
     );
 }
 
+/** 工作台从 900px 起替换侧栏;更窄的宽度保留原来的抽屉(手机单栏是后续 PR)。 */
+function useWideWorkbench(): boolean {
+    const [wide, setWide] = useState(() => window.matchMedia('(min-width: 900px)').matches);
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 900px)');
+        const update = () => setWide(mq.matches);
+        update();
+        mq.addEventListener('change', update);
+        return () => mq.removeEventListener('change', update);
+    }, []);
+    return wide;
+}
+
 export function Shell({
     settings,
     onSettings,
     onLogout,
+    serverVersion,
 }: {
     settings: Settings;
     onSettings: (s: Settings) => void;
     onLogout: () => Promise<void>;
+    serverVersion: string | null;
 }) {
+    const wide = useWideWorkbench();
     const { t } = useI18n();
     const { canInstall, install } = useInstallPrompt();
     const route = useRoute();
@@ -142,6 +159,22 @@ export function Shell({
             setSessionError(errorText(e));
         }
     };
+
+    if (wide && (route.name === 'home' || route.name === 'session')) {
+        return (
+            <Workbench
+                serverVersion={serverVersion}
+                settings={settings}
+                onSettings={onSettings}
+                onLogout={onLogout}
+                sessions={sessions}
+                onDeleteSession={deleteSession}
+                onClearSessions={clearSessions}
+                onSessionsChanged={reloadSessions}
+                onApprovalCount={setApprovalCount}
+            />
+        );
+    }
 
     return (
         <div className="shell">

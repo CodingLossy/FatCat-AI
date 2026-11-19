@@ -70,5 +70,11 @@
     "kind": "local-only",
     "listedAs": "-",
     "reason": "Plugin network-isolation probe (ADR 0040 section 4); on macOS it opens a listening socket on 127.0.0.1 and has a sandboxed child try to connect, to prove the sandbox denies it; nothing leaves the machine"
+  },
+  {
+    "file": "apps/web/src/Workbench.tsx",
+    "kind": "local-only",
+    "listedAs": "-",
+    "reason": "Workbench status line polls same-origin GET /healthz only; it never opens a connection to another host"
   }
 ]

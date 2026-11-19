@@ -21,6 +21,10 @@ function workerEntry(): { url: URL; execArgv: string[] } {
     // 打包成单文件后 worker 与入口并列,命名为 docs-worker.mjs。
     const bundled = new URL('./docs-worker.mjs', import.meta.url);
     if (existsSync(fileURLToPath(bundled))) return { url: bundled, execArgv: [] };
+    // Node 24 的 worker 线程会用自带的 TypeScript 剥离,tsx 改写不了里面的 .js 导入。
+    // 包已经构建过时(CI 的 typecheck 会先构建依赖),改用 dist 里的 worker。
+    const built = new URL('../../dist/docs/worker.js', import.meta.url);
+    if (existsSync(fileURLToPath(built))) return { url: built, execArgv: [] };
     return { url: new URL('./worker.ts', import.meta.url), execArgv: ['--import', 'tsx'] };
 }
 

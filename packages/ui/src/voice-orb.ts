@@ -294,6 +294,18 @@ export function createVoiceOrb(canvas: HTMLCanvasElement, options: VoiceOrbOptio
     };
     scheme?.addEventListener?.('change', onScheme);
 
+    // 应用内切换主题改的是根元素的 data-theme / class,不是 prefers-color-scheme。
+    // 减少动效时没有帧循环,所以这里重读颜色并重画一帧。
+    const root = canvas.ownerDocument?.documentElement ?? null;
+    let themeObserver: MutationObserver | null = null;
+    if (root && typeof MutationObserver === 'function') {
+        themeObserver = new MutationObserver(() => {
+            palette = readPalette(canvas);
+            if (reduced) render(performance.now());
+        });
+        themeObserver.observe(root, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+    }
+
     return {
         setState(next) {
             if (destroyed) return;
@@ -308,6 +320,7 @@ export function createVoiceOrb(canvas: HTMLCanvasElement, options: VoiceOrbOptio
             destroyed = true;
             remove();
             scheme?.removeEventListener?.('change', onScheme);
+            themeObserver?.disconnect();
         },
     };
 }

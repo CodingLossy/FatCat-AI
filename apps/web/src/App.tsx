@@ -101,7 +101,15 @@ export function App() {
     else if (error) body = <p className="error page-message">{i18n.t('common.error', { msg: error })}</p>;
     else if (!status) body = <p className="muted page-message">{i18n.t('common.loading')}</p>;
     else if (!status.authenticated) body = <AuthForm initialized={status.initialized} onDone={refresh} />;
-    else if (settings) body = <Shell settings={settings} onSettings={setSettings} onLogout={logout} />;
+    else if (settings)
+        body = (
+            <Shell
+                settings={settings}
+                onSettings={setSettings}
+                onLogout={logout}
+                serverVersion={meta?.serverVersion ?? null}
+            />
+        );
     else body = <p className="muted page-message">{i18n.t('common.loading')}</p>;
 
     return (

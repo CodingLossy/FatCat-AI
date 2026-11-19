@@ -17,6 +17,7 @@ import {
     type ClipboardEvent,
     type DragEvent,
     type KeyboardEvent,
+    type MutableRefObject,
     useCallback,
     useEffect,
     useRef,
@@ -54,7 +55,15 @@ function typingTarget(target: EventTarget | null): boolean {
 /** 新对话:先建会话再跳转,跳转后的 ChatView 负责发送这条消息。 */
 let pendingSend: { sessionId: string; text: string; attachmentIds: string[]; previews: string[] } | null = null;
 
-/** 输入框里待发送的图片(本地预览用 object URL)。 */
+/** 工作台读取的这一轮对话,用来画 RUNNING TOOLS、文件树和模型胶囊。 */
+export interface ChatActivity {
+    messages: Message[];
+    live: LiveTurn | null;
+    profile: ModelProfile | null;
+    profiles: ModelProfile[];
+}
+
+/** 输入框里待发送的图片;`url`(object URL)只用于发送后消息里的临时预览,输入框缩略图不用它。 */
 interface PendingImage {
     key: string;
     file: File;
@@ -74,6 +83,55 @@ function toolsOf(message: Message, results: Map<string, LiveTool['result']>): Li
 
 function textOf(message: Message): string {
     return message.parts.map((p) => (p.type === 'text' ? p.text : '')).join('');
+}
+
+/** 缩略图的边长(CSS 像素 72,按 2 倍像素密度绘制)。 */
+const THUMB = 144;
+
+/**
+ * 输入框里待发送图片的缩略图:解码成位图后画在 canvas 上,不经过 img 的 src,也不再为它创建 object URL。
+ * 按「cover」居中裁成正方形;文件名只进 aria-label(React 会转义)。
+ */
+function ComposerPreview({ file }: { file: File }) {
+    const { t } = useI18n();
+    const canvas = useRef<HTMLCanvasElement>(null);
+    useEffect(() => {
+        let cancelled = false;
+        let bitmap: ImageBitmap | null = null;
+        void createImageBitmap(file)
+            .then((decoded) => {
+                bitmap = decoded;
+                const el = canvas.current;
+                const ctx = el?.getContext('2d');
+                if (cancelled || !ctx) return;
+                const side = Math.min(decoded.width, decoded.height);
+                ctx.drawImage(
+                    decoded,
+                    (decoded.width - side) / 2,
+                    (decoded.height - side) / 2,
+                    side,
+                    side,
+                    0,
+                    0,
+                    THUMB,
+                    THUMB,
+                );
+            })
+            .catch(() => undefined);
+        return () => {
+            cancelled = true;
+            bitmap?.close();
+        };
+    }, [file]);
+    return (
+        <canvas
+            ref={canvas}
+            role="img"
+            width={THUMB}
+            height={THUMB}
+            aria-label={t('chat.imageAlt', { name: file.name })}
+        />
+    );
 }
 
 function MessageImages({ message }: { message: Message }) {
@@ -98,9 +156,20 @@ function MessageImages({ message }: { message: Message }) {
 export function ChatView({
     sessionId,
     onSessionsChanged,
+    workbench = false,
+    profileEpoch = 0,
+    onActivity,
+    askRef,
 }: {
     sessionId: string | null;
     onSessionsChanged: () => Promise<void>;
+    /** 放进工作台左侧舞台时加上布局类,球由样式放大。 */
+    workbench?: boolean;
+    /** 顶栏换了模型之后加一,让这里重新读配置档。 */
+    profileEpoch?: number;
+    onActivity?: (activity: ChatActivity) => void;
+    /** 全局搜索把一句话发到当前会话。 */
+    askRef?: MutableRefObject<((text: string) => Promise<void>) | null>;
 }) {
     const { t } = useI18n();
     const [messages, setMessages] = useState<Message[]>([]);
@@ -183,6 +252,7 @@ export function ChatView({
     const [uploading, setUploading] = useState(false);
     const [imageNotice, setImageNotice] = useState<string | null>(null);
     const [profile, setProfile] = useState<ModelProfile | null>(null);
+    const [profiles, setProfiles] = useState<ModelProfile[]>([]);
     const [voiceConfig, setVoiceConfig] = useState<{ settings: Settings['voice']; stt: boolean; tts: boolean } | null>(
         null,
     );
@@ -218,6 +288,7 @@ export function ChatView({
                     sessionId ? api.sessions.get(sessionId) : Promise.resolve(null),
                 ]);
                 if (cancelled) return;
+                setProfiles(profiles.items);
                 setProfile(effectiveProfile(profiles.items, settings, session));
                 setVoiceConfig({
                     settings: settings.voice,
@@ -231,7 +302,7 @@ export function ChatView({
         return () => {
             cancelled = true;
         };
-    }, [sessionId]);
+    }, [sessionId, profileEpoch]);
 
     const loadMessages = useCallback(async (id: string, hideRunId: string | null) => {
         let items: Message[];
@@ -583,6 +654,19 @@ export function ChatView({
         [sessionId],
     );
 
+    useEffect(() => {
+        onActivity?.({ messages, live, profile, profiles });
+    }, [messages, live, profile, profiles, onActivity]);
+
+    // 没有依赖数组:submit 用到的输入框状态每轮都变,这里只是把最新的发送函数交给搜索框。
+    useEffect(() => {
+        if (!askRef) return;
+        askRef.current = (text) => submit(text);
+        return () => {
+            askRef.current = null;
+        };
+    });
+
     const indicatorState = localVoice ?? shown.state;
     const indicatorLabel = localVoice
         ? t(`voice.state.${localVoice}`)
@@ -615,7 +699,7 @@ export function ChatView({
     }
 
     return (
-        <div className="chat">
+        <div className={workbench ? 'chat chat-stage' : 'chat'}>
             <div className="chat-head">
                 <VoiceIndicator state={indicatorState} label={indicatorLabel} level={level} />
                 {agents.length > 0 ? (
@@ -716,7 +800,7 @@ export function ChatView({
                         <ul className="image-previews">
                             {images.map((image) => (
                                 <li key={image.key}>
-                                    <img src={image.url} alt={t('chat.imageAlt', { name: image.file.name })} />
+                                    <ComposerPreview file={image.file} />
                                     <button
                                         type="button"
                                         className="remove-image"
