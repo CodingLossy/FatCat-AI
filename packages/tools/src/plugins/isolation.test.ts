@@ -44,7 +44,7 @@ async function attackWithoutPreload(wrapper: NetIsolation, port: string): Promis
         return String(reply.content?.[0]?.text ?? '');
     } finally {
         await client.shutdown(1000, 500);
-        rmSync(root, { recursive: true, force: true });
+        rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
 }
 
@@ -81,7 +81,7 @@ describe.skipIf(isolation.kind === 'none')(`OS network isolation (${isolation.ki
                 expect(await attackWithoutPreload(isolation, path)).toContain('UNIX-SECRET');
             } finally {
                 unix.close();
-                rmSync(dir, { recursive: true, force: true });
+                rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
             }
         },
         30_000,

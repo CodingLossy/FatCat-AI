@@ -50,7 +50,11 @@ jobs:
       - run: node apps/desktop/scripts/bundle-sidecar.mjs
       - run: node apps/desktop/scripts/fetch-node.mjs
       - name: Build installers
-        run: pnpm --filter @fatcat-ai/desktop exec tauri build
+        shell: bash
+        run: |
+          # AppImage 默认 gzip 压缩;xz 压得更小。只在 Linux 上设置,不影响其他平台。
+          if [ "$RUNNER_OS" = "Linux" ]; then export LDAI_COMP=xz; fi
+          pnpm --filter @fatcat-ai/desktop exec tauri build
       - name: Install and launch smoke test (Windows)
         if: runner.os == 'Windows'
         run: node apps/desktop/scripts/check-windows-install.mjs

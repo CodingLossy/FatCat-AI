@@ -35,7 +35,7 @@ const packer: any = await import(pathToFileURL(join(scriptsDir, 'pack-plugin.mjs
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 const dirs: string[] = [];
-afterAll(() => dirs.forEach((d) => rmSync(d, { recursive: true, force: true })));
+afterAll(() => dirs.forEach((d) => rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })));
 const tmp = () => {
     const dir = mkdtempSync(join(tmpdir(), 'fatcat-scripts-'));
     dirs.push(dir);

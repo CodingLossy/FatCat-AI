@@ -3,7 +3,13 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { checkInstallerSizes, MAX_INSTALLER_BYTES, nodeDistribution, sha256Sums } from './release-lib.mjs';
+import {
+    checkInstallerSizes,
+    MAX_APPIMAGE_BYTES,
+    MAX_INSTALLER_BYTES,
+    nodeDistribution,
+    sha256Sums,
+} from './release-lib.mjs';
 
 test('installer size check fails over the limit, ignores non-installers, and fails when nothing is found', () => {
     const ok = checkInstallerSizes([
@@ -12,9 +18,13 @@ test('installer size check fails over the limit, ignores non-installers, and fai
     ]);
     assert.deepEqual(ok.errors, []);
     assert.equal(ok.installers.length, 1);
-    const big = checkInstallerSizes([{ name: 'FatCat-AI.AppImage', size: MAX_INSTALLER_BYTES + 1 }]);
+    const big = checkInstallerSizes([{ name: 'FatCat-AI.deb', size: MAX_INSTALLER_BYTES + 1 }]);
     assert.equal(big.errors.length, 1);
     assert.match(big.errors[0], /exceeds 80 MB/);
+    // AppImage 有自己的上限,其他格式不受影响。
+    const image = { name: 'appimage/FatCat-AI.AppImage', size: MAX_INSTALLER_BYTES + 1 };
+    assert.deepEqual(checkInstallerSizes([image]).errors, []);
+    assert.match(checkInstallerSizes([{ ...image, size: MAX_APPIMAGE_BYTES + 1 }]).errors[0], /exceeds 100 MB/);
     assert.deepEqual(checkInstallerSizes([{ name: 'readme.md', size: 1 }]).errors, ['no installer found']);
 });
 

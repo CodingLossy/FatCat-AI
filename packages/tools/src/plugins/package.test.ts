@@ -15,7 +15,7 @@ describe('plugin packages', () => {
     beforeEach(() => {
         root = mkdtempSync(join(tmpdir(), 'fatcat-pkg-'));
     });
-    afterEach(() => rmSync(root, { recursive: true, force: true }));
+    afterEach(() => rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
 
     it('stages and hashes a valid package, and the hash is stable', () => {
         const staging = join(root, 'staging');

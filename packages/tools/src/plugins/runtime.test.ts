@@ -102,7 +102,7 @@ describe('plugin runtime', () => {
     });
     afterEach(async () => {
         await h.runtime.closeAll();
-        rmSync(h.root, { recursive: true, force: true });
+        rmSync(h.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     });
 
     it('registers only declared tools, wraps output as untrusted plugin content and applies the risk floor', async () => {
@@ -295,7 +295,7 @@ describe('plugin runtime', () => {
             expect(status2.error).toMatch(/link/);
         } finally {
             await h2.runtime.closeAll();
-            rmSync(h2.root, { recursive: true, force: true });
+            rmSync(h2.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         }
     }, 30_000);
 });
@@ -320,7 +320,7 @@ describe('risk floor', () => {
             expect(await run(h, 'probe', { attack: 'rpc', arg: 'fatcat/net.fetch' })).toContain('invalid params');
         } finally {
             await h.runtime.closeAll();
-            rmSync(h.root, { recursive: true, force: true });
+            rmSync(h.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         }
     }, 30_000);
 });
@@ -347,7 +347,7 @@ describe('fatcat/net.fetch', () => {
     });
     afterEach(async () => {
         await h.runtime.closeAll();
-        rmSync(h.root, { recursive: true, force: true });
+        rmSync(h.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     });
 
     const fetchVia = (params: Record<string, unknown>) =>
@@ -397,7 +397,7 @@ describe('fatcat/net.fetch', () => {
                 ]);
             } finally {
                 await runtime.closeAll();
-                rmSync(local.root, { recursive: true, force: true });
+                rmSync(local.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
             }
         }
     }, 60_000);
@@ -427,7 +427,7 @@ describe('fatcat/net.fetch', () => {
             expect(local.events.filter((e) => e.kind === 'denied')).toEqual([]);
         } finally {
             await runtime.closeAll();
-            rmSync(local.root, { recursive: true, force: true });
+            rmSync(local.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         }
     }, 30_000);
 
@@ -456,7 +456,7 @@ describe('fatcat/net.fetch', () => {
             expect(local.events.filter((e) => e.kind === 'denied')).toEqual([]);
         } finally {
             await runtime.closeAll();
-            rmSync(local.root, { recursive: true, force: true });
+            rmSync(local.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         }
     }, 30_000);
 });
@@ -501,7 +501,7 @@ describe('fatcat/items.upsert', () => {
             ]);
         } finally {
             await runtime.closeAll();
-            rmSync(h.root, { recursive: true, force: true });
+            rmSync(h.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         }
     }, 60_000);
 });
