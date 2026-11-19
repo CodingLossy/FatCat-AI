@@ -135,6 +135,50 @@ describe('WebSocket /api/v1/ws 设备令牌', () => {
     });
 });
 
+describe('设备吊销断开已建立的 WebSocket', () => {
+    async function pairedSocket(ctx: Awaited<ReturnType<typeof start>>) {
+        const code = ((await (await ctx.post('/api/v1/devices/pairing-codes')).json()) as { code: string }).code;
+        const tokens = (await (await s.app.request('/api/v1/devices/pair', jsonBody({ code, name: 'p' }))).json()) as {
+            accessToken: string;
+            refreshToken: string;
+            device: { id: string };
+        };
+        const c = connect(ctx.port, {}, ['fatcat.v1', `fatcat.bearer.${tokens.accessToken}`]);
+        await c.opened;
+        c.hello(0);
+        await c.until(() => c.frames.length > 0);
+        const closed = new Promise<{ code: number; reason: string }>((r) =>
+            c.ws.once('close', (code, reason) => r({ code, reason: String(reason) })),
+        );
+        return { tokens, closed };
+    }
+
+    it('业主吊销、设备自己登出、refresh 重放吊销都会关闭该设备的连接(4401)', async () => {
+        const ctx = await start();
+        const owner = await pairedSocket(ctx);
+        const revoked = await s.app.request(`/api/v1/devices/${owner.tokens.device.id}`, {
+            method: 'DELETE',
+            headers: { cookie: ctx.cookie, 'X-CSRF-Token': ctx.csrf },
+        });
+        expect(revoked.status).toBe(204);
+        expect(await owner.closed).toEqual({ code: 4401, reason: 'device revoked' });
+
+        const self = await pairedSocket(ctx);
+        const out = await s.app.request('/api/v1/devices/self', {
+            method: 'DELETE',
+            headers: { authorization: `Bearer ${self.tokens.accessToken}` },
+        });
+        expect(out.status).toBe(204);
+        expect((await self.closed).code).toBe(4401);
+
+        const replayed = await pairedSocket(ctx);
+        const refresh = (token: string) => s.app.request('/api/v1/devices/token', jsonBody({ refreshToken: token }));
+        expect((await refresh(replayed.tokens.refreshToken)).status).toBe(200);
+        expect((await refresh(replayed.tokens.refreshToken)).status).toBe(401); // 重放:设备被吊销
+        expect((await replayed.closed).code).toBe(4401);
+    });
+});
+
 describe('WebSocket /api/v1/ws', () => {
     it('未登录、Cookie 缺少同源 Origin 时拒绝握手', async () => {
         const { port, cookie } = await start();

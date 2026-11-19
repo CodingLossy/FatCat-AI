@@ -17,6 +17,7 @@ import type { Repositories } from '@fatcat-ai/storage';
 import type { WebSocket, WebSocketServer } from 'ws';
 import { DEVICE_ACCESS_PREFIX, PAT_PREFIX, safeEqual, sha256 } from './auth/crypto.js';
 import { SESSION_COOKIE } from './auth/middleware.js';
+import { registerDeviceSocket } from './device-sockets.js';
 import type { Logger } from './log.js';
 import { SERVER_VERSION } from './version.js';
 import { WindowLimiter } from './voice-limit.js';
@@ -54,7 +55,7 @@ export function publishVoiceState(deps: Pick<WsDeps, 'repos' | 'bus'>, ownerId: 
     deps.bus.publish(ownerId, envelope);
 }
 
-type UpgradeAuth = { ok: true; ownerId: string } | { ok: false; status: 401 | 403 };
+type UpgradeAuth = { ok: true; ownerId: string; deviceId?: string } | { ok: false; status: 401 | 403 };
 
 function cookieValue(header: string | undefined, name: string): string | null {
     for (const part of (header ?? '').split(';')) {
@@ -76,7 +77,9 @@ export function authenticateUpgrade(req: IncomingMessage, repos: Repositories): 
     if (authorization !== undefined || viaProtocol !== undefined) {
         if (bearer?.startsWith(DEVICE_ACCESS_PREFIX)) {
             const device = repos.devices.findByAccess(sha256(bearer));
-            return device ? { ok: true, ownerId: device.ownerId } : { ok: false, status: 401 };
+            if (!device) return { ok: false, status: 401 };
+            repos.devices.touch(device.deviceId); // 与 HTTP 路径一致,设备列表的「最近使用」才准确
+            return { ok: true, ownerId: device.ownerId, deviceId: device.deviceId };
         }
         // 子协议里只接受设备令牌;长期有效的 PAT 不走这条路径(子协议可能出现在代理日志里)
         const record =
@@ -139,7 +142,9 @@ export function attachWebSocket(server: Server, input: WsDeps): { close(): void 
                 // 只回选 fatcat.v1,令牌子协议不回显
                 handleProtocols: (protocols) => (protocols.has(WS_SUBPROTOCOL) ? WS_SUBPROTOCOL : false),
             });
-            wss.handleUpgrade(req, socket, head, (ws) => handleConnection(ws, auth.ownerId, deps, voiceStates));
+            wss.handleUpgrade(req, socket, head, (ws) =>
+                handleConnection(ws, auth.ownerId, deps, voiceStates, auth.deviceId),
+            );
         });
     });
 
@@ -151,7 +156,14 @@ export function attachWebSocket(server: Server, input: WsDeps): { close(): void 
     };
 }
 
-function handleConnection(ws: WebSocket, ownerId: string, deps: WsDeps, voiceStates: VoiceStates): void {
+function handleConnection(
+    ws: WebSocket,
+    ownerId: string,
+    deps: WsDeps,
+    voiceStates: VoiceStates,
+    deviceId?: string,
+): void {
+    const unregisterDevice = deviceId ? registerDeviceSocket(deviceId, ws) : null;
     let frameId = 0;
     let last = 0;
     let live = false;
@@ -268,6 +280,7 @@ function handleConnection(ws: WebSocket, ownerId: string, deps: WsDeps, voiceSta
     });
 
     ws.on('close', () => {
+        unregisterDevice?.();
         clearTimeout(helloTimer);
         clearInterval(pingTimer);
         unsubscribe?.();

@@ -92,3 +92,4 @@
 - SDK `Transport`:`token` 可以是函数,新增 `refreshToken(staleToken)`;请求得到 401 时刷新一次并重试一次,并发的 401 共用同一次刷新。
 - WebSocket:浏览器的 WebSocket 不能设请求头,设备 access 令牌放在 `Sec-WebSocket-Protocol: fatcat.v1, fatcat.bearer.<token>`,服务器只回选 `fatcat.v1`(令牌不回显)。长期有效的个人访问令牌**不**接受这种方式(子协议可能出现在代理日志里),仍只走 `Authorization` 头。令牌不放地址栏。
 - 设备上的「退出」调用 `DELETE /devices/self`(吊销本设备)并清除本地令牌。
+- 吊销立即生效,包括已建立的 WebSocket:用设备令牌建立的连接登记在 `device-sockets.ts`,业主吊销、设备自己登出、refresh 重放吊销三处都会调用 `closeDeviceSockets`,以 4401 `device revoked` 关闭;access 令牌自然过期不断开(重连时用新令牌)。设备令牌握手成功时也会更新「最近使用」。
