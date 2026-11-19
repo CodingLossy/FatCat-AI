@@ -135,7 +135,7 @@ describe('fs.read 读取文档', () => {
     beforeEach(() => {
         root = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'fatcat-docs-')));
     });
-    afterEach(() => rmSync(root, { recursive: true, force: true }));
+    afterEach(() => rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
 
     it('PDF / DOCX / XLSX 转为文本并标为不可信;offset 按字符继续读', async () => {
         writeFileSync(path.join(root, 'r.pdf'), buildPdf(['Quarterly report']));

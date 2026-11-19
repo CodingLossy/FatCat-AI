@@ -17,7 +17,7 @@ const dest = () => {
     return join(dir, 'out');
 };
 afterEach(() => {
-    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
 const reject = async (entries: TarEntry[], pattern: RegExp, limits = TAR_LIMITS) => {

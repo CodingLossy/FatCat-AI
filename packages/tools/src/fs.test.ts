@@ -105,7 +105,7 @@ describe('真实文件系统', () => {
         mkdirSync(path.join(base, 'Root2'));
         writeFileSync(path.join(base, 'Root2', 'x.txt'), 'x');
     });
-    afterEach(() => rmSync(base, { recursive: true, force: true }));
+    afterEach(() => rmSync(base, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
 
     const tools = () => {
         const all = createFsTools({ roots: () => [root] });
