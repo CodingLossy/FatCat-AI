@@ -2,26 +2,76 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { describe, expect, it } from 'vitest';
-import { createVoiceOrb, fibonacciSphere, ORB_COLORS, orbScale, spinRate } from './voice-orb.js';
+import {
+    createVoiceOrb,
+    fibonacciSphere,
+    generateParticles,
+    initialQuality,
+    MAX_PARTICLES,
+    MIN_QUALITY,
+    orbEnergy,
+    particleCount,
+    presetFor,
+    projectPoint,
+    stepQuality,
+    waveHeights,
+} from './voice-orb.js';
 
-describe('VoiceOrb', () => {
-    it('五种状态的颜色互不相同', () => {
-        expect(new Set(Object.values(ORB_COLORS)).size).toBe(5);
+describe('core orb model', () => {
+    it('三种状态的密度与转速符合设计,executing / idle 沿用已有外观', () => {
+        expect(presetFor('listening').density).toBe(0.5);
+        expect(presetFor('thinking').density).toBe(1);
+        expect(presetFor('speaking').density).toBe(0.78);
+        expect(presetFor('thinking').spin).toBeGreaterThan(presetFor('speaking').spin);
+        expect(presetFor('speaking').spin).toBeGreaterThan(presetFor('listening').spin);
+        expect(presetFor('executing')).toBe(presetFor('thinking'));
+        expect(presetFor('idle')).toBe(presetFor('listening'));
+        expect(particleCount(presetFor('thinking'), 1)).toBe(MAX_PARTICLES);
+        expect(particleCount(presetFor('listening'), 1)).toBe(1300);
     });
 
-    it('粒子都在单位球面上', () => {
-        const points = fibonacciSphere(50);
-        expect(points).toHaveLength(50);
-        for (const [x, y, z] of points) expect(Math.hypot(x, y, z)).toBeCloseTo(1, 6);
+    it('自适应质量:连续慢帧按 20% 下调、有下限、不回升;低端设备从 60% 起步', () => {
+        let s = { quality: 1, slow: 0 };
+        for (let i = 0; i < 46; i++) s = stepQuality(s, 40);
+        expect(s.quality).toBeCloseTo(0.8);
+        for (let i = 0; i < 2000; i++) s = stepQuality(s, 40);
+        expect(s.quality).toBe(MIN_QUALITY);
+        for (let i = 0; i < 500; i++) s = stepQuality(s, 8);
+        expect(s.quality).toBe(MIN_QUALITY);
+        expect(stepQuality({ quality: 1, slow: 10 }, 5000)).toEqual({ quality: 1, slow: 10 }); // 标签页恢复不算慢帧
+        expect(initialQuality(4, undefined)).toBe(0.6);
+        expect(initialQuality(undefined, 2)).toBe(0.6);
+        expect(initialQuality(8, 8)).toBe(1);
     });
 
-    it('有电平时随电平脉动,没有电平时呼吸,减少动态时恒定', () => {
-        expect(orbScale(0, 0, 'listening', false)).toBe(1);
-        expect(orbScale(0, 1, 'listening', false)).toBeCloseTo(1.3);
-        expect(orbScale(0, 5, 'speaking', false)).toBeCloseTo(1.3);
-        expect(orbScale(500, null, 'speaking', false)).toBeGreaterThan(1);
-        expect(orbScale(500, 1, 'speaking', true)).toBe(1);
-        expect(spinRate('thinking')).toBeGreaterThan(spinRate('idle'));
+    it('粒子生成是确定的、在单位球面上,投影近大远小', () => {
+        const a = generateParticles(100);
+        expect(generateParticles(100)).toEqual(a);
+        for (const p of a) expect(Math.hypot(p.x, p.y, p.z)).toBeCloseTo(1, 6);
+        // 降低密度只取前缀:前 50% 仍然覆盖上下两个半球
+        const half = generateParticles(MAX_PARTICLES).slice(0, MAX_PARTICLES / 2);
+        expect(half.filter((p) => p.y > 0.5).length).toBeGreaterThan(100);
+        expect(half.filter((p) => p.y < -0.5).length).toBeGreaterThan(100);
+        const proj = { cx: 0, cy: 0, radius: 100, rotation: 0, tilt: 0 };
+        const near = projectPoint(0, 0, 1, proj); // rotation 0:z 保持不变
+        const far = projectPoint(0, 0, -1, proj);
+        expect(near[2]).toBeCloseTo(1);
+        expect(far[2]).toBeCloseTo(-1);
+        // 同样的横向偏移,近处的点投影得更远离中心
+        const nearSide = projectPoint(0.5, 0, 0.8, proj);
+        const farSide = projectPoint(0.5, 0, -0.8, proj);
+        expect(nearSide[0]).toBeGreaterThan(farSide[0]);
+        expect(fibonacciSphere(1)).toHaveLength(1);
+    });
+
+    it('电平与声波条:有电平用电平,说话时声波条高于其他状态,最低高度为 3px', () => {
+        expect(orbEnergy('listening', 2, 0)).toBe(1);
+        expect(orbEnergy('listening', null, 1)).toBe(0);
+        expect(orbEnergy('speaking', null, 1)).toBeGreaterThan(0);
+        const peak = (state: 'speaking' | 'listening') => Math.max(...waveHeights(56, state, 1, 0.37, 48));
+        expect(peak('speaking')).toBeGreaterThan(peak('listening'));
+        expect(Math.min(...waveHeights(56, 'speaking', 0, 0, 48))).toBeGreaterThanOrEqual(3);
+        expect(new Set(waveHeights(56, 'speaking', 1, 0.37, 48, true))).toEqual(new Set([3])); // 减少动效:全部最低
     });
 
     it('Canvas 不可用时返回 null', () => {

@@ -216,6 +216,7 @@ export function createRetriever(options: RetrieverOptions) {
     // 检索后的访问计数先在内存里合并,定时写入(每条记忆每次刷新计一次)
     const pending = new Set<string>();
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let closed = false;
     const flush = () => {
         if (timer) clearTimeout(timer);
         timer = null;
@@ -226,6 +227,7 @@ export function createRetriever(options: RetrieverOptions) {
         for (const m of repos.memoryRead.touch(ids)) options.onReactivated?.(m.ownerId, m.id, m.text);
     };
     const markUsed = (ids: readonly string[]) => {
+        if (closed) return;
         for (const id of ids) pending.add(id);
         if (!timer && pending.size > 0) {
             timer = setTimeout(flush, flushMs);
@@ -372,6 +374,12 @@ export function createRetriever(options: RetrieverOptions) {
         },
         /** 立即写入累积的访问计数(关闭时与测试中调用)。 */
         flush,
+        /** 先写入累积的访问计数,再停止接受新的计数;必须在关闭数据库之前调用,否则定时器会对已关闭的库写入。 */
+        close() {
+            if (closed) return;
+            flush();
+            closed = true;
+        },
     };
 }
 
