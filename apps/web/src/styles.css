@@ -143,6 +143,20 @@ pre {
     min-height: 100vh;
 }
 
+/* 桌面宽度:整页固定为视口高度,侧边栏满高不随右侧内容拉伸,长页面只在 .content 里滚动。
+   窄屏(<=720px)仍由整页滚动,侧边栏是抽屉,见下方媒体查询。 */
+@media (min-width: 721px) {
+    .layout {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+    }
+
+    .content {
+        overflow-y: auto;
+    }
+}
+
 .muted {
     color: var(--muted);
 }
@@ -233,11 +247,149 @@ fieldset {
     color: var(--muted);
 }
 
+/* 登录 / 初始化页:居中卡片 + 品牌标识 */
 .auth {
+    width: 100%;
     max-width: 26rem;
-    margin: 3rem auto;
-    padding: 0 1rem;
+    margin: 0 auto;
+    padding: 2.5rem 1rem 1.5rem;
     flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1.2rem;
+}
+
+.auth-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    text-align: center;
+}
+
+.auth-logo {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 16px;
+}
+
+.auth-brand h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    letter-spacing: 0.01em;
+}
+
+.auth-brand p {
+    margin: 0;
+}
+
+.auth .card {
+    padding: 1.4rem 1.4rem 1.2rem;
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+    gap: 0.9rem;
+}
+
+.auth .card h2 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.auth .card input {
+    padding: 0.55rem 0.7rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: inherit;
+    font: inherit;
+}
+
+.auth .card input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    border-color: var(--accent);
+}
+
+.auth .card input[aria-invalid='true'] {
+    border-color: var(--danger);
+}
+
+.auth-field {
+    position: relative;
+}
+
+.auth-field input {
+    width: 100%;
+    box-sizing: border-box;
+    padding-right: 3.6rem;
+}
+
+.auth-toggle {
+    position: absolute;
+    right: 0.35rem;
+    bottom: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.auth-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+}
+
+.auth-hint {
+    font-weight: normal;
+}
+
+.auth .error {
+    margin: 0;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    color: var(--danger);
+    font-size: 0.9rem;
+}
+
+.auth .card button.primary {
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.auth .card button.primary:disabled {
+    opacity: 0.75;
+    cursor: progress;
+}
+
+.spinner {
+    width: 0.9em;
+    height: 0.9em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spinner {
+        animation-duration: 2s;
+    }
 }
 
 .shell {
@@ -294,6 +446,7 @@ fieldset {
 .content {
     flex: 1;
     min-width: 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
 }
@@ -1027,7 +1180,8 @@ td .badge {
     }
 
     .auth {
-        margin: 1.5rem auto;
+        padding-top: 1.5rem;
+        justify-content: flex-start;
     }
 
     /* 聊天:消息区占满,气泡更宽,输入区贴底并避开安全区 */
