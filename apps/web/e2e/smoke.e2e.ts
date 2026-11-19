@@ -230,6 +230,8 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
 
     // 设置页:撤销预授权
     await page.getByRole('link', { name: '设置' }).click();
+    await page.getByRole('tab', { name: /工具插件/ }).click();
+    await page.getByRole('button', { name: '预授权' }).click();
     const preauth = page.locator('[data-preauth="memory.save"]');
     await expect(preauth).toContainText('总是允许');
     await preauth.getByRole('button', { name: '撤销' }).click();
@@ -238,6 +240,8 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
     // 知识地图(M2 验收第 5 条):授权含小说的文件夹后,「小说 → 某书 → 某章」逐层下钻并打开
     const books = join(realpathSync.native(dir), 'Books');
     mkdirSync(books);
+    await page.getByRole('tab', { name: /工作台/ }).click();
+    await page.getByRole('button', { name: '文件夹' }).click();
     writeFileSync(join(books, '凡人.txt'), '第一章 山村少年\n他出生在一个小山村。\n第二章 入门\n他拜入了七玄门。\n');
     await page.getByRole('textbox', { name: '文件夹路径' }).fill(books);
     await page.getByRole('button', { name: '授权', exact: true }).click();

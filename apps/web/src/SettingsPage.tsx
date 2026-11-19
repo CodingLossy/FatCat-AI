@@ -4,6 +4,15 @@
 import type { ModelKind, ModelProfile, ModelPurpose, Settings, SettingsPatch } from '@fatcat-ai/shared';
 import { LOCALES, LOCALE_NAMES } from '@fatcat-ai/i18n';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { Icon } from './Icon.js';
+import { SettingsCards } from './SettingsCards.js';
+import {
+    DEFAULT_SETTINGS_VIEW,
+    SETTINGS_SECTIONS,
+    resolveView,
+    type SettingsSectionId,
+    type SettingsView,
+} from './settings-model.js';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
 import { isValidKeyRef } from './live-turn.js';
@@ -232,7 +241,7 @@ function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) =>
     };
 
     return (
-        <section>
+        <section id="model-profiles">
             <h2>{t('models.title')}</h2>
             {error ? <p className="error">{error}</p> : null}
             {profiles === null ? <p className="muted">{t('common.loading')}</p> : null}
@@ -296,12 +305,38 @@ function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) =>
     );
 }
 
+const VIEW_KEY = 'fatcat.settings.view';
+
+function loadView(): SettingsView {
+    try {
+        const raw = window.sessionStorage.getItem(VIEW_KEY);
+        if (raw) {
+            const v = JSON.parse(raw) as { section?: unknown; item?: unknown };
+            return resolveView(v.section, v.item);
+        }
+    } catch {
+        // 没有 sessionStorage 或内容损坏:用默认
+    }
+    return { ...DEFAULT_SETTINGS_VIEW };
+}
+
 export function SettingsPage({ settings, onSettings }: { settings: Settings; onSettings: (s: Settings) => void }) {
     const { t } = useI18n();
     const [profiles, setProfiles] = useState<ModelProfile[]>([]);
     const [note, setNote] = useState<string | null>(null);
+    const [view, setView] = useState<SettingsView>(loadView);
     /** 自动抽取开关保存期间禁用,避免连点发出相互覆盖的请求。 */
     const [savingAutoExtract, setSavingAutoExtract] = useState(false);
+
+    const show = (section: SettingsSectionId, item?: string) => {
+        const next = resolveView(section, item);
+        setView(next);
+        try {
+            window.sessionStorage.setItem(VIEW_KEY, JSON.stringify(next));
+        } catch {
+            // 存不下也不影响使用
+        }
+    };
 
     const update = async (patch: SettingsPatch) => {
         try {
@@ -312,21 +347,16 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
         }
     };
 
-    const profileSelect = (key: 'defaultChatProfileId' | 'defaultCheapProfileId', purpose: ModelPurpose) => (
-        <select
-            value={settings[key] ?? ''}
-            onChange={(e) => void update({ [key]: e.target.value === '' ? null : e.target.value })}
-        >
-            <option value="">{t('settings.auto')}</option>
-            {profiles
-                .filter((p) => p.purpose.includes(purpose) || p.id === settings[key])
-                .map((p) => (
-                    <option key={p.id} value={p.id}>
-                        {p.label}
-                    </option>
-                ))}
-        </select>
-    );
+    useEffect(() => {
+        let alive = true;
+        void api.models
+            .list()
+            .then((page) => alive && setProfiles(page.items))
+            .catch(() => undefined);
+        return () => {
+            alive = false;
+        };
+    }, []);
 
     const voiceSelect = (key: 'defaultSttProfileId' | 'defaultTtsProfileId', purpose: 'stt' | 'tts') => (
         <select
@@ -348,149 +378,210 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
         </select>
     );
 
+    const manageProfiles = () => {
+        document.getElementById('model-profiles')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const content = () => {
+        switch (`${view.section}/${view.item}`) {
+            case 'workbench/general':
+                return (
+                    <section className="card form">
+                        <h2>{t('settings.general')}</h2>
+                        <label>
+                            {t('settings.language')}
+                            <select
+                                name="locale"
+                                value={settings.locale}
+                                onChange={(e) => void update({ locale: e.target.value as Settings['locale'] })}
+                            >
+                                {LOCALES.map((code) => (
+                                    <option key={code} value={code}>
+                                        {LOCALE_NAMES[code]}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <label>
+                            {t('settings.theme')}
+                            <select
+                                name="theme"
+                                value={settings.theme}
+                                onChange={(e) => void update({ theme: e.target.value as Settings['theme'] })}
+                            >
+                                <option value="system">{t('settings.themeSystem')}</option>
+                                <option value="light">{t('settings.themeLight')}</option>
+                                <option value="dark">{t('settings.themeDark')}</option>
+                            </select>
+                        </label>
+                        <TimeZoneSetting value={settings.timeZone} onChange={update} />
+                        <label>
+                            {t('settings.chunkChars')}
+                            <input
+                                type="number"
+                                name="chunkChars"
+                                min={200}
+                                max={4000}
+                                step={100}
+                                defaultValue={settings.knowledgeBase.chunkChars}
+                                onBlur={(e) => {
+                                    const value = Number(e.target.value);
+                                    if (Number.isInteger(value) && value >= 200 && value <= 4000) {
+                                        void update({ knowledgeBase: { chunkChars: value } });
+                                    }
+                                }}
+                            />
+                        </label>
+                        <label className="inline">
+                            <input
+                                type="checkbox"
+                                name="autoExtract"
+                                checked={settings.memory.autoExtract}
+                                disabled={savingAutoExtract}
+                                onChange={(e) => {
+                                    const autoExtract = e.target.checked;
+                                    setSavingAutoExtract(true);
+                                    void update({ memory: { autoExtract } }).finally(() => setSavingAutoExtract(false));
+                                }}
+                            />{' '}
+                            {t('settings.autoExtract', { n: settings.memory.extractDailyLimit })}
+                        </label>
+                    </section>
+                );
+            case 'workbench/files':
+                return <FsRoots />;
+            case 'workbench/mail':
+                return <MailAccounts />;
+            case 'workbench/channels':
+                return <Channels />;
+            case 'models/overview':
+                return (
+                    <>
+                        <SettingsCards
+                            settings={settings}
+                            profiles={profiles}
+                            update={update}
+                            onManage={manageProfiles}
+                        />
+                        <ModelProfiles onChanged={setProfiles} />
+                    </>
+                );
+            case 'models/voice':
+                return (
+                    <section className="card form" aria-label={t('settings.voice')}>
+                        <h2>{t('settings.voice')}</h2>
+                        <label>
+                            {t('settings.voiceStt')}
+                            {voiceSelect('defaultSttProfileId', 'stt')}
+                        </label>
+                        <label>
+                            {t('settings.voiceTts')}
+                            {voiceSelect('defaultTtsProfileId', 'tts')}
+                        </label>
+                        <span className="small muted">{t('settings.voiceHint')}</span>
+                    </section>
+                );
+            case 'models/embedding':
+                // 配置档变化(新增 embed 档、改模型)后重新读取状态
+                return <EmbeddingIndex key={profiles.map((p) => `${p.id}:${p.model}:${p.purpose.join()}`).join()} />;
+            case 'tools/mcp':
+                return <McpServers />;
+            case 'tools/preauth':
+                return <Preauthorizations />;
+            case 'tools/market':
+                return (
+                    <section className="card form" aria-label={t('settings.pluginMarket')}>
+                        <h2>{t('plugins.title')}</h2>
+                        <label className="inline">
+                            <input
+                                type="checkbox"
+                                name="pluginMarketEnabled"
+                                checked={settings.plugins?.marketEnabled !== false}
+                                onChange={(e) => void update({ plugins: { marketEnabled: e.target.checked } })}
+                            />{' '}
+                            {t('settings.pluginMarket')}
+                        </label>
+                        <p className="small muted">{t('settings.pluginMarketNote')}</p>
+                    </section>
+                );
+            case 'system/account':
+                return (
+                    <>
+                        <TotpSection />
+                        <DevicesSection />
+                    </>
+                );
+            case 'system/secrets':
+                return <SecretsSection />;
+            case 'system/network':
+                return (
+                    <>
+                        {settings.network ? (
+                            <section className="card form" aria-label={t('settings.network')}>
+                                <h2>{t('settings.network')}</h2>
+                                <label className="inline">
+                                    <input
+                                        type="checkbox"
+                                        name="allowFakeIp"
+                                        checked={settings.network.allowFakeIp}
+                                        onChange={(e) => void update({ network: { allowFakeIp: e.target.checked } })}
+                                    />{' '}
+                                    {t('settings.allowFakeIp')}
+                                </label>
+                                <p className="small muted">{t('settings.allowFakeIpRisk')}</p>
+                            </section>
+                        ) : null}
+                        <EgressSection />
+                    </>
+                );
+            default:
+                return null;
+        }
+    };
+
+    const section = SETTINGS_SECTIONS.find((s) => s.id === view.section)!;
     return (
-        <div className="page">
+        <div className="page settings-page">
             <h1>{t('settings.title')}</h1>
-            <section className="card form">
-                <h2>{t('settings.general')}</h2>
-                <label>
-                    {t('settings.language')}
-                    <select
-                        name="locale"
-                        value={settings.locale}
-                        onChange={(e) => void update({ locale: e.target.value as Settings['locale'] })}
+            <div className="settings-tabs" role="tablist" aria-label={t('settings.title')}>
+                {SETTINGS_SECTIONS.map((s) => (
+                    <button
+                        key={s.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={s.id === view.section}
+                        className={s.id === view.section ? 'active' : ''}
+                        onClick={() => show(s.id)}
                     >
-                        {LOCALES.map((code) => (
-                            <option key={code} value={code}>
-                                {LOCALE_NAMES[code]}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-                <label>
-                    {t('settings.theme')}
-                    <select
-                        name="theme"
-                        value={settings.theme}
-                        onChange={(e) => void update({ theme: e.target.value as Settings['theme'] })}
-                    >
-                        <option value="system">{t('settings.themeSystem')}</option>
-                        <option value="light">{t('settings.themeLight')}</option>
-                        <option value="dark">{t('settings.themeDark')}</option>
-                    </select>
-                </label>
-                <TimeZoneSetting value={settings.timeZone} onChange={update} />
-                <label>
-                    {t('settings.defaultChat')}
-                    {profileSelect('defaultChatProfileId', 'chat')}
-                </label>
-                <label>
-                    {t('settings.defaultCheap')}
-                    {profileSelect('defaultCheapProfileId', 'cheap')}
-                </label>
-                <label>
-                    {t('settings.chunkChars')}
-                    <input
-                        type="number"
-                        name="chunkChars"
-                        min={200}
-                        max={4000}
-                        step={100}
-                        defaultValue={settings.knowledgeBase.chunkChars}
-                        onBlur={(e) => {
-                            const value = Number(e.target.value);
-                            if (Number.isInteger(value) && value >= 200 && value <= 4000) {
-                                void update({ knowledgeBase: { chunkChars: value } });
-                            }
-                        }}
-                    />
-                </label>
-                <label className="inline">
-                    <input
-                        type="checkbox"
-                        name="autoExtract"
-                        checked={settings.memory.autoExtract}
-                        disabled={savingAutoExtract}
-                        onChange={(e) => {
-                            const autoExtract = e.target.checked;
-                            setSavingAutoExtract(true);
-                            void update({ memory: { autoExtract } }).finally(() => setSavingAutoExtract(false));
-                        }}
-                    />{' '}
-                    {t('settings.autoExtract', { n: settings.memory.extractDailyLimit })}
-                </label>
-                {note ? <p className="small muted">{note}</p> : null}
-            </section>
-            {settings.network ? (
-                <section className="card form" aria-label={t('settings.network')}>
-                    <h2>{t('settings.network')}</h2>
-                    <label className="inline">
-                        <input
-                            type="checkbox"
-                            name="allowFakeIp"
-                            checked={settings.network.allowFakeIp}
-                            onChange={(e) => void update({ network: { allowFakeIp: e.target.checked } })}
-                        />{' '}
-                        {t('settings.allowFakeIp')}
-                    </label>
-                    <p className="small muted">{t('settings.allowFakeIpRisk')}</p>
-                </section>
-            ) : null}
-            <section className="card form" aria-label={t('settings.pluginMarket')}>
-                <h2>{t('plugins.title')}</h2>
-                <label className="inline">
-                    <input
-                        type="checkbox"
-                        name="pluginMarketEnabled"
-                        checked={settings.plugins?.marketEnabled !== false}
-                        onChange={(e) => void update({ plugins: { marketEnabled: e.target.checked } })}
-                    />{' '}
-                    {t('settings.pluginMarket')}
-                </label>
-                <p className="small muted">{t('settings.pluginMarketNote')}</p>
-            </section>
-            <section className="card form" aria-label={t('settings.voice')}>
-                <h2>{t('settings.voice')}</h2>
-                <label>
-                    {t('settings.voiceStt')}
-                    {voiceSelect('defaultSttProfileId', 'stt')}
-                </label>
-                <label>
-                    {t('settings.voiceTts')}
-                    {voiceSelect('defaultTtsProfileId', 'tts')}
-                </label>
-                <label className="inline">
-                    <input
-                        type="checkbox"
-                        name="voiceAutoSend"
-                        checked={settings.voice.autoSend}
-                        onChange={(e) => void update({ voice: { autoSend: e.target.checked } })}
-                    />{' '}
-                    {t('settings.voiceAutoSend')}
-                </label>
-                <label className="inline">
-                    <input
-                        type="checkbox"
-                        name="voiceAutoSpeak"
-                        checked={settings.voice.autoSpeak}
-                        onChange={(e) => void update({ voice: { autoSpeak: e.target.checked } })}
-                    />{' '}
-                    {t('settings.voiceAutoSpeak')}
-                </label>
-                <span className="small muted">{t('settings.voiceHint')}</span>
-            </section>
-            <TotpSection />
-            <DevicesSection />
-            <SecretsSection />
-            <EgressSection />
-            <ModelProfiles onChanged={setProfiles} />
-            {/* 配置档变化(新增 embed 档、改模型)后重新读取状态 */}
-            <EmbeddingIndex key={profiles.map((p) => `${p.id}:${p.model}:${p.purpose.join()}`).join()} />
-            <FsRoots />
-            <MailAccounts />
-            <Channels />
-            <McpServers />
-            <Preauthorizations />
+                        <strong>{t(`settings.section.${s.id}`)}</strong>
+                        {t(`settings.section.${s.id}.sub`) ? <small>{t(`settings.section.${s.id}.sub`)}</small> : null}
+                    </button>
+                ))}
+            </div>
+            <div className="settings-body">
+                <nav className="settings-menu" aria-label={t(`settings.section.${section.id}`)}>
+                    {section.items.map((it) => (
+                        <button
+                            key={it.id}
+                            type="button"
+                            aria-current={it.id === view.item ? 'page' : undefined}
+                            className={it.id === view.item ? 'active' : ''}
+                            onClick={() => show(section.id, it.id)}
+                        >
+                            <Icon name={it.icon} size={16} />
+                            {t(it.label as Parameters<typeof t>[0])}
+                        </button>
+                    ))}
+                </nav>
+                <div className="settings-content">
+                    {content()}
+                    {note ? (
+                        <p className="small muted" role="status">
+                            {note}
+                        </p>
+                    ) : null}
+                </div>
+            </div>
         </div>
     );
 }
