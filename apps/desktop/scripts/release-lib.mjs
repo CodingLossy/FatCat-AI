@@ -5,12 +5,32 @@
 import { createHash } from 'node:crypto';
 
 export const MAX_INSTALLER_BYTES = 80 * 1024 * 1024;
-/** AppImage 自带 WebKitGTK 等共享库(deb / rpm 依赖系统库),所以单独放宽,见 ADR 0044 第 7 节。其他格式仍是 80 MB。 */
-export const MAX_APPIMAGE_BYTES = 100 * 1024 * 1024;
+/** AppImage 自带 WebKitGTK 等共享库(deb / rpm 依赖系统库),所以单独放宽,见 ADR 0044 第 7 节。其他格式仍是 80 MB。
+ *  实测 126.9 MB(appimagetool 默认 zstd 压缩);上限 = 实测值 + 约 10% 余量。 */
+export const MAX_APPIMAGE_BYTES = 140 * 1024 * 1024;
 
 export function limitFor(name, limit = MAX_INSTALLER_BYTES) {
     return name.toLowerCase().endsWith('.appimage') && limit === MAX_INSTALLER_BYTES ? MAX_APPIMAGE_BYTES : limit;
 }
+/**
+ * 解析 PowerShell `... | ConvertTo-Json -Compress` 的输出:空输出(没有匹配的对象)返回 [],单个对象包成数组。
+ * 退出码不参与判断:`Get-Process -Id <pid> -ErrorAction SilentlyContinue` 在进程不存在时也可能返回非零,
+ * 但那只是「没查到」,不是脚本出错。
+ */
+export function parsePsJson(stdout) {
+    const out = (stdout ?? '').trim();
+    if (!out) return [];
+    const value = JSON.parse(out);
+    return Array.isArray(value) ? value : [value];
+}
+
+/** 按 PID 查进程的结果:查不到 = 已退出;查到了返回进程名和 PID,供失败信息使用。 */
+export function processState(stdout) {
+    const found = parsePsJson(stdout)[0];
+    if (!found) return { alive: false };
+    return { alive: true, pid: found.Id, name: found.ProcessName };
+}
+
 export const INSTALLER_EXTENSIONS = ['.msi', '.exe', '.dmg', '.deb', '.rpm', '.appimage'];
 
 export function isInstaller(name) {

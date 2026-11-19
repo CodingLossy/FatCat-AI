@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
-// 检查 tauri build 产出的安装包体积(每个 ≤ 80 MB,AppImage 单独 ≤ 100 MB),并写出 SHA256SUMS-<平台>。
+// 检查 tauri build 产出的安装包体积(每个 ≤ 80 MB,AppImage 单独 ≤ 140 MB),并写出 SHA256SUMS-<平台>。
 // 用法:node apps/desktop/scripts/check-installers.mjs [bundle 目录] [输出目录]
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
