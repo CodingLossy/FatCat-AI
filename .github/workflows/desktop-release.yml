@@ -52,9 +52,9 @@ jobs:
       - name: Build installers
         shell: bash
         run: |
-          # AppImage 默认 gzip 压缩;xz 压得更小。只在 Linux 上设置,不影响其他平台。
-          if [ "$RUNNER_OS" = "Linux" ]; then export LDAI_COMP=xz; fi
-          pnpm --filter @fatcat-ai/desktop exec tauri build
+          # 诊断用:--verbose 让 Tauri 打印 linuxdeploy 的完整输出,DEBUG=1 打开 linuxdeploy 插件的调试日志。
+          if [ "$RUNNER_OS" = "Linux" ]; then export LDAI_COMP=xz DEBUG=1; fi
+          pnpm --filter @fatcat-ai/desktop exec tauri build --verbose
       - name: Install and launch smoke test (Windows)
         if: runner.os == 'Windows'
         run: node apps/desktop/scripts/check-windows-install.mjs

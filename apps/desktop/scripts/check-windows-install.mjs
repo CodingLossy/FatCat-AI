@@ -20,9 +20,15 @@ const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const nsisDir = join(desktop, 'src-tauri/target/release/bundle/nsis');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** 跑一段 PowerShell,把输出当 JSON 解析(空输出返回 [])。 */
-function ps(script) {
-    const out = execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], {
+/**
+ * 跑一段 PowerShell,把输出当 JSON 解析(空输出返回 [])。
+ * missingOk:查询「可能查不到」的对象(进程、端口)时用。`-ErrorAction SilentlyContinue` 查不到时不输出,
+ * 但会把 `$?` 置为 false,powershell -Command 因此以 1 退出,execFileSync 会把「查不到」当成异常抛出。
+ * 这时在末尾 `exit 0`,让「没有输出」只表示「没有这个对象」。
+ */
+function ps(script, { missingOk = false } = {}) {
+    const command = missingOk ? `${script}; exit 0` : script;
+    const out = execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', command], {
         encoding: 'utf8',
     }).trim();
     if (!out) return [];
@@ -36,10 +42,13 @@ function children(pid, name) {
     ).map((p) => p.ProcessId);
 }
 
-function alive(pid) {
+/** 进程还在就返回 { Id, ProcessName },查不到(已退出)返回 null。 */
+function processInfo(pid) {
     return (
-        ps(`Get-Process -Id ${pid} -ErrorAction SilentlyContinue | Select-Object Id | ConvertTo-Json -Compress`)
-            .length > 0
+        ps(
+            `Get-Process -Id ${pid} -ErrorAction SilentlyContinue | Select-Object Id, ProcessName | ConvertTo-Json -Compress`,
+            { missingOk: true },
+        )[0] ?? null
     );
 }
 
@@ -93,6 +102,7 @@ try {
         () =>
             ps(
                 `Get-NetTCPConnection -State Listen -OwningProcess ${nodePid} -ErrorAction SilentlyContinue | Select-Object LocalPort | ConvertTo-Json -Compress`,
+                { missingOk: true },
             )[0]?.LocalPort,
         60_000,
     );
@@ -114,7 +124,11 @@ try {
 
     // 强杀壳本身(不带子进程树),模拟崩溃:sidecar 必须自己退出。
     execFileSync('taskkill', ['/F', '/PID', String(shellPid)]);
-    if (!(await waitFor(() => !alive(nodePid), 15_000))) throw new Error('sidecar survived the shell');
+    // 查不到进程 = 已退出 = 通过;只有 15 秒后进程仍在才失败。
+    if (!(await waitFor(() => processInfo(nodePid) === null, 15_000))) {
+        const left = processInfo(nodePid);
+        if (left) throw new Error(`sidecar survived the shell: ${left.ProcessName} (pid ${left.Id}) is still running`);
+    }
     console.log('sidecar exited after the shell was killed');
     ok = true;
 } catch (error) {
