@@ -88,6 +88,8 @@ export interface TestServerOptions {
     authNow?: () => Date;
     challenges?: AppDeps['challenges'];
     totpLimiter?: AppDeps['totpLimiter'];
+    /** 设备配对 / 刷新的失败限速(ADR 0045)。 */
+    pairLimiter?: AppDeps['pairLimiter'];
     taskComplete?: AppDeps['taskComplete'];
     /** 插件市场(ADR 0040 第 5.2 节):测试用的市场配置(测试公钥)与指向本机的网络检查。 */
     pluginMarket?: ConstructorParameters<typeof PluginService>[0]['market'];
@@ -243,6 +245,7 @@ export async function createTestServer(
         ...(options.authNow ? { now: options.authNow } : {}),
         ...(options.challenges ? { challenges: options.challenges } : {}),
         ...(options.totpLimiter ? { totpLimiter: options.totpLimiter } : {}),
+        ...(options.pairLimiter ? { pairLimiter: options.pairLimiter } : {}),
         attachmentFiles,
         ...(options.voice ? { voice: options.voice } : {}),
         ...(options.onTimeZoneChanged ? { onTimeZoneChanged: options.onTimeZoneChanged } : {}),

@@ -1400,3 +1400,18 @@ td .badge {
     border-bottom: 1px solid var(--warn);
     color: var(--warn);
 }
+
+.device-pairing {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
+
+.pairing-code {
+    margin: 0.2rem 0;
+    font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+    font-size: 1.8rem;
+    letter-spacing: 0.12em;
+    user-select: all;
+}

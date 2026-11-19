@@ -15,6 +15,7 @@ import { EmbeddingIndex } from './EmbeddingIndex.js';
 import { Preauthorizations } from './Preauthorizations.js';
 import { EgressSection } from './EgressSection.js';
 import { SecretsSection } from './SecretsSection.js';
+import { DevicesSection } from './DevicesSection.js';
 import { TotpSection } from './TotpSection.js';
 import { TimeZoneSetting } from './TimeZoneSetting.js';
 
@@ -479,6 +480,7 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                 <span className="small muted">{t('settings.voiceHint')}</span>
             </section>
             <TotpSection />
+            <DevicesSection />
             <SecretsSection />
             <EgressSection />
             <ModelProfiles onChanged={setProfiles} />

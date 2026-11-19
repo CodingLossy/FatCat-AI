@@ -6,7 +6,7 @@ import type { Context, MiddlewareHandler } from 'hono';
 import { getCookie } from 'hono/cookie';
 import type { AppEnv, AuthContext } from '../env.js';
 import { ApiError, unauthorized } from '../errors.js';
-import { PAT_PREFIX, safeEqual, sha256 } from './crypto.js';
+import { DEVICE_ACCESS_PREFIX, PAT_PREFIX, safeEqual, sha256 } from './crypto.js';
 
 export const SESSION_COOKIE = 'aip_session';
 export const CSRF_COOKIE = 'aip_csrf';
@@ -22,6 +22,9 @@ export const PUBLIC_ENDPOINTS: ReadonlySet<string> = new Set([
     'POST /api/v1/auth/login',
     'POST /api/v1/auth/login/totp',
     'POST /api/v1/auth/setup',
+    // 设备配对:凭一次性配对码 / refresh 令牌换令牌,自己有限速与审计(ADR 0045 第 1 节)
+    'POST /api/v1/devices/pair',
+    'POST /api/v1/devices/token',
 ]);
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -33,7 +36,7 @@ export interface AuthDeps {
 
 /**
  * 解析请求的凭据,不抛出 401:
- * - `Authorization: Bearer aip_pat_…` → 个人访问令牌(不需要 CSRF);
+ * - `Authorization: Bearer aip_pat_…` → 个人访问令牌,`aip_dev_…` → 设备 access 令牌(都不需要 CSRF);
  * - 否则读会话 Cookie;修改类请求还要求 X-CSRF-Token 与会话中的哈希一致,否则 403。
  */
 export function resolveAuth(c: Context<AppEnv>, deps: AuthDeps): AuthContext | null {
@@ -41,6 +44,13 @@ export function resolveAuth(c: Context<AppEnv>, deps: AuthDeps): AuthContext | n
     if (header !== undefined) {
         const match = /^Bearer\s+(\S+)$/i.exec(header);
         const token = match?.[1];
+        if (token?.startsWith(DEVICE_ACCESS_PREFIX)) {
+            const device = deps.repos.devices.findByAccess(sha256(token));
+            if (!device) return null;
+            const lastUsed = device.lastUsedAt ? Date.parse(device.lastUsedAt) : 0;
+            if (deps.now().getTime() - lastUsed > TOUCH_INTERVAL_MS) deps.repos.devices.touch(device.deviceId);
+            return { kind: 'device', ownerId: device.ownerId, deviceId: device.deviceId };
+        }
         if (!token?.startsWith(PAT_PREFIX)) return null;
         const record = deps.repos.accessTokens.findUsable(sha256(token));
         if (!record) return null;

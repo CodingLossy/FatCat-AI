@@ -19,6 +19,13 @@ import type {
     CreatedAccessToken,
     CreateSessionRequest,
     CreateTokenRequest,
+    CreatedPairingCode,
+    Device,
+    DeviceEvent,
+    DeviceTokens,
+    PairDeviceRequest,
+    RefreshDeviceTokenRequest,
+    RenameDeviceRequest,
     EmbeddingRebuildResult,
     EmbeddingStatus,
     FsRoot,
@@ -240,6 +247,23 @@ export function createClient(options: ClientOptions) {
             list: () => t.json<Page<AccessToken>>('/tokens'),
             create: (body: CreateTokenRequest) => t.json<CreatedAccessToken>('/tokens', { method: 'POST', body }),
             revoke: (id: string) => t.json<void>(`/tokens/${enc(id)}`, { method: 'DELETE' }),
+        },
+
+        /**
+         * 设备配对(ADR 0045):createPairingCode / list / rename / revoke / events 要浏览器会话;
+         * pair 与 refresh 是公开端点,手机用配对码或 refresh 令牌换令牌;signOut 是设备令牌自己登出。
+         */
+        devices: {
+            createPairingCode: () => t.json<CreatedPairingCode>('/devices/pairing-codes', { method: 'POST' }),
+            pair: (body: PairDeviceRequest) => t.json<DeviceTokens>('/devices/pair', { method: 'POST', body }),
+            refresh: (body: RefreshDeviceTokenRequest) =>
+                t.json<DeviceTokens>('/devices/token', { method: 'POST', body }),
+            list: () => t.json<Page<Device>>('/devices'),
+            rename: (id: string, body: RenameDeviceRequest) =>
+                t.json<Device>(`/devices/${enc(id)}`, { method: 'PATCH', body }),
+            revoke: (id: string) => t.json<void>(`/devices/${enc(id)}`, { method: 'DELETE' }),
+            signOut: () => t.json<void>('/devices/self', { method: 'DELETE' }),
+            events: () => t.json<Page<DeviceEvent>>('/devices/events'),
         },
 
         models: {
