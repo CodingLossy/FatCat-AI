@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { Id, IsoDateTime, Usage } from './common.js';
 import { ProblemDetails } from './errors.js';
 import { MemoryDegradation } from './memory.js';
-import { ApprovalWarning, ToolRisk } from './tools.js';
+import { ApprovalPreview, ApprovalWarning, ToolRisk } from './tools.js';
 
 export const AssistantState = z.enum(['idle', 'listening', 'thinking', 'speaking', 'executing']);
 export type AssistantState = z.infer<typeof AssistantState>;
@@ -45,6 +45,8 @@ export const AgentEvent = z.discriminatedUnion('type', [
         expiresAt: IsoDateTime.optional(),
         /** 自 M3 起提供(ADR 0016 第 8 节);没有警告时省略。 */
         warnings: z.array(ApprovalWarning).max(20).optional(),
+        /** 自 M12 起提供(ADR 0046 第 12 节):只用于显示的差异预览,不持久化,不影响批准什么。 */
+        preview: ApprovalPreview.optional(),
     }),
     z.object({
         type: z.literal('approval-resolved'),

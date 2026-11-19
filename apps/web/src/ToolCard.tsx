@@ -7,6 +7,9 @@ import { api, errorText } from './api.js';
 import { ApprovalActions } from './ApprovalActions.js';
 import { useI18n } from './i18n.js';
 import type { LiveTool } from './live-turn.js';
+import { DiffView } from './visualizers/DiffView.js';
+import { MailCard, MailDraftCard, MAIL_TEXT_TOOLS } from './visualizers/MailCard.js';
+import { MEMORY_READ_TOOLS, MemoryCard } from './visualizers/MemoryCard.js';
 
 export function show(value: unknown): string {
     return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
@@ -45,6 +48,9 @@ export function ToolCard({ tool, live = false }: { tool: LiveTool; live?: boolea
             <div className="tool-title">{t('tool.call', { name: tool.name })}</div>
             {tool.approval ? <p className="tool-summary">{tool.approval.summary}</p> : null}
             {pending ? <ApprovalWarnings warnings={tool.approval?.warnings} /> : null}
+            {pending && tool.name === 'fs.write' ? (
+                <DiffView preview={tool.approval?.preview} fallbackContent={contentOf(tool.input)} />
+            ) : null}
             <details>
                 <summary className="small muted">input</summary>
                 <pre>{show(tool.input)}</pre>
@@ -71,6 +77,9 @@ export function ToolCard({ tool, live = false }: { tool: LiveTool; live?: boolea
                 ) : (
                     <>
                         {tool.name === 'kb.search' ? <Citations output={tool.result.output} /> : null}
+                        {MAIL_TEXT_TOOLS.includes(tool.name) ? <MailCard output={tool.result.output} /> : null}
+                        {tool.name === 'mail.draft' ? <MailDraftCard output={tool.result.output} /> : null}
+                        {MEMORY_READ_TOOLS.includes(tool.name) ? <MemoryCard output={tool.result.output} /> : null}
                         {MEMORY_WRITE_TOOLS.includes(tool.name) ? (
                             <RememberedNotice input={tool.input} output={tool.result.output} />
                         ) : null}
@@ -84,6 +93,11 @@ export function ToolCard({ tool, live = false }: { tool: LiveTool; live?: boolea
         </div>
     );
 }
+
+const contentOf = (input: unknown): string | undefined => {
+    const c = (input as { content?: unknown } | null)?.content;
+    return typeof c === 'string' ? c : undefined;
+};
 
 const MEMORY_WRITE_TOOLS = ['memory.write', 'memory.save'];
 

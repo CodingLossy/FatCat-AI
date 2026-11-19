@@ -172,3 +172,19 @@ M12 **不包含**任何合成鼠标或键盘输入、或在浏览器面板之外
 ## 11. 尚未验证(都要在所列 PR 之前或之内解决)
 
 各平台 webview `proxy_url` 与独立数据存储的可用性(PR 7 验证);注入脚本返回结果的安全通道(PR 7 验证);核心是否已在改变状态的路由上拒绝外来 `Origin`(PR 6 第一项任务);Windows 上 Tauri opener 插件的范围行为(PR 8);Linux WebKitGTK 能提供的隔离能力(首个发布版之后)。
+
+## 12. 补充:审批差异预览 `preview` 的安全边界(M12 PR 4)
+
+**契约。** `packages/shared` 新增 `ApprovalPreview`(`kind: 'diff'`、相对已批准根目录的 `path`、`state: created | modified | unchanged | too-large`、有界的 `text`、`truncated`),并作为**可选字段** `preview` 加到 `approval-required` 事件上。旧客户端忽略它,新客户端在没有它时退化为「没有显示旧版本」。API v1 与 WebSocket 协议只做向后兼容的增量修改(ADR 0030)。
+
+**只用于显示。**
+
+- 批准的永远是原入参:审批决定仍是现有的 `POST /api/v1/approvals/{callId}`,载荷不变(含「记住」),预览不参与任何决定,也不进入预授权匹配、审计或 `input` 摘要。工具执行用的是模型给的入参,不是预览。
+- 预览由工具的可选方法 `preview(input, ctx)` 算出,只读。`fs.write` 用与 `execute` 相同的 `resolveInRoots` 和 `checkWritableTarget`(符号链接、越界、盘符与设备名规则一致),所以根目录之外、符号链接目标、文件夹一律返回「没有预览」,不会读取任何根目录之外的内容。
+- 有界:旧文件超过 256 KiB、含 NUL、或任一边超过 2000 行时,`state: 'too-large'`,界面显示「过大,无法预览」,而不是把不完整的差异当作完整的;输出最多 500 行 / 64 KiB,超过时 `truncated: true` 并显示提示。
+- 预览失败(抛错、无法解析)时审批照常出现,只是没有 `preview`;预览代码不能阻止、延迟或改变审批。
+- 不持久化:`approval_requests` 表没有新列,没有迁移。预览只在 `approval-required` 事件里出现,因此刷新页面或在「其他会话的审批」列表里看到的审批没有差异,按上面的退化方式显示。把预览存进审批记录会需要迁移,留给业主另行决定。
+- 没有新的认证入口,没有放宽任何审批:`fs.write` 仍是 `write` 风险、每次需要审批,`preauthorizable` 与约束规则不变。
+- 渲染遵守第 7 节:纯文本节点、控制 / 双向字符换成可见标记、行号来自 `@@` 分段行,`apps/web/src/visualizers/` 里 lint 禁止 `dangerouslySetInnerHTML`。
+
+**测试。** 工具:预览只在根目录内、符号链接和根目录外返回空、过大不给部分差异、截断标记;运行器:预览随事件发出但执行用原入参、预览抛错审批照常、不持久化;界面:控制字符标记、行数上限、行号解析。
