@@ -20,24 +20,29 @@ export async function withDocApp<T>(fn: (app: ReturnType<typeof createApp>) => T
         const redactor = new Redactor();
         const secrets = new SecretStore({ dataDir: '.', redactor, env: {} });
         const bus = new EventBus();
-        const app = createApp({
-            config: { sourceUrl: '', webDir: null, cookieSecure: 'auto', setupCode: null },
-            repos,
-            logger: createLogger({ level: 'error' }),
-            secrets,
-            providerDeps: { secrets, redactor },
-            bus,
-            memory: createMemoryStack(repos, { enqueue: () => undefined, search: () => Promise.resolve(null) }),
-            items: createItemService({ repos }),
-            runs: new RunManager({
+        const memory = createMemoryStack(repos, { enqueue: () => undefined, search: () => Promise.resolve(null) });
+        try {
+            const app = createApp({
+                config: { sourceUrl: '', webDir: null, cookieSecure: 'auto', setupCode: null },
                 repos,
+                logger: createLogger({ level: 'error' }),
+                secrets,
+                providerDeps: { secrets, redactor },
                 bus,
-                providerFor: () => {
-                    throw new Error('not used');
-                },
-            }),
-        });
-        return fn(app);
+                memory,
+                items: createItemService({ repos }),
+                runs: new RunManager({
+                    repos,
+                    bus,
+                    providerFor: () => {
+                        throw new Error('not used');
+                    },
+                }),
+            });
+            return await fn(app);
+        } finally {
+            memory.stop();
+        }
     } finally {
         conn.close();
     }

@@ -77,8 +77,3 @@ export function effectiveProfile(
         null
     );
 }
-
-/** 预览图只接受本地生成的 blob: 地址(URL.createObjectURL 的结果),其他一律不渲染。 */
-export function previewSrc(url: string): string {
-    return url.startsWith('blob:') ? url : '';
-}

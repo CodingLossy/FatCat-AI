@@ -145,6 +145,7 @@
         --code-number: #b76b01;
         --code-title: #4078f2;
         --code-comment: #8a8a93;
+        --glass-bg: rgb(255 255 255 / 78%);
         color-scheme: light;
     }
 }
@@ -174,5 +175,6 @@
     --code-number: #b76b01;
     --code-title: #4078f2;
     --code-comment: #8a8a93;
+    --glass-bg: rgb(255 255 255 / 78%);
     color-scheme: light;
 }
