@@ -102,7 +102,11 @@ describe('migration 0020', () => {
                     .sort();
             const before = tables();
 
-            const result = await migrate(conn.sqlite, migrations, { backupDir: join(dir, 'backups') });
+            const result = await migrate(
+                conn.sqlite,
+                migrations.filter((m) => m.id <= 20),
+                { backupDir: join(dir, 'backups') },
+            );
             expect(result.applied).toEqual([20]);
             expect(result.backupPath && existsSync(result.backupPath)).toBe(true);
             expect(tables().filter((n) => !before.includes(n))).toEqual([

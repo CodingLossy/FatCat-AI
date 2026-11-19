@@ -126,6 +126,8 @@ import type {
     TaskRun,
     TaskSchedulePreview,
     TaskWebhookToken,
+    SyncKind,
+    SyncResponse,
 } from '@fatcat-ai/shared';
 import { RunStream, type StreamOptions } from './run-stream.js';
 import { Transport, type TransportOptions } from './transport.js';
@@ -145,6 +147,12 @@ export interface Page<T> {
 export interface PageParams {
     cursor?: string | undefined;
     limit?: number | undefined;
+}
+
+export interface SyncParams {
+    cursor?: string | undefined;
+    limit?: number | undefined;
+    kinds?: SyncKind[] | undefined;
 }
 
 export interface ClientOptions extends TransportOptions {
@@ -265,6 +273,16 @@ export function createClient(options: ClientOptions) {
             signOut: () => t.json<void>('/devices/self', { method: 'DELETE' }),
             events: () => t.json<Page<DeviceEvent>>('/devices/events'),
         },
+
+        /** 增量同步(ADR 0045 第 2 节):不带 cursor 拿完整快照,之后带上次返回的 cursor 只拿变化;hasMore 为 true 时继续拉。 */
+        sync: (query: SyncParams = {}) =>
+            t.json<SyncResponse>('/sync', {
+                query: {
+                    ...(query.cursor !== undefined ? { cursor: query.cursor } : {}),
+                    ...(query.limit !== undefined ? { limit: query.limit } : {}),
+                    ...(query.kinds ? { kinds: query.kinds.join(',') } : {}),
+                },
+            }),
 
         models: {
             list: () => t.json<Page<ModelProfile>>('/models'),

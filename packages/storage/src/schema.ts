@@ -14,6 +14,7 @@ export const TABLE_COLUMNS = {
     pairing_codes: ['id', 'owner_id', 'code_hash', 'created_at', 'expires_at', 'used_at'],
     devices: ['id', 'owner_id', 'name', 'created_at', 'last_used_at', 'revoked_at', 'revoke_reason'],
     device_tokens: ['token_hash', 'device_id', 'kind', 'created_at', 'expires_at', 'used_at'],
+    change_log: ['seq', 'owner_id', 'kind', 'entity_id', 'session_id', 'deleted', 'changed_at'],
     device_events: ['id', 'owner_id', 'device_id', 'at', 'event', 'summary'],
     model_profiles: [
         'id',

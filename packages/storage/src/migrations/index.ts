@@ -22,6 +22,7 @@ import { migration0017 } from './0017_task_webhooks.js';
 import { migration0018 } from './0018_plugins.js';
 import { migration0019 } from './0019_agents.js';
 import { migration0020 } from './0020_devices.js';
+import { migration0021 } from './0021_change_log.js';
 
 /** 按 id 顺序排列的全部迁移;新增迁移追加在末尾,已发布的迁移不得修改。 */
 export const migrations: readonly Migration[] = [
@@ -45,4 +46,5 @@ export const migrations: readonly Migration[] = [
     migration0018,
     migration0019,
     migration0020,
+    migration0021,
 ];
