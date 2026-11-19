@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" fill="none" stroke="#000000" stroke-width="90" stroke-linecap="round" stroke-linejoin="round">
+    <!-- SPDX-License-Identifier: AGPL-3.0-only -->
+    <!-- Copyright (C) 2026 尹绪柏 (Theodore Yin) -->
+    <title>FatCat-AI macOS tray template (single colour, small cut)</title>
+    <g transform="rotate(10 512 512)">
+        <path d="M300 350v1M512 270v1M724 350v1" stroke-width="150"/>
+        <path d="M512 530c-110 0-190 80-190 160 0 64 54 100 112 100 38 0 54-18 78-18s40 18 78 18c58 0 112-36 112-100 0-80-80-160-190-160z"/>
+    </g>
+</svg>

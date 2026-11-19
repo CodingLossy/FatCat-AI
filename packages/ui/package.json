@@ -2,7 +2,7 @@
   "name": "@fatcat-ai/ui",
   "version": "0.0.0",
   "private": true,
-  "description": "Shared UI components (VoiceOrb)",
+  "description": "Shared UI (design tokens, icons, VoiceOrb and visualisations)",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
   "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/ui",
@@ -19,10 +19,16 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./tokens.css": "./src/tokens.css",
+    "./icons": {
+      "types": "./dist/icons.d.ts",
+      "default": "./dist/icons.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "src/tokens.css"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

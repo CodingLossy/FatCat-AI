@@ -13,6 +13,7 @@ path = [
     "pnpm-lock.yaml",
     "**/Cargo.lock",
     "apps/desktop/src-tauri/icons/*.png",
+    "apps/desktop/src-tauri/icons/tray/*.png",
     "apps/web/public/icons/*.png",
     "apps/web/public/manifest.webmanifest",
     "apps/desktop/src-tauri/icons/*.icns",

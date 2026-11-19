@@ -51,3 +51,6 @@ export function fakeClock(start = '2026-11-03T00:00:00.000Z') {
         auto: () => () => new Date((ms += 1)),
     };
 }
+
+/** 属性测试的超时:本地约 0.5 秒,CI(带覆盖率、Windows 与较慢的虚拟机)上曾超过 vitest 默认的 5 秒。 */
+export const PROPERTY_TEST_TIMEOUT_MS = 30_000;

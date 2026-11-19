@@ -41,6 +41,14 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Check the installer version matches the tag
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/desktop-v* ]]; then
+            node apps/desktop/scripts/check-version.mjs "$GITHUB_REF_NAME"
+          else
+            node apps/desktop/scripts/check-version.mjs
+          fi
       - run: pnpm build
       - name: Install Tauri system libraries (Linux)
         if: runner.os == 'Linux'

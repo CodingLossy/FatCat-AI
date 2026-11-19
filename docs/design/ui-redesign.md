@@ -3,7 +3,7 @@
 - 状态:**设计已由业主确认(2026-11-19,业主看过原型与截图;§14 的问题全部按推荐答案执行)。本 PR 只有设计,没有功能代码。**实现按 §13 的 PR 拆分逐个进行。
 - 日期:2026-11-19
 - 相关:ADR 0046(内置浏览器、外部程序与工具结果可视化的安全边界)、ADR 0009(Web UI)、ADR 0010(工具与审批)、ADR 0021(语音与 `VoiceOrb`)、ADR 0028(外连目标清单)、ADR 0044(桌面应用)、ADR 0045(移动端 / PWA)
-- 本 PR 的文件:`docs/design/tokens.css`(设计 token)、`docs/design/prototype/`(截图所用的静态 HTML 原型;`index.html` 已加入 `.prettierignore`,因为 Prettier 会重排对空白敏感的代码行而弄坏它)、`docs/design/icons/app-icon.svg` 与 `app-icon-small.svg`(应用图标草稿及小尺寸版)、本文、ADR 0046。
+- 本 PR 的文件:`packages/ui/src/tokens.css`(设计 token,原在 docs/design,PR 1 移入)、`docs/design/prototype/`(截图所用的静态 HTML 原型;`index.html` 已加入 `.prettierignore`,因为 Prettier 会重排对空白敏感的代码行而弄坏它)、`docs/design/icons/app-icon.svg` 与 `app-icon-small.svg`(应用图标草稿及小尺寸版)、本文、ADR 0046。
 
 界面文案为中文(业主要求);本文与 ADR 0046 为中文,与现有 ADR 一致。代码标识符、API 路径和文件名保留英文。
 
@@ -41,7 +41,7 @@
 
 ### 3.1 Token
 
-所有原始值只写在 `docs/design/tokens.css`(第一个实现 PR 把它移到 `packages/ui/src/tokens.css`,由 Web、PWA 和桌面壳引用)。组件只使用语义名。
+所有原始值只写在 `packages/ui/src/tokens.css`(PR 1 已从 docs/design 移入,由 Web、PWA 和桌面壳引用)。组件只使用语义名。
 
 | Token                          | 值                                | 用途                                     |
 | ------------------------------ | --------------------------------- | ---------------------------------------- |
@@ -163,7 +163,7 @@
 
 ## 10. 应用图标、名称与版本
 
-- **应用图标:**极简单线猫爪(`docs/design/icons/app-icon.svg`,草稿):倾斜约 12°、四个大小不同的脚趾画成轮廓、带缺口的掌垫轮廓,**底座上单一银白色**(上一版只有一个脚趾是冰青,看起来像画错,已去掉)。它刻意不对称、只有轮廓,不会像填充的、对称的熊掌 logo。**小尺寸要单独一版:**16px 时轮廓脚趾会糊成一团,所以 `app-icon-small.svg` 和 sprite 里的 `paw-sm` 在 24px 以下只保留掌垫和 3 个脚趾、加粗线条、去掉细节(见 PR 里 16 / 24 / 32px 对比图);构建脚本按尺寸选版本。最终打磨(托盘单色版、maskable 安全区、在真实 Windows 托盘上确认 16px)在 PR 1 里做。
+- **应用图标:**极简单线猫爪(`packages/ui/brand/app-icon.svg`,PR 1 已定稿):倾斜约 12°、四个大小不同的脚趾画成轮廓、带缺口的掌垫轮廓,**底座上单一银白色**(上一版只有一个脚趾是冰青,看起来像画错,已去掉)。它刻意不对称、只有轮廓,不会像填充的、对称的熊掌 logo。**小尺寸要单独一版:**16px 时轮廓脚趾会糊成一团,所以 `app-icon-small.svg` 和 sprite 里的 `paw-sm` 在 24px 以下只保留掌垫和 3 个脚趾、加粗线条、去掉细节(见 PR 里 16 / 24 / 32px 对比图);构建脚本按尺寸选版本。最终打磨(托盘单色版、maskable 安全区、在真实 Windows 托盘上确认 16px)在 PR 1 里做。
 - **生成:**重画成 1024×1024 的干净 SVG 母版,再用 `pnpm tauri icon`(Tauri 的 `icon` 命令,apps/desktop 已有 Tauri CLI)把全平台图标写进 `apps/desktop/src-tauri/icons`(`.icns`、`.ico`、各尺寸 PNG)。同一个母版还生成:托盘图标(macOS 单色模板、Windows / Linux 32px 彩色)、`apps/web/public/icons/*`(192、512、maskable 512、apple-touch)、favicon、`manifest.webmanifest` 的图标与颜色(`background_color` / `theme_color` → `#0B0D1D`)、`<meta name="theme-color">`、助手头像(爪的圆形裁切,放在 `--surface-2` 上)。脚本 `scripts/make-icons.mjs` 从这一个 SVG 重新生成全部,避免漂移;CI 检查生成文件是最新的。
 - **名称:**窗口标题、托盘提示、「关于」、PWA 名称、安装包、文档里都用 "FatCat-AI";参考图里的 "FATCAT OS" 不使用。残留的 "AI-Personal" 字样用现有的占位符检查找出。
 - **版本 bug(安装包显示 0.0.0):**今天根目录和 `apps/desktop` 的 `package.json`、`tauri.conf.json`、`src-tauri/Cargo.toml` 都是 `0.0.0`,而且还没有发布(CHANGELOG)。方案:`tauri.conf.json` 的 `version` 指向 `../package.json`(Tauri v2 支持路径),`apps/desktop/package.json` 是唯一来源、由发布流程提升(见 ADR 0032 发布流程),Web 界面显示核心的 `serverVersion`,CI 检查在安装包版本与标签不一致时让桌面构建失败。第一次发布用 `1.0.0`(业主按推荐确定),由发布流程设置。

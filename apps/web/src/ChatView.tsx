@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
+import { Avatar } from './Avatar.js';
 import { takeAskParam } from './ask-param.js';
 import type { RunStream } from '@fatcat-ai/client';
 import {
@@ -644,6 +645,7 @@ export function ChatView({
                 {messages.length === 0 && !live ? <p className="muted empty">{t('chat.empty')}</p> : null}
                 {messages.map((m) => (
                     <div key={m.id} className={`message ${m.role}`} data-status={m.status} data-message-id={m.id}>
+                        {m.role === 'assistant' ? <Avatar /> : null}
                         {m.role === 'user' ? <p className="user-text">{textOf(m)}</p> : <Markdown text={textOf(m)} />}
                         {m.role === 'user' ? <MessageImages message={m} /> : null}
                         {toolsOf(m, results).map((tool) => (
@@ -678,6 +680,7 @@ export function ChatView({
                 ) : null}
                 {live ? (
                     <div className="message assistant live" data-testid="live" aria-live="polite">
+                        <Avatar />
                         {live.text ? <Markdown text={live.text} /> : null}
                         {live.tools.map((tool) => (
                             <ToolCard key={tool.callId} tool={tool} live />

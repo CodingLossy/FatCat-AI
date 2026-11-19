@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 尹绪柏 (Theodore Yin) */
 
 /* Static design prototype for M12 (docs/design/ui-redesign.md). Not production code: the app is not wired to it. */
-@import url('../tokens.css');
+@import url('../../../packages/ui/src/tokens.css');
 
 * {
     box-sizing: border-box;

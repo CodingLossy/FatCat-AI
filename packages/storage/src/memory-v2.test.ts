@@ -13,6 +13,7 @@ import { migrate } from './migrate.js';
 import { migrations } from './migrations/index.js';
 import { createRepositories, type Repositories } from './repos.js';
 import { VECTOR_TABLE } from './embeddings.js';
+import { PROPERTY_TEST_TIMEOUT_MS } from './test-helpers.js';
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -189,92 +190,103 @@ describe('v1 → v2 数据迁移', () => {
 });
 
 describe('属性测试:随机写入 / 更替 / 改域 / 撤回 / 忘记', () => {
-    it('(a) 单值键最多 1 条 active;(b) 更替链无环;(c) 计数与递归计算一致;(d) 忘记后来源、反馈、冲突、向量全部清空', async () => {
-        const dir = tempDir();
-        const conn = openDatabase(join(dir, 'db.sqlite'));
-        await migrate(conn.sqlite, migrations);
-        const repos = createRepositories(conn);
-        const ownerId = repos.owners.create({ username: 'owner', passwordHash: 'x' }).id;
-        const random = rng(20261104);
-        const pick = <T>(xs: readonly T[]): T => xs[Math.floor(random() * xs.length)]!;
-        const keys = ['user.location.city', 'user.employer', 'pref.tone'];
-        const domains = ['work', 'life', 'general'] as const;
-        const live: string[] = [];
-        let vectorsReady = false;
+    it(
+        '(a) 单值键最多 1 条 active;(b) 更替链无环;(c) 计数与递归计算一致;(d) 忘记后来源、反馈、冲突、向量全部清空',
+        { timeout: PROPERTY_TEST_TIMEOUT_MS },
+        async () => {
+            const dir = tempDir();
+            const conn = openDatabase(join(dir, 'db.sqlite'));
+            await migrate(conn.sqlite, migrations);
+            const repos = createRepositories(conn);
+            const ownerId = repos.owners.create({ username: 'owner', passwordHash: 'x' }).id;
+            const random = rng(20261104);
+            const pick = <T>(xs: readonly T[]): T => xs[Math.floor(random() * xs.length)]!;
+            const keys = ['user.location.city', 'user.employer', 'pref.tone'];
+            const domains = ['work', 'life', 'general'] as const;
+            const live: string[] = [];
+            let vectorsReady = false;
 
-        const attachExtras = (id: string, peer: string | undefined) => {
-            const at = new Date().toISOString();
-            conn.sqlite
-                .prepare('INSERT INTO memory_sources (id, memory_id, created_at) VALUES (?, ?, ?)')
-                .run(newId(), id, at);
-            conn.sqlite
-                .prepare("INSERT INTO memory_feedback (id, memory_id, signal, created_at) VALUES (?, ?, 'helpful', ?)")
-                .run(newId(), id, at);
-            if (peer) {
+            const attachExtras = (id: string, peer: string | undefined) => {
+                const at = new Date().toISOString();
+                conn.sqlite
+                    .prepare('INSERT INTO memory_sources (id, memory_id, created_at) VALUES (?, ?, ?)')
+                    .run(newId(), id, at);
                 conn.sqlite
                     .prepare(
-                        `INSERT INTO memory_conflicts (id, owner_id, a_id, b_id, kind, created_at)
-                         VALUES (?, ?, ?, ?, 'semantic_contradiction', ?)`,
+                        "INSERT INTO memory_feedback (id, memory_id, signal, created_at) VALUES (?, ?, 'helpful', ?)",
                     )
-                    .run(newId(), ownerId, id, peer, at);
-            }
-            repos.embeddings.enqueue(ownerId, id, 0, `vector for ${id}`);
-            if (!vectorsReady)
-                vectorsReady = repos.embeddings.ensureVectorTable({ profileId: null, model: 'm', dimensions: 2 });
-            repos.embeddings.complete(repos.embeddings.due(10), [Float32Array.from([random(), random()])], 'm');
-        };
-
-        for (let step = 0; step < 300; step++) {
-            const r = random();
-            if (r < 0.45 || live.length === 0) {
-                const single = random() < 0.6;
-                const out = repos.memories.save(
-                    ownerId,
-                    memory(`记忆 ${step}`, {
-                        entityKey: single ? pick(keys) : null,
-                        cardinality: single ? 'single' : 'multi',
-                        domain: pick(domains),
-                        memType: pick(['semantic', 'episodic', 'procedural'] as const),
-                        subtype: random() < 0.2 ? 'decision' : null,
-                    }),
-                );
-                live.push(out.id);
-                if (random() < 0.5) attachExtras(out.id, live.length > 1 ? live[0] : undefined);
-            } else if (r < 0.6) {
-                repos.memories.update(ownerId, pick(live), { domain: pick(domains) });
-            } else if (r < 0.7) {
-                repos.memories.update(ownerId, pick(live), { retract: true });
-            } else if (r < 0.85) {
-                const id = pick(live);
-                expect(repos.memories.delete(ownerId, id)).toBe(true);
-                live.splice(live.indexOf(id), 1);
-                // (d) 级联清理
-                for (const table of ['memory_sources', 'memory_feedback']) {
-                    expect(
-                        conn.sqlite.prepare(`SELECT count(*) AS n FROM ${table} WHERE memory_id = ?`).get(id),
-                    ).toEqual({ n: 0 });
-                }
-                expect(
+                    .run(newId(), id, at);
+                if (peer) {
                     conn.sqlite
-                        .prepare('SELECT count(*) AS n FROM memory_conflicts WHERE a_id = ? OR b_id = ?')
-                        .get(id, id),
-                ).toEqual({ n: 0 });
-                expect(conn.sqlite.prepare('SELECT count(*) AS n FROM embeddings WHERE item_id = ?').get(id)).toEqual({
-                    n: 0,
-                });
-            } else {
-                // 同一键的多次更替
-                repos.memories.save(ownerId, memory(`更替 ${step}`, { entityKey: pick(keys), cardinality: 'single' }));
+                        .prepare(
+                            `INSERT INTO memory_conflicts (id, owner_id, a_id, b_id, kind, created_at)
+                         VALUES (?, ?, ?, ?, 'semantic_contradiction', ?)`,
+                        )
+                        .run(newId(), ownerId, id, peer, at);
+                }
+                repos.embeddings.enqueue(ownerId, id, 0, `vector for ${id}`);
+                if (!vectorsReady)
+                    vectorsReady = repos.embeddings.ensureVectorTable({ profileId: null, model: 'm', dimensions: 2 });
+                repos.embeddings.complete(repos.embeddings.due(10), [Float32Array.from([random(), random()])], 'm');
+            };
+
+            for (let step = 0; step < 300; step++) {
+                const r = random();
+                if (r < 0.45 || live.length === 0) {
+                    const single = random() < 0.6;
+                    const out = repos.memories.save(
+                        ownerId,
+                        memory(`记忆 ${step}`, {
+                            entityKey: single ? pick(keys) : null,
+                            cardinality: single ? 'single' : 'multi',
+                            domain: pick(domains),
+                            memType: pick(['semantic', 'episodic', 'procedural'] as const),
+                            subtype: random() < 0.2 ? 'decision' : null,
+                        }),
+                    );
+                    live.push(out.id);
+                    if (random() < 0.5) attachExtras(out.id, live.length > 1 ? live[0] : undefined);
+                } else if (r < 0.6) {
+                    repos.memories.update(ownerId, pick(live), { domain: pick(domains) });
+                } else if (r < 0.7) {
+                    repos.memories.update(ownerId, pick(live), { retract: true });
+                } else if (r < 0.85) {
+                    const id = pick(live);
+                    expect(repos.memories.delete(ownerId, id)).toBe(true);
+                    live.splice(live.indexOf(id), 1);
+                    // (d) 级联清理
+                    for (const table of ['memory_sources', 'memory_feedback']) {
+                        expect(
+                            conn.sqlite.prepare(`SELECT count(*) AS n FROM ${table} WHERE memory_id = ?`).get(id),
+                        ).toEqual({ n: 0 });
+                    }
+                    expect(
+                        conn.sqlite
+                            .prepare('SELECT count(*) AS n FROM memory_conflicts WHERE a_id = ? OR b_id = ?')
+                            .get(id, id),
+                    ).toEqual({ n: 0 });
+                    expect(
+                        conn.sqlite.prepare('SELECT count(*) AS n FROM embeddings WHERE item_id = ?').get(id),
+                    ).toEqual({
+                        n: 0,
+                    });
+                } else {
+                    // 同一键的多次更替
+                    repos.memories.save(
+                        ownerId,
+                        memory(`更替 ${step}`, { entityKey: pick(keys), cardinality: 'single' }),
+                    );
+                }
+                if (step % 25 === 0) checkInvariants(conn, repos, ownerId);
             }
-            if (step % 25 === 0) checkInvariants(conn, repos, ownerId);
-        }
-        checkInvariants(conn, repos, ownerId);
-        // 向量行与映射一致:每个嵌入都有向量,没有孤立的向量行
-        const embedded = (conn.sqlite.prepare('SELECT count(*) AS n FROM embeddings').get() as { n: number }).n;
-        const vectors = (conn.sqlite.prepare(`SELECT count(*) AS n FROM ${VECTOR_TABLE}`).get() as { n: number }).n;
-        expect(vectors).toBe(embedded);
-        conn.close();
-    });
+            checkInvariants(conn, repos, ownerId);
+            // 向量行与映射一致:每个嵌入都有向量,没有孤立的向量行
+            const embedded = (conn.sqlite.prepare('SELECT count(*) AS n FROM embeddings').get() as { n: number }).n;
+            const vectors = (conn.sqlite.prepare(`SELECT count(*) AS n FROM ${VECTOR_TABLE}`).get() as { n: number }).n;
+            expect(vectors).toBe(embedded);
+            conn.close();
+        },
+    );
 });
 
 describe('任务类记忆出现在知识地图', () => {

@@ -78,3 +78,26 @@ export function nodeDistribution(version, platform, arch) {
         exe: platform === 'win32' ? 'node.exe' : 'node',
     };
 }
+
+const SEMVER = /^\d{1,4}\.\d{1,4}\.\d{1,4}$/;
+
+/**
+ * 发布版本一致性(ADR 0046 第 10 节):`apps/desktop/package.json` 是唯一来源,`tauri.conf.json` 的 version 指向它,
+ * Cargo.toml 必须与之相同;推送 `desktop-vX.Y.Z` 标签时,标签版本必须等于它,否则安装包会显示错误的版本。
+ * 返回错误列表,空表示通过。`tag` 为空时(手动触发)只检查两处文件是否一致。
+ */
+export function checkDesktopVersion({ packageVersion, cargoVersion, tag = '' }) {
+    const errors = [];
+    if (!SEMVER.test(packageVersion ?? ''))
+        errors.push(`apps/desktop/package.json version is not X.Y.Z: ${packageVersion}`);
+    if (cargoVersion !== packageVersion) {
+        errors.push(`src-tauri/Cargo.toml version ${cargoVersion} differs from package.json ${packageVersion}`);
+    }
+    if (tag) {
+        const m = /^desktop-v(\d{1,4}\.\d{1,4}\.\d{1,4})$/.exec(tag);
+        if (!m) errors.push(`tag ${tag} is not desktop-vX.Y.Z`);
+        else if (m[1] !== packageVersion)
+            errors.push(`tag ${tag} does not match package.json version ${packageVersion}`);
+    }
+    return errors;
+}

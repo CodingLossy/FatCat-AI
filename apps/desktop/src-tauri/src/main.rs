@@ -44,6 +44,50 @@ fn open_deep_link(app: &AppHandle, raw: &str) {
 
 struct SidecarState(Mutex<Option<sidecar::Sidecar>>);
 
+/// 托盘与对话框文案(M12:中文为默认,英文用户保留英文)。
+struct Texts {
+    show: &'static str,
+    autostart: &'static str,
+    quit: &'static str,
+    start_failed: &'static str,
+}
+
+const TEXTS_ZH: Texts =
+    Texts { show: "打开 FatCat-AI", autostart: "开机自启", quit: "退出", start_failed: "FatCat-AI 无法启动核心服务。" };
+const TEXTS_EN: Texts =
+    Texts { show: "Show FatCat-AI", autostart: "Start at login", quit: "Quit", start_failed: "FatCat-AI could not start its core service." };
+
+/// 按系统语言选文案:语言代码以 en 开头、或为 C / POSIX 时用英文,其余(含取不到时)用中文。
+fn texts_for(locale: &str) -> &'static Texts {
+    let l = locale.trim().to_ascii_lowercase();
+    if l.starts_with("en") || l == "c" || l == "posix" {
+        &TEXTS_EN
+    } else {
+        &TEXTS_ZH
+    }
+}
+
+/// 从环境变量读系统语言(Linux / macOS 的终端启动);Windows 与图形界面启动时通常没有,取不到就走默认的中文。
+fn system_locale() -> String {
+    ["LC_ALL", "LC_MESSAGES", "LANG"]
+        .iter()
+        .find_map(|name| std::env::var(name).ok().filter(|v| !v.is_empty()))
+        .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::texts_for;
+
+    #[test]
+    fn picks_chinese_by_default_and_english_for_en_locales() {
+        assert_eq!(texts_for("").quit, "退出");
+        assert_eq!(texts_for("zh_CN.UTF-8").quit, "退出");
+        assert_eq!(texts_for("en_US.UTF-8").quit, "Quit");
+        assert_eq!(texts_for("C").quit, "Quit");
+    }
+}
+
 fn show_main(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -75,6 +119,7 @@ fn main() {
                 .build(),
         )
         .setup(move |app| {
+            let text = texts_for(&system_locale());
             let data_dir = app.path().app_data_dir()?;
             let resource_dir = app.path().resource_dir().ok();
             let sc = match sidecar::Sidecar::start(&data_dir, resource_dir.as_deref()) {
@@ -82,7 +127,7 @@ fn main() {
                 Err(err) => {
                     // 窗口模式下没有控制台,失败时必须让用户看到原因和日志位置,而不是静默退出。
                     app.dialog()
-                        .message(format!("FatCat-AI could not start its core service.\n\n{err}"))
+                        .message(format!("{}\n\n{err}", text.start_failed))
                         .title("FatCat-AI")
                         .kind(MessageDialogKind::Error)
                         .blocking_show();
@@ -97,12 +142,13 @@ fn main() {
                 .inner_size(1100.0, 760.0)
                 .build()?;
 
-            let show = MenuItem::with_id(app, "show", "Show FatCat-AI", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let show = MenuItem::with_id(app, "show", text.show, true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", text.quit, true, None::<&str>)?;
             let autostart_enabled = app.autolaunch().is_enabled().unwrap_or(false);
-            let autostart = CheckMenuItem::with_id(app, "autostart", "Start at login", true, autostart_enabled, None::<&str>)?;
+            let autostart = CheckMenuItem::with_id(app, "autostart", text.autostart, true, autostart_enabled, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &autostart, &quit])?;
             let mut tray = TrayIconBuilder::new()
+                .tooltip("FatCat-AI")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {

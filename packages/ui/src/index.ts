@@ -15,3 +15,13 @@ export {
 export * from './category-browser/index.js';
 export * from './knowledge-sphere/index.js';
 export * from './map-viz/index.js';
+export {
+    ICON_NAMES,
+    ICON_STROKE,
+    ICON_VIEWBOX,
+    SMALL_ICON_MAX_PX,
+    iconMarkup,
+    iconSvg,
+    resolveIconName,
+} from './icons.js';
+export type { IconName } from './icons.js';
