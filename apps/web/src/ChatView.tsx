@@ -89,10 +89,12 @@ function textOf(message: Message): string {
     return message.parts.map((p) => (p.type === 'text' ? p.text : '')).join('');
 }
 
-/** 输入框里待发送图片的缩略图:地址只接受本地 blob:,文件名只进 alt 属性(React 会转义,不当作 HTML)。 */
-function ComposerPreview({ url, name }: { url: string; name: string }) {
+/** 输入框里待发送图片的缩略图:自己为这个文件建一个 object URL 并在卸载时释放,文件名只进 alt 属性(React 会转义)。 */
+function ComposerPreview({ file }: { file: File }) {
     const { t } = useI18n();
-    return <img src={previewSrc(url)} alt={t('chat.imageAlt', { name })} />;
+    const [src] = useState(() => previewSrc(URL.createObjectURL(file)));
+    useEffect(() => () => URL.revokeObjectURL(src), [src]);
+    return src ? <img src={src} alt={t('chat.imageAlt', { name: file.name })} /> : null;
 }
 
 function MessageImages({ message }: { message: Message }) {
@@ -851,7 +853,7 @@ export function ChatView({
                                     <ul className="image-previews">
                                         {images.map((image) => (
                                             <li key={image.key}>
-                                                <ComposerPreview url={image.url} name={image.file.name} />
+                                                <ComposerPreview file={image.file} />
                                                 <button
                                                     type="button"
                                                     className="remove-image"
