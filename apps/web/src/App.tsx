@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, errorText } from './api.js';
 import { deviceAuth } from './device-session.js';
 import { AuthForm } from './AuthForm.js';
+import { clearCache, isOffline, offlineStartup, rememberSettings } from './cache.js';
 import { Footer } from './Footer.js';
 import { I18nContext, translator, type Locale } from './i18n.js';
 import { PairPage } from './PairPage.js';
@@ -23,8 +24,17 @@ function applyTheme(theme: Settings['theme']): void {
 }
 
 async function loadAuth(): Promise<{ status: AuthStatus; settings: Settings | null }> {
-    const status = await api.auth.status();
-    return { status, settings: status.authenticated ? await api.settings.get() : null };
+    try {
+        const status = await api.auth.status();
+        const settings = status.authenticated ? await api.settings.get() : null;
+        if (settings) rememberSettings(settings);
+        return { status, settings };
+    } catch (error) {
+        // 连不上服务器:登录过的设备只读地显示离线缓存(ADR 0045 第 2 节),恢复联网后会重新确认登录状态
+        const settings = isOffline(error) ? await offlineStartup() : null;
+        if (!settings) throw error;
+        return { status: { initialized: true, authenticated: true }, settings };
+    }
 }
 
 export function App() {
@@ -68,12 +78,20 @@ export function App() {
             .catch(() => setMeta(null));
     }, []);
 
+    // 网络恢复后重新确认登录状态(离线时显示的是缓存)
+    useEffect(() => {
+        const onOnline = () => void refresh();
+        window.addEventListener('online', onOnline);
+        return () => window.removeEventListener('online', onOnline);
+    }, [refresh]);
+
     useEffect(() => {
         applyTheme(settings?.theme ?? 'system');
         document.documentElement.lang = locale;
     }, [settings?.theme, locale]);
 
     const logout = async () => {
+        await clearCache();
         if (deviceAuth.isPaired()) {
             await api.devices.signOut().catch(() => undefined);
             deviceAuth.forget();
