@@ -3,8 +3,9 @@
 
 /*
  * FatCat-AI design tokens (M12, ADR 0046 / docs/design/ui-redesign.md).
- * Single source of truth: the implementation PRs move this file to packages/ui and import it from the web app,
- * the PWA and the desktop shell. Raw values live here only; components use the semantic names below.
+ * Single source of truth, imported by the web app (and so the PWA and the desktop shell) as
+ * `@fatcat-ai/ui/tokens.css`. Raw colour values live here only (a unit test enforces it); components use the
+ * semantic names below.
  *
  * Values marked [owner] come verbatim from the M12 brief. Values marked [proposed] are additions the brief does not
  * give (semantic red/green for diffs and errors, a stronger border for form controls, radii, spacing, motion);
@@ -30,6 +31,8 @@
     --accent: var(--fc-ice-cyan);
     --fg: var(--fc-silver);
     --muted: var(--fc-muted);
+    /* legacy name kept so existing CSS recolours without edits (design doc 14): panel = surface */
+    --panel: var(--surface);
 
     /* [proposed] text on an accent-filled surface (primary button): base colour, 9.5:1 on the accent */
     --accent-fg: var(--fc-deep-navy);
@@ -49,6 +52,14 @@
     --ok: #7fc99a;
     --ok-bg: rgb(127 201 154 / 16%);
     --warn: #d8b36a;
+    /* text on a solid --danger / --warn fill (recording button, alert badge) */
+    --on-danger: var(--fc-deep-navy);
+    --on-warn: var(--fc-deep-navy);
+
+    /* soft, low-contrast shadows (no coloured glow) and the drawer scrim */
+    --shadow-card: 0 6px 24px rgb(0 0 0 / 28%);
+    --shadow-drawer: 0 0 24px rgb(0 0 0 / 40%);
+    --scrim: rgb(0 0 0 / 55%);
 
     /* Glass card (RUNNING TOOLS): matte, 1px border, a light backdrop blur, no glow */
     --glass-bg: rgb(18 21 30 / 72%);
@@ -101,4 +112,67 @@
         --motion-fast: 0ms;
         --motion: 0ms;
     }
+}
+
+/*
+ * Light theme: not redesigned in M12 (owner decision Q2, 2026-11-19). `data-theme="light"` and the system light
+ * preference keep the pre-M12 palette until light tokens are designed. Only the colour tokens differ.
+ */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme='dark']) {
+        --bg: #ffffff;
+        --surface: #f5f5f7;
+        --surface-2: #ececf0;
+        --border: #d2d2d7;
+        --border-strong: #8e8e93;
+        --muted: #6e6e73;
+        --fg: #1d1d1f;
+        --accent: #0a66c2;
+        --accent-fg: #ffffff;
+        --accent-weak: rgb(10 102 194 / 12%);
+        --accent-line: rgb(10 102 194 / 55%);
+        --danger: #b3261e;
+        --ok: #1e7b34;
+        --warn: #8a5a00;
+        --on-danger: #ffffff;
+        --on-warn: #ffffff;
+        --shadow-card: 0 6px 24px rgb(0 0 0 / 8%);
+        --shadow-drawer: 0 0 24px rgb(0 0 0 / 30%);
+        --scrim: rgb(0 0 0 / 40%);
+        --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+        --code-keyword: #a626a4;
+        --code-string: #50a14f;
+        --code-number: #b76b01;
+        --code-title: #4078f2;
+        --code-comment: #8a8a93;
+        color-scheme: light;
+    }
+}
+
+:root[data-theme='light'] {
+    --bg: #ffffff;
+    --surface: #f5f5f7;
+    --surface-2: #ececf0;
+    --border: #d2d2d7;
+    --border-strong: #8e8e93;
+    --muted: #6e6e73;
+    --fg: #1d1d1f;
+    --accent: #0a66c2;
+    --accent-fg: #ffffff;
+    --accent-weak: rgb(10 102 194 / 12%);
+    --accent-line: rgb(10 102 194 / 55%);
+    --danger: #b3261e;
+    --ok: #1e7b34;
+    --warn: #8a5a00;
+    --on-danger: #ffffff;
+    --on-warn: #ffffff;
+    --shadow-card: 0 6px 24px rgb(0 0 0 / 8%);
+    --shadow-drawer: 0 0 24px rgb(0 0 0 / 30%);
+    --scrim: rgb(0 0 0 / 40%);
+    --code-keyword: #a626a4;
+    --code-string: #50a14f;
+    --code-number: #b76b01;
+    --code-title: #4078f2;
+    --code-comment: #8a8a93;
+    color-scheme: light;
 }

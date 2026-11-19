@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+    checkDesktopVersion,
     checkInstallerSizes,
     MAX_APPIMAGE_BYTES,
     MAX_INSTALLER_BYTES,
@@ -69,4 +70,22 @@ test('nodeDistribution maps platforms to the official file names', () => {
     assert.equal(win.file, 'node-v24.11.0-win-x64.zip');
     assert.equal(win.inner, 'node-v24.11.0-win-x64/node.exe');
     assert.equal(win.exe, 'node.exe');
+});
+
+test('checkDesktopVersion passes when package, Cargo and tag agree', () => {
+    assert.deepEqual(
+        checkDesktopVersion({ packageVersion: '1.0.0', cargoVersion: '1.0.0', tag: 'desktop-v1.0.0' }),
+        [],
+    );
+    assert.deepEqual(checkDesktopVersion({ packageVersion: '0.0.0', cargoVersion: '0.0.0' }), []);
+});
+
+test('checkDesktopVersion fails on a tag or Cargo version that differs from package.json', () => {
+    const tagged = checkDesktopVersion({ packageVersion: '0.0.0', cargoVersion: '0.0.0', tag: 'desktop-v1.0.0' });
+    assert.match(tagged[0], /does not match package.json version 0\.0\.0/);
+    assert.match(checkDesktopVersion({ packageVersion: '1.0.0', cargoVersion: '0.0.0' })[0], /Cargo.toml version/);
+    assert.match(
+        checkDesktopVersion({ packageVersion: '1.0.0', cargoVersion: '1.0.0', tag: 'v1.0.0' })[0],
+        /not desktop-vX/,
+    );
 });

@@ -5,6 +5,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
 import { registerServiceWorker } from './pwa.js';
+import '@fatcat-ai/ui/tokens.css';
 import './styles.css';
 
 const root = document.getElementById('root');

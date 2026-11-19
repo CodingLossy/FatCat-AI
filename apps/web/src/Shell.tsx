@@ -2,6 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import type { Session, Settings } from '@fatcat-ai/shared';
+import { Icon } from './Icon.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorText } from './api.js';
 import { ApprovalPanel } from './ApprovalPanel.js';
@@ -155,6 +156,7 @@ export function Shell({
                 >
                     {t('nav.menu')}
                 </button>
+                <img className="brand-logo" src="/icons/app-icon.svg" alt="" width={24} height={24} />
                 <span className="topbar-title">FatCat-AI</span>
                 {canInstall ? (
                     <button type="button" className="button small" onClick={() => void install()}>
@@ -182,7 +184,12 @@ export function Shell({
                     if (navOpen && (e.target as HTMLElement).closest('a')) setNavOpenAt(null);
                 }}
             >
+                <div className="sidebar-brand">
+                    <img className="brand-logo" src="/icons/app-icon.svg" alt="" width={28} height={28} />
+                    <span>FatCat-AI</span>
+                </div>
                 <Link to={{ name: 'home' }} className="button primary new-chat">
+                    <Icon name="chat" size={16} />
                     {t('nav.newChat')}
                 </Link>
                 <nav className="session-list" aria-label="sessions">
@@ -238,12 +245,15 @@ export function Shell({
                 ) : null}
                 <div className="sidebar-foot">
                     <Link to={{ name: 'items' }} className={route.name === 'items' ? 'active' : ''}>
+                        <Icon name="globe" size={16} />
                         {t('nav.items')}
                     </Link>
                     <Link to={{ name: 'mail' }} className={route.name === 'mail' ? 'active' : ''}>
+                        <Icon name="mail" size={16} />
                         {t('nav.mail')}
                     </Link>
                     <Link to={{ name: 'tasks' }} className={route.name === 'tasks' ? 'active' : ''}>
+                        <Icon name="clock" size={16} />
                         {t('nav.tasks')}
                         {approvalCount > 0 ? (
                             <span
@@ -255,18 +265,23 @@ export function Shell({
                         ) : null}
                     </Link>
                     <Link to={{ name: 'agents' }} className={route.name === 'agents' ? 'active' : ''}>
+                        <Icon name="cat" size={16} />
                         {t('nav.agents')}
                     </Link>
                     <Link to={{ name: 'plugins' }} className={route.name === 'plugins' ? 'active' : ''}>
+                        <Icon name="plug" size={16} />
                         {t('nav.plugins')}
                     </Link>
                     <Link to={{ name: 'memory' }} className={route.name === 'memory' ? 'active' : ''}>
+                        <Icon name="brain" size={16} />
                         {t('nav.memory')}
                     </Link>
                     <Link to={{ name: 'audit' }} className={route.name === 'audit' ? 'active' : ''}>
+                        <Icon name="pulse" size={16} />
                         {t('nav.audit')}
                     </Link>
                     <Link to={{ name: 'settings' }} className={route.name === 'settings' ? 'active' : ''}>
+                        <Icon name="gear" size={16} />
                         {t('nav.settings')}
                     </Link>
                     <button type="button" className="link" onClick={() => void onLogout()}>

@@ -4,6 +4,12 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### M12 · UI redesign (in progress)
+
+#### Changed
+
+- New visual identity (ADR 0046, first of the M12 pull requests): the dark theme uses the new colour tokens (deep navy background, `#121216` surfaces, a single ice-cyan accent used only for selected items, status and primary buttons), now kept in one file, `@fatcat-ai/ui/tokens.css`; existing styles recolour through the old variable names. The light theme keeps the previous palette until light tokens are designed. The sidebar shows the logo, a line icon on each menu item and the assistant has a small paw avatar. A new app icon (a single-line cat paw, with a heavier small-size cut for 16 and 24 px) replaces the placeholder in the desktop installers, the tray, the favicon, the web app manifest and the PWA icons; all of them are generated from one SVG master by `node scripts/make-icons.mjs`. The desktop tray menu and error dialog are in Chinese by default and in English when the system language is English. The installer version now comes from `apps/desktop/package.json` (single source) and the release workflow fails if a `desktop-vX.Y.Z` tag does not match it. Chinese summary: 新视觉(深色新 token、只用冰青强调色、侧栏 logo 与单线图标、助手头像)、新应用图标(安装包、托盘、favicon、PWA 全部由一个 SVG 母版生成)、中文托盘、安装包版本以 apps/desktop/package.json 为唯一来源并在发布时与标签核对;浅色主题暂沿用旧色板。
+
 ### M11 · Mobile (in progress)
 
 #### Fixed

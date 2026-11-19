@@ -3,7 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ItemCycleError, type ItemInput } from './items.js';
-import { createTestDb, fakeClock, type TestDb } from './test-helpers.js';
+import { createTestDb, fakeClock, PROPERTY_TEST_TIMEOUT_MS, type TestDb } from './test-helpers.js';
 
 let t: TestDb;
 beforeEach(async () => {
@@ -75,52 +75,56 @@ describe('items:计数与树', () => {
         expect(() => items.upsert(t.ownerId, input('x', 'NOPE'))).toThrow(/parent item does not exist/);
     });
 
-    it('属性测试:随机新建 / 移动 / 软删除 / 恢复之后,计数与递归计算一致,树无环', () => {
-        const { items } = t.repos;
-        const random = rng(42);
-        const pick = <T>(list: T[]) => list[Math.floor(random() * list.length)]!;
-        const refs: string[] = [];
-        const root = items.upsert(t.ownerId, input('root', null));
-        for (let step = 0; step < 400; step++) {
-            const live = [
-                root.id,
-                ...refs
-                    .map((r) => items.bySource(t.ownerId, 'test', r)!)
-                    .filter((i) => !i.deletedAt)
-                    .map((i) => i.id),
-            ];
-            const op = random();
-            try {
-                if (op < 0.5 || refs.length < 5) {
-                    const ref = `n${step}`;
-                    items.upsert(t.ownerId, input(ref, pick(live), { kind: 'category' }));
-                    refs.push(ref);
-                } else if (op < 0.75) {
-                    const ref = pick(refs);
-                    const item = items.bySource(t.ownerId, 'test', ref)!;
-                    if (!item.deletedAt) items.upsert(t.ownerId, input(ref, pick(live), { kind: 'category' }));
-                } else if (op < 0.9) {
-                    items.softDelete(t.ownerId, pick(live.slice(1).length ? live.slice(1) : live));
-                } else {
-                    const ref = pick(refs);
-                    if (items.bySource(t.ownerId, 'test', ref)!.deletedAt) {
+    it(
+        '属性测试:随机新建 / 移动 / 软删除 / 恢复之后,计数与递归计算一致,树无环',
+        { timeout: PROPERTY_TEST_TIMEOUT_MS },
+        () => {
+            const { items } = t.repos;
+            const random = rng(42);
+            const pick = <T>(list: T[]) => list[Math.floor(random() * list.length)]!;
+            const refs: string[] = [];
+            const root = items.upsert(t.ownerId, input('root', null));
+            for (let step = 0; step < 400; step++) {
+                const live = [
+                    root.id,
+                    ...refs
+                        .map((r) => items.bySource(t.ownerId, 'test', r)!)
+                        .filter((i) => !i.deletedAt)
+                        .map((i) => i.id),
+                ];
+                const op = random();
+                try {
+                    if (op < 0.5 || refs.length < 5) {
+                        const ref = `n${step}`;
                         items.upsert(t.ownerId, input(ref, pick(live), { kind: 'category' }));
+                        refs.push(ref);
+                    } else if (op < 0.75) {
+                        const ref = pick(refs);
+                        const item = items.bySource(t.ownerId, 'test', ref)!;
+                        if (!item.deletedAt) items.upsert(t.ownerId, input(ref, pick(live), { kind: 'category' }));
+                    } else if (op < 0.9) {
+                        items.softDelete(t.ownerId, pick(live.slice(1).length ? live.slice(1) : live));
+                    } else {
+                        const ref = pick(refs);
+                        if (items.bySource(t.ownerId, 'test', ref)!.deletedAt) {
+                            items.upsert(t.ownerId, input(ref, pick(live), { kind: 'category' }));
+                        }
                     }
+                } catch (error) {
+                    // 移动到自己的后代被拒绝:属于预期,状态不应改变
+                    expect(error).toBeInstanceOf(ItemCycleError);
                 }
-            } catch (error) {
-                // 移动到自己的后代被拒绝:属于预期,状态不应改变
-                expect(error).toBeInstanceOf(ItemCycleError);
             }
-        }
-        expect(items.recount(t.ownerId)).toBe(0);
-        // 无环:每个条目的祖先链有限且不重复
-        for (const ref of refs) {
-            const item = items.bySource(t.ownerId, 'test', ref)!;
-            const chain = items.ancestors(t.ownerId, item.id).map((a) => a.id);
-            expect(new Set(chain).size).toBe(chain.length);
-            expect(chain).not.toContain(item.id);
-        }
-    });
+            expect(items.recount(t.ownerId)).toBe(0);
+            // 无环:每个条目的祖先链有限且不重复
+            for (const ref of refs) {
+                const item = items.bySource(t.ownerId, 'test', ref)!;
+                const chain = items.ancestors(t.ownerId, item.id).map((a) => a.id);
+                expect(new Set(chain).size).toBe(chain.length);
+                expect(chain).not.toContain(item.id);
+            }
+        },
+    );
 
     it('每一层的 contentCount 等于默认展开能看到的内容条数', () => {
         const { items } = t.repos;
