@@ -1,230 +1,230 @@
-# M12 · UI redesign, tool-result visualization and app icon
+# M12 · 界面重设计、工具结果可视化与应用图标
 
-- Status: **proposed. Design only; no feature code is in this PR.** The owner confirms (or changes) this document before any implementation PR is opened.
-- Date: 2026-11-19
-- Related: ADR 0046 (security boundary of the built-in browser and tool-result visualization), ADR 0009 (Web UI), ADR 0010 (approvals), ADR 0021 (voice, `VoiceOrb`), ADR 0028 (egress targets), ADR 0044 (desktop app), ADR 0045 (mobile / PWA)
-- Files in this PR: `docs/design/tokens.css` (design tokens), `docs/design/prototype/` (static HTML prototype that the screenshots were taken from; `index.html` is excluded from Prettier in `.prettierignore` because Prettier's reformatting of whitespace-sensitive code lines breaks them), `docs/design/icons/app-icon.svg` and `app-icon-small.svg` (draft app icon and its small-size cut), this document, ADR 0046.
+- 状态:**设计已由业主确认(2026-11-19,业主看过原型与截图;§14 的问题全部按推荐答案执行)。本 PR 只有设计,没有功能代码。**实现按 §13 的 PR 拆分逐个进行。
+- 日期:2026-11-19
+- 相关:ADR 0046(内置浏览器、外部程序与工具结果可视化的安全边界)、ADR 0009(Web UI)、ADR 0010(工具与审批)、ADR 0021(语音与 `VoiceOrb`)、ADR 0028(外连目标清单)、ADR 0044(桌面应用)、ADR 0045(移动端 / PWA)
+- 本 PR 的文件:`docs/design/tokens.css`(设计 token)、`docs/design/prototype/`(截图所用的静态 HTML 原型;`index.html` 已加入 `.prettierignore`,因为 Prettier 会重排对空白敏感的代码行而弄坏它)、`docs/design/icons/app-icon.svg` 与 `app-icon-small.svg`(应用图标草稿及小尺寸版)、本文、ADR 0046。
 
-UI copy is Chinese (brief point 10); this document is English (external-facing text rule). Every open question carries a recommended value; unanswered questions are implemented as recommended, except merging, sending mail and anything touching the data directory, which always wait for an explicit yes.
+界面文案为中文(业主要求);本文与 ADR 0046 为中文,与现有 ADR 一致。代码标识符、API 路径和文件名保留英文。
 
-## 1. What changes, in one page
+## 1. 一页概览
 
-| Area           | Today                                                                  | After M12                                                                                       |
-| -------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Look           | System light/dark, blue accent (`#0a66c2` / `#5ea2ff`)                 | Matte obsidian dark, one ice-cyan accent, 1px hairline cards, no glow, no purple                |
-| Home           | Chat page with a small `VoiceOrb` indicator (green/purple/blue/orange) | Workbench: 40% core orb + subtitles + RUNNING TOOLS on the left, tool-driven panel on the right |
-| Tool results   | Generic `ToolCard` with JSON                                           | File tree + preview, red/green diff with the existing approval bar, mail card, memory card      |
-| Browsing       | `web.fetch` (text only, per-call approval)                             | Built-in browser panel (desktop) + `browser.*` tools; click/fill/submit need approval           |
-| Settings       | One long scrolling page                                                | Section tabs + side menu + card grid, only metrics that existing APIs provide                   |
-| Icons          | Mixed text/emoji glyphs                                                | One single-line icon set (1.75px, `currentColor`); minimal cat-paw app icon everywhere          |
-| Name / version | "FatCat-AI" in most places; installer says `0.0.0`                     | "FatCat-AI" everywhere, version read from the package, Chinese tray and copy                    |
-| Phone          | PWA with the desktop layout squeezed                                   | Same tokens, single column, bottom tab bar                                                      |
+| 方面        | 现在                                                   | M12 之后                                                           |
+| ----------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
+| 外观        | 系统浅 / 深色,蓝色强调(`#0a66c2` / `#5ea2ff`)          | 哑光黑曜石深色、唯一冰川青强调色、1px 细描边卡片,无发光、无紫色    |
+| 首页        | 聊天页,带一个小的 `VoiceOrb` 指示器(绿 / 紫 / 蓝 / 橙) | 工作台:左 40% 核心球 + 字幕 + RUNNING TOOLS,右侧面板随工具类型切换 |
+| 工具结果    | 通用 `ToolCard`,显示 JSON                              | 文件树 + 预览、红绿 diff + 现有审批条、邮件卡片、记忆卡片          |
+| 浏览        | `web.fetch`(纯文本、每次审批)                          | 内置浏览器面板(桌面)+ `browser.*` 工具;点击 / 填写 / 提交需要审批  |
+| 设置        | 一个很长的滚动页                                       | 分区标签 + 侧栏子菜单 + 卡片网格,只放现有接口能提供的指标          |
+| 图标        | 文字 / emoji 混用                                      | 一套单线图标(1.75px、`currentColor`);极简猫爪应用图标              |
+| 名称 / 版本 | 多数处是 "FatCat-AI";安装包显示 `0.0.0`                | 处处 "FatCat-AI",版本读 package 版本,托盘和文案为中文              |
+| 手机        | 桌面布局硬挤进 PWA                                     | 同一套 token,单栏,底部标签栏                                       |
 
-The prototype (`docs/design/prototype/index.html`, open it in a browser; `#wb-files`, `#wb-diff`, `#wb-mail`, `#wb-memory`, `#wb-browser`, `#settings-models`, `#ds`, `#phone-diff`, `?state=listening|thinking|speaking`, `?static=1`) is a **throwaway** HTML/CSS/canvas page that implements the reference images; it is not wired to the app and is not shipped. The implementation PRs re-build it with React in `apps/web` and `packages/ui`.
+原型(`docs/design/prototype/index.html`,用浏览器打开;`#wb-files`、`#wb-diff`、`#wb-mail`、`#wb-memory`、`#wb-browser`、`#settings-models`、`#ds`、`#phone-diff`,以及 `?state=listening|thinking|speaking`、`?static=1`)是**一次性**的 HTML / CSS / canvas 页面,用来按参考图实现界面;它不接应用、不随产品发布。实现 PR 用 React 在 `apps/web` 与 `packages/ui` 里重建。
 
-## 2. Review of the brief and the reference images (please read first)
+## 2. 对需求与参考图的核对结果
 
-Things I found while implementing the references. None was changed silently; each is a question in section 14.
+以下是实现参考图时发现的问题。每一项都没有被悄悄改动;业主已逐项决定(见 §14)。
 
-1. **`#121512` (surface) looks like a typo.** It is the only token with a green tint (R=18, G=21, B=18); the other dark tokens are blue-tinted (`#0B0D1D`, `#12151E`, `#1F2633`). Rendered, panels read slightly olive next to the navy base (visible in the screenshots). The reference sheet prints the same value, so it is in the source art too. I kept it as given in `tokens.css` (one line to change). Candidates: `#121216` (neutral) or `#12151E` (same as the secondary surface; then "surface" and "secondary surface" collapse into one).
-2. **Text `#E2E8FF`** is a blue-tinted white (Tailwind's slate-200 is `#E2E8F0`). It is fine (15.8:1 on the base) and matches the reference; noted only because it differs from the common value.
-3. **`#1F2633` borders are only 1.27:1 against the base.** That is right for decorative hairlines, but inputs, buttons and switches need about 3:1 to be seen (WCAG 1.4.11). I added `--border-strong: #5b687c` (3.4:1) for interactive controls only. This is an addition to the brief.
-4. **Colours the brief does not define but the design needs.** Red/green for diffs and errors, a warning tone for risk chips, a focus ring, accent tints, radii, spacing, motion. Proposed in `tokens.css` and marked `[proposed]`. They are desaturated and used only for diffs, errors and risk labels so the accent stays the only chromatic brand colour.
-5. **The reference shows "FATCAT OS v1.4.2" and the model "FatCat-Coder-v2".** The brief says the product name is FatCat-AI and the version comes from the package, so the prototype shows "FatCat-AI" with the version read from the root `package.json` (`node docs/design/prototype/sync-version.mjs` writes `version.js`; today that is `0.0.0`, the bug of section 10) and the model pill shows the real default model, or 「未选择模型」 when none is set.
-6. **Only three reference images arrived: the workbench twice (identical) and the design sheet.** There is no reference for the settings page, so section 9 is designed from the brief's text. If a settings mockup exists, please send it.
-7. **The reference sheet's icon set (12 cyber-cat illustrations) contradicts brief point 9** (sidebar and file tree use plain single-line icons; cat illustrations only for empty states). I followed the brief; the cat appears in the orb, the empty states and the app icon.
-8. **"M12" is already used in the development plan** (section 9: "M12 · Stabilization and 2.0"). Recommendation: this redesign keeps the name M12 (owner's choice), and the old M12 is renumbered M13 in the plan in a docs-only follow-up. I did not edit the plan in this PR.
-9. **Dark only?** The brief describes one dark theme; the app today supports system/light/dark (ADR 0009). Recommendation in Q2.
-10. **The icon pictures** (paw, folder, gear) were grey placeholder shapes, so they were used only as size/position hints, not as art.
+1. **surface `#121512` 是笔误。**它是唯一偏绿的 token(R=18, G=21, B=18),其余深色 token 都偏蓝,渲染出来面板发橄榄色。**业主决定改为 `#121216`**,`tokens.css`、原型和截图均已同步。
+2. **正文 `#E2E8FF`** 是偏蓝的白(Tailwind 的 slate-200 是 `#E2E8F0`),在底色上对比度 15.8:1,保留。
+3. **`#1F2633` 边框对底色只有 1.27:1。**作为装饰性细线没问题,但输入框、按钮、开关需要约 3:1 才看得清(WCAG 1.4.11)。新增 `--border-strong: #5b687c`(3.4:1),只用于可交互控件。
+4. **需求没有定义、但设计需要的颜色:**diff / 错误用的红绿、风险标签用的警示色、焦点环、强调色淡底、圆角、间距、动效。它们在 `tokens.css` 里标为 `[proposed]`,已由业主接受;饱和度压低,只用于 diff、错误和风险标签,强调色仍是唯一的彩色品牌色。
+5. **参考图里是 "FATCAT OS v1.4.2" 和模型 "FatCat-Coder-v2"。**需求要求产品名统一为 FatCat-AI、版本读 package,所以原型显示 "FatCat-AI",版本由 `node docs/design/prototype/sync-version.mjs` 从根 `package.json` 写入 `version.js`(目前是 `0.0.0`,正是 §10 要修的问题);模型胶囊显示真实的默认模型,没有则显示「未选择模型」。
+6. **没有设置页参考图。**收到的是两张相同的工作台图和一张设计规范图,设置页按需求文字设计(§9)。
+7. **参考图里的 12 个赛博猫插画图标与需求第 9 点矛盾**(侧边栏和文件树用简洁单线图标,带猫插画只用于空状态和装饰)。按需求第 9 点做:猫出现在核心球、空状态和应用图标里。
+8. **"M12" 在开发计划里已经被占用**(第 9 节「M12 · 稳定化与 2.0」)。业主决定:本次重设计沿用 M12 的名字,旧的 M12 改名为 M13,在第一个相关实现 PR 里顺带改计划文档。
+9. **只做深色。**业主决定:只重设计深色主题;`data-theme=light` 继续用旧色板,直到另行设计浅色 token。
+10. **图标参考图(爪、文件夹、齿轮)是灰色占位图形,**只作尺寸 / 位置参考,没有当作素材。
 
-## 3. Visual language
+## 3. 视觉语言
 
-### 3.1 Tokens
+### 3.1 Token
 
-All raw values live in `docs/design/tokens.css` (moved to `packages/ui/src/tokens.css` in the first implementation PR, imported by the web app, the PWA and the desktop shell). Components use only the semantic names.
+所有原始值只写在 `docs/design/tokens.css`(第一个实现 PR 把它移到 `packages/ui/src/tokens.css`,由 Web、PWA 和桌面壳引用)。组件只使用语义名。
 
-| Token                          | Value                             | Use                                                            |
-| ------------------------------ | --------------------------------- | -------------------------------------------------------------- |
-| `--bg`                         | `#0B0D1D`                         | App background                                                 |
-| `--surface`                    | `#121512`                         | Cards and panels (see Q1)                                      |
-| `--surface-2`                  | `#12151E`                         | Inputs, hover rows, glass cards, rows inside cards             |
-| `--border`                     | `#1F2633`                         | 1px hairlines between regions and around cards                 |
-| `--accent`                     | `#38BDF8`                         | **Only** selected menu item, status indicators, primary button |
-| `--fg`                         | `#E2E8FF`                         | Body text                                                      |
-| `--muted`                      | `#94A3B8`                         | Secondary text, default icon colour (7.5:1 on the base)        |
-| `--border-strong`              | `#5b687c`                         | proposed: borders of interactive controls                      |
-| `--danger` / `--ok` / `--warn` | `#e5857f` / `#7fc99a` / `#d8b36a` | proposed: diff, error, risk label only                         |
+| Token                          | 值                                | 用途                                     |
+| ------------------------------ | --------------------------------- | ---------------------------------------- |
+| `--bg`                         | `#0B0D1D`                         | 应用背景                                 |
+| `--surface`                    | `#121216`                         | 卡片与面板                               |
+| `--surface-2`                  | `#12151E`                         | 输入框、悬停行、玻璃卡、卡片内的行       |
+| `--border`                     | `#1F2633`                         | 区域之间与卡片周围的 1px 细线            |
+| `--accent`                     | `#38BDF8`                         | **只用于**选中的菜单项、状态指示、主按钮 |
+| `--fg`                         | `#E2E8FF`                         | 正文                                     |
+| `--muted`                      | `#94A3B8`                         | 次要文字、默认图标色(对底色 7.5:1)       |
+| `--border-strong`              | `#5b687c`                         | 新增:可交互控件的边框                    |
+| `--danger` / `--ok` / `--warn` | `#e5857f` / `#7fc99a` / `#d8b36a` | 新增:只用于 diff、错误、风险标签         |
 
-Accent rules (enforced in review, and by a small stylelint-style test in PR 1 that greps for hard-coded colours outside `tokens.css`):
+强调色规则(评审时执行;第 1 个实现 PR 加一个小测试,检查 `tokens.css` 之外不出现硬编码颜色):
 
-- The accent appears on: the selected menu / rail item, status dots and badges (ONLINE, RUNNING), the primary button, focus rings, the AI-operated element outline in the browser panel, wave bars and the active tool row's spinner.
-- It never appears on: body text links in running copy (use underline + `--fg`), large fills, backgrounds, gradients, shadows. **No glow, no box-shadow halos, no purple.** Depth comes from two surface steps (`--surface`, `--surface-2`), 1px borders, a faint inner top highlight and a soft low-contrast drop shadow on cards; no coloured halos. The one exception to "no blur" is the RUNNING TOOLS glass card (8–12px backdrop blur, matte tint, 1px border); it falls back to a solid `--surface-2` where `backdrop-filter` is unsupported.
-- Buttons: primary = accent fill, `--accent-fg` text (9:1), pill radius. Secondary = transparent, `--border-strong`. Hover = accent border and text. Disabled = muted at 60%.
+- 强调色出现在:选中的菜单 / 导轨项、状态点与徽标(ONLINE、RUNNING)、主按钮、焦点环、浏览器面板里 AI 正在操作的元素描边、声波条、当前工具行的转圈。
+- 强调色从不出现在:行文中的链接(用下划线 + `--fg`)、大面积填充、背景、渐变、阴影。**不发光、不用光晕、不用紫色。**层次感来自两级表面色(`--surface`、`--surface-2`)、1px 描边、极淡的顶部内高光和低对比度的柔和投影;没有彩色光晕。唯一允许模糊的是 RUNNING TOOLS 玻璃卡(8–14px 背景模糊、哑光底色、1px 描边),不支持 `backdrop-filter` 时回退为纯 `--surface-2`。
+- 按钮:主按钮 = 强调色填充 + `--accent-fg` 文字(对比度 9:1)、胶囊圆角;次按钮 = 透明底 + `--border-strong`;悬停 = 强调色边框和文字;禁用 = 次要色 60% 透明度。
 
-### 3.2 Typography
+### 3.2 字体
 
-Body 14px sans-serif (system stack with PingFang SC / Microsoft YaHei / Noto Sans CJK SC for Chinese; no web font download, which keeps the zero-egress promise and the installer small). Code 12px monospace (`ui-monospace`, Cascadia, Consolas). Card titles 16px / 600, captions and badges 12px. The 32px header exists only on the design sheet. Line height 1.55 body, 1.6 code.
+正文 14px 无衬线(系统字体栈,中文用 PingFang SC / Microsoft YaHei / Noto Sans CJK SC,**不下载网络字体**,保持零外连和安装包小);代码 12px 等宽(`ui-monospace`、Cascadia、Consolas)。卡片标题 16px / 600,说明和徽标 12px。32px 标题只出现在设计规范页。行高:正文 1.55,代码 1.6。
 
-### 3.3 Shape, spacing, motion
+### 3.3 形状、间距、动效
 
-Radii 6 / 10 / 14px and pill; spacing scale 4-8-12-16-24-32; 1px borders. Motion 120–200ms ease-out for hover and panel switches; every animation respects `prefers-reduced-motion` (the orb draws one static frame, spinners become a static glyph).
+圆角 6 / 10 / 14px 与胶囊;间距 4-8-12-16-24-32;1px 边框。动效 120–200ms ease-out(悬停、面板切换);所有动画遵守 `prefers-reduced-motion`(球只画静态帧,转圈变静态符号)。
 
-### 3.4 Icons
+### 3.4 图标
 
-One in-repo single-line set in `packages/ui` (`<Icon name="folder" />`, inline SVG sprite, no icon library dependency): 24px viewBox, **1.75px stroke, no fill, round caps/joins, colour `currentColor`**. Default `--muted`; active `--accent`; sizes 16 / 20 / 24 (the 1.75px stroke stays crisp at 16px because the paths sit on a 0.5px grid). The prototype has 25 icons (paw, folder, file, files, gear, search, diff, mail, brain, globe, terminal, mic, lock, cloud, trash, clock, chat, plug, pulse, cat, arrows, x, check, play) which are the starting set; each implementation PR adds only what it uses. All icons are drawn here (no third-party artwork, so no licence question). Cat illustrations (the large line-art cat in the orb, the empty-state cat) are separate artwork, never used as navigation icons.
+在 `packages/ui` 里自带一套单线图标(`<Icon name="folder" />`,内联 SVG sprite,不引入图标库依赖):24px viewBox、**1.75px 描边、无填充、圆头圆角、颜色 `currentColor`**。默认 `--muted`,激活 `--accent`;尺寸 16 / 20 / 24。原型里有 25 个起始图标(爪、文件夹、文件、齿轮、搜索、变更、邮件、大脑、地球、终端、麦克风、锁、云、垃圾桶、时钟、聊天、插件、脉搏、猫、箭头、x、对勾、播放),每个实现 PR 只加自己用到的。全部自绘,不使用第三方图稿,没有许可证问题。**16px 要用单独的一版**(§10):掌垫 + 3 个脚趾、加粗线条。带猫的大插画(球里的线稿猫、空状态猫)是单独的图稿,不当导航图标用。
 
-## 4. The core orb
+## 4. 核心球
 
-A silver-white wireframe sphere of particles with a small line-art cat inside. It replaces the current `VoiceOrb` colours; the existing five-state machine (`idle` / `listening` / `thinking` / `speaking` / `executing`) and the level-driven pulse are kept, and `executing` maps to the `thinking` look (tool activity is shown by RUNNING TOOLS, not by another colour).
+银白线框粒子球,内含小猫线稿。它替换现有 `VoiceOrb` 的配色;保留现有五状态(`idle` / `listening` / `thinking` / `speaking` / `executing`)和随电平脉动,`executing` 沿用 `thinking` 的样子(工具活动由 RUNNING TOOLS 表示,不再另设颜色)。
 
-| State            | Particles (of 1400 max) | Motion                                                                                                              | Extra                      |
-| ---------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------- |
-| Listening (聆听) | 50%                     | Slow spin (0.12 rad/s), 1.2% breathing, almost no jitter                                                            | Wave bars nearly flat      |
-| Thinking (思考)  | 100%                    | Fast spin (0.5 rad/s), more jitter, a cyan band of particles sweeps pole to pole                                    | Wave bars flat             |
-| Speaking (说话)  | 78%                     | Medium spin; particles lift radially with the output level (TTS level if available, otherwise a synthetic envelope) | Wave bars follow the level |
+| 状态 | 粒子数(最多 2600) | 运动                                                              | 其他             |
+| ---- | ----------------- | ----------------------------------------------------------------- | ---------------- |
+| 聆听 | 50%               | 慢速自转(0.12 rad/s)、1.2% 呼吸、几乎不抖动                       | 声波条几乎平     |
+| 思考 | 100%              | 快速自转(0.5 rad/s)、抖动更大、一条冰青粒子带从极到极扫过         | 声波条平         |
+| 说话 | 78%               | 中速自转;粒子随输出电平向外抬起(有 TTS 电平用电平,否则用合成包络) | 声波条随电平跳动 |
 
-- **Only density and motion change between states.** Colours are fixed: silver-white particles, about 18% tinted ice-cyan, wireframe lines at 13% alpha. No per-state hue.
-- Below the sphere: the state text ("正在聆听" / "正在思考" / "FatCat 正在说话", the state word in the accent), the 36-bar ice-cyan wave, then the last user and assistant lines as subtitles.
-- **Performance:** Canvas 2D, ~60fps target, a single `requestAnimationFrame` loop shared by all orbs, paused when the page is hidden. A frame-time monitor lowers the particle count by 20% steps (floor 35%) after ~45 slow (>24ms) frames, never raises it again within a session; devices with `hardwareConcurrency <= 4` or `deviceMemory <= 4` start at 60%. The wireframe is 6 rings + 6 meridians (about 780 line segments), cheap enough to keep. `prefers-reduced-motion`: one static frame per state change. Canvas unavailable: text only (existing behaviour).
-- The prototype's `prototype.js` is the reference for the numbers; PR 2 turns it into a tested pure module (state presets, adaptive quality, particle projection) plus a thin canvas adapter, next to the existing `voice-orb.ts` logic and tests.
-- The cat is an SVG overlay (about 1.5px silver stroke), so it stays crisp and is replaceable by final artwork without touching the canvas code.
+- **状态之间只改粒子密度和运动。**颜色固定:银白粒子、约 16% 带冰青、线框 10% 透明度 / 0.5px。不按状态换色相。
+- 粒子大小与亮度随机分布,近大远小(简单景深);猫线稿约为球直径的一半,线条约 1.6px,带极淡的冰青光晕,戴 VR 眼镜和耳机。
+- 球下方:状态文字("正在聆听" / "正在思考" / "FatCat 正在说话",状态词用强调色)、冰青声波条、最近的用户与助手字幕。
+- **性能:**Canvas 2D,目标约 60fps,所有球共用一个 `requestAnimationFrame` 循环,页面不可见时暂停。帧耗时监测:连续约 45 帧慢帧(>24ms)后粒子数按 20% 一档下调(下限 35%),本会话内不再回升;`hardwareConcurrency <= 4` 或 `deviceMemory <= 4` 的设备从 60% 起步。`prefers-reduced-motion`:每次状态变化只画一帧静态图。Canvas 不可用时只显示文字(现有行为)。
+- 原型里的 `prototype.js` 是数值的参考实现;PR 2 把它改成有测试的纯逻辑模块(状态预设、自适应质量、粒子投影)加一层很薄的 canvas 适配,放在现有 `voice-orb.ts` 逻辑和测试旁边。
+- 猫是 SVG 叠层,保持清晰,可以直接换成最终图稿而不动 canvas 代码。**最终的猫插画(参考图里那种更多细节的猫)作为单独的绘制任务,在实现 PR 里交付,不阻断设计 PR。**
 
-## 5. Workbench layout
+## 5. 工作台布局
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 🐾 FatCat-AI v1.0.0   [ 🔍 搜索文件、命令,或直接提问…   Ctrl K ]   (🐱 模型:xxx) │  56px top bar
+│ 🐾 FatCat-AI v0.0.0   [ 🔍 搜索文件、命令,或直接提问…   Ctrl K ]   (🐱 未选择模型) │  56px 顶栏
 ├──────────────────────────────┬──┬───────────────────────────────────────────┤
-│ RUNNING TOOLS (glass card)   │R │                                           │
-│                              │a │   tool-type panel                         │
-│        ◯ core orb ◯          │i │   (files / diff / mail / memory /         │
-│                              │l │    browser)                               │
-│ 正在聆听 ● ||||||||||||       │  │                                           │
-│ 你: …  FatCat: …              │  ├───────────────────────────────────────────┤
-│        left ≈ 40%            │  │ approval bar / status bar                 │
+│ RUNNING TOOLS(玻璃卡)        │导│                                           │
+│                              │轨│   按工具类型切换的面板                    │
+│        ◯ 核心球 ◯            │  │   (文件 / diff / 邮件 / 记忆 / 浏览器)    │
+│                              │  │                                           │
+│ 正在聆听 ● ||||||||||||       │  ├───────────────────────────────────────────┤
+│ 你: …  FatCat: …              │  │ 审批条 / 状态栏                           │
+│        左侧约 40%            │  │                                           │
 └──────────────────────────────┴──┴───────────────────────────────────────────┘
 ```
 
-- **Top bar:** paw logo + "FatCat-AI" + version (from `GET /api/v1/meta` `serverVersion`, so it is the version of the core actually running; the desktop shell shows its own package version in About); global search box; current model pill (accent outline; label of the profile that the next turn will use, from `GET /api/v1/settings` + `GET /api/v1/models`; click opens the model picker).
-- **Global search** (files / commands / questions): one box, three result groups. Files = `GET /api/v1/items/search` (the item index already covers files, mail and memories); Commands = a static client-side list (switch panel, open settings, new session, toggle voice); anything else is sent as a question to the current session (so the box never silently searches the network). `Ctrl/Cmd+K` focuses it.
-- **Left (≈40%, min 340px):** orb, state text, wave, subtitles, and the RUNNING TOOLS glass card at the top-left. RUNNING TOOLS lists tools of the current run, newest last: tool name + short argument summary (the existing `activityLabel` / run events), a spinner while running, a check when done, a cross when failed, a clock when waiting for approval. At most 4 rows, older ones collapse into "+N". Data: the existing run event stream (`tool-call`, `tool-result`, `approval-required`, `approval-resolved`); nothing new on the server.
-- **Right:** a 48px icon rail (files, search, changes, mail, memory, browser; settings at the bottom) and the panel. **The panel follows the latest tool call by default** (a tool call switches it, a manual rail click pins it until the next run), so the user does not have to hunt for what the assistant is doing.
-- **Status bar:** core status (from `/healthz`), cursor/language when a file preview is shown.
-- Below 900px the layout collapses to the single column of section 11.
+- **顶栏:**爪形 logo + "FatCat-AI" + 版本(Web 显示 `GET /api/v1/meta` 的 `serverVersion`,即正在运行的核心版本;桌面壳在「关于」里显示自己的 package 版本);全局搜索框;当前模型胶囊(强调色描边;显示下一轮会用的配置档的名称,来自 `GET /api/v1/settings` 与 `GET /api/v1/models`;没有则「未选择模型」;点击打开模型选择)。
+- **全局搜索**(文件 / 命令 / 提问):一个框、三组结果。文件 = `GET /api/v1/items/search`(条目索引已覆盖文件、邮件、记忆);命令 = 客户端静态列表(切换面板、打开设置、新会话、切换语音);其余内容作为问题发到当前会话(所以这个框不会悄悄去搜网络)。`Ctrl/Cmd+K` 聚焦。
+- **左侧(≈40%,最小 340px):**球、状态文字、声波、字幕,左上是 RUNNING TOOLS 玻璃卡。RUNNING TOOLS 列出本轮运行的工具,最新的在最后:工具名 + 参数简述(现有 `activityLabel` / run 事件),运行中转圈、完成打勾、失败打叉、等待审批显示时钟。最多 4 行,更早的折叠成「+N」。数据来自现有 run 事件流(`tool-call`、`tool-result`、`approval-required`、`approval-resolved`),服务器端没有新增。
+- **右侧:**48px 图标导轨(文件、搜索、变更、邮件、记忆、浏览器,设置在底部)和面板。**面板默认跟随最近一次工具调用切换**(工具调用会切换面板,手动点击导轨则固定,直到下一轮运行),用户不用到处找助手在做什么。
+- **状态栏:**核心状态(来自 `/healthz`)、显示文件预览时的光标 / 语言。
+- 900px 以下折叠为 §11 的单栏。
 
-## 6. Tool-result visualization
+## 6. 工具结果可视化
 
-Principle: the panels render **tool results and approval payloads that the existing event stream already delivers** (public API only, ADR 0009). They do not add file-system or mail endpoints. The tool-result data is untrusted (ADR 0010, ADR 0046 §6): always rendered as text, never as HTML, never followed as instructions.
+原则:面板渲染的是**现有事件流已经送达的工具结果和审批载荷**(只用公开 API,ADR 0009),不新增文件系统或邮件接口。工具结果是不可信数据(ADR 0010、ADR 0046 §6、§7):一律按文本渲染,不渲染成 HTML,不当作指令。
 
-| Tool (today)                                              | Panel                                                  | Data used                                                                                                                                                                            |
-| --------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `fs.list`, `fs.search`                                    | Explorer tree                                          | Listing output; the tree is built from the paths returned, rooted at the approved root                                                                                               |
-| `fs.read`                                                 | Editor preview                                         | Returned text with line numbers, 12px mono, the requested line range highlighted with the accent tint; syntax colours from the existing `highlight.js` (muted theme in `tokens.css`) |
-| `fs.write`, `fs.move` (the "edit code" case)              | Diff + approval bar                                    | Old and new content, see below                                                                                                                                                       |
-| `mail.list`, `mail.search`, `mail.read`, `mail.summarize` | Mail cards                                             | Message fields from the result; body shown as text with the "external content, not executed" notice (existing untrusted-block rule)                                                  |
-| `mail.draft`, `mail.send`                                 | Mail card with draft state + the existing approval bar | Draft fields; sending always needs approval (unchanged)                                                                                                                              |
-| memory tools, `kb.search`, `items.*`                      | Memory / item cards                                    | Fact text, type chip, source link, last-used; undo/keep use the existing memory endpoints                                                                                            |
-| `web.fetch`, `browser.*`                                  | Browser panel (desktop) or a text card (web / phone)   | See ADR 0046                                                                                                                                                                         |
-| anything else (MCP, plugins, `calc`)                      | The current generic card                               | Unchanged                                                                                                                                                                            |
+| 工具(现有)                                                | 面板                                   | 使用的数据                                                                                                          |
+| --------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `fs.list`、`fs.search`                                    | 文件树                                 | 列表输出;树由返回的路径构建,根是已批准的根目录                                                                      |
+| `fs.read`                                                 | 编辑器预览                             | 返回的文本 + 行号,12px 等宽,请求的行范围用强调色淡底高亮;语法着色用现有 `highlight.js`(`tokens.css` 里的低饱和配色) |
+| `fs.write`、`fs.move`(即「改代码」)                       | Diff + 审批条                          | 旧内容与新内容,见下                                                                                                 |
+| `mail.list`、`mail.search`、`mail.read`、`mail.summarize` | 邮件卡片                               | 结果里的邮件字段;正文按文本显示,带「外部内容,不会被执行」提示(沿用现有 untrusted 块规则)                            |
+| `mail.draft`、`mail.send`                                 | 带草稿状态的邮件卡 + 现有审批条        | 草稿字段;发送始终需要审批(不变)                                                                                     |
+| 记忆类工具、`kb.search`、`items.*`                        | 记忆 / 条目卡片                        | 记忆文本、类型标签、来源链接、最近使用;撤销 / 保留走现有记忆接口                                                    |
+| `web.fetch`、`browser.*`                                  | 浏览器面板(桌面)或文本卡片(Web / 手机) | 见 ADR 0046                                                                                                         |
+| 其他(MCP、插件、`calc`)                                   | 现有通用卡片                           | 不变                                                                                                                |
 
-**Diff and approval.** The red/green diff (rows `−` on `--diff-del-bg`, `+` on `--diff-add-bg`, line numbers, 12px mono) is drawn on top of the existing approval flow: the bottom bar shows the action summary, a risk chip (写入), and 拒绝 / 允许 buttons that call the existing `POST /api/v1/approvals/{callId}` decision endpoint with the same payload as today (including the "remember" option where allowed). Nothing is written before 允许. Open question Q5 is where the "old content" comes from: today the approval input of `fs.write` contains the new content only. Recommendation: the server adds an additive, optional `preview` field to the approval (a bounded unified diff computed from the file as it is now, inside the approved root, truncated at 64 KiB). That is a backward-compatible schema addition in `packages/shared` and needs a short ADR addendum; it is done in PR 4. Without it the panel falls back to showing the new content as all-added lines with a notice "no previous version shown".
+**Diff 与审批。**红绿 diff(`−` 行用 `--diff-del-bg`、`+` 行用 `--diff-add-bg`,带行号,12px 等宽)画在现有审批流程之上:底部条显示动作摘要、风险标签(写入)和 拒绝 / 允许 按钮,调用现有的 `POST /api/v1/approvals/{callId}` 决定接口,载荷与现在相同(含允许时的「记住」选项)。批准之前不会写入任何内容。**旧内容从哪里来**(业主已按推荐确定):现在 `fs.write` 的审批输入只有新内容,所以服务器给审批增加一个向后兼容的可选字段 `preview`(根据文件当前内容在已批准根目录内计算的有界 unified diff,超过 64 KiB 就截断并说明),这是 `packages/shared` 里的增量改动,需要一个简短的 ADR 补充,在 PR 4 里完成。没有 `preview` 时,面板退化为把新内容全部显示为新增行,并提示「没有显示旧版本」。
 
-Large results are capped (first 500 lines / 64 KiB, "show more" fetches the rest from the already-received event, not from disk), so a 100 MB file cannot freeze the UI.
+大结果设上限(前 500 行 / 64 KiB,「显示更多」从已收到的事件里取,不再读磁盘),所以 100 MB 的文件不会卡死界面。
 
-## 7. Built-in browser panel
+## 7. 内置浏览器面板
 
-Desktop shell only (Tauri embeds a native webview); the plain web UI and the phone PWA cannot embed a controllable browser, so there `browser.*` results are shown as text cards (title, URL, extracted text) and the tool still works through the server-side reader where allowed. The panel: back / forward / refresh / address bar (read-only lock + URL, click to type a new URL) / close. The element the AI operates is outlined 1.5px in the accent with a small "AI 正在点击 / 正在填写" label. Navigation and reading are allowed by default; **click, fill and submit each need approval**, the browser session and cookies are isolated from the main UI, and every request obeys the egress allowlist. The full boundary, threat model, tool schema and test list are in **ADR 0046**; the one-paragraph version is in section 12.
+只在桌面壳里(Tauri 内嵌原生 webview);纯 Web 界面和手机 PWA 嵌不了可控浏览器,在那里 `browser.*` 的结果显示为文本卡片(标题、URL、提取的文字)。面板:后退 / 前进 / 刷新 / 地址栏(只读的锁 + URL,点击可输入新地址)/ 关闭。AI 正在操作的元素用 1.5px 强调色描边,旁边有「AI 正在点击 / 正在填写」小标签。导航和读取在白名单内默认允许;**点击、填写、提交每次都要审批**;浏览器的会话和 Cookie 与主界面隔离;所有请求遵守出网白名单。完整的边界、威胁模型、工具 schema 和测试清单见 **ADR 0046**,一段话的版本见 §12。
 
-## 8. Opening external programs
+## 8. 打开外部程序
 
-Only "open this file or URL with the system default program", one tool (`system.open`), risk `external`, **always** requires approval, never pre-authorizable (same class as `mail.send`), argument validated: URL schemes `https`/`http`/`mailto` only, files must lie inside an approved root, no executables or scripts (denied by extension and by the OS "executable" bit), no arguments, no shell. **Simulated mouse / keyboard control is not part of M12**, is not exposed in any API, and stays a later milestone with its own ADR. Details in ADR 0046 §5.
+只做「用系统默认程序打开文件或网址」,一个工具(`system.open`)、风险 `external`、**每次都要审批**、不可预授权(与 `mail.send` 同级),参数校验:URL 协议只允许 `https` / `http` / `mailto`,文件必须在已批准的根目录内,不允许可执行文件或脚本(按扩展名与系统「可执行」标记拒绝),无参数、不经 shell。**M12 不做模拟鼠标键盘**,任何 API 都不暴露,留给以后的里程碑并单独写 ADR。细节见 ADR 0046 §5。
 
-## 9. Settings page
+## 9. 设置页
 
-Layout: top section tabs **工作台 / 模型与语音 / 工具插件 / 系统设置**, a left sub-menu per section, a card grid (3 columns on desktop, 2 on tablet, 1 on phone). The existing settings content (egress list, secrets, TOTP, devices, mail accounts, channels, MCP, plugins, time zone…) moves into the matching section unchanged in behaviour; M12 only re-lays it out. The first section ("模型与语音") opens with these six cards, **each backed by an API that exists today; a card whose data is missing shows an honest empty state, never a made-up number**:
+布局:顶部分区标签 **工作台 / 模型与语音 / 工具插件 / 系统设置**(更大、居中,中文标题加英文副标题两行:工作台 / Workbench、模型与语音 / Models & Voice、工具插件 / Tools & Plugins、系统设置 / System)、每个分区一个左侧子菜单(每项一个单线图标,选中项用冰青色)、卡片网格(桌面 3 列、平板 2 列、手机 1 列)。现有的设置内容(外连清单、密钥、TOTP、设备、邮件账户、渠道、MCP、插件、时区……)按功能归入对应分区,行为不变;M12 只调整布局。「模型与语音」分区以这六张卡片开头,**每张都由今天已有的接口支撑;没有数据的卡片显示诚实的空状态,不写编造的数字**:
 
-| Card       | Shows                                                                                                | Source                                                                                                          |
-| ---------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 核心状态   | 运行中 / unreachable, core version, protocol version                                                 | `GET /healthz`, `GET /api/v1/meta` (`serverVersion`, `protocolVersion`)                                         |
-| API 延迟   | Latency of the default chat model, **measured on demand** with a "测试连接" button; "—" until tested | `POST /api/v1/models/{id}/test` → `latencyMs` (it makes one outbound request, so it is never run automatically) |
-| Token 用量 | Input / output tokens summed over recent sessions                                                    | `GET /api/v1/sessions` → `usage`                                                                                |
-| 语音引擎   | Configured STT and TTS profile labels, or "未配置" + link                                            | `GET /api/v1/models` (purpose `stt` / `tts`)                                                                    |
-| 模型配置   | Default chat profile, number of profiles, link to manage                                             | `GET /api/v1/settings`, `GET /api/v1/models`                                                                    |
-| 语音交互   | The voice switches that exist (read replies aloud, push-to-talk …)                                   | `GET/PUT /api/v1/settings` → `voice`                                                                            |
+| 卡片       | 显示内容                                                          | 数据来源                                                                         |
+| ---------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 核心状态   | 运行中 / 无法连接、核心版本、协议版本                             | `GET /healthz`、`GET /api/v1/meta`(`serverVersion`、`protocolVersion`)           |
+| API 延迟   | 默认对话模型的延迟,**点「测试连接」时按需测一次**;测之前显示「—」 | `POST /api/v1/models/{id}/test` → `latencyMs`(会发一次外连请求,所以从不自动运行) |
+| Token 用量 | 最近会话累计的输入 / 输出 Token                                   | `GET /api/v1/sessions` → `usage`                                                 |
+| 语音引擎   | 已配置的 STT 与 TTS 配置档名称,或「未配置」+ 链接                 | `GET /api/v1/models`(用途 `stt` / `tts`)                                         |
+| 模型配置   | 默认对话模型、配置档数量、管理入口                                | `GET /api/v1/settings`、`GET /api/v1/models`                                     |
+| 语音交互   | 现有的语音开关(朗读回复、按住说话……)                              | `GET/PUT /api/v1/settings` → `voice`                                             |
 
-Decisions the brief left open, with recommendations:
+业主已确认的决定:
 
-- **"Token 额度" (quota).** No API returns a quota or remaining balance (providers differ, many keys have none), so **the card is "Token 用量" (usage) and shows no quota**. Recommendation Q3: do not invent a quota; if the owner wants a monthly budget, that is a separate feature (setting + server-side counter) with its own PR. Usage is summed from the sessions page(s) the UI already loads (label says "最近 N 个会话"); an additive `GET /api/v1/usage` aggregate is optional and not in M12.
-- **API 延迟** is on demand only (no polling, because each probe is a billable outbound request and would add a recurring egress).
-- No CPU / memory / disk graphs: the server exposes no such API (memory is measured only, ADR 0041), so they are not shown.
-- In the prototype every card carries a small mono caption with its source endpoint; this caption is a review aid and is not part of the shipped UI.
-- **Visual elements per card (prototype):** a small sparkline under 核心状态, a ring under Token 用量, a wave under 语音引擎, a small cat line drawing as the empty state of API 延迟 and 模型配置, switches under 语音交互. The sparkline is drawn only from `/healthz` probe timings the page itself takes during the session (no history API exists), and the ring only shows the input / output split of `usage` (not a quota). Graphics marked 「示意」 in the prototype only show layout; in the app, a card without data shows the empty-state drawing and no number.
-- Section tabs are larger, centred, with a Chinese title and an English subtitle on two lines (工作台 / Workbench, 模型与语音 / Models & Voice, 工具插件 / Tools & Plugins, 系统设置 / System).
+- **「Token 额度」:**没有任何接口返回额度或余额(各家提供商不同,很多密钥根本没有额度),所以**这张卡叫「Token 用量」,不显示额度**。用量由界面已经加载的会话页累加(标签写「最近 N 个会话」);另加 `GET /api/v1/usage` 汇总接口是可选项,不在 M12 内。
+- **API 延迟**只按需测量(不轮询,因为每次探测都是一次可能计费的外连请求,还会增加周期性外连)。
+- 不放 CPU / 内存 / 磁盘曲线:服务器没有这类接口(内存只测量,ADR 0041)。
+- **接口路径只是原型里的说明。**原型每张卡片底部有一行灰色的「原型注释」,写着对应的接口路径,是给评审看的;**正式界面不显示接口路径**,路径只写在文档里或开发者提示中。
+- **原型里每张卡片的图形元素:**核心状态下的折线图、Token 用量下的环形图、语音引擎下的声波、API 延迟和模型配置空状态里的小猫线稿、语音交互下的开关。折线只用页面本会话内自己做的 `/healthz` 探测耗时画(没有历史接口),环形只表示 `usage` 里输入 / 输出的占比(不是额度)。原型里标「示意」的图形只表示版式;在应用里,没有数据的卡片显示空状态插画而不是数字。
 
-## 10. App icon, name and version
+## 10. 应用图标、名称与版本
 
-- **App icon:** minimal single-line cat paw (`docs/design/icons/app-icon.svg`, draft): tilted about 12°, four toes of different sizes drawn as outlines, a pad outline with a notch, **one colour (silver) on the base tile** (an earlier draft had a single cyan toe, which read as a drawing mistake). It is deliberately asymmetric and outline-only, unlike the filled, symmetric bear-paw logos it must not resemble. **Small sizes need their own cut:** at 16px the outlined toes merge into a blob (see the 16 / 24 / 32px comparison in the PR), so `app-icon-small.svg` and the sprite's `paw-sm` use dot toes and a heavier stroke below 20–24px; the build script picks the cut by size. Final polish (a tray monochrome variant, maskable safe area, checking 16px on a real Windows tray) happens in PR 1.
-- **Generation:** redraw as a clean 1024×1024 SVG master, then `pnpm tauri icon` (Tauri's `icon` command; it needs the Tauri CLI that apps/desktop already uses) writes the full platform set into `apps/desktop/src-tauri/icons` (`.icns`, `.ico`, PNG sizes). The same master produces: the tray icon (monochrome template for macOS, 32px colour for Windows/Linux), `apps/web/public/icons/*` (192, 512, maskable 512, apple-touch), the favicon, `manifest.webmanifest` icons and colours (`background_color` / `theme_color` → `#0B0D1D`), `<meta name="theme-color">`, and the assistant avatar (a round crop of the paw on `--surface-2`). A script `scripts/make-icons.mjs` regenerates everything from the one SVG so the set cannot drift; CI checks the generated files are up to date.
-- **Name:** "FatCat-AI" in the window title, tray tooltip, About, PWA name, installer, docs; the reference's "FATCAT OS" is not used. Remaining "AI-Personal" strings are found with the existing placeholder check.
-- **Version bug (installer says 0.0.0):** the root and `apps/desktop` `package.json`, `tauri.conf.json` and `src-tauri/Cargo.toml` all say `0.0.0` today, and there is no release yet (CHANGELOG). Plan: `tauri.conf.json` `version` points to `../package.json` (Tauri v2 supports a path), `apps/desktop/package.json` is the single source of truth and is bumped by the release process (see ADR 0032, release flow), the web UI shows the core's `serverVersion`, and a CI check fails the desktop build when the installer version differs from the tag. Which number a first release carries is the owner's decision (Q7).
-- **Tray and copy:** the tray menu, tooltips and dialogs are Chinese (from the `zh-CN` locale; English users keep `en`). The tray gets: 打开 FatCat-AI / 状态 / 退出. Desktop copy goes through `@fatcat-ai/i18n` so the English build is not lost.
+- **应用图标:**极简单线猫爪(`docs/design/icons/app-icon.svg`,草稿):倾斜约 12°、四个大小不同的脚趾画成轮廓、带缺口的掌垫轮廓,**底座上单一银白色**(上一版只有一个脚趾是冰青,看起来像画错,已去掉)。它刻意不对称、只有轮廓,不会像填充的、对称的熊掌 logo。**小尺寸要单独一版:**16px 时轮廓脚趾会糊成一团,所以 `app-icon-small.svg` 和 sprite 里的 `paw-sm` 在 24px 以下只保留掌垫和 3 个脚趾、加粗线条、去掉细节(见 PR 里 16 / 24 / 32px 对比图);构建脚本按尺寸选版本。最终打磨(托盘单色版、maskable 安全区、在真实 Windows 托盘上确认 16px)在 PR 1 里做。
+- **生成:**重画成 1024×1024 的干净 SVG 母版,再用 `pnpm tauri icon`(Tauri 的 `icon` 命令,apps/desktop 已有 Tauri CLI)把全平台图标写进 `apps/desktop/src-tauri/icons`(`.icns`、`.ico`、各尺寸 PNG)。同一个母版还生成:托盘图标(macOS 单色模板、Windows / Linux 32px 彩色)、`apps/web/public/icons/*`(192、512、maskable 512、apple-touch)、favicon、`manifest.webmanifest` 的图标与颜色(`background_color` / `theme_color` → `#0B0D1D`)、`<meta name="theme-color">`、助手头像(爪的圆形裁切,放在 `--surface-2` 上)。脚本 `scripts/make-icons.mjs` 从这一个 SVG 重新生成全部,避免漂移;CI 检查生成文件是最新的。
+- **名称:**窗口标题、托盘提示、「关于」、PWA 名称、安装包、文档里都用 "FatCat-AI";参考图里的 "FATCAT OS" 不使用。残留的 "AI-Personal" 字样用现有的占位符检查找出。
+- **版本 bug(安装包显示 0.0.0):**今天根目录和 `apps/desktop` 的 `package.json`、`tauri.conf.json`、`src-tauri/Cargo.toml` 都是 `0.0.0`,而且还没有发布(CHANGELOG)。方案:`tauri.conf.json` 的 `version` 指向 `../package.json`(Tauri v2 支持路径),`apps/desktop/package.json` 是唯一来源、由发布流程提升(见 ADR 0032 发布流程),Web 界面显示核心的 `serverVersion`,CI 检查在安装包版本与标签不一致时让桌面构建失败。第一次发布用 `1.0.0`(业主按推荐确定),由发布流程设置。
+- **托盘与文案:**托盘菜单、提示、对话框用中文(来自 `zh-CN` 语言包;英文用户保留 `en`)。托盘菜单:打开 FatCat-AI / 状态 / 退出。桌面文案走 `@fatcat-ai/i18n`,英文版不丢。
 
-## 11. Phone / PWA
+## 11. 手机 / PWA
 
-Same tokens (one stylesheet). Below 900px: single column, top bar without the search box (a search icon opens it full-screen), the orb at about 50% width, RUNNING TOOLS full width above it, the current panel (diff + approval, mail card, memory card, text browser result) below, and a bottom tab bar (对话 / 文件 / 浏览器 / 设置) with 44px touch targets and safe-area padding. Settings cards go single column. The orb starts at the reduced particle count on phones. The prototype's `#phone-diff` view is the reference. Offline cache, pairing and the service worker (ADR 0045) are unchanged.
+同一套 token(一份样式)。900px 以下:单栏,顶栏没有搜索框(一个搜索图标打开全屏搜索),球约占 50% 宽,RUNNING TOOLS 铺满宽度放在上面,当前面板(diff + 审批、邮件卡片、记忆卡片、文本形式的浏览器结果)在下面,底部标签栏(对话 / 文件 / 浏览器 / 设置),触控目标 44px,带安全区内边距。设置卡片单列。手机上球从降低的粒子数起步。原型的 `#phone-diff` 视图是参考。离线缓存、配对和 service worker(ADR 0045)不变。
 
-## 12. Security boundary (summary; ADR 0046 is binding)
+## 12. 安全边界(摘要;以 ADR 0046 为准)
 
-1. The browser webview is a separate Tauri webview with its own data store (separate cookie jar / storage directory, never the main window's session), no access to the app's IPC commands, no access to `localhost` core API cookies, and a navigation filter that enforces the same egress allowlist as the server (HTTPS only; private / loopback / link-local / metadata addresses blocked).
-2. `browser.open` and `browser.read` are allowed without per-call approval within the allowlist; `browser.click`, `browser.fill` and any submit are `external` risk, **approval every time, never pre-authorizable**. Page text returned to the model is wrapped as untrusted data.
-3. Open-external-program: one `external` tool, approval every time, strict argument validation.
-4. No simulated mouse/keyboard, no screen capture of other apps, no script injection into pages by the model.
-5. Visualization panels render text only, with sanitized links, caps on size, no remote images loaded from tool results.
+1. 浏览器 webview 是独立的 Tauri webview,有自己的数据存储(独立的 Cookie / 存储目录,绝不用主窗口的会话),无法访问应用的 IPC 命令,无法访问核心 API 的 Cookie,导航过滤与服务器相同的出网白名单(仅 HTTPS;私网、回环、链路本地、元数据地址一律拦截)。
+2. `browser.open` 在白名单内无需逐次审批,`browser.read` 读取已打开的页面;`browser.click`、`browser.fill` 以及任何提交都是 `external` 风险,**每次都要审批,不可预授权**。返回给模型的页面文字按不可信数据包装。
+3. 打开外部程序:一个 `external` 工具,每次审批,严格参数校验。
+4. 不模拟鼠标键盘,不截取其他应用的屏幕,模型不能向页面注入脚本。
+5. 可视化面板只渲染文本,链接经过清理,有大小上限,不加载工具结果里的远程图片。
 
-## 13. Implementation plan (one PR = one complete batch)
+## 13. 实施计划(一个 PR = 一整批)
 
-Each PR ships back end, front end, tests and docs together, with before/after screenshots and the commands/results in the description, per the repo PR rules. They are opened one at a time, in this order, each after the previous one is merged and the owner has confirmed this design.
+每个 PR 把后端、前端、测试、文档一起交,按仓库 PR 规则附前后对比截图和命令 / 结果。按下面的顺序一次开一个,上一个合并之后再开下一个。
 
-| PR  | Branch                        | Contents                                                                                                                                                                                                                                                              | Risk                                          |
-| --- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| 0   | `docs/m12-ui-redesign-design` | This document, `tokens.css`, prototype, draft icon, ADR 0046. No app code.                                                                                                                                                                                            | low                                           |
-| 1   | `feat/identity-tokens-icons`  | `tokens.css` into `packages/ui`, old CSS variables mapped (§14), shell and sidebar on the new tokens, single-line icon set, final app icon + `scripts/make-icons.mjs`, tray / favicon / PWA manifest / avatar, "FatCat-AI" name and package-version fix, Chinese tray | medium (installer, tray: needs Windows check) |
-| 2   | `feat/core-orb`               | New orb (states, density, adaptive quality, wave bars) replacing the `VoiceOrb` look; pure-logic tests; reduced motion                                                                                                                                                | low                                           |
-| 3   | `feat/workbench-layout`       | Top bar, global search, left stage, RUNNING TOOLS from run events, rail + panel switching, file tree + preview                                                                                                                                                        | medium                                        |
-| 4   | `feat/tool-visualizers`       | Diff + approval bar (incl. the optional `preview` approval field and ADR addendum), mail cards, memory cards                                                                                                                                                          | high (approvals)                              |
-| 5   | `feat/settings-redesign`      | Section tabs, side menu, the six data cards, existing settings moved into sections                                                                                                                                                                                    | low                                           |
-| 6   | `feat/browser-tool`           | Server side: `browser.*` tool contracts, policy, egress registration, untrusted wrapping, host-side adapter interface, full security tests (no UI)                                                                                                                    | high (security, egress)                       |
-| 7   | `feat/browser-panel`          | Tauri webview panel (isolated data store, navigation filter, IPC lockdown, highlight overlay), approval bar; needs Windows + macOS check                                                                                                                              | high                                          |
-| 8   | `feat/open-external`          | `system.open` tool + approval + validation tests                                                                                                                                                                                                                      | high                                          |
-| 9   | `feat/narrow-layout`          | Phone single column, bottom tab bar, PWA polish                                                                                                                                                                                                                       | low                                           |
+| PR  | 分支                          | 内容                                                                                                                                                                                                                                                                       | 风险                               |
+| --- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| 0   | `docs/m12-ui-redesign-design` | 本文、`tokens.css`、原型、图标草稿、ADR 0046。没有应用代码。                                                                                                                                                                                                               | 低                                 |
+| 1   | `feat/identity-tokens-icons`  | `tokens.css` 移入 `packages/ui`,旧 CSS 变量映射(§14),外壳与侧栏用新 token,单线图标库,最终应用图标 + `scripts/make-icons.mjs`,托盘 / favicon / PWA manifest / 头像,"FatCat-AI" 名称与 package 版本修正,中文托盘;顺带修 `packages/storage` 两个属性测试超时、旧 M12 改名 M13 | 中(安装包、托盘:需要 Windows 实测) |
+| 2   | `feat/core-orb`               | 新球(状态、密度、自适应质量、声波条)替换 `VoiceOrb` 的样子;纯逻辑测试;减少动效                                                                                                                                                                                             | 低                                 |
+| 3   | `feat/workbench-layout`       | 顶栏、全局搜索、左侧舞台、基于 run 事件的 RUNNING TOOLS、导轨 + 面板切换、文件树 + 预览                                                                                                                                                                                    | 中                                 |
+| 4   | `feat/tool-visualizers`       | Diff + 审批条(含可选的 `preview` 审批字段和 ADR 补充)、邮件卡片、记忆卡片                                                                                                                                                                                                  | 高(审批)                           |
+| 5   | `feat/settings-redesign`      | 分区标签、侧栏子菜单、六张数据卡片、现有设置归入各分区                                                                                                                                                                                                                     | 低                                 |
+| 6   | `feat/browser-tool`           | 服务器侧:`browser.*` 工具契约、策略、出网登记、不可信包装、宿主适配器接口、完整安全测试(无 UI)                                                                                                                                                                             | 高(安全、出网)                     |
+| 7   | `feat/browser-panel`          | Tauri webview 面板(隔离的数据存储、导航过滤、IPC 封闭、高亮叠层)、审批条;需要 Windows + macOS 实测                                                                                                                                                                         | 高                                 |
+| 8   | `feat/open-external`          | `system.open` 工具 + 审批 + 校验测试                                                                                                                                                                                                                                       | 高                                 |
+| 9   | `feat/narrow-layout`          | 手机单栏、底部标签栏、PWA 打磨                                                                                                                                                                                                                                             | 低                                 |
 
-Per-PR testing follows the repo rules: pure logic gets 2–3 unit tests (orb presets and adaptive quality, diff builder, domain / scheme validators), every touched screen is clicked in a real browser with screenshots, and high-risk PRs list manual steps and which parts need a Windows machine. Items that need the owner's hardware (Windows tray, WebView2 behaviour, a real mailbox) are listed in the PR and not done by me.
+按仓库规则测试:纯逻辑 2–3 个单测(球的预设与自适应质量、diff 生成、域名 / 协议校验),每个改动的界面在真实浏览器里点过并截图,高风险 PR 列出手工步骤和哪些需要 Windows 实测。需要业主硬件的事项(Windows 托盘、WebView2 行为、真实邮箱)列在 PR 里,不由我代做。
 
-## 14. Open questions (recommended answers; unanswered = the recommendation is implemented)
+## 14. 已确认的决定(业主 2026-11-19,全部按推荐答案)
 
-| #   | Question                                                                                     | Recommendation and why                                                                                                                                                                                                                                                                   |
-| --- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Q1  | Is surface `#121512` intended? It is green-tinted next to the blue-tinted rest.              | Keep it for now (matches the reference sheet). If it is a typo, change one line in `tokens.css`; I suggest `#121216`. Decide before PR 1.                                                                                                                                                |
-| Q2  | Dark only, or keep light / system themes?                                                    | Ship dark as the only redesigned theme; keep `data-theme=light` working on the old palette until a light token set is designed (not in M12). Fewer states to test; the brief only describes dark.                                                                                        |
-| Q3  | "Token 额度": there is no quota API.                                                         | Show "Token 用量" (usage) only; no invented quota.                                                                                                                                                                                                                                       |
-| Q4  | Extra semantic colours (red/green/amber), `--border-strong`, radii, motion (§3).             | Accept as proposed; they are used only for diffs, errors, risk chips and control borders.                                                                                                                                                                                                |
-| Q5  | Where does the diff's old content come from?                                                 | Additive optional `preview` on the approval, computed server-side (bounded). Fallback: all-added view with a notice.                                                                                                                                                                     |
-| Q6  | Rename old M12 in the plan to M13?                                                           | Yes, docs-only follow-up after this design is confirmed.                                                                                                                                                                                                                                 |
-| Q7  | First release version number (installer shows `0.0.0` because nothing was released).         | `1.0.0` for the first tagged release, set by the release process, as the plan says.                                                                                                                                                                                                      |
-| Q8  | Brief says navigation is allowed by default, ADR 0010 says a URL can leak conversation data. | `browser.open` is allowed without a prompt for hosts already allowed (ADR 0039 domain scopes); the first new host asks once per session (ADR 0046 §4.1). `browser.*` ships disabled until switched on in settings (ADR 0046 §4.6). Related ADR 0046 questions Q-A..Q-F are listed there. |
-| Q9  | Browser engine on Linux (WebKitGTK) and per-platform isolation limits.                       | Ship Windows (WebView2) and macOS (WKWebView) first; Linux after a manual check. ADR 0046 §3 lists the per-platform isolation facts to verify in PR 7.                                                                                                                                   |
-| Q10 | Docs language: this document and ADR 0046 are in English, existing ADRs are in Chinese.      | English as instructed for this PR; say if you want a Chinese copy of the ADR.                                                                                                                                                                                                            |
+| #   | 问题                                                          | 决定                                                                                                                                                           |
+| --- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1  | surface `#121512` 是否有意?                                   | **笔误,改为 `#121216`**(`tokens.css`、原型、截图已同步)。                                                                                                      |
+| Q2  | 只做深色,还是保留浅色 / 跟随系统?                             | 只重设计深色;`data-theme=light` 继续用旧色板,直到另行设计浅色 token。                                                                                          |
+| Q3  | 「Token 额度」:没有额度接口。                                 | 只显示「Token 用量」,不编造额度。                                                                                                                              |
+| Q4  | 额外的语义色(红 / 绿 / 琥珀)、`--border-strong`、圆角、动效。 | 按提议接受;只用于 diff、错误、风险标签和控件边框。                                                                                                             |
+| Q5  | diff 的旧内容从哪里来?                                        | 审批增加可选的、服务器计算的有界 `preview` 字段;退化方案:全部显示为新增行并提示。                                                                              |
+| Q6  | 开发计划里旧的 M12 是否改名 M13?                              | 是,在第一个相关实现 PR(PR 1)里顺带改。                                                                                                                         |
+| Q7  | 第一次发布的版本号(安装包现在显示 `0.0.0`)。                  | 第一次打标签的发布用 `1.0.0`,由发布流程设置。                                                                                                                  |
+| Q8  | 需求说导航默认允许,ADR 0010 说 URL 可能泄露对话数据。         | `browser.open` 对已允许的主机无需提示(ADR 0039 域名范围),新主机首次问一次;`browser.*` 默认关闭,到设置里开启(ADR 0046 §4.1、§4.6)。ADR 0046 的 Q-A…Q-F 见该文。 |
+| Q9  | Linux(WebKitGTK)上的浏览器引擎与各平台的隔离限制。            | 先做 Windows(WebView2)和 macOS(WKWebView),Linux 在手工验证后再做;ADR 0046 §3 列出 PR 7 要核实的各平台事实。                                                    |
+| Q10 | 文档语言。                                                    | 本文与 ADR 0046 用中文,与现有 ADR 一致;代码标识符、API 路径、文件名保留英文。                                                                                  |
 
-Old-to-new CSS variable mapping for PR 1: `--bg` → `--bg`; `--panel` → `--surface`; `--fg` → `--fg`; `--muted` → `--muted`; `--border` → `--border`; `--accent` → `--accent` (+ `--accent-fg`); `--danger`/`--ok`/`--warn` → same names; `--code-*` → same names with the muted values. The names that already exist keep their meaning, so most existing CSS recolours without edits.
+旧 CSS 变量到新变量的映射(PR 1):`--bg` → `--bg`;`--panel` → `--surface`;`--fg` → `--fg`;`--muted` → `--muted`;`--border` → `--border`;`--accent` → `--accent`(+ `--accent-fg`);`--danger` / `--ok` / `--warn` → 同名;`--code-*` → 同名但换成低饱和值。已有的名字含义不变,所以多数现有 CSS 不用改就会变色。
 
-## 15. Not in M12
+## 15. M12 不做的事
 
-Simulated mouse / keyboard, screen capture of other apps, a light theme, a token quota/budget feature, system resource graphs, plugin-contributed panels, a web font, a 3D (WebGL) orb. The particle-drill-down knowledge map stays in its own milestone.
+模拟鼠标 / 键盘、截取其他应用的屏幕、浅色主题、Token 额度 / 预算功能、系统资源曲线、插件贡献面板、网络字体、3D(WebGL)球。粒子下钻式知识地图留在它自己的里程碑。
 
-## 16. Acceptance of this design PR
+## 16. 本设计 PR 的验收
 
-- The prototype opens in a browser and matches the reference images (screenshots in the PR).
-- Tokens match the brief exactly; every addition is marked `[proposed]`.
-- Every settings card names the existing API behind it.
-- ADR 0046 covers webview isolation, egress allowlist, approval for click / fill / submit, external-program approval and the no-simulated-input rule.
-- The PR list in §13 is the agreed batching, or the owner replaces it.
+- 原型能在浏览器里打开,并与参考图一致(PR 里有并排截图)。
+- token 与需求完全一致;每一处新增都标为 `[proposed]`,业主已接受;surface 已按业主决定改为 `#121216`。
+- 每张设置卡片都写明了背后的现有接口;正式界面不显示接口路径。
+- ADR 0046 覆盖 webview 隔离、出网白名单、点击 / 填写 / 提交审批、外部程序审批、不模拟输入。
+- §13 的 PR 列表就是确认过的拆分。

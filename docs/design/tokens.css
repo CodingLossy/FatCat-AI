@@ -15,7 +15,7 @@
 
     /* ---- Palette [owner] ---- */
     --fc-deep-navy: #0b0d1d; /* base background */
-    --fc-obsidian: #121512; /* surface (cards, panels). Looks green-tinted next to the others: see open question Q1 */
+    --fc-obsidian: #121216; /* surface (cards, panels); owner decision 2026-11-19: the brief's #121512 was a typo (green tint) */
     --fc-slate: #12151e; /* secondary surface (inputs, hover rows, glass cards) */
     --fc-border-grey: #1f2633; /* 1px hairlines */
     --fc-ice-cyan: #38bdf8; /* the only accent */

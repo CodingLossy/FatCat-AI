@@ -634,7 +634,7 @@ button {
 }
 
 .card {
-    background: linear-gradient(180deg, #151815, var(--surface));
+    background: linear-gradient(180deg, #16161c, var(--surface));
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: var(--space-4);
@@ -842,6 +842,11 @@ button {
     gap: 2px;
 }
 
+.side a .ic {
+    width: var(--icon-md);
+    height: var(--icon-md);
+}
+
 .side a {
     display: flex;
     align-items: center;
@@ -883,6 +888,11 @@ button {
     font-size: 28px;
     font-weight: 600;
     margin-top: var(--space-3);
+}
+
+.src::before {
+    content: '原型注释 · ';
+    color: #6b7789;
 }
 
 .src {
