@@ -11,6 +11,10 @@
     var STATE = params.get('state') || 'speaking'; // listening | thinking | speaking
     var STATIC = params.get('static') === '1' || matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    document.querySelectorAll('[data-version]').forEach(function (el) {
+        el.textContent = window.__PKG_VERSION__ || '';
+    });
+
     // ---------- views ----------
     function show() {
         var id = (location.hash || '#files').slice(1);
@@ -42,7 +46,7 @@
 
     // ---------- wave bars ----------
     function buildWave(el) {
-        for (var i = 0; i < 36; i++) el.appendChild(document.createElement('i'));
+        for (var i = 0; i < 56; i++) el.appendChild(document.createElement('i'));
     }
     var waves = [];
     function setWave(t) {
@@ -52,7 +56,7 @@
                 var amp = STATE === 'speaking' ? 1 : STATE === 'thinking' ? 0.18 : 0.1;
                 var env = Math.sin((Math.PI * i) / (bars.length - 1));
                 var v = Math.abs(Math.sin(i * 0.9 + t * 7) * 0.6 + Math.sin(i * 0.37 - t * 4) * 0.4);
-                bars[i].style.setProperty('--h', Math.max(3, 4 + amp * env * v * 24) + 'px');
+                bars[i].style.setProperty('--h', Math.max(3, 4 + amp * env * v * 44) + 'px');
             }
         });
     }
@@ -68,7 +72,7 @@
         };
     }
 
-    var MAX = 1400;
+    var MAX = 2600;
     var pts = [];
     (function () {
         var rnd = mulberry32(7);
@@ -81,8 +85,9 @@
                 x: Math.cos(th) * r,
                 y: y,
                 z: Math.sin(th) * r,
-                s: 0.5 + rnd() * 0.9,
-                ice: rnd() < 0.18,
+                s: rnd(),
+                b: rnd(),
+                ice: rnd() < 0.16,
                 ph: rnd() * 6.28,
             });
         }
@@ -112,7 +117,7 @@
         g.setTransform(dpr, 0, 0, dpr, 0, 0);
         g.clearRect(0, 0, w, h);
         var p = PRESET[STATE];
-        var R = w * 0.44;
+        var R = w * 0.47;
         var cx = w / 2;
         var cy = h / 2;
         var rot = t * p.spin + 0.6;
@@ -129,13 +134,26 @@
             var z1 = -x * sinR + z * cosR;
             var y1 = y * cosT - z1 * sinT;
             var z2 = y * sinT + z1 * cosT;
-            var s = R * breathe * k;
+            var persp = 1 + 0.16 * z2; // nearer points are larger: simple depth of field
+            var s = R * breathe * k * persp;
             return [cx + x1 * s, cy + y1 * s, z2];
         }
 
         // wireframe: latitude rings and meridians, 1px, low alpha
-        g.lineWidth = 1;
-        g.strokeStyle = 'rgba(226,232,255,0.13)';
+        // soft volume: a very faint radial tint plus a hairline limb
+        var vol = g.createRadialGradient(cx, cy, R * 0.1, cx, cy, R * 1.02);
+        vol.addColorStop(0, 'rgba(120,150,210,0.07)');
+        vol.addColorStop(1, 'rgba(120,150,210,0.0)');
+        g.fillStyle = vol;
+        g.beginPath();
+        g.arc(cx, cy, R * 1.02, 0, 6.2832);
+        g.fill();
+        g.lineWidth = 0.5;
+        g.strokeStyle = 'rgba(226,232,255,0.16)';
+        g.beginPath();
+        g.arc(cx, cy, R * 1.02, 0, 6.2832);
+        g.stroke();
+        g.strokeStyle = 'rgba(226,232,255,0.10)'; // wireframe: ~10% opacity, 0.5px
         var lat;
         var lon;
         var i;
@@ -174,11 +192,11 @@
             var depth = (q3[2] + 1) / 2; // 0 back .. 1 front
             var inBand = p.bandIce && Math.abs(pt.y - Math.sin(t * 0.9) * 0.8) < 0.06;
             var ice = pt.ice || inBand;
-            var alpha = 0.18 + 0.7 * depth;
+            var alpha = Math.min(1, (0.2 + 0.8 * depth) * (0.6 + 0.6 * pt.b));
             g.fillStyle = ice
                 ? 'rgba(56,189,248,' + alpha.toFixed(2) + ')'
                 : 'rgba(226,232,255,' + alpha.toFixed(2) + ')';
-            var sz = (0.7 + pt.s * 0.9) * (0.6 + 0.6 * depth);
+            var sz = (0.4 + pt.s * pt.s * 1.6) * (0.5 + 0.9 * depth);
             g.beginPath();
             g.arc(q3[0], q3[1], sz, 0, 6.2832);
             g.fill();

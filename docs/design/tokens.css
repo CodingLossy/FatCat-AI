@@ -45,9 +45,9 @@
     /* [proposed] semantic colours kept deliberately desaturated; used for diffs, errors and warnings only, never as
        decoration. The accent stays the only chromatic brand colour. */
     --danger: #e5857f;
-    --danger-bg: rgb(229 133 127 / 14%);
+    --danger-bg: rgb(229 133 127 / 18%);
     --ok: #7fc99a;
-    --ok-bg: rgb(127 201 154 / 14%);
+    --ok-bg: rgb(127 201 154 / 16%);
     --warn: #d8b36a;
 
     /* Glass card (RUNNING TOOLS): matte, 1px border, a light backdrop blur, no glow */
