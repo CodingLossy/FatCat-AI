@@ -64106,6 +64106,939 @@
         }
       }
     },
+    "/api/v1/sync": {
+      "get": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Changes to sessions, messages and items since a cursor (deletions are tombstones)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 200
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(session|message|item)(,(session|message|item))*$"
+            },
+            "required": false,
+            "name": "kinds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A batch of changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "changes": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                              },
+                              "changedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "session",
+                                  "message",
+                                  "item"
+                                ]
+                              },
+                              "deleted": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "sessionId": {
+                                "type": "string",
+                                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "changedAt",
+                              "kind",
+                              "deleted"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                              },
+                              "changedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "session"
+                                ]
+                              },
+                              "deleted": {
+                                "type": "boolean",
+                                "enum": [
+                                  false
+                                ]
+                              },
+                              "session": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "maxLength": 200
+                                  },
+                                  "modelProfileId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                  },
+                                  "forkedFromSessionId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                  },
+                                  "forkedFromMessageId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                  },
+                                  "lastMessageAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "format": "date-time"
+                                  },
+                                  "activeRunId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                  },
+                                  "createdAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "updatedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "title",
+                                  "modelProfileId",
+                                  "forkedFromSessionId",
+                                  "forkedFromMessageId",
+                                  "lastMessageAt",
+                                  "activeRunId",
+                                  "createdAt",
+                                  "updatedAt"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "changedAt",
+                              "kind",
+                              "deleted",
+                              "session"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                              },
+                              "changedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "message"
+                                ]
+                              },
+                              "deleted": {
+                                "type": "boolean",
+                                "enum": [
+                                  false
+                                ]
+                              },
+                              "message": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                  },
+                                  "sessionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                  },
+                                  "seq": {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0
+                                  },
+                                  "role": {
+                                    "type": "string",
+                                    "enum": [
+                                      "user",
+                                      "assistant",
+                                      "system"
+                                    ]
+                                  },
+                                  "parts": {
+                                    "type": "array",
+                                    "items": {
+                                      "oneOf": [
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "type": {
+                                              "type": "string",
+                                              "enum": [
+                                                "text"
+                                              ]
+                                            },
+                                            "text": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "type",
+                                            "text"
+                                          ]
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "type": {
+                                              "type": "string",
+                                              "enum": [
+                                                "tool-call"
+                                              ]
+                                            },
+                                            "callId": {
+                                              "type": "string"
+                                            },
+                                            "name": {
+                                              "type": "string"
+                                            },
+                                            "input": {}
+                                          },
+                                          "required": [
+                                            "type",
+                                            "callId",
+                                            "name"
+                                          ]
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "type": {
+                                              "type": "string",
+                                              "enum": [
+                                                "tool-result"
+                                              ]
+                                            },
+                                            "callId": {
+                                              "type": "string"
+                                            },
+                                            "output": {},
+                                            "error": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "type",
+                                            "callId"
+                                          ]
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "type": {
+                                              "type": "string",
+                                              "enum": [
+                                                "image"
+                                              ]
+                                            },
+                                            "attachmentId": {
+                                              "type": "string",
+                                              "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                            },
+                                            "mediaType": {
+                                              "type": "string",
+                                              "enum": [
+                                                "image/png",
+                                                "image/jpeg",
+                                                "image/webp",
+                                                "image/gif"
+                                              ]
+                                            },
+                                            "fileName": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 255
+                                            }
+                                          },
+                                          "required": [
+                                            "type",
+                                            "attachmentId",
+                                            "mediaType",
+                                            "fileName"
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "streaming",
+                                      "complete",
+                                      "error",
+                                      "cancelled"
+                                    ]
+                                  },
+                                  "runId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                  },
+                                  "parentMessageId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                  },
+                                  "modelProfileId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                  },
+                                  "usage": {
+                                    "type": [
+                                      "object",
+                                      "null"
+                                    ],
+                                    "properties": {
+                                      "inputTokens": {
+                                        "type": "integer",
+                                        "minimum": 0
+                                      },
+                                      "outputTokens": {
+                                        "type": "integer",
+                                        "minimum": 0
+                                      },
+                                      "totalTokens": {
+                                        "type": "integer",
+                                        "minimum": 0
+                                      }
+                                    }
+                                  },
+                                  "createdAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "updatedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "sessionId",
+                                  "seq",
+                                  "role",
+                                  "parts",
+                                  "status",
+                                  "runId",
+                                  "parentMessageId",
+                                  "modelProfileId",
+                                  "usage",
+                                  "createdAt",
+                                  "updatedAt"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "changedAt",
+                              "kind",
+                              "deleted",
+                              "message"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                              },
+                              "changedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "item"
+                                ]
+                              },
+                              "deleted": {
+                                "type": "boolean",
+                                "enum": [
+                                  false
+                                ]
+                              },
+                              "item": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "category",
+                                      "content"
+                                    ]
+                                  },
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "source": {
+                                    "type": "string"
+                                  },
+                                  "sourceRef": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "summary": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "icon": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "color": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "childCount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "descendantCount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "contentCount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "meta": {
+                                    "type": [
+                                      "object",
+                                      "null"
+                                    ],
+                                    "additionalProperties": {}
+                                  },
+                                  "createdAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "updatedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "deletedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "format": "date-time"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "kind",
+                                  "type",
+                                  "source",
+                                  "sourceRef",
+                                  "title",
+                                  "summary",
+                                  "icon",
+                                  "color",
+                                  "childCount",
+                                  "descendantCount",
+                                  "meta",
+                                  "createdAt",
+                                  "updatedAt",
+                                  "deletedAt"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "changedAt",
+                              "kind",
+                              "deleted",
+                              "item"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "cursor": {
+                      "type": "string"
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "changes",
+                    "cursor",
+                    "hasMore"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF token missing or invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/mcp/servers": {
       "get": {
         "tags": [

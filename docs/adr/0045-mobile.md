@@ -93,3 +93,11 @@
 - WebSocket:浏览器的 WebSocket 不能设请求头,设备 access 令牌放在 `Sec-WebSocket-Protocol: fatcat.v1, fatcat.bearer.<token>`,服务器只回选 `fatcat.v1`(令牌不回显)。长期有效的个人访问令牌**不**接受这种方式(子协议可能出现在代理日志里),仍只走 `Authorization` 头。令牌不放地址栏。
 - 设备上的「退出」调用 `DELETE /devices/self`(吊销本设备)并清除本地令牌。
 - 吊销立即生效,包括已建立的 WebSocket:用设备令牌建立的连接登记在 `device-sockets.ts`,业主吊销、设备自己登出、refresh 重放吊销三处都会调用 `closeDeviceSockets`,以 4401 `device revoked` 关闭;access 令牌自然过期不断开(重连时用新令牌)。设备令牌握手成功时也会更新「最近使用」。
+
+### 实现记录:增量同步(`feat/sync-api`,迁移 0021 已获业主批准 2026-11-19)
+
+- `change_log(seq AUTOINCREMENT, owner_id, kind, entity_id, session_id, deleted, changed_at, UNIQUE(kind, entity_id))`。**每个实体只有一行**:触发器先删旧行再插入新行,所以表大小不超过实体数,流式回复每个增量都改消息也不会让表膨胀;`seq` 只增不减,游标就是 seq。
+- 触发器放在 `sessions`、`messages`、`items` 的 INSERT / UPDATE / DELETE 上,所以所有写入路径(包括外键级联删除会话时的消息)都覆盖,不用改各处仓储。`runs` 的开始 / 结束也会把所属会话记为已变化(会话的 `running` 状态变了)。条目的软删除(`deleted_at`)记为墓碑。注意:SQLite 触发器里 `INSERT OR REPLACE` 会被外层语句的冲突策略覆盖(级联删除时会报 UNIQUE 冲突),所以用「先 DELETE 再 INSERT」。
+- 迁移只新增 `change_log` 表和触发器,并按 `updated_at` 回填已有会话、消息、条目;不改任何已有表和数据。`owner_id` 不加外键,避免删账户时触发器再往里写。回滚:停服务,用 `backups/` 里的 `…-pre-0021.sqlite` 恢复再运行旧版本(备份之后写入的数据会丢);也可以只 DROP 触发器和 `change_log`。
+- `GET /api/v1/sync?cursor&limit&kinds`:返回变化的实体全文(会话 / 消息 / 条目用现有 DTO)或墓碑,`cursor` 是下次要带的游标,`hasMore` 为真表示还要继续拉。日志指向的实体已经不存在时按墓碑返回。设备令牌可读(只读接口)。
+- 初始快照包含全部消息;手机端「只缓存会话列表与最近消息」由客户端用 `kinds=session` 先拉会话、再按需拉消息,服务端不替它裁剪。

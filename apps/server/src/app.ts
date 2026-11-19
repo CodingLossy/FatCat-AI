@@ -53,6 +53,7 @@ import { sessionRoutes } from './routes/sessions.js';
 import { attachmentRoutes, UPLOAD_OVERHEAD_BYTES } from './routes/attachments.js';
 import { type AttachmentFiles, createMemoryAttachmentFiles } from './attachment-files.js';
 import { deviceRoutes } from './routes/devices.js';
+import { syncRoutes } from './routes/sync.js';
 import { tokenRoutes } from './routes/tokens.js';
 import { channelRoutes } from './routes/channels.js';
 import { hashToken, taskRoutes } from './routes/tasks.js';
@@ -380,6 +381,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             }),
         )
         .route('/', itemRoutes({ repos, items: deps.items }))
+        .route('/', syncRoutes({ repos }))
         .route(
             '/',
             mcpRoutes({
