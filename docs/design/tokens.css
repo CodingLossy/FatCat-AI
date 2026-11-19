@@ -1,0 +1,104 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+/* Copyright (C) 2026 尹绪柏 (Theodore Yin) */
+
+/*
+ * FatCat-AI design tokens (M12, ADR 0046 / docs/design/ui-redesign.md).
+ * Single source of truth: the implementation PRs move this file to packages/ui and import it from the web app,
+ * the PWA and the desktop shell. Raw values live here only; components use the semantic names below.
+ *
+ * Values marked [owner] come verbatim from the M12 brief. Values marked [proposed] are additions the brief does not
+ * give (semantic red/green for diffs and errors, a stronger border for form controls, radii, spacing, motion);
+ * they are open questions in the design document.
+ */
+:root {
+    color-scheme: dark;
+
+    /* ---- Palette [owner] ---- */
+    --fc-deep-navy: #0b0d1d; /* base background */
+    --fc-obsidian: #121512; /* surface (cards, panels). Looks green-tinted next to the others: see open question Q1 */
+    --fc-slate: #12151e; /* secondary surface (inputs, hover rows, glass cards) */
+    --fc-border-grey: #1f2633; /* 1px hairlines */
+    --fc-ice-cyan: #38bdf8; /* the only accent */
+    --fc-silver: #e2e8ff; /* body text */
+    --fc-muted: #94a3b8; /* secondary text, default icon colour */
+
+    /* ---- Semantic colours ---- */
+    --bg: var(--fc-deep-navy);
+    --surface: var(--fc-obsidian);
+    --surface-2: var(--fc-slate);
+    --border: var(--fc-border-grey);
+    --accent: var(--fc-ice-cyan);
+    --fg: var(--fc-silver);
+    --muted: var(--fc-muted);
+
+    /* [proposed] text on an accent-filled surface (primary button): base colour, 9.5:1 on the accent */
+    --accent-fg: var(--fc-deep-navy);
+    /* [proposed] 1px border for interactive controls; --border alone is only 1.27:1 against the base, below the 3:1
+       non-text contrast target (WCAG 1.4.11) that inputs, buttons and switches need */
+    --border-strong: #5b687c;
+    /* [proposed] focus ring: the accent, 2px, offset 2px; never a glow */
+    --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+    /* [proposed] accent tints for selected rows and the AI-operated element outline in the browser panel */
+    --accent-weak: rgb(56 189 248 / 14%);
+    --accent-line: rgb(56 189 248 / 55%);
+
+    /* [proposed] semantic colours kept deliberately desaturated; used for diffs, errors and warnings only, never as
+       decoration. The accent stays the only chromatic brand colour. */
+    --danger: #e5857f;
+    --danger-bg: rgb(229 133 127 / 14%);
+    --ok: #7fc99a;
+    --ok-bg: rgb(127 201 154 / 14%);
+    --warn: #d8b36a;
+
+    /* Glass card (RUNNING TOOLS): matte, 1px border, a light backdrop blur, no glow */
+    --glass-bg: rgb(18 21 30 / 72%);
+    --glass-blur: 12px;
+
+    /* ---- Typography [owner: body 14px sans, code 12px mono] ---- */
+    --font-sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, 'Liberation Mono', monospace;
+    --text-body: 14px;
+    --text-code: 12px;
+    --text-small: 12px; /* [proposed] captions, badges */
+    --text-title: 16px; /* [proposed] card titles */
+    --text-header: 32px; /* design-sheet header; page titles use --text-title */
+    --line-body: 1.55;
+    --line-code: 1.6;
+
+    /* ---- Shape, spacing, motion [proposed] ---- */
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --radius-pill: 999px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --icon-stroke: 1.75;
+    --icon-sm: 16px;
+    --icon-md: 20px;
+    --icon-lg: 24px;
+    --motion-fast: 120ms;
+    --motion: 200ms;
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+
+    /* ---- Code syntax (muted, no neon) [proposed] ---- */
+    --code-keyword: #8fb4d9;
+    --code-string: #a3c9a8;
+    --code-number: #d0b48a;
+    --code-title: #9fc6e8;
+    --code-comment: #5f6b7e;
+
+    /* ---- Diff [proposed] ---- */
+    --diff-add-bg: var(--ok-bg);
+    --diff-del-bg: var(--danger-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --motion-fast: 0ms;
+        --motion: 0ms;
+    }
+}
