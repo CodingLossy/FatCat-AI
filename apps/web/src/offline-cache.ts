@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 离线只读缓存(ADR 0045 第 2 节):用 /sync 把会话和最近的消息存到 IndexedDB,断网时还能看。
-// 只缓存会话与消息(条目不缓存);写操作不排队,离线时发送按钮不可用。登出时清空(清除也在服务器吊销之外保护丢失的手机)。
+// 只缓存会话与消息(条目不缓存);写操作不排队(离线时发送、删除仍会失败并显示错误)。登出、或服务器答复未登录 / 设备已吊销时清空。
 import type { Message, Session, SyncChange, SyncResponse } from '@fatcat-ai/shared';
 
 /** 每个会话最多保留的最近消息条数。 */
@@ -45,13 +45,22 @@ export type SyncFetcher = (query: {
 
 /**
  * 拉到追平为止。出错(离线、401)时保留已经写入的批次,下次从游标继续。
+ * isCancelled 为真(例如正在登出清缓存)时不再写入任何批次,避免清空之后又被写回。
  * 返回这一轮收到的变化条数。
  */
-export async function syncCache(fetchChanges: SyncFetcher, store: CacheStore, limit = 200): Promise<number> {
+export async function syncCache(
+    fetchChanges: SyncFetcher,
+    store: CacheStore,
+    options: { limit?: number; isCancelled?: () => boolean } = {},
+): Promise<number> {
+    const limit = options.limit ?? 200;
+    const cancelled = options.isCancelled ?? (() => false);
     let cursor = await store.getCursor();
     let total = 0;
     for (;;) {
+        if (cancelled()) return total;
         const res = await fetchChanges({ cursor, limit, kinds: ['session', 'message'] });
+        if (cancelled()) return total;
         await store.applyBatch(toBatch(res.changes, res.cursor));
         total += res.changes.length;
         cursor = res.cursor;

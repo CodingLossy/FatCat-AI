@@ -82,4 +82,27 @@ describe('syncCache', () => {
         expect(await store.listMessages('S1')).toEqual([]);
         expect(await store.getCursor()).toBe('4'); // 出错前已写入的批次保留
     });
+
+    it('正在拉取时清空缓存:放行后的批次不会被写回,游标保持为空', async () => {
+        const store = memoryStore();
+        let release!: (r: SyncResponse) => void;
+        let cancelled = false;
+        const running = syncCache(
+            () =>
+                new Promise<SyncResponse>((resolve) => {
+                    release = resolve;
+                }),
+            store,
+            { isCancelled: () => cancelled },
+        );
+        await Promise.resolve();
+        // 登出:先标记取消,再清空
+        cancelled = true;
+        await store.clear();
+        release({ changes: [live('session', session('S1'))], cursor: '5', hasMore: true });
+        expect(await running).toBe(0);
+        expect(await store.listSessions()).toEqual([]);
+        expect(await store.getCursor()).toBeUndefined();
+        expect(store.batches).toBe(0);
+    });
 });

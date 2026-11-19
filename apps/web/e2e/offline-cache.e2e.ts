@@ -125,3 +125,34 @@ test('联网时缓存会话;断网重开页面仍能看到并打开它们;登出
     await expect(page.getByLabel('用户名')).toBeVisible();
     await expect.poll(() => cachedCount(page)).toBe(0);
 });
+
+test('服务器答复未登录(例如设备被吊销)时清空缓存和记住的设置,之后断网也不再显示缓存', async ({ page, context }) => {
+    await page.setViewportSize({ width: 1100, height: 800 });
+    await page.goto(base);
+    await page.getByLabel('用户名').fill('owner');
+    await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
+    await page.getByRole('button', { name: '登录' }).click();
+    await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
+    const csrf = (await context.cookies()).find((c) => c.name === 'aip_csrf')!.value;
+    await page.request.post(`${base}/api/v1/sessions`, {
+        data: { title: '将被清掉' },
+        headers: { 'x-csrf-token': csrf },
+    });
+    await page.reload();
+    await expect(page.getByText('将被清掉')).toBeVisible();
+    await expect.poll(() => cachedCount(page)).toBeGreaterThan(0);
+    expect(await page.evaluate(() => localStorage.getItem('fatcat.lastSettings'))).not.toBeNull();
+
+    // 服务器端让这个登录失效(这里用登出接口代替吊销设备),界面没有点登出
+    await page.request.post(`${base}/api/v1/auth/logout`, { headers: { 'x-csrf-token': csrf } });
+    await page.reload();
+    await expect(page.getByLabel('用户名')).toBeVisible();
+    await expect.poll(() => cachedCount(page)).toBe(0);
+    expect(await page.evaluate(() => localStorage.getItem('fatcat.lastSettings'))).toBeNull();
+
+    // 之后断网重开:不再显示缓存的会话
+    await context.setOffline(true);
+    await page.reload();
+    await expect(page.getByText('将被清掉')).toBeHidden();
+    await context.setOffline(false);
+});

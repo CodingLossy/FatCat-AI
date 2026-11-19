@@ -16,6 +16,8 @@ interface RunInit {
     contentType?: string;
     body?: string;
     offline?: boolean;
+    /** 页面立即读走原响应的 body(而不是 clone)。 */
+    consume?: boolean;
 }
 
 /** 在带假 self / caches 的沙箱里加载 public/sw.js,返回 fetch 处理器与缓存内容。 */
@@ -55,16 +57,32 @@ function load() {
                 headers: { 'Cache-Control': init.cacheControl ?? '', 'Content-Type': init.contentType ?? '' },
             });
         };
-        handlers['fetch']?.({ request, respondWith: (p: Promise<Response>) => (responded = p) });
+        const pending: Promise<unknown>[] = [];
+        handlers['fetch']?.({
+            request,
+            respondWith: (p: Promise<Response>) => (responded = p),
+            waitUntil: (p: Promise<unknown>) => pending.push(p),
+        });
         const response = responded ? await (responded as Promise<Response>) : null;
+        // 页面马上读 body(不是 clone):缓存写入必须在此之前就已经 clone 好
+        const text = response ? (init.consume ? await response.text() : await response.clone().text()) : null;
+        await Promise.all(pending);
         await new Promise((r) => setTimeout(r, 0));
-        return { intercepted: responded !== null, text: response ? await response.clone().text() : null };
+        return { intercepted: responded !== null, text };
     };
     const cachedText = async (path: string) => (await store.get(`${ORIGIN}${path}`)?.clone().text()) ?? null;
     return { run, store, cachedText };
 }
 
 describe('service worker', () => {
+    it('页面先读走 body 也能缓存应用壳与静态资源(clone 必须在 await 之前)', async () => {
+        const { run, cachedText } = load();
+        await run('/assets/app-abc12345.js', { contentType: 'text/javascript', body: 'js', consume: true });
+        await run('/', { mode: 'navigate', contentType: 'text/html', body: 'shell', consume: true });
+        expect(await cachedText('/assets/app-abc12345.js')).toBe('js');
+        expect(await cachedText('/')).toBe('shell');
+    });
+
     it('不拦截也不缓存 /api 与非 GET 请求', async () => {
         const { run, store } = load();
         expect((await run('/api/v1/sessions')).intercepted).toBe(false);

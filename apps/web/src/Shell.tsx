@@ -8,7 +8,7 @@ import { ApprovalPanel } from './ApprovalPanel.js';
 import { AgentsPage } from './AgentsPage.js';
 import { SessionMapPage } from './SessionMapPage.js';
 import { AuditPage } from './AuditPage.js';
-import { cachedSessions, isOffline, refreshCache } from './cache.js';
+import { cachedSessions, clearCache, isOffline, isUnauthorized, refreshCache } from './cache.js';
 import { ChatView } from './ChatView.js';
 import { ItemsPage } from './ItemsPage.js';
 import { MailPage } from './MailPage.js';
@@ -90,6 +90,7 @@ export function Shell({
             void refreshCache();
             return page.items;
         } catch (error) {
+            if (isUnauthorized(error)) void clearCache();
             if (!isOffline(error)) return null;
             const cached = await cachedSessions();
             return cached.length > 0 ? cached.slice(0, 100) : null;

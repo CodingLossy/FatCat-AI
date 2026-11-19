@@ -28,6 +28,8 @@ async function loadAuth(): Promise<{ status: AuthStatus; settings: Settings | nu
         const status = await api.auth.status();
         const settings = status.authenticated ? await api.settings.get() : null;
         if (settings) rememberSettings(settings);
+        // 服务器明确说未登录(登出、会话过期、设备被吊销):缓存不该留在这台设备上
+        else await clearCache();
         return { status, settings };
     } catch (error) {
         // 连不上服务器:登录过的设备只读地显示离线缓存(ADR 0045 第 2 节),恢复联网后会重新确认登录状态
