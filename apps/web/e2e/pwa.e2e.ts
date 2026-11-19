@@ -94,6 +94,10 @@ test('service worker 缓存应用壳,离线可打开,缓存里没有 API 响应'
         return urls;
     });
     expect(cached).toContain('/');
+    // 缓存名带构建标识(占位符已在构建时被替换)
+    const names = await page.evaluate(() => caches.keys());
+    expect(names).toHaveLength(1);
+    expect(names[0]).toMatch(/^fatcat-shell-[0-9a-f]{12}$/);
     expect(cached.some((u) => u.startsWith('/api/'))).toBe(false);
 
     await context.setOffline(true);
