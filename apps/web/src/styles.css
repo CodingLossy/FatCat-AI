@@ -1801,6 +1801,87 @@ td .badge {
     color: var(--muted);
 }
 
+/* 内置浏览器面板(桌面壳):占位元素铺满剩余空间,原生 webview 由壳盖在它上面 */
+.wb-browser {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.wb-browser-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border);
+}
+
+.wb-browser-bar button:not(.wb-browser-url) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    flex: none;
+}
+
+.wb-browser-address {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.wb-browser-address input {
+    width: 100%;
+    margin: 0;
+}
+
+.wb-browser-url {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: 32px;
+    padding: 0 var(--space-3);
+    text-align: left;
+    color: var(--fg);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+}
+
+.wb-browser-url span:first-of-type {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wb-browser-alert {
+    padding: var(--space-2) var(--space-3);
+    color: var(--warn);
+}
+
+.wb-browser-view {
+    flex: 1;
+    min-height: 160px;
+    overflow: auto;
+}
+
+.wb-browser-idle {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-height: 100%;
+}
+
+.wb-browser-foot {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-small);
+    border-top: 1px solid var(--border);
+}
+
 .wb-files {
     display: flex;
     flex: 1;
