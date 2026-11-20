@@ -167,6 +167,36 @@ describe('browser.*(本机测试服务器)', () => {
         expect(ask(open, { url: url('site.test', '/ok') }, { ...ctx, sessionId: 's2' })).toEqual({ action: 'ask' });
     });
 
+    it('已批准的主机 / 域名预授权也不能放行带长查询串的地址:仍然询问(并带警示),短查询串照常放行', async () => {
+        const { open } = make();
+        const c = { ...ctx, sessionId: 'carry', untrustedContentSeen: true };
+        await open.execute({ url: url('site.test', '/ok') }, c);
+        const long = url('site.test', `/ok?d=${'A'.repeat(250)}`);
+        expect(ask(open, { url: url('site.test', '/ok?d=1') }, c)).toMatchObject({ action: 'run' });
+        expect(ask(open, { url: long }, c)).toEqual({ action: 'ask' });
+        expect(ask(open, { url: `${url('site.test', '/ok')}#${'B'.repeat(250)}` }, c)).toEqual({ action: 'ask' });
+        expect(open.warnings?.({ url: long }, c)).toEqual([expect.objectContaining({ code: 'url_carries_data' })]);
+        const preauth = {
+            id: 'p',
+            toolName: 'browser.open',
+            scope: 'always' as const,
+            sessionId: null,
+            constraint: { domain: 'site.test' },
+            createdAt: '',
+            lastUsedAt: null,
+        };
+        expect(decide(open, { url: url('site.test', '/ok?d=1') }, c, [preauth])).toMatchObject({ action: 'run' });
+        expect(decide(open, { url: long }, c, [preauth])).toEqual({ action: 'ask' });
+    });
+
+    it('会话状态按 owner 与会话一起作键:别的 owner 同名会话看不到页面,也不继承已批准的主机', async () => {
+        const { open, read } = make();
+        await open.execute({ url: url('site.test', '/ok') }, { ...ctx, sessionId: 'shared-id' });
+        const other = { ...ctx, ownerId: 'o2', sessionId: 'shared-id' };
+        await expect(read.execute({}, other)).rejects.toMatchObject({ code: 'no_page' });
+        expect(ask(open, { url: url('site.test', '/ok') }, other)).toEqual({ action: 'ask' });
+    });
+
     it('open 之后 read 返回已包装的不可信正文,去掉脚本,不联网', async () => {
         const { open, read } = make();
         const c = { ...ctx, sessionId: 'read-1' };

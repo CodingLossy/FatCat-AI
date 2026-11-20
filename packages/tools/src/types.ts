@@ -102,6 +102,11 @@ export interface ToolDefinition {
      */
     precheck?: (input: unknown, context: ToolContext) => string | null;
     /**
+     * 返回 true 时这次调用一定要审批:预授权、任务白名单、条件预授权与会话内已批准都不生效
+     * (例如 browser.open 带很长查询串的地址)。
+     */
+    forceApproval?: (input: unknown, context: ToolContext) => boolean;
+    /**
      * 本会话里用户已经批准过同一目标(例如同一主机)时返回 true,调用不再询问。与条件预授权不同,它不受
      * 「会话读过不可信内容」影响(否则读完一页就要对同一主机再问一次);只能依据 core 记下的、用户已批准过的事实。
      */

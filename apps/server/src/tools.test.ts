@@ -406,6 +406,33 @@ describe('browser.*(设置开关、首次主机审批、注入评测)', () => {
                 };
                 yield { type: 'finish', reason: 'tool-calls' };
             },
+            answer('完成'),
+        );
+        const approvals: { toolName?: string; warnings?: { code: string }[] }[] = [];
+        const results: { error?: string }[] = [];
+        const drive = async (text: string) =>
+            readSse(await post(`/api/v1/sessions/${session.id}/messages`, { text }), async (e) => {
+                if (e.event.type === 'tool-result') results.push(e.event);
+                if (e.event.type !== 'approval-required') return;
+                approvals.push(e.event);
+                // 用户批准新闻站,拒绝带数据的地址
+                await post(`/api/v1/approvals/${e.event.callId}`, {
+                    decision: e.event.warnings?.length ? 'reject' : 'approve',
+                });
+            });
+        await drive('看看新闻');
+        // 第二轮(每轮最多 5 步):同一个已批准的主机带 250 字符查询串,以及内网地址
+        steps.push(
+            async function* () {
+                // 同一个已批准的主机,但带 250 字符的查询串:不能直接运行
+                yield {
+                    type: 'tool-call',
+                    callId: 'c3b',
+                    name: 'browser.open',
+                    input: { url: `http://news.test:${port}/again?d=${'y'.repeat(250)}` },
+                };
+                yield { type: 'finish', reason: 'tool-calls' };
+            },
             async function* () {
                 yield {
                     type: 'tool-call',
@@ -417,20 +444,13 @@ describe('browser.*(设置开关、首次主机审批、注入评测)', () => {
             },
             answer('完成'),
         );
-        const approvals: { toolName?: string; warnings?: { code: string }[] }[] = [];
-        const results: { error?: string }[] = [];
-        await readSse(await post(`/api/v1/sessions/${session.id}/messages`, { text: '看看新闻' }), async (e) => {
-            if (e.event.type === 'tool-result') results.push(e.event);
-            if (e.event.type !== 'approval-required') return;
-            approvals.push(e.event);
-            // 用户批准新闻站,拒绝攻击者主机
-            await post(`/api/v1/approvals/${e.event.callId}`, {
-                decision: e.event.summary.includes('evil.test') ? 'reject' : 'approve',
-            });
-        });
+        await drive('再看看');
         // 新闻站只问一次(之后的 /again 与读取不再问,即使会话已读过不可信内容);攻击者主机要问,并带「携带数据」警示
-        expect(approvals.map((a) => a.toolName)).toEqual(['browser.open', 'browser.open']);
-        expect(approvals[1]!.warnings).toEqual([expect.objectContaining({ code: 'url_carries_data' })]);
+        expect(approvals.map((a) => a.toolName)).toEqual(['browser.open', 'browser.open', 'browser.open']);
+        expect(approvals[0]!.warnings).toBeUndefined();
+        for (const a of approvals.slice(1)) {
+            expect(a.warnings).toEqual([expect.objectContaining({ code: 'url_carries_data' })]);
+        }
         // 内网地址在任何审批之前被拒绝
         expect(results.at(-1)).toMatchObject({ error: expect.stringContaining('not allowed') });
         const audit = pageOf(AuditEntry).parse(await (await req('/api/v1/audit?toolName=browser.open')).json()).items;
@@ -439,6 +459,7 @@ describe('browser.*(设置开关、首次主机审批、注入评测)', () => {
             'conditional',
             'denied',
             'denied',
+            'rejected',
             'rejected',
         ]);
     });

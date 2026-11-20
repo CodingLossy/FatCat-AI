@@ -107,6 +107,22 @@ function internalName(host: string): boolean {
  * 静态校验网址(不联网):只允许 http / https,无内嵌凭据,拒绝字面 IP 与内部主机名。
  * 解析后的地址由 guardedFetch 在连接时再校验一次(防 DNS 重绑定与重定向绕过)。
  */
+/** 按 owner 与会话一起作键,将来 sessionId 不是全局唯一时也不会串号。 */
+function sessionKey(context: ToolContext): string {
+    return `${context.ownerId}\u0000${context.sessionId}`;
+}
+
+/** 地址的查询串加片段超过上限:可能带着对话内容(ADR 0046 第 4.1 节)。 */
+export function carriesData(raw: string | null): boolean {
+    if (raw === null) return false;
+    try {
+        const url = new URL(raw);
+        return url.search.length + url.hash.length > URL_DATA_WARN_CHARS;
+    } catch {
+        return false;
+    }
+}
+
 export function checkBrowserUrl(raw: string): URL {
     if (raw.length > 2048) throw new BrowserError('the URL is too long', 'bad_url');
     let url: URL;
@@ -171,16 +187,16 @@ export function createBrowserTools(options: BrowserToolOptions): ToolDefinition[
     const maxCalls = options.maxCallsPerRun ?? MAX_BROWSER_CALLS_PER_RUN;
     let running = 0;
 
-    function state(sessionId: string): SessionState {
-        let s = sessions.get(sessionId);
+    function state(key: string): SessionState {
+        let s = sessions.get(key);
         if (s) {
             // 最近使用的放最后,超出上限时丢弃最久未用的会话
-            sessions.delete(sessionId);
+            sessions.delete(key);
         } else {
             s = { hosts: new Set() };
             if (sessions.size >= MAX_SESSIONS) sessions.delete(sessions.keys().next().value!);
         }
-        sessions.set(sessionId, s);
+        sessions.set(key, s);
         return s;
     }
 
@@ -248,17 +264,22 @@ export function createBrowserTools(options: BrowserToolOptions): ToolDefinition[
                 return error instanceof BrowserError ? error.message : 'the URL is not allowed';
             }
         },
+        // 带很长查询串 / 片段的地址永远要问:已批准的主机也可能是攻击者的页面,页面里的注入可以把对话放进查询串带出去
+        forceApproval: (input) => carriesData(urlOf(input)),
         approvedForSession: (input, context) => {
             const host = hostOfInput(input);
-            return host !== null && (sessions.get(context.sessionId)?.hosts.has(host) ?? false);
+            return (
+                host !== null &&
+                !carriesData(urlOf(input)) &&
+                (sessions.get(sessionKey(context))?.hosts.has(host) ?? false)
+            );
         },
         summarize: (input) => `Open ${urlOf(input) ?? '(invalid URL)'} in the browser`,
         warnings: (input): ApprovalWarning[] => {
             const raw = urlOf(input);
             if (raw === null) return [];
             try {
-                const url = new URL(raw);
-                if (url.search.length + url.hash.length > URL_DATA_WARN_CHARS) {
+                if (carriesData(raw)) {
                     return [
                         {
                             code: 'url_carries_data',
@@ -276,7 +297,7 @@ export function createBrowserTools(options: BrowserToolOptions): ToolDefinition[
             countCall(context);
             const { url: requested } = OpenInput.parse(raw);
             const first = checkBrowserUrl(requested);
-            const session = state(context.sessionId);
+            const session = state(sessionKey(context));
             const firstHost = normalizeHost(first.hostname);
             // 走到这里说明已批准(或免提示):同会话同主机不再询问
             session.hosts.add(firstHost);
@@ -363,7 +384,7 @@ export function createBrowserTools(options: BrowserToolOptions): ToolDefinition[
         execute: async (raw, context) => {
             countCall(context);
             const { offset = 0, maxChars = READ_DEFAULT_CHARS } = ReadInput.parse(raw);
-            const page = sessions.get(context.sessionId)?.page;
+            const page = sessions.get(sessionKey(context))?.page;
             if (!page) throw new BrowserError('no page is open; call browser.open first', 'no_page');
             const slice = page.text.slice(offset, offset + maxChars);
             const more = offset + maxChars < page.text.length;
@@ -385,7 +406,7 @@ export function createBrowserTools(options: BrowserToolOptions): ToolDefinition[
         execute: async (raw, context) => {
             countCall(context);
             ScreenshotInput.parse(raw);
-            const page = sessions.get(context.sessionId)?.page;
+            const page = sessions.get(sessionKey(context))?.page;
             if (!page) throw new BrowserError('no page is open; call browser.open first', 'no_page');
             const host = options.host;
             if (!host) {

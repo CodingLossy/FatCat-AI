@@ -83,7 +83,7 @@ export function decide(
     const rejected = tool.precheck?.(input, context);
     if (rejected) return { action: 'deny', reason: rejected };
 
-    if (isPreauthorizable(tool)) {
+    if (isPreauthorizable(tool) && !tool.forceApproval?.(input, context)) {
         const match = preauths.find(
             (p) =>
                 p.toolName === tool.name &&
