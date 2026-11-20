@@ -19,6 +19,7 @@ import { z } from 'zod';
 import type { ModelProfileRecord, Repositories } from '@fatcat-ai/storage';
 import {
     type BuiltinToolOptions,
+    type BrowserToolOptions,
     createBuiltinTools,
     createFsTools,
     type ToolDefinition,
@@ -316,7 +317,7 @@ export function createToolRegistry(
     repos: Repositories,
     items: ItemService,
     kb: KnowledgeBase,
-    builtin: BuiltinToolOptions = {},
+    builtin: Omit<BuiltinToolOptions, 'browser'> & { browser?: Partial<BrowserToolOptions> } = {},
     /** 邮件工具(ADR 0016);不给时不注册。 */
     mail?: Pick<MailToolOptions, 'runner' | 'secret' | 'complete' | 'now' | 'timeZone'>,
     /** 其他需要服务器内对象的工具(例如 channel.push,ADR 0034)。 */
@@ -330,6 +331,12 @@ export function createToolRegistry(
         ...createBuiltinTools({
             timeZoneOf: (ownerId) => effectiveTimeZone(repos.settings.get(ownerId).timeZone),
             ...builtin,
+            // browser.*:设置里的开关默认关闭(ADR 0046 第 4.6 节);宿主适配器(截图)由桌面壳提供,目前没有
+            browser: {
+                enabled: (ownerId) => repos.settings.get(ownerId).browser?.enabled === true,
+                allowFakeIp: (ownerId) => repos.settings.get(ownerId).network?.allowFakeIp === true,
+                ...builtin.browser,
+            },
             webFetch: {
                 allowFakeIp: (ownerId) => repos.settings.get(ownerId).network?.allowFakeIp === true,
                 ...builtin.webFetch,

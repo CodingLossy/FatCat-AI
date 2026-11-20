@@ -94,7 +94,7 @@ const auditRoute = createRoute({
 export function toolRoutes(deps: ToolRouteDeps) {
     const { repos, runs } = deps;
     return router()
-        .openapi(toolsRoute, (c) => c.json({ items: runs.tools?.info() ?? [], nextCursor: null }, 200))
+        .openapi(toolsRoute, (c) => c.json({ items: runs.tools?.info(requireOwner(c)) ?? [], nextCursor: null }, 200))
         .openapi(approvalsRoute, (c) => c.json(repos.approvals.list(requireOwner(c), c.req.valid('query')), 200))
         .openapi(approvalRoute, (c) => {
             const { callId } = c.req.valid('param');

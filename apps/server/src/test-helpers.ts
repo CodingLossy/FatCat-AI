@@ -9,7 +9,7 @@ import { Writable } from 'node:stream';
 import { EventBus, RunManager } from '@fatcat-ai/agent';
 import { createProvider, type ModelProvider, Redactor, SecretStore } from '@fatcat-ai/providers';
 import { type Connection, createRepositories, openStorage, type Repositories } from '@fatcat-ai/storage';
-import type { WebFetchOptions } from '@fatcat-ai/tools';
+import type { BrowserToolOptions, WebFetchOptions } from '@fatcat-ai/tools';
 import { createItemService, createKnowledgeBase, type KnowledgeBase } from '@fatcat-ai/items';
 import { createChannelPushTool } from './scheduler/channel-push-tool.js';
 import { createMailComplete, createSummarizer, createToolRegistry } from './agent-setup.js';
@@ -70,6 +70,8 @@ export interface TestServerOptions {
     approvalTimeoutMs?: number;
     /** web.fetch 的解析器与地址校验(测试中指向本机服务器)。 */
     webFetch?: WebFetchOptions;
+    /** browser.* 的网络选项(测试中指向本机服务器;开关仍由设置决定)。 */
+    browser?: Pick<BrowserToolOptions, 'fetch'>;
     /** 打开 memory.write 的条件预授权(与生产一致);默认关闭,审批流程的测试每次都会弹审批。 */
     conditionalApprovals?: boolean;
     /** 邮件任务的执行方式(测试中用内存实现代替 worker 与真实服务器)。 */
@@ -153,7 +155,10 @@ export async function createTestServer(
             repos,
             items,
             kb,
-            options.webFetch ? { webFetch: options.webFetch } : {},
+            {
+                ...(options.webFetch ? { webFetch: options.webFetch } : {}),
+                ...(options.browser ? { browser: options.browser } : {}),
+            },
             {
                 runner: mailRunner,
                 secret: (ref) => secrets.resolve(ref),

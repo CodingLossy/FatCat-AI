@@ -12106,6 +12106,17 @@
                       "required": [
                         "marketEnabled"
                       ]
+                    },
+                    "browser": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
                     }
                   },
                   "required": [
@@ -12487,6 +12498,14 @@
                         "type": "boolean"
                       }
                     }
+                  },
+                  "browser": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      }
+                    }
                   }
                 }
               }
@@ -12634,6 +12653,17 @@
                       },
                       "required": [
                         "marketEnabled"
+                      ]
+                    },
+                    "browser": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
                       ]
                     }
                   },

@@ -1038,7 +1038,7 @@ export class RunManager {
                 }
                 const specs =
                     tools && tools.size > 0 && step < agent.maxSteps
-                        ? tools.specs().filter((spec) => !this.isWithheld(ctx, spec.name))
+                        ? tools.specs(ctx.ownerId).filter((spec) => !this.isWithheld(ctx, spec.name))
                         : undefined;
                 const calls: ToolCall[] = [];
                 let stepText = '';
@@ -1216,7 +1216,7 @@ export class RunManager {
                 let usage: Usage | undefined;
                 const specs =
                     tools && tools.size > 0 && step < (agent?.maxSteps ?? MAX_TOOL_STEPS)
-                        ? tools.specs().filter((spec) => !this.isWithheld(ctx, spec.name))
+                        ? tools.specs(ctx.ownerId).filter((spec) => !this.isWithheld(ctx, spec.name))
                         : undefined;
                 for await (const chunk of provider.stream({ messages, signal, ...(specs ? { tools: specs } : {}) })) {
                     if (chunk.type === 'text-delta') {

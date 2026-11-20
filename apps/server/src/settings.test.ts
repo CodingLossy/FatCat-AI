@@ -49,6 +49,17 @@ describe('/api/v1/settings', () => {
         });
         expect(await (await put({ theme: 'dark' })).json()).toMatchObject({ network: { allowFakeIp: true } });
         expect((await put({ network: { allowFakeIp: 'yes' } })).status).toBe(400);
+        // 内置浏览器开关(ADR 0046 第 4.6 节):默认关闭,只改 enabled,其他设置不受影响
+        expect(
+            Settings.parse(await (await s.app.request('/api/v1/settings', { headers: { cookie } })).json()).browser,
+        ).toEqual({
+            enabled: false,
+        });
+        expect(await (await put({ browser: { enabled: true } })).json()).toMatchObject({
+            browser: { enabled: true },
+            network: { allowFakeIp: true },
+        });
+        expect((await put({ browser: { enabled: 'yes' } })).status).toBe(400);
     });
 
     it('时区(ADR 0023):接受 IANA 名与 UTC,null 恢复跟随服务器,不合法的返回 400,变化时通知重新排期', async () => {

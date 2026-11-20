@@ -64,24 +64,28 @@ export class ToolRegistry {
         return this.tools.size;
     }
 
-    /** 交给模型的工具:被禁用的工具不提供。 */
-    specs(): ToolSpecLike[] {
+    /** 交给模型的工具:被禁用的工具不提供;给出 ownerId 时,设置里关闭的工具(enabledFor)也不提供。 */
+    specs(ownerId?: string): ToolSpecLike[] {
         return [...this.tools.values()]
-            .filter((t) => isEnabled(t, this.options))
+            .filter((t) => isEnabled(t, this.options) && this.enabledFor(t, ownerId))
             .map((t) => ({ name: t.name, description: t.description, parameters: t.parameters }));
     }
 
-    /** GET /api/v1/tools。 */
-    info(): ToolInfo[] {
+    private enabledFor(tool: ToolDefinition, ownerId: string | undefined): boolean {
+        return ownerId === undefined || !tool.enabledFor || tool.enabledFor(ownerId);
+    }
+
+    /** GET /api/v1/tools;给出 ownerId 时,设置里关闭的工具显示为 disabled。 */
+    info(ownerId?: string): ToolInfo[] {
         return [...this.tools.values()]
             .map((t) => ({
                 name: t.name,
                 description: t.description,
                 risk: t.risk,
-                approval: defaultApproval(t, this.options),
+                approval: this.enabledFor(t, ownerId) ? defaultApproval(t, this.options) : 'disabled',
                 source: t.source ?? 'builtin',
                 server: t.server ?? null,
-                preauthorizable: isPreauthorizable(t) && isEnabled(t, this.options),
+                preauthorizable: isPreauthorizable(t) && isEnabled(t, this.options) && this.enabledFor(t, ownerId),
                 constraints: Object.keys(t.constraints ?? {}) as PreauthConstraintKind[],
                 requiredConstraint: t.requireConstraint ?? null,
                 ...(t.activityLabel ? { activityLabel: t.activityLabel } : {}),

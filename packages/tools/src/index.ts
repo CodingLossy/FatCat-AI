@@ -32,6 +32,15 @@ export { type BuiltinToolOptions, createBuiltinTools } from './builtin/index.js'
 export { CalcError, createCalcTool, evaluate } from './builtin/calc.js';
 export { htmlToText } from './builtin/html.js';
 export { isBlockedAddress, isFakeIpAddress } from './builtin/net-guard.js';
+export {
+    BrowserError,
+    type BrowserHost,
+    type BrowserToolOptions,
+    checkBrowserUrl,
+    createBrowserTools,
+    MAX_BROWSER_CALLS_PER_RUN,
+    type ScreenshotImage,
+} from './builtin/browser.js';
 export { createDelegateTool } from './builtin/delegate.js';
 export { createTimeTool } from './builtin/time.js';
 export {
