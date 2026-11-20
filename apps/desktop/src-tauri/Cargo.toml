@@ -14,7 +14,8 @@ publish = false
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+# unstable:子 webview(Window::add_child)目前只在这个特性下提供,内置浏览器面板需要(ADR 0046 第 14 节)
+tauri = { version = "2", features = ["tray-icon", "unstable"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-global-shortcut = "2"
@@ -23,3 +24,9 @@ url = "2"
 serde_json = "1"
 dunce = "1"
 tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+base64 = "0.22"
+
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell"] }

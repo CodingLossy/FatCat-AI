@@ -1,0 +1,20 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-webview",
+  "description": "Only the app's own UI (the main webview, loaded from the local core on 127.0.0.1) may drive the browser panel. The `browser` webview has no capability file, so pages loaded in it have no IPC (ADR 0046 sections 3.4, 14).",
+  "webviews": ["main"],
+  "remote": {
+    "urls": ["http://127.0.0.1:*/*"]
+  },
+  "permissions": [
+    "allow-browser-open",
+    "allow-browser-navigate",
+    "allow-browser-back",
+    "allow-browser-forward",
+    "allow-browser-reload",
+    "allow-browser-set-bounds",
+    "allow-browser-set-visible",
+    "allow-browser-close",
+    "allow-browser-screenshot"
+  ]
+}
