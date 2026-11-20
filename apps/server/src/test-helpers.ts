@@ -12,6 +12,7 @@ import { type Connection, createRepositories, openStorage, type Repositories } f
 import type { BrowserToolOptions, WebFetchOptions } from '@fatcat-ai/tools';
 import { createItemService, createKnowledgeBase, type KnowledgeBase } from '@fatcat-ai/items';
 import { createChannelPushTool } from './scheduler/channel-push-tool.js';
+import { ClientCalls, createClientBrowserHost } from './client-calls.js';
 import { createMailComplete, createSummarizer, createToolRegistry } from './agent-setup.js';
 import { type AttachmentFiles, createAttachmentFiles, createImageLoader } from './attachment-files.js';
 import { createApp, type AppDeps } from './app.js';
@@ -72,6 +73,8 @@ export interface TestServerOptions {
     webFetch?: WebFetchOptions;
     /** browser.* 的网络选项(测试中指向本机服务器;开关仍由设置决定)。 */
     browser?: Pick<BrowserToolOptions, 'fetch'>;
+    /** 客户端执行的调用(桌面浏览器截图,ADR 0046 第 14 节);给了就把 browser.screenshot 接到它。 */
+    clientCalls?: ClientCalls;
     /** 打开 memory.write 的条件预授权(与生产一致);默认关闭,审批流程的测试每次都会弹审批。 */
     conditionalApprovals?: boolean;
     /** 邮件任务的执行方式(测试中用内存实现代替 worker 与真实服务器)。 */
@@ -157,7 +160,14 @@ export async function createTestServer(
             kb,
             {
                 ...(options.webFetch ? { webFetch: options.webFetch } : {}),
-                ...(options.browser ? { browser: options.browser } : {}),
+                ...(options.browser || options.clientCalls
+                    ? {
+                          browser: {
+                              ...options.browser,
+                              ...(options.clientCalls ? { host: createClientBrowserHost(options.clientCalls) } : {}),
+                          },
+                      }
+                    : {}),
             },
             {
                 runner: mailRunner,
@@ -220,6 +230,7 @@ export async function createTestServer(
         ...(options.now ? { now: options.now } : {}),
     });
     const app = createApp({
+        ...(options.clientCalls ? { clientCalls: options.clientCalls } : {}),
         taskComplete: options.taskComplete ?? createMailComplete(repos, providerFor),
         channels,
         wechat,

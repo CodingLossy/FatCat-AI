@@ -17,6 +17,7 @@ import type { Repositories } from '@fatcat-ai/storage';
 import type { WebSocket, WebSocketServer } from 'ws';
 import { DEVICE_ACCESS_PREFIX, PAT_PREFIX, safeEqual, sha256 } from './auth/crypto.js';
 import { SESSION_COOKIE } from './auth/middleware.js';
+import { ClientCalls } from './client-calls.js';
 import { registerDeviceSocket } from './device-sockets.js';
 import type { Logger } from './log.js';
 import { SERVER_VERSION } from './version.js';
@@ -35,6 +36,8 @@ export interface WsDeps {
     logger: Logger;
     /** voice-state 帧的限流;不给时每个用户每秒 5 个(ADR 0021 第 6 节)。 */
     voiceLimiter?: WindowLimiter;
+    /** 客户端执行的调用(ADR 0046 第 14 节);声明了 browser 能力的连接会收到 client-call 帧。 */
+    clientCalls?: ClientCalls;
 }
 
 /** 每个用户各个连接最后上报的语音状态;一个端断开时,据此决定补发 idle 还是其他端仍在用的状态。1.0 只有单用户,按用户的外层表不清理。 */
@@ -164,6 +167,10 @@ function handleConnection(
     deviceId?: string,
 ): void {
     const unregisterDevice = deviceId ? registerDeviceSocket(deviceId, ws) : null;
+    // 只有 hello 之后、声明了能力的连接才会被选中;声明前能力全关
+    const clientSocket = deps.clientCalls?.register(ownerId, {
+        send: (call) => send({ v: PROTOCOL_VERSION, type: 'client-call', id: nextId(), payload: call }),
+    });
     let frameId = 0;
     let last = 0;
     let live = false;
@@ -243,6 +250,11 @@ function handleConnection(
             publishVoiceState(deps, ownerId, frame.payload);
             return;
         }
+        if (frame.type === 'client-capabilities') {
+            if (!helloDone) return fail(4400, 'hello first');
+            clientSocket?.declare(frame.payload);
+            return;
+        }
         if (helloDone) return fail(4400, 'duplicate hello');
         helloDone = true;
         clearTimeout(helloTimer);
@@ -281,6 +293,7 @@ function handleConnection(
 
     ws.on('close', () => {
         unregisterDevice?.();
+        clientSocket?.unregister();
         clearTimeout(helloTimer);
         clearInterval(pingTimer);
         unsubscribe?.();

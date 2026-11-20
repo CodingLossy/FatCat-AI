@@ -64,6 +64,8 @@ import { startMaintenance } from './maintenance-setup.js';
 import { ChannelHub } from './channels/hub.js';
 import { WechatChannels } from './channels/wechat.js';
 import { TRANSCRIPTION_OVERHEAD_BYTES, type VoiceRouteDeps, voiceRoutes } from './routes/voice.js';
+import { ClientCalls } from './client-calls.js';
+import { clientCallRoutes } from './routes/client-calls.js';
 import { WindowLimiter } from './voice-limit.js';
 import { SERVER_VERSION } from './version.js';
 
@@ -118,6 +120,8 @@ export interface AppDeps {
     taskComplete?: TaskComplete;
     /** IM 渠道的运行器(ADR 0022);不给时按需创建(没有注册任何适配器,只适合测试与导出 OpenAPI 文档)。 */
     channels?: ChannelHub;
+    /** 客户端执行的调用(ADR 0046 第 14 节,桌面浏览器截图);不给时建一个没有任何连接的。 */
+    clientCalls?: ClientCalls;
     /** 微信 iLink 的扫码授权与适配器工厂;测试时可指向假的 iLink 服务器。 */
     wechat?: WechatChannels;
 }
@@ -232,7 +236,29 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             'request',
         );
     });
-    app.use('*', secureHeaders({ crossOriginEmbedderPolicy: false }));
+    // 界面的内容安全策略(ADR 0046 第 3.4、14 节):界面会渲染不可信文本,这是 React 转义之外的第二道防线。
+    // 只允许同源资源;样式要 unsafe-inline(React 的 style 属性);图片多一个 data:(内置图标)和 blob:(发送前的图片预览);
+    // 音频多一个 blob:(朗读);不允许插件、被嵌入和跳转到别处的表单。
+    app.use(
+        '*',
+        secureHeaders({
+            crossOriginEmbedderPolicy: false,
+            contentSecurityPolicy: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'"],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                imgSrc: ["'self'", 'data:', 'blob:'],
+                mediaSrc: ["'self'", 'blob:'],
+                connectSrc: ["'self'"],
+                workerSrc: ["'self'"],
+                manifestSrc: ["'self'"],
+                objectSrc: ["'none'"],
+                frameAncestors: ["'none'"],
+                baseUri: ["'self'"],
+                formAction: ["'self'"],
+            },
+        }),
+    );
     const defaultLimit = bodyLimit({
         maxSize: MAX_BODY_BYTES,
         onError: (c) =>
@@ -371,6 +397,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         )
         .route('/', memoryRoutes({ repos, memory: deps.memory, detectCredential }))
         .route('/', toolRoutes({ repos, runs: deps.runs, redact: deps.redact ?? ((text) => text) }))
+        .route('/', clientCallRoutes({ calls: deps.clientCalls ?? new ClientCalls() }))
         .route(
             '/',
             fsRoutes({

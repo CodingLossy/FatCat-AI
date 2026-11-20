@@ -53,7 +53,7 @@ export interface BrowserHost {
      * 渲染 url(已通过核心的协议与主机检查)并截图。适配器自己的出站必须遵守同一份白名单与私网拦截(ADR 0046 第 3.3 节)。
      * 超时由调用方的 signal 取消。
      */
-    screenshot(url: string, signal: AbortSignal): Promise<ScreenshotImage>;
+    screenshot(url: string, signal: AbortSignal, context: ToolContext): Promise<ScreenshotImage>;
 }
 
 export interface ScreenshotImage {
@@ -420,7 +420,7 @@ export function createBrowserTools(options: BrowserToolOptions): ToolDefinition[
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), options.screenshotTimeoutMs ?? BROWSER_TIMEOUT_MS);
             try {
-                const image = await exclusive(() => host.screenshot(page.url, controller.signal));
+                const image = await exclusive(() => host.screenshot(page.url, controller.signal, context));
                 if (controller.signal.aborted) throw new BrowserError('the screenshot timed out', 'timeout');
                 if (image.bytes.byteLength > SCREENSHOT_MAX_BYTES) {
                     throw new BrowserError('the screenshot is too large', 'too_large');

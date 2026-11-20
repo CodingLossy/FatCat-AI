@@ -4,6 +4,7 @@
 export * from './attachments.js';
 export * from './auth.js';
 export * from './channels.js';
+export * from './client-calls.js';
 export * from './common.js';
 export * from './devices.js';
 export * from './domain-scope.js';
