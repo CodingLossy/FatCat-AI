@@ -71,6 +71,21 @@ describe.skipIf(process.platform === 'win32')('🔒 a FIFO never blocks the prev
             } as ToolContext),
         ).toBeUndefined();
     });
+
+    it('execute refuses to overwrite a FIFO, with or without overwrite: true, and does not hang', async () => {
+        const fifo = path.join(root, 'q');
+        execFileSync('mkfifo', [fifo]);
+        const tool = createFsTools({ roots: () => [root] }).find((t) => t.name === 'fs.write')!;
+        const context = { ownerId: 'o', sessionId: 's' } as ToolContext;
+        const started = Date.now();
+        for (const overwrite of [true, false]) {
+            await expect(tool.execute({ path: fifo, content: 'x', overwrite }, context)).rejects.toThrow();
+        }
+        await expect(tool.execute({ path: fifo, content: 'x', overwrite: true }, context)).rejects.toThrow(
+            /not a regular file/,
+        );
+        expect(Date.now() - started).toBeLessThan(2000);
+    });
 });
 
 describe('🔒 fs.write preview stays inside the approved roots', () => {

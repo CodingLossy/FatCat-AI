@@ -3,7 +3,7 @@
 
 import type { ModelKind, ModelProfile, ModelPurpose, Settings, SettingsPatch } from '@fatcat-ai/shared';
 import { LOCALES, LOCALE_NAMES } from '@fatcat-ai/i18n';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, type KeyboardEvent, useCallback, useEffect, useState } from 'react';
 import { Icon } from './Icon.js';
 import { SettingsCards } from './SettingsCards.js';
 import {
@@ -478,6 +478,24 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                             {t('settings.voiceTts')}
                             {voiceSelect('defaultTtsProfileId', 'tts')}
                         </label>
+                        <label className="inline">
+                            <input
+                                type="checkbox"
+                                name="voiceAutoSend"
+                                checked={settings.voice.autoSend}
+                                onChange={(e) => void update({ voice: { autoSend: e.target.checked } })}
+                            />{' '}
+                            {t('settings.voiceAutoSend')}
+                        </label>
+                        <label className="inline">
+                            <input
+                                type="checkbox"
+                                name="voiceAutoSpeak"
+                                checked={settings.voice.autoSpeak}
+                                onChange={(e) => void update({ voice: { autoSpeak: e.target.checked } })}
+                            />{' '}
+                            {t('settings.voiceAutoSpeak')}
+                        </label>
                         <span className="small muted">{t('settings.voiceHint')}</span>
                     </section>
                 );
@@ -488,6 +506,22 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                 return <McpServers />;
             case 'tools/preauth':
                 return <Preauthorizations />;
+            case 'tools/browser':
+                return (
+                    <section className="card form" aria-label={t('settings.browser')}>
+                        <h2>{t('settings.browser')}</h2>
+                        <label className="inline">
+                            <input
+                                type="checkbox"
+                                name="browserEnabled"
+                                checked={settings.browser?.enabled === true}
+                                onChange={(e) => void update({ browser: { enabled: e.target.checked } })}
+                            />{' '}
+                            {t('settings.browserEnabled')}
+                        </label>
+                        <p className="small muted">{t('settings.browserNote')}</p>
+                    </section>
+                );
             case 'tools/market':
                 return (
                     <section className="card form" aria-label={t('settings.pluginMarket')}>
@@ -540,16 +574,39 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
     };
 
     const section = SETTINGS_SECTIONS.find((s) => s.id === view.section)!;
+    // 分区标签是 WAI-ARIA 的 tablist:左右方向键 / Home / End 在标签间移动并切换分区,只有选中的标签在 Tab 顺序里
+    const onTabKey = (event: KeyboardEvent<HTMLDivElement>) => {
+        const index = SETTINGS_SECTIONS.findIndex((s) => s.id === view.section);
+        const last = SETTINGS_SECTIONS.length - 1;
+        const next =
+            event.key === 'ArrowRight'
+                ? (index + 1) % SETTINGS_SECTIONS.length
+                : event.key === 'ArrowLeft'
+                  ? (index - 1 + SETTINGS_SECTIONS.length) % SETTINGS_SECTIONS.length
+                  : event.key === 'Home'
+                    ? 0
+                    : event.key === 'End'
+                      ? last
+                      : -1;
+        if (next < 0) return;
+        event.preventDefault();
+        const target = SETTINGS_SECTIONS[next]!;
+        show(target.id);
+        document.getElementById(`settings-tab-${target.id}`)?.focus();
+    };
     return (
         <div className="page settings-page">
             <h1>{t('settings.title')}</h1>
-            <div className="settings-tabs" role="tablist" aria-label={t('settings.title')}>
+            <div className="settings-tabs" role="tablist" aria-label={t('settings.title')} onKeyDown={onTabKey}>
                 {SETTINGS_SECTIONS.map((s) => (
                     <button
                         key={s.id}
                         type="button"
                         role="tab"
+                        id={`settings-tab-${s.id}`}
+                        aria-controls="settings-panel"
                         aria-selected={s.id === view.section}
+                        tabIndex={s.id === view.section ? 0 : -1}
                         className={s.id === view.section ? 'active' : ''}
                         onClick={() => show(s.id)}
                     >
@@ -558,7 +615,12 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                     </button>
                 ))}
             </div>
-            <div className="settings-body">
+            <div
+                className="settings-body"
+                role="tabpanel"
+                id="settings-panel"
+                aria-labelledby={`settings-tab-${section.id}`}
+            >
                 <nav className="settings-menu" aria-label={t(`settings.section.${section.id}`)}>
                     {section.items.map((it) => (
                         <button

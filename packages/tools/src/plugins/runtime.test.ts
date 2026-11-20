@@ -88,6 +88,21 @@ function setup(manifestPatch: (m: Record<string, unknown>) => void = () => undef
 
 const ctx = (ownerId = 'owner1') => ({ ownerId }) as never;
 
+/**
+ * afterEach 要停掉子进程并删除临时目录。Windows 上释放进程与文件句柄比 Linux 慢得多,
+ * vitest 默认的 10 秒钩子超时曾偶发超时,所以单独放宽(测试本身的超时已经逐个设置)。
+ */
+const HOOK_TIMEOUT_MS = 30_000;
+
+/** 轮询等待条件成立,代替固定的 sleep:慢机器(Windows 上起 node 进程)多等,快机器立刻继续。 */
+async function waitUntil(condition: () => boolean, what: string, timeoutMs = 20_000): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (!condition()) {
+        if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
+        await new Promise((r) => setTimeout(r, 25));
+    }
+}
+
 async function run(h: Harness, tool: string, input: unknown, ownerId = 'owner1'): Promise<string> {
     const def = h.registry.get(`plugin.probe.${tool}`);
     if (!def) throw new Error(`tool ${tool} is not registered`);
@@ -103,7 +118,7 @@ describe('plugin runtime', () => {
     afterEach(async () => {
         await h.runtime.closeAll();
         rmSync(h.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-    });
+    }, HOOK_TIMEOUT_MS);
 
     it('registers only declared tools, wraps output as untrusted plugin content and applies the risk floor', async () => {
         const status = await h.runtime.apply(h.record);
@@ -249,7 +264,7 @@ describe('plugin runtime', () => {
     it('never writes the secret value to events or state when the plugin prints it to stderr and crashes', async () => {
         await h.runtime.apply(h.record);
         await run(h, 'probe', { attack: 'secret-stderr' }).catch(() => undefined);
-        await new Promise((r) => setTimeout(r, 500));
+        await waitUntil(() => h.events.some((e) => e.kind === 'crashed'), 'the crash event');
         const dump = JSON.stringify([h.events, h.states]);
         expect(dump).not.toContain(SECRET);
         expect(h.events.some((e) => e.kind === 'crashed')).toBe(true);
@@ -348,7 +363,7 @@ describe('fatcat/net.fetch', () => {
     afterEach(async () => {
         await h.runtime.closeAll();
         rmSync(h.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-    });
+    }, HOOK_TIMEOUT_MS);
 
     const fetchVia = (params: Record<string, unknown>) =>
         run(h, 'probe', { attack: 'rpc', arg: 'fatcat/net.fetch', params });

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
@@ -11,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EventBus } from './bus.js';
 import { estimateTokens, planContext, SUMMARY_PREFIX } from './context.js';
 import { currentTimeLine, RunManager, SYSTEM_PROMPT } from './runner.js';
-import { ToolRegistry, type ToolDefinition } from '@fatcat-ai/tools';
+import { createFsTools, ToolRegistry, type ToolDefinition } from '@fatcat-ai/tools';
 
 let dir: string;
 let close: () => void;
@@ -565,5 +566,32 @@ describe('审批预览(ADR 0046 第 12 节)', () => {
         expect(m.resolveApproval(ownerId, event.callId, 'reject')).toBe('resolved');
         await m.idle();
         expect(saved).toEqual([]);
+    });
+});
+
+// Windows 没有 mkfifo(命名管道的语义与 POSIX FIFO 不同),这一组只在 POSIX 上跑
+describe.skipIf(process.platform === 'win32')('🔒 fs.write 指向 FIFO(ADR 0046 第 12 节)', () => {
+    it('审批照常出现(没有 preview,也不会卡住);批准后执行被拒绝,运行正常结束', async () => {
+        const root = realpathSync(mkdtempSync(join(tmpdir(), 'fc-fifo-')));
+        try {
+            const fifo = join(root, 'pipe');
+            execFileSync('mkfifo', [fifo]);
+            steps = [callTool('fs.write', { path: fifo, content: 'x', overwrite: true }), answer('ok')];
+            const m = manager({ tools: new ToolRegistry().register(...createFsTools({ roots: () => [root] })) });
+            const session = repos.sessions.create(ownerId);
+            const required = waitFor('approval-required');
+            m.start({ ownerId, sessionId: session.id, profile, text: 'go' });
+            const event = (await required).event as { callId: string; toolName: string; preview?: unknown };
+            expect(event.toolName).toBe('fs.write');
+            expect(event.preview).toBeUndefined();
+            expect(m.resolveApproval(ownerId, event.callId, 'approve')).toBe('resolved');
+            await m.idle();
+            const audit = repos.audit.list(ownerId, { limit: 10 }).items.filter((a) => a.toolName === 'fs.write');
+            expect(audit).toEqual([
+                expect.objectContaining({ outcome: 'not_run', error: expect.stringContaining('not a regular file') }),
+            ]);
+        } finally {
+            rmSync(root, { recursive: true, force: true });
+        }
     });
 });

@@ -28,6 +28,13 @@ export const PluginSettingsGroup = z.object({
 });
 export type PluginSettingsGroup = z.infer<typeof PluginSettingsGroup>;
 
+/** 内置浏览器工具(ADR 0046 第 4.6 节)。自 M12 PR 6 起提供,旧服务器不返回。 */
+export const BrowserSettings = z.object({
+    /** 允许 AI 使用 browser.open / read / screenshot;默认关闭,关闭时这些工具被拒绝。 */
+    enabled: z.boolean(),
+});
+export type BrowserSettings = z.infer<typeof BrowserSettings>;
+
 export const Settings = z.object({
     defaultChatProfileId: Id.nullable(),
     /** 上下文压缩等廉价任务用的配置档;为 null 时回退到 chat 配置档(ADR 0006)。 */
@@ -59,6 +66,8 @@ export const Settings = z.object({
     network: NetworkSettings.optional(),
     /** 插件相关设置;旧服务器不返回,按全部默认处理(市场默认开启)。 */
     plugins: PluginSettingsGroup.optional(),
+    /** 内置浏览器工具开关;旧服务器不返回,按关闭处理。 */
+    browser: BrowserSettings.optional(),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -68,6 +77,7 @@ export const SettingsPatch = Settings.partial().extend({
     voice: Settings.shape.voice.partial().optional(),
     network: NetworkSettings.partial().optional(),
     plugins: PluginSettingsGroup.partial().optional(),
+    browser: BrowserSettings.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof SettingsPatch>;
 
@@ -82,4 +92,5 @@ export const DEFAULT_SETTINGS: Settings = {
     timeZone: null,
     network: { allowFakeIp: false },
     plugins: { marketEnabled: true },
+    browser: { enabled: false },
 };

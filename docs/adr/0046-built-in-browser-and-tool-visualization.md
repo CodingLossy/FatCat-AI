@@ -188,3 +188,21 @@ M12 **不包含**任何合成鼠标或键盘输入、或在浏览器面板之外
 - 渲染遵守第 7 节:纯文本节点、控制 / 双向字符换成可见标记、行号来自 `@@` 分段行,`apps/web/src/visualizers/` 里 lint 禁止 `dangerouslySetInnerHTML`。
 
 **测试。** 工具:预览只在根目录内、符号链接和根目录外返回空、过大不给部分差异、截断标记;运行器:预览随事件发出但执行用原入参、预览抛错审批照常、不持久化;界面:控制字符标记、行数上限、行号解析。
+
+## 13. 补充:服务器侧 `browser.*` 工具(M12 PR 6)
+
+本节记录 PR 6 实际交付的范围与和第 3–4 节不同的地方。面板、壳、`POST /tool-calls/{callId}/result` 与点击 / 填写 / 提交仍在 PR 7。
+
+**交付。** `browser.open`(取页)、`browser.read`(读已打开页面的标题与正文,不联网,每次最多 20,000 字符,可用 `offset` 分页)、`browser.screenshot`(经宿主适配器 `BrowserHost.screenshot`;核心没有渲染引擎,没有适配器时返回 `browser_unavailable`,不会悄悄退回别的方式)。三者都是 `read` 风险,输出都是不可信块(`kind: web`)。取页复用 `web.fetch` 的 `guardedFetch`:连接时用自己的解析并逐个校验地址(防 DNS 重绑定),逐跳校验重定向,不带 cookie 与任何用户凭据,丢弃响应里的 `set-cookie`。
+
+**开关(Q-D)。** 设置新增 `browser.enabled`(默认 `false`,`packages/shared` 的增量字段,OpenAPI 只增不改)。关闭时三个工具在审批之前被拒绝,`GET /api/v1/tools` 显示 `approval: disabled`、不可预授权,也不提供给模型。实现是 `ToolDefinition` 的两个新可选字段:`enabledFor(ownerId)` 与 `precheck(input)`(审批之前的静态检查,不联网)。
+
+**审批(Q-C)。** `browser.open` 默认需审批;同一会话里用户批准过的主机之后不再询问(`ToolDefinition.approvedForSession`;与条件预授权不同,它不受「会话读过不可信内容」影响,否则读完一页就要对同一主机再问一次)。只记在内存里,按会话保存,最多 100 个会话;核心重启后重新询问。预授权只能按域名。重定向到没批准过的主机会被拒绝并提示明确地去 `open` 那个主机,所以页面不能借重定向把请求送到新主机。地址的查询串加片段超过 200 字符时审批卡片带警示 `url_carries_data`。
+
+**与第 3.3 节的差异(需业主确认,见 PR)。** 本 PR 允许 `http:` 与 `https:`(业主的任务描述如此),第 3.3 节写的是仅 HTTPS;字面 IP(包括公网 IP)一律拒绝(比任务描述更严,与第 3.3 节一致);`localhost`、`*.localhost`、`*.local`、`*.internal` 等内部名称和单标签主机名也在审批前拒绝。
+
+**限额(第 4.5 节的一部分)。** 每次运行最多 40 次 `browser.*` 调用;同时最多 2 个取页 / 截图;超时 15 秒;响应体 1 MiB;会话内存里的正文最多 100,000 字符;截图最多 4 MiB(图像只交给宿主,不放进对话)。第 4.5 节的「8 次审批提示」「32 KiB 快照」「800 个元素」属于点击 / 填写,留给 PR 7。
+
+**第 3.2 节的 Origin 核实。** 改变状态的路由已经要求 `X-CSRF-Token`(Cookie 鉴权,`app.test.ts` 有用例),WebSocket 要求 Origin 与 Host 一致(`ws.test.ts`);个人访问令牌与设备令牌不是自动携带的凭据。浏览器 webview 里没有主窗口的 Cookie 与 CSRF 令牌,所以未新增 Origin 检查;PR 7 加壳时再验证。
+
+**出网登记。** `scripts/egress-registry.json` 新增 `packages/tools/src/builtin/browser.ts`(`dynamic`)。

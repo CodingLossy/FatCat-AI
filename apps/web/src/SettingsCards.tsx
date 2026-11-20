@@ -29,6 +29,8 @@ function CoreStatusCard() {
     useEffect(() => {
         let alive = true;
         const tick = () => {
+            // 页面在后台时不探测(省电,也不无谓地访问核心);切回前台时立即补一次
+            if (document.hidden) return;
             const start = performance.now();
             void fetch('/healthz', { cache: 'no-store' }).then(
                 (res) => {
@@ -45,9 +47,14 @@ function CoreStatusCard() {
             .then((m) => alive && setMeta(m))
             .catch(() => undefined);
         const id = window.setInterval(tick, 30_000);
+        const onVisible = () => {
+            if (!document.hidden) tick();
+        };
+        document.addEventListener('visibilitychange', onVisible);
         return () => {
             alive = false;
             window.clearInterval(id);
+            document.removeEventListener('visibilitychange', onVisible);
         };
     }, []);
 
@@ -236,28 +243,6 @@ function ModelConfigCard({ settings, profiles, update, onManage }: CardsProps) {
     );
 }
 
-function VoiceInteractionCard({ settings, update }: CardsProps) {
-    const { t } = useI18n();
-    const toggle = (key: 'autoSend' | 'autoSpeak', label: string) => (
-        <label className="switch">
-            <input
-                type="checkbox"
-                role="switch"
-                name={`voice-${key}`}
-                checked={settings.voice[key]}
-                onChange={(e) => void update({ voice: { [key]: e.target.checked } })}
-            />
-            <span>{label}</span>
-        </label>
-    );
-    return (
-        <Card title={t('settings.card.voiceInteraction')} testId="card-voice-interaction">
-            {toggle('autoSend', t('settings.voiceAutoSend'))}
-            {toggle('autoSpeak', t('settings.voiceAutoSpeak'))}
-        </Card>
-    );
-}
-
 export interface CardsProps {
     settings: Settings;
     profiles: ModelProfile[];
@@ -266,7 +251,7 @@ export interface CardsProps {
     onManage: () => void;
 }
 
-/** 「模型与语音」概览的六张卡片;每张都由现有接口支撑,没有数据就显示空状态,不写编造的数字。 */
+/** 「模型与语音」概览的五张卡片;每张都由现有接口支撑,没有数据就显示空状态,不写编造的数字。 */
 export function SettingsCards(props: CardsProps) {
     const { settings, profiles } = props;
     const chat = pickProfile(profiles, settings.defaultChatProfileId, 'chat');
@@ -277,7 +262,6 @@ export function SettingsCards(props: CardsProps) {
             <UsageCard />
             <VoiceEngineCard {...props} />
             <ModelConfigCard {...props} />
-            <VoiceInteractionCard {...props} />
         </div>
     );
 }

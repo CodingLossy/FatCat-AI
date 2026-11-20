@@ -77,6 +77,11 @@ export function decide(
     options: PolicyOptions = {},
 ): PolicyDecision {
     if (!isEnabled(tool, options)) return { action: 'deny', reason: `the tool ${tool.name} is disabled` };
+    if (tool.enabledFor && !tool.enabledFor(context.ownerId)) {
+        return { action: 'deny', reason: `the tool ${tool.name} is turned off in Settings` };
+    }
+    const rejected = tool.precheck?.(input, context);
+    if (rejected) return { action: 'deny', reason: rejected };
 
     if (isPreauthorizable(tool)) {
         const match = preauths.find(
@@ -86,6 +91,8 @@ export function decide(
                 constraintMatches(tool, input, context, p.constraint),
         );
         if (match) return { action: 'run', decision: 'preauthorized', preauthId: match.id };
+
+        if (tool.approvedForSession?.(input, context)) return { action: 'run', decision: 'conditional' };
 
         if (
             tool.autoApproveWhen &&

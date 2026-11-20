@@ -60,6 +60,12 @@
     "reason": "web.fetch: the destination is decided in the conversation and each call needs approval, so it is not a fixed target"
   },
   {
+    "file": "packages/tools/src/builtin/browser.ts",
+    "kind": "dynamic",
+    "listedAs": "-",
+    "reason": "browser.open: the destination is decided in the conversation; the first visit to a host in a session needs approval, private and literal-IP targets are refused before any prompt, and the request goes through web.fetch's guardedFetch (this file only imports node:net isIP)"
+  },
+  {
     "file": "packages/tools/src/plugins/preload.ts",
     "kind": "local-only",
     "listedAs": "-",

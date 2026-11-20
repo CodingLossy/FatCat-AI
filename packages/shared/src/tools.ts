@@ -84,8 +84,9 @@ export type ApprovalStatus = z.infer<typeof ApprovalStatus>;
 /**
  * 已知的审批警告代码(ADR 0016 第 8 节)。ApprovalWarning.code 是字符串,以后新增代码不会成为破坏性修改。
  * recipient_untrusted:会话读过不可信内容后,mail.send 的收件人不来自主人的消息或被回复邮件的发件人。
+ * url_carries_data:browser.open 的网址带有很长的查询串或片段,可能把对话内容带给第三方(ADR 0046 第 4.1 节)。
  */
-export const ApprovalWarningCode = z.enum(['recipient_untrusted']);
+export const ApprovalWarningCode = z.enum(['recipient_untrusted', 'url_carries_data']);
 export type ApprovalWarningCode = z.infer<typeof ApprovalWarningCode>;
 
 /** 审批警告:由 core 生成,message 不含模型或外部内容提供的文字;UI 有警告时标红。 */

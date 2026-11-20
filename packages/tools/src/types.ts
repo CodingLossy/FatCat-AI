@@ -92,6 +92,20 @@ export interface ToolDefinition {
     >;
     /** 预授权时必须带这种约束(例如 web.fetch 只能按域名预授权,不能整体预授权)。 */
     requireConstraint?: PreauthConstraintKind;
+    /**
+     * 按 owner 的设置开关(例如 browser.*,ADR 0046 第 4.6 节):返回 false 时调用在审批之前直接被拒绝。
+     * 不给时恒为启用。
+     */
+    enabledFor?: (ownerId: string) => boolean;
+    /**
+     * 审批之前的静态检查(不联网、不读库):返回原因时调用直接被拒绝,不会弹出审批(例如 browser.open 的内网地址)。
+     */
+    precheck?: (input: unknown, context: ToolContext) => string | null;
+    /**
+     * 本会话里用户已经批准过同一目标(例如同一主机)时返回 true,调用不再询问。与条件预授权不同,它不受
+     * 「会话读过不可信内容」影响(否则读完一页就要对同一主机再问一次);只能依据 core 记下的、用户已批准过的事实。
+     */
+    approvedForSession?: (input: unknown, context: ToolContext) => boolean;
     /** 条件预授权:只能依据 core 已知的事实计算(ADR 0010 第 4 节)。 */
     autoApproveWhen?: (input: unknown, context: ToolContext) => boolean;
     /**
