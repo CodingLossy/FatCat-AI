@@ -192,7 +192,6 @@ describe('fetching the index and packages over https', () => {
             code: 'index_fake_ip_blocked',
         });
     });
-    });
 
     it('downloads a package whose size and sha256 match, following same-host redirects', async () => {
         expect((await downloadPackage(version('/pkg'), ['ok.test'], net)).equals(payload)).toBe(true);
