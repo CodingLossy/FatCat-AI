@@ -42,6 +42,17 @@ export {
     type ScreenshotImage,
 } from './builtin/browser.js';
 export { createDelegateTool } from './builtin/delegate.js';
+export {
+    ALLOWED_EXTENSIONS,
+    blockedExtension,
+    checkOpenFile,
+    checkOpenUrl,
+    createSystemOpenTool,
+    type OpenHost,
+    type OpenTarget,
+    SystemOpenError,
+    type SystemOpenToolOptions,
+} from './builtin/system-open.js';
 export { createTimeTool } from './builtin/time.js';
 export { createUiPanelTool, UI_PANELS, type UiPanel } from './builtin/ui.js';
 export {

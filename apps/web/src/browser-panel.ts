@@ -4,7 +4,7 @@
 // 内置浏览器面板的前端控制器(ADR 0046 第 3、14 节)。只在桌面壳里有用:壳把子 webview 盖在界面上的占位元素之上,
 // 这里负责把占位元素的位置告诉壳、转发导航命令、接收壳发来的页面事件,并执行服务器请求的截图。
 // 纯逻辑,不依赖 React;和壳之间的通道(invoke)由外部注入,测试里换成假的。
-import type { ClientCallFailureCode, ClientCallResult } from '@fatcat-ai/shared';
+import type { ClientCallFailureCode, ClientCallResult, OpenTarget } from '@fatcat-ai/shared';
 
 export const BROWSER_EVENT = 'fatcat-browser';
 
@@ -190,7 +190,7 @@ export class BrowserController {
     }
 
     constructor(
-        private readonly invoke: Invoke,
+        readonly invoke: Invoke,
         private readonly options: ControllerOptions = {},
     ) {}
 
@@ -318,5 +318,18 @@ export class BrowserController {
             const code = errorCode(error);
             return { ok: false, code: failureFor(code) };
         }
+    }
+}
+
+/** 已经核心校验、用户批准的 system.open:交给壳(壳会再检查一次),失败变成稳定的失败码,不抛出。 */
+export async function openWithShell(invoke: Invoke, target: OpenTarget): Promise<ClientCallResult> {
+    try {
+        await invoke('system_open', { target });
+        return { ok: true, opened: true };
+    } catch (error) {
+        const raw = typeof error === 'string' ? error : error instanceof Error ? error.message : '';
+        return raw === 'blocked' || raw === 'not_found'
+            ? { ok: false, code: 'blocked' }
+            : { ok: false, code: 'failed' };
     }
 }

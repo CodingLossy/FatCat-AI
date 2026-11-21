@@ -75,7 +75,7 @@ fn remove_profile(dir: PathBuf) {
 }
 
 /// 只有主窗口里、来源是本应用核心的页面才能调用浏览器命令(能力文件之外的第二道检查)。
-fn ensure_app_caller(app: &AppHandle, caller: &Webview) -> Result<(), String> {
+pub(crate) fn ensure_app_caller(app: &AppHandle, caller: &Webview) -> Result<(), String> {
     if caller.label() != "main" {
         return Err("not allowed".into());
     }

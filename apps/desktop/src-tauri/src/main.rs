@@ -11,7 +11,9 @@ mod browser_policy;
 #[cfg(windows)]
 mod browser_windows;
 mod deeplink;
+mod open_policy;
 mod sidecar;
+mod system_open;
 
 use std::sync::Mutex;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem};
@@ -114,6 +116,7 @@ fn main() {
             browser::browser_set_visible,
             browser::browser_close,
             browser::browser_screenshot,
+            system_open::system_open,
         ])
         // 第二次启动(含 Windows / Linux 上点深链接)只把参数交给已运行的实例。
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {

@@ -112,7 +112,7 @@ M12 增加三项会扩大助手可触及范围的能力:
 ### 5.2 校验(在审批卡片出现之前)
 
 - 网址:协议只允许 `{https, http, mailto}`;URL 中不得带凭据;不允许 `file:`、`ms-*:`、`steam:`、`vscode:`、`search-ms:` 或其他已注册的处理协议;完整网址展示给用户。
-- 文件:位于已批准根目录内的绝对路径(ADR 0010 / fs 根目录,与 `fs.*` 同一套包含检查,含符号链接解析);必须存在;**不能是**可执行或脚本类型:按扩展名拒绝(`exe com bat cmd msi msp scr ps1 psm1 vbs vbe js jse wsf wsh hta cpl jar lnk url reg dll sys app command sh bash zsh run appimage desktop dmg pkg deb rpm iso`),并按系统的可执行位 / macOS bundle 检查拒绝;没有参数、没有工作目录、没有环境变量、不经过 shell(一次对平台「用默认处理程序打开」API 的调用,例如逐次设置范围的 Tauri opener 插件,其许可证宽松)。
+- 文件:位于已批准根目录内的绝对路径(ADR 0010 / fs 根目录,与 `fs.*` 同一套包含检查,含符号链接解析);必须存在;扩展名**必须在允许清单里**,只放行常见的文档、图片、音频和视频(`pdf txt md markdown rtf csv tsv log json xml yaml yml toml doc docx odt xls xlsx ods ppt pptx odp epub png jpg jpeg gif webp bmp tif tiff heic heif avif mp3 wav flac aac m4a ogg oga opus mp4 m4v mov mkv webm avi wmv`);没有扩展名、末尾是点、文件名带冒号(Windows 备用数据流)的一律拒绝,并按系统的可执行位 / macOS bundle 检查拒绝。最初写的是拒绝清单,审查发现它漏掉了 `.pif`、`.msc`、`.scf`、`.py`、`.terminal`、`.webloc` 等会被默认程序执行或转去打开别的地址的类型,这类类型列不全,所以改成允许清单(2026-11-21);没有参数、没有工作目录、没有环境变量、不经过 shell(一次对平台「用默认处理程序打开」API 的调用,例如逐次设置范围的 Tauri opener 插件,其许可证宽松)。
 - 审批卡片显示解析后的真实路径、文件类型,以及将由哪类程序打开(「系统默认程序」)。模型的措辞作为纯文本显示在旁边,但不用来做任何判断。
 
 ### 5.3 审计
@@ -158,7 +158,7 @@ M12 **不包含**任何合成鼠标或键盘输入、或在浏览器面板之外
 
 壳(PR 7,在 Windows 和 macOS 上手工验证,列在 PR 里,因为云端容器没有图形界面):浏览器 webview 看不到主窗口的 cookie;测试页面无法调用 Tauri 命令;下载、弹窗和权限提示被阻止;`file:`、`data:` 和 `http://127.0.0.1:<端口>` 的导航被拒绝;解析到私有地址的域名经代理被拒绝;关闭面板后临时配置里不留任何东西。
 
-`system.open`(PR 8):扩展名黑名单、符号链接指向根目录之外、根目录之外的路径、网址协议、无参数保证、每次审批、不可预授权。
+`system.open`(PR 8):扩展名允许清单(含旧拒绝清单漏掉的类型)、符号链接指向根目录之外、根目录之外的路径、网址协议、无参数保证、每次审批、不可预授权。
 
 可视化(PR 3–4):控制字符标记、大小上限、链接协议过滤、不加载远程图片、lint 规则、差异 `preview` 的包含检查。
 
@@ -281,3 +281,11 @@ M12 **不包含**任何合成鼠标或键盘输入、或在浏览器面板之外
 - **主视觉(`heroes/cat*.ts`):** 线稿由圆弧、直线和三次贝塞尔按固定步长取点组成(头、两只耳朵、身子、前腿、尾巴、脸、胡须),纯函数部分在 `cat-model.ts` 并有单测。聆听:两只耳朵轮流绕耳根抖动;思考:尾巴绕尾根摆;说话:一段光沿整条轮廓(不含脸)流动,亮度和速度随平滑后的电平;待机:轻微呼吸。线上的光点是暖色光晕加亮芯,低画质时隔得更开。
 - **知识模式:** 和自然共用 `anchored-knowledge.ts`(原 `nature-knowledge.ts` 改名并加 `style: 'leaf' | 'whisker'`)。第一层按弧长均匀挂在轮廓上(不含脸和前腿),点开后猫身压暗,子项排在该点外侧,用直线(胡须)连回去,内容子项是肉垫粉圆点。
 - **未做:** 「进度是毛线球」:界面里目前没有进度条元素,等有了再用 `--slider-thumb-paint` 的同一套。图标本来就是线稿风格,没有另做一套。
+
+## 20. 补充:system.open 的实现(M12,`feat/open-external`)
+
+- **工具**(`packages/tools/src/builtin/system-open.ts`):风险 `external`、`preauthorizable: false`、`forceApproval` 恒为真(会话内已批准、任务白名单都不生效)、`enabledFor` 读设置 `systemOpen.enabled`(新增,默认 false,旧服务器不返回时按关闭)。参数只有 `url` 或 `path` 二选一(`strict`,多给任何字段都拒绝)。`precheck` 在审批之前完成 §5.2 的全部校验;`execute` 批准之后**再校验一次**(防止审批期间文件被换掉),然后交给宿主适配器。审批卡片的说明用解析后的真实路径或规范化后的完整网址;长查询串沿用 `url_carries_data` 警示。审计沿用通用的工具调用审计(批准、拒绝、审批前被拒都记)。
+- **执行端**:核心不启动进程。宿主适配器 `createClientOpenHost` 走与截图相同的 client-call 通道:`ClientCapabilities` 增加可选的 `open`,只有声明了它的连接(桌面壳里的主界面)才会收到 `system.open` 帧;只声明了 `browser` 的旧桌面客户端收不到。`ClientCall` 改成按 `tool` 区分的联合,新增 `{ tool: 'system.open', target: { kind: 'url' | 'file', … } }`;结果新增 `{ ok: true, opened: true }`。OpenAPI 文档里结果仍是 `oneOf`(多了一项),本地用 CI 同版本 oasdiff 1.35.0 对比 `main`:无破坏性变更。
+- **壳**(`apps/desktop/src-tauri/src/open_policy.rs`、`system_open.rs`):新命令 `system_open` 只允许主窗口里、来源是本应用核心的页面调用(与浏览器命令同一道检查,并在能力文件里单列权限)。按同一规则再查一次(协议、凭据、绝对路径、存在、普通文件、扩展名允许清单、链接解析后的扩展名、POSIX 可执行位;授权目录只有核心知道,由核心查),然后用平台固定的打开程序(Windows `explorer.exe`、macOS `/usr/bin/open`、Linux `xdg-open`)加**一个**参数启动:不经 shell,没有其他参数或工作目录,环境变量只保留找到桌面会话所需的几项。没有新增 crate。
+- **不做模拟输入**:新增 `pnpm check:no-input-sim`(CI 里在占位符检查之后运行):依赖或 Cargo 清单里出现 robotjs、nut-js、enigo、rdev、autopilot、iohook 等,或我们的源码里出现 `SendInput(`、`keybd_event(`、`mouse_event(`、`CGEventPost(`、XTest、windows crate 的 `KeyboardAndMouse` 模块,就失败。
+- **未验证**:壳的打开动作需要 Windows / macOS / Linux 桌面真机(云端容器没有图形界面,也无法编译 Tauri);Windows 上 `explorer.exe` 对 mailto 与带空格路径的行为、macOS Gatekeeper 对下载文件的提示,列在 PR 的手工清单里。

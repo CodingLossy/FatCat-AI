@@ -157,6 +157,8 @@ jobs:
           pnpm check:i18n
       - name: Leftover placeholders
         run: pnpm check:placeholders
+      - name: No synthetic mouse / keyboard input (ADR 0046 section 5.4)
+        run: pnpm check:no-input-sim
       - name: Memory budget checks (unit tests)
         run: node --test scripts/perf/budget.test.mjs
       - name: No credentials in recorded fixtures

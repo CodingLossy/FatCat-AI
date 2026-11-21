@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// 客户端执行的工具调用(ADR 0046 第 3.6 节、第 14 节):核心没有渲染引擎,截图这类动作由已连接的桌面客户端完成。
+// 客户端执行的工具调用(ADR 0046 第 3.6 节、第 14 节、第 20 节):核心没有渲染引擎,也不为「用默认程序打开」启动进程,
+// 截图和 system.open 这类动作由已连接的桌面客户端完成。
 // 核心通过 WebSocket 的 client-call 帧把请求推给声明了对应能力的连接,桌面客户端把结果 POST 回
 // /api/v1/tool-calls/{callId}/result。只增不改;旧客户端不声明能力,不会收到这些帧。
 import { z } from 'zod';
@@ -11,20 +12,37 @@ import { IsoDateTime } from './common.js';
 export const ClientCapabilities = z.object({
     /** 内置浏览器面板可用(桌面壳里)。 */
     browser: z.boolean(),
+    /** 能用系统默认程序打开文件或网址(桌面壳里,system.open)。自 M12 起提供;旧客户端不发,按 false 处理。 */
+    open: z.boolean().optional(),
 });
 export type ClientCapabilities = z.infer<typeof ClientCapabilities>;
 
 /** 一次客户端执行的调用的标识:服务器生成的不可猜测的随机串,和模型的工具调用 id 无关。 */
 export const ClientCallId = z.string().regex(/^cc_[A-Za-z0-9_-]{16,64}$/);
 
-/** 服务器 → 桌面客户端(client-call 帧的载荷)。 */
-export const ClientCall = z.object({
-    callId: ClientCallId,
-    tool: z.literal('browser.screenshot'),
-    /** 要渲染的页面;已通过核心的协议与主机检查,壳还会再检查一次。 */
-    url: z.string().max(2048),
-    expiresAt: IsoDateTime,
-});
+/** system.open 的目标:网址(https / http / mailto)或已批准目录里的文件。核心已校验并经用户批准,壳还会再检查一次。 */
+export const OpenTarget = z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('url'), url: z.string().max(2048) }),
+    z.object({ kind: z.literal('file'), path: z.string().max(4096) }),
+]);
+export type OpenTarget = z.infer<typeof OpenTarget>;
+
+/** 服务器 → 桌面客户端(client-call 帧的载荷)。只发给声明了对应能力的连接。 */
+export const ClientCall = z.discriminatedUnion('tool', [
+    z.object({
+        callId: ClientCallId,
+        tool: z.literal('browser.screenshot'),
+        /** 要渲染的页面;已通过核心的协议与主机检查,壳还会再检查一次。 */
+        url: z.string().max(2048),
+        expiresAt: IsoDateTime,
+    }),
+    z.object({
+        callId: ClientCallId,
+        tool: z.literal('system.open'),
+        target: OpenTarget,
+        expiresAt: IsoDateTime,
+    }),
+]);
 export type ClientCall = z.infer<typeof ClientCall>;
 
 /** 截图解码后的字节上限(整个请求体受 2 MiB 的默认上限约束,base64 约增大三分之一)。 */
@@ -42,8 +60,8 @@ export const ClientCallFailureCode = z.enum([
 ]);
 export type ClientCallFailureCode = z.infer<typeof ClientCallFailureCode>;
 
-/** POST /tool-calls/{callId}/result 的请求体。 */
-export const ClientCallResult = z.discriminatedUnion('ok', [
+/** POST /tool-calls/{callId}/result 的请求体:截图、「已打开」或失败三选一(OpenAPI 里是 oneOf)。 */
+export const ClientCallResult = z.xor([
     z.object({
         ok: z.literal(true),
         mimeType: z.enum(['image/png', 'image/jpeg']),
@@ -55,6 +73,8 @@ export const ClientCallResult = z.discriminatedUnion('ok', [
             .min(1)
             .max(Math.ceil((CLIENT_CALL_IMAGE_MAX_BYTES * 4) / 3) + 8),
     }),
+    /** system.open:壳已把目标交给系统默认程序。 */
+    z.object({ ok: z.literal(true), opened: z.literal(true) }),
     z.object({ ok: z.literal(false), code: ClientCallFailureCode, message: z.string().max(300).optional() }),
 ]);
 export type ClientCallResult = z.infer<typeof ClientCallResult>;

@@ -14,14 +14,18 @@ export interface ClientCallRouteDeps {
     calls: ClientCalls;
 }
 
+/** 三种结果互斥:文档里保持 oneOf(与截图时代的文档一致,只是多了「已打开」一项,不算破坏性变更)。 */
+const ResultBody = z.xor(ClientCallResult.options).openapi({}, { unionPreferredType: 'oneOf' });
+
 const resultRoute = createRoute({
     method: 'post',
     path: '/tool-calls/{callId}/result',
     tags: ['tools'],
-    summary: 'Return the result of a call the server asked the desktop client to run (for example a screenshot)',
+    summary:
+        'Return the result of a call the server asked the desktop client to run (a screenshot, or opening a file or address)',
     request: {
         params: z.object({ callId: ClientCallId }),
-        body: { content: { 'application/json': { schema: ClientCallResult } }, required: true },
+        body: { content: { 'application/json': { schema: ResultBody } }, required: true },
     },
     responses: {
         204: { description: 'Accepted' },

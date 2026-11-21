@@ -1084,4 +1084,6 @@ export const en: Record<Key, string> = {
     'knowledge.pin': 'Pin',
     'knowledge.unpin': 'Unpin',
     'knowledge.deleteConfirm': 'Confirm delete',
+    'settings.systemOpenEnabled': 'Let the assistant open files and links in the default program',
+    'settings.systemOpenNote': 'Asks you every time; programs and scripts are never opened.',
 };

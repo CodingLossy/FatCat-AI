@@ -22,6 +22,8 @@ import {
     type BrowserToolOptions,
     createBuiltinTools,
     createFsTools,
+    createSystemOpenTool,
+    type OpenHost,
     type ToolDefinition,
     ToolRegistry,
 } from '@fatcat-ai/tools';
@@ -317,7 +319,11 @@ export function createToolRegistry(
     repos: Repositories,
     items: ItemService,
     kb: KnowledgeBase,
-    builtin: Omit<BuiltinToolOptions, 'browser'> & { browser?: Partial<BrowserToolOptions> } = {},
+    builtin: Omit<BuiltinToolOptions, 'browser'> & {
+        browser?: Partial<BrowserToolOptions>;
+        /** system.open 的宿主适配器(桌面壳,ADR 0046 第 5 节);不给时工具返回 desktop_unavailable。 */
+        systemOpen?: { host?: OpenHost };
+    } = {},
     /** 邮件工具(ADR 0016);不给时不注册。 */
     mail?: Pick<MailToolOptions, 'runner' | 'secret' | 'complete' | 'now' | 'timeZone'>,
     /** 其他需要服务器内对象的工具(例如 channel.push,ADR 0034)。 */
@@ -343,6 +349,12 @@ export function createToolRegistry(
             },
         }),
         ...createFsTools({ roots }),
+        // system.open:设置里默认关闭;打开后每次审批、不能预授权(ADR 0046 第 5 节)
+        createSystemOpenTool({
+            enabled: (ownerId) => repos.settings.get(ownerId).systemOpen?.enabled === true,
+            roots,
+            host: builtin.systemOpen?.host,
+        }),
         ...createItemTools(repos, items),
         // 检索前按需同步条目(超过 60 秒才同步),新文件在后台进入知识库
         ...createKbTools(kb, (ownerId) => items.syncIfStale(ownerId)),

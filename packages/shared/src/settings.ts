@@ -40,6 +40,13 @@ export const BrowserSettings = z.object({
 });
 export type BrowserSettings = z.infer<typeof BrowserSettings>;
 
+/** system.open(ADR 0046 第 5 节):用系统默认程序打开文件或网址。自 M12 起提供,旧服务器不返回。 */
+export const SystemOpenSettings = z.object({
+    /** 允许 AI 请求打开;默认关闭。打开后每次仍要审批,不能预授权。 */
+    enabled: z.boolean(),
+});
+export type SystemOpenSettings = z.infer<typeof SystemOpenSettings>;
+
 export const Settings = z.object({
     defaultChatProfileId: Id.nullable(),
     /** 上下文压缩等廉价任务用的配置档;为 null 时回退到 chat 配置档(ADR 0006)。 */
@@ -73,6 +80,8 @@ export const Settings = z.object({
     plugins: PluginSettingsGroup.optional(),
     /** 内置浏览器工具开关;旧服务器不返回,按关闭处理。 */
     browser: BrowserSettings.optional(),
+    /** system.open 开关;旧服务器不返回,按关闭处理。 */
+    systemOpen: SystemOpenSettings.optional(),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -83,6 +92,7 @@ export const SettingsPatch = Settings.partial().extend({
     network: NetworkSettings.partial().optional(),
     plugins: PluginSettingsGroup.partial().optional(),
     browser: BrowserSettings.partial().optional(),
+    systemOpen: SystemOpenSettings.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof SettingsPatch>;
 
@@ -98,4 +108,5 @@ export const DEFAULT_SETTINGS: Settings = {
     network: { allowFakeIp: false },
     plugins: { marketEnabled: true },
     browser: { enabled: false },
+    systemOpen: { enabled: false },
 };

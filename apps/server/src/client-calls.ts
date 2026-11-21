@@ -11,7 +11,7 @@ import {
     type ClientCallResult,
     type ClientCapabilities,
 } from '@fatcat-ai/shared';
-import { BrowserError, type BrowserHost, type ScreenshotImage } from '@fatcat-ai/tools';
+import { BrowserError, type BrowserHost, type OpenHost, type ScreenshotImage, SystemOpenError } from '@fatcat-ai/tools';
 
 /** 一次调用最长等多久(毫秒)。ADR:默认 30 秒;截图要先加载页面,给 20 秒。 */
 export const CLIENT_CALL_TIMEOUT_MS = 20_000;
@@ -24,6 +24,24 @@ export interface ClientSocket {
 }
 
 export type CompleteOutcome = 'ok' | 'not_found' | 'conflict';
+
+/** 一次调用除了 id 和过期时间之外的内容(按工具区分)。 */
+export type ClientCallRequest =
+    | Pick<Extract<ClientCall, { tool: 'browser.screenshot' }>, 'tool' | 'url'>
+    | Pick<Extract<ClientCall, { tool: 'system.open' }>, 'tool' | 'target'>;
+
+/** 这个工具需要连接声明哪项能力。 */
+function capable(caps: ClientCapabilities, tool: ClientCall['tool']): boolean {
+    return tool === 'system.open' ? caps.open === true : caps.browser;
+}
+
+/** 失败时用哪种错误:浏览器截图沿用 BrowserError,system.open 用 SystemOpenError。 */
+function failure(tool: ClientCall['tool'], message: string, code: string): Error {
+    if (tool === 'system.open') {
+        return new SystemOpenError(message, code === 'browser_unavailable' ? 'desktop_unavailable' : code);
+    }
+    return new BrowserError(message, code);
+}
 
 interface Pending {
     ownerId: string;
@@ -65,28 +83,25 @@ export class ClientCalls {
      */
     request(
         ownerId: string,
-        call: Pick<ClientCall, 'tool' | 'url'>,
+        call: ClientCallRequest,
         options: { signal: AbortSignal; timeoutMs?: number },
     ): Promise<ClientCallResult> {
-        const targets = [...(this.sockets.get(ownerId)?.entries() ?? [])].filter(([, caps]) => caps.browser);
+        const targets = [...(this.sockets.get(ownerId)?.entries() ?? [])].filter(([, caps]) =>
+            capable(caps, call.tool),
+        );
         if (targets.length === 0) {
             return Promise.reject(
-                new BrowserError('the desktop app is not connected (browser_unavailable)', 'browser_unavailable'),
+                failure(call.tool, 'the desktop app is not connected (browser_unavailable)', 'browser_unavailable'),
             );
         }
         let inFlight = 0;
         for (const p of this.pending.values()) if (p.ownerId === ownerId) inFlight += 1;
         if (inFlight >= MAX_PENDING_PER_OWNER) {
-            return Promise.reject(new BrowserError('too many client calls in progress', 'busy'));
+            return Promise.reject(failure(call.tool, 'too many client calls in progress', 'busy'));
         }
         const timeoutMs = options.timeoutMs ?? CLIENT_CALL_TIMEOUT_MS;
         const callId = `cc_${randomBytes(18).toString('base64url')}`;
-        const frame: ClientCall = {
-            callId,
-            tool: call.tool,
-            url: call.url,
-            expiresAt: new Date(this.now() + timeoutMs).toISOString(),
-        };
+        const frame: ClientCall = { ...call, callId, expiresAt: new Date(this.now() + timeoutMs).toISOString() };
         return new Promise<ClientCallResult>((resolve, reject) => {
             const finish = (): void => {
                 clearTimeout(timer);
@@ -96,11 +111,11 @@ export class ClientCalls {
             };
             const timer = setTimeout(() => {
                 finish();
-                reject(new BrowserError('the desktop app did not answer in time', 'timeout'));
+                reject(failure(call.tool, 'the desktop app did not answer in time', 'timeout'));
             }, timeoutMs);
             const onAbort = (): void => {
                 finish();
-                reject(new BrowserError('the client call was cancelled', 'timeout'));
+                reject(failure(call.tool, 'the client call was cancelled', 'timeout'));
             };
             if (options.signal.aborted) return onAbort();
             options.signal.addEventListener('abort', onAbort, { once: true });
@@ -170,6 +185,7 @@ export function createClientBrowserHost(calls: ClientCalls): BrowserHost {
                     FAILURE_CODES[result.code] ?? 'browser_unavailable',
                 );
             }
+            if (!('data' in result)) throw new BrowserError('the desktop app returned no image', 'browser_unavailable');
             const bytes = decodedBytes(result.data);
             if (bytes > CLIENT_CALL_IMAGE_MAX_BYTES) throw new BrowserError('the screenshot is too large', 'too_large');
             const image = Buffer.from(result.data, 'base64');
@@ -178,6 +194,26 @@ export function createClientBrowserHost(calls: ClientCalls): BrowserHost {
                 throw new BrowserError('the screenshot is not a valid image', 'browser_unavailable');
             }
             return { mimeType: result.mimeType, width: result.width, height: result.height, bytes: image };
+        },
+    };
+}
+
+/** 宿主适配器:把 system.open 交给本人已连接、声明了 open 能力的桌面客户端(ADR 0046 第 5 节)。 */
+export function createClientOpenHost(calls: ClientCalls): OpenHost {
+    return {
+        async open(target, signal, context): Promise<void> {
+            const result = await calls.request(context.ownerId, { tool: 'system.open', target }, { signal });
+            if (!result.ok) {
+                throw new SystemOpenError(
+                    result.message ?? `the desktop app could not open it (${result.code})`,
+                    result.code === 'blocked'
+                        ? 'blocked'
+                        : result.code === 'unsupported'
+                          ? 'desktop_unavailable'
+                          : 'failed',
+                );
+            }
+            if (!('opened' in result)) throw new SystemOpenError('the desktop app gave an unexpected answer', 'failed');
         },
     };
 }

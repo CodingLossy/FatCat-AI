@@ -119,6 +119,8 @@ describe('/api/v1/tools、/approvals、/preauthorizations、/audit', () => {
             ['memory.save', 'write', 'required', true, null],
             ['memory.search', 'read', 'auto', true, null],
             ['memory.write', 'write', 'required', true, null],
+            // system.open:设置里打开之前是 disabled,永远不能预授权(ADR 0046 第 5 节)
+            ['system.open', 'external', 'disabled', false, null],
             ['time', 'read', 'auto', true, null],
             ['ui.panel', 'read', 'auto', true, null],
             ['web.fetch', 'read', 'required', true, 'domain'],

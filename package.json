@@ -34,6 +34,7 @@
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:workflow-secrets": "node scripts/check-workflow-secrets.mjs",
     "check:egress": "node scripts/check-egress.mjs",
+    "check:no-input-sim": "node scripts/check-no-input-sim.mjs",
     "perf:mail-sync": "node scripts/perf/mail-sync-rss.mjs",
     "perf:channel": "node scripts/perf/channel-rss.mjs",
     "perf:plugin": "node scripts/perf/plugin.mjs",
