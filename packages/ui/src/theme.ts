@@ -4,6 +4,7 @@
 // 主题引擎(M12,ADR 0046):主题 = 一组 CSS token(tokens.css 里的 [data-theme])+ 一个主视觉实现。
 // 主视觉同时是语音球和知识地图,所有主题实现同一个接口,界面只面对接口,不认具体主题。
 
+import { createNatureHero } from './heroes/nature.js';
 import { createTechHero } from './heroes/tech.js';
 import type { KnowledgeScene } from './knowledge-model.js';
 import type { OrbState } from './orb-model.js';
@@ -37,6 +38,7 @@ export type HeroFactory = (canvas: HTMLCanvasElement, options: HeroOptions) => H
 
 const FACTORIES: Partial<Record<ThemeId, HeroFactory>> = {
     tech: createTechHero,
+    nature: createNatureHero,
 };
 
 /** Canvas 不可用时返回 null,调用方只显示文字。主题没有自己的实现时用科技的。 */

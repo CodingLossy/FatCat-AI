@@ -141,4 +141,21 @@ test('知识:星图逐层展开、气泡、全文卡片、Esc 返回、搜索点
     // 列表视图保留批量管理
     await page.getByRole('radio', { name: '列表' }).click();
     await expect(page.locator('[data-memory-id]')).toHaveCount(texts.length);
+
+    // 自然主题:树枝是分类,点开后叶子挂在枝头,叶旁浮出同样的气泡
+    const put = await page.request.put(`${base}/api/v1/settings`, {
+        data: { theme: 'nature' },
+        headers: { 'X-CSRF-Token': csrf },
+    });
+    expect(put.ok()).toBe(true);
+    await page.goto(`${base}/knowledge`);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'nature');
+    await page.getByRole('radio', { name: '星图' }).click();
+    await nodes.getByRole('button', { name: '语义记忆' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(nodes.getByRole('button')).toHaveCount(3);
+    await nodes.getByRole('button', { name: /无糖乌龙茶/ }).focus();
+    await page.keyboard.press('Enter');
+    await expect(bubble).toHaveText('用户喜欢喝无糖乌龙茶。');
+    await shot(page, 'nature-knowledge');
 });

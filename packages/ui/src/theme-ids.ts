@@ -10,7 +10,7 @@ export const DEFAULT_THEME: ThemeId = 'tech';
 /** 已经有 token 和主视觉的主题。自然、猫咪各自的 PR 合并时把 ready 改成 true。 */
 export const THEMES: readonly { readonly id: ThemeId; readonly ready: boolean }[] = [
     { id: 'tech', ready: true },
-    { id: 'nature', ready: false },
+    { id: 'nature', ready: true },
     { id: 'cat', ready: false },
 ];
 

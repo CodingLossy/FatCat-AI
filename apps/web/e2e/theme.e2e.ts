@@ -67,9 +67,9 @@ test.afterAll(async () => {
     if (dir) rmSync(dir, { recursive: true, force: true });
 });
 
-async function shot(page: import('@playwright/test').Page, name: string) {
+async function shot(page: import('@playwright/test').Page, name: string, theme = 'tech') {
     await page.waitForTimeout(600);
-    if (SHOTS) await page.screenshot({ path: join(SHOTS, `tech-${name}.png`) });
+    if (SHOTS) await page.screenshot({ path: join(SHOTS, `${theme}-${name}.png`) });
 }
 
 test('科技为默认主题,旧值 light 按科技显示且不改写,主题选择可用键盘', async ({ page }) => {
@@ -106,7 +106,8 @@ test('科技为默认主题,旧值 light 按科技显示且不改写,主题选�
     await page.getByRole('tab', { name: /工作台/ }).click();
     const tech = page.getByRole('radio', { name: /科技/ });
     await expect(tech).toHaveAttribute('aria-checked', 'true');
-    await expect(page.getByRole('radio', { name: /自然/ })).toBeDisabled();
+    await expect(page.getByRole('radio', { name: /自然/ })).toBeEnabled();
+    await expect(page.getByRole('radio', { name: /猫咪/ })).toBeDisabled();
     const stored = await page.evaluate(
         async () => ((await (await fetch('/api/v1/settings')).json()) as { theme: string }).theme,
     );
@@ -129,4 +130,29 @@ test('科技为默认主题,旧值 light 按科技显示且不改写,主题选�
     await page.goto(base);
     await expect(page.getByTestId('voice-indicator')).toBeVisible();
     await shot(page, 'narrow');
+
+    // 自然:方向键选中,立刻换成雾夜森林的 token 和树形主视觉
+    await page.setViewportSize({ width: 1280, height: 820 });
+    await page.goto(`${base}/settings`);
+    await page.getByRole('tab', { name: /工作台/ }).click();
+    await page.getByRole('radio', { name: /科技/ }).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'nature');
+    await expect(page.getByRole('radio', { name: /自然/ })).toHaveAttribute('aria-checked', 'true');
+    const accent = await page.evaluate(() =>
+        getComputedStyle(document.documentElement).getPropertyValue('--accent').trim().toLowerCase(),
+    );
+    expect(accent).toBe('#e8c27a');
+    await page.goto(base);
+    await expect(page.getByTestId('voice-indicator')).toBeVisible();
+    await shot(page, 'idle', 'nature');
+    await page.getByRole('button', { name: '文件', exact: true }).click();
+    await expect(page.locator('.wb-float')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.goto(`${base}/knowledge`);
+    await expect(page.getByTestId('knowledge')).toBeVisible();
+    await page.goto(`${base}/mail`);
+    await page.setViewportSize({ width: 390, height: 820 });
+    await page.goto(base);
+    await expect(page.getByTestId('voice-indicator')).toBeVisible();
 });
