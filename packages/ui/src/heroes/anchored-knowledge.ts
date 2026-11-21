@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// 自然主视觉的知识模式:第一层挂在树的枝头上(树枝是分类);点亮一根树枝,光沿枝干流到枝头,其他部分变暗,
-// 枝头长出一簇叶子(内容),每片叶子用细茎连回枝头;再往下一层同样在这个枝头展开。颜色全部来自主题 token。
+// 「挂在主视觉上」的知识模式,自然和猫咪共用:第一层节点挂在主视觉的某些位置上(自然是枝头,猫咪是轮廓线上的光点);
+// 点开一个,它的子项在它外侧长成一簇(背离主视觉中心),用细线连回它(自然是弯的细茎,猫咪是直的胡须);
+// 再往下一层同样在这个位置展开。颜色全部来自主题 token。
 
 import { expandedId, type KnowledgeNode, type KnowledgeScene, type ScreenNode } from '../knowledge-model.js';
 
-export interface NatureKnowledgePalette {
+export interface AnchoredKnowledgePalette {
+    /** 第一层和分支子项的颜色(自然:枝干金;猫咪:轮廓橘)。 */
     readonly branch: string;
+    /** 内容子项的颜色。 */
     readonly leaf: string;
     readonly hit: string;
     readonly accent: string;
@@ -16,17 +19,19 @@ export interface NatureKnowledgePalette {
     readonly font: string;
 }
 
-export interface NatureKnowledgeFrame {
+export interface AnchoredKnowledgeFrame {
     readonly w: number;
     readonly h: number;
     readonly radius: number;
     readonly tSec: number;
     /** 展开进度 0–1(减少动态时恒为 1)。 */
     readonly explode: number;
-    /** 第一层第 i 个节点所在枝头的屏幕坐标。 */
+    /** 第一层第 i 个节点的屏幕坐标。 */
     readonly rootAt: (i: number) => { x: number; y: number };
-    /** 树根的屏幕坐标(叶簇朝背离树根的方向长)。 */
+    /** 子项簇背离的点(自然是树根,猫咪是猫身中心)。 */
     readonly base: { x: number; y: number };
+    /** 内容子项的形状和连线:叶子 + 弯茎(自然),或圆点 + 直胡须(猫咪)。 */
+    readonly style: 'leaf' | 'whisker';
 }
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
@@ -42,7 +47,7 @@ function ease(x: number): number {
     return 1 - (1 - x) ** 3;
 }
 
-/** 叶簇的中心:从枝头往背离树根的方向推一点,并留在画布里。 */
+/** 子项簇的中心:从展开的节点往背离 base 的方向推一点,并留在画布里。 */
 export function clusterCenter(
     anchor: { x: number; y: number },
     base: { x: number; y: number },
@@ -62,7 +67,7 @@ export function clusterCenter(
     };
 }
 
-/** 第 i 片叶子相对叶簇中心的位置(未乘展开进度)。 */
+/** 第 i 个子项相对簇中心的位置(未乘展开进度)。 */
 export function leafOffset(i: number, n: number, radius: number, tSec: number) {
     const r = radius * (0.1 + 0.42 * Math.sqrt((i + 0.5) / Math.max(1, n)));
     const a = i * GOLDEN + tSec * 0.01;
@@ -70,11 +75,11 @@ export function leafOffset(i: number, n: number, radius: number, tSec: number) {
 }
 
 /** 画知识层,返回这一帧可点击的节点(屏幕坐标)。 */
-export function drawNatureKnowledge(
+export function drawAnchoredKnowledge(
     g: CanvasRenderingContext2D,
     scene: KnowledgeScene,
-    frame: NatureKnowledgeFrame,
-    p: NatureKnowledgePalette,
+    frame: AnchoredKnowledgeFrame,
+    p: AnchoredKnowledgePalette,
 ): ScreenNode[] {
     const out: ScreenNode[] = [];
     const open = expandedId(scene);
@@ -152,7 +157,7 @@ export function drawNatureKnowledge(
         if (alpha > 0.3) out.push({ id: n.id, x, y, r: Math.max(r + 6, 10) });
     };
 
-    // 第一层:枝头上的金色光点;有展开时其余变暗
+    // 第一层:挂在主视觉上的光点;有展开时其余变暗
     const roots = scene.roots;
     const openRoot = scene.path[0]?.id ?? null;
     let anchor: { x: number; y: number } | null = null;
@@ -168,7 +173,7 @@ export function drawNatureKnowledge(
     if (!open || !anchor) return out;
     const a: { x: number; y: number } = anchor;
 
-    // 叶簇:从枝头长出细茎连到每片叶子
+    // 子项簇:从展开的节点拉出细线连到每个子项
     const c = clusterCenter(a, frame.base, frame.radius, frame.w, frame.h);
     const kids = scene.children;
     const pts = kids.map((_, i) => {
@@ -181,12 +186,13 @@ export function drawNatureKnowledge(
     });
     g.strokeStyle = p.branch;
     g.lineWidth = 1;
-    g.globalAlpha = 0.22 * e;
+    g.globalAlpha = (frame.style === 'whisker' ? 0.35 : 0.22) * e;
     g.beginPath();
     pts.forEach((q, i) => {
         if (i >= 28) return;
         g.moveTo(a.x, a.y);
-        g.quadraticCurveTo((a.x + q.x) / 2, Math.min(a.y, q.y) - 6, q.x, q.y);
+        if (frame.style === 'whisker') g.lineTo(q.x, q.y);
+        else g.quadraticCurveTo((a.x + q.x) / 2, Math.min(a.y, q.y) - 6, q.x, q.y);
     });
     g.stroke();
     g.globalAlpha = 1;
@@ -201,7 +207,7 @@ export function drawNatureKnowledge(
             n.id === scene.selectedId ||
             n.id === scene.focusId;
         if (n.kind === 'branch') node(n, q.x, q.y, 3.2, 0.4 + 0.6 * e, named && e > 0.6, 'dot');
-        else node(n, q.x, q.y, 2.6, 0.4 + 0.6 * e, named && e > 0.6, 'leaf', q.angle);
+        else node(n, q.x, q.y, 2.6, 0.4 + 0.6 * e, named && e > 0.6, frame.style === 'leaf' ? 'leaf' : 'dot', q.angle);
     });
 
     const center: KnowledgeNode = { id: open, label: scene.path[scene.path.length - 1]?.label ?? '', kind: 'branch' };

@@ -158,4 +158,20 @@ test('知识:星图逐层展开、气泡、全文卡片、Esc 返回、搜索点
     await page.keyboard.press('Enter');
     await expect(bubble).toHaveText('用户喜欢喝无糖乌龙茶。');
     await shot(page, 'nature-knowledge');
+
+    // 猫咪主题:轮廓线上的光点是第一层,点开后像胡须一样拉出细线,白色圆角气泡
+    const putCat = await page.request.put(`${base}/api/v1/settings`, {
+        data: { theme: 'cat' },
+        headers: { 'X-CSRF-Token': csrf },
+    });
+    expect(putCat.ok()).toBe(true);
+    await page.goto(`${base}/knowledge`);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'cat');
+    await nodes.getByRole('button', { name: '语义记忆' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(nodes.getByRole('button')).toHaveCount(3);
+    await nodes.getByRole('button', { name: /无糖乌龙茶/ }).focus();
+    await page.keyboard.press('Enter');
+    await expect(bubble).toHaveText('用户喜欢喝无糖乌龙茶。');
+    await shot(page, 'cat-knowledge');
 });

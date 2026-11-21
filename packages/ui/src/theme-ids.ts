@@ -11,7 +11,7 @@ export const DEFAULT_THEME: ThemeId = 'tech';
 export const THEMES: readonly { readonly id: ThemeId; readonly ready: boolean }[] = [
     { id: 'tech', ready: true },
     { id: 'nature', ready: true },
-    { id: 'cat', ready: false },
+    { id: 'cat', ready: true },
 ];
 
 /**

@@ -107,7 +107,7 @@ test('科技为默认主题,旧值 light 按科技显示且不改写,主题选�
     const tech = page.getByRole('radio', { name: /科技/ });
     await expect(tech).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByRole('radio', { name: /自然/ })).toBeEnabled();
-    await expect(page.getByRole('radio', { name: /猫咪/ })).toBeDisabled();
+    await expect(page.getByRole('radio', { name: /猫咪/ })).toBeEnabled();
     const stored = await page.evaluate(
         async () => ((await (await fetch('/api/v1/settings')).json()) as { theme: string }).theme,
     );
@@ -146,6 +146,20 @@ test('科技为默认主题,旧值 light 按科技显示且不改写,主题选�
     await page.goto(base);
     await expect(page.getByTestId('voice-indicator')).toBeVisible();
     await shot(page, 'idle', 'nature');
+
+    // 猫咪:浅色奶油底,强调色是深一点的肉垫粉(浅粉做文字对比度不够)
+    await page.goto(`${base}/settings`);
+    await page.getByRole('tab', { name: /工作台/ }).click();
+    await page.getByRole('radio', { name: /自然/ }).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'cat');
+    const bg = await page.evaluate(() =>
+        getComputedStyle(document.documentElement).getPropertyValue('--bg').trim().toLowerCase(),
+    );
+    expect(bg).toBe('#fff6ec');
+    await page.goto(base);
+    await expect(page.getByTestId('voice-indicator')).toBeVisible();
+    await shot(page, 'idle', 'cat');
     await page.getByRole('button', { name: '文件', exact: true }).click();
     await expect(page.locator('.wb-float')).toBeVisible();
     await page.keyboard.press('Escape');
