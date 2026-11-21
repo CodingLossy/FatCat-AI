@@ -69,7 +69,7 @@ test.afterAll(async () => {
 
 async function shot(page: import('@playwright/test').Page, name: string) {
     await page.waitForTimeout(600);
-    if (SHOTS) await page.screenshot({ path: join(SHOTS, `${name}.png`) });
+    if (SHOTS) await page.screenshot({ path: join(SHOTS, `tech-${name}.png`) });
 }
 
 test('科技为默认主题,旧值 light 按科技显示且不改写,主题选择可用键盘', async ({ page }) => {

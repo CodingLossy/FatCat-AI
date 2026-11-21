@@ -28,6 +28,7 @@ import { SecretsSection } from './SecretsSection.js';
 import { DevicesSection } from './DevicesSection.js';
 import { TotpSection } from './TotpSection.js';
 import { ThemePicker } from './ThemePicker.js';
+import { SettingsGroup, Switch } from './controls.js';
 import { TimeZoneSetting } from './TimeZoneSetting.js';
 
 const PURPOSES: ModelPurpose[] = ['chat', 'cheap', 'stt', 'tts'];
@@ -336,6 +337,16 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
         } catch {
             // 存不下也不影响使用
         }
+        return next;
+    };
+
+    // 分区内所有分组单列排开;点左侧的子项时滚到对应分组
+    const groupId = (section: string, item: string) => `settings-${section}-${item}`;
+    const jump = (section: SettingsSectionId, item: string) => {
+        const next = show(section, item);
+        window.requestAnimationFrame(() =>
+            document.getElementById(groupId(next.section, next.item))?.scrollIntoView({ block: 'start' }),
+        );
     };
 
     const update = async (patch: SettingsPatch) => {
@@ -382,60 +393,60 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
         document.getElementById('model-profiles')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    const content = () => {
-        switch (`${view.section}/${view.item}`) {
+    const content = (item: string) => {
+        switch (`${view.section}/${item}`) {
             case 'workbench/general':
                 return (
-                    <section className="card form">
-                        <h2>{t('settings.general')}</h2>
-                        <label>
-                            {t('settings.language')}
-                            <select
-                                name="locale"
-                                value={settings.locale}
-                                onChange={(e) => void update({ locale: e.target.value as Settings['locale'] })}
-                            >
-                                {LOCALES.map((code) => (
-                                    <option key={code} value={code}>
-                                        {LOCALE_NAMES[code]}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <ThemePicker value={settings.theme} onChange={(theme) => void update({ theme })} />
-                        <TimeZoneSetting value={settings.timeZone} onChange={update} />
-                        <label>
-                            {t('settings.chunkChars')}
-                            <input
-                                type="number"
-                                name="chunkChars"
-                                min={200}
-                                max={4000}
-                                step={100}
-                                defaultValue={settings.knowledgeBase.chunkChars}
-                                onBlur={(e) => {
-                                    const value = Number(e.target.value);
-                                    if (Number.isInteger(value) && value >= 200 && value <= 4000) {
-                                        void update({ knowledgeBase: { chunkChars: value } });
-                                    }
-                                }}
-                            />
-                        </label>
-                        <label className="inline">
-                            <input
-                                type="checkbox"
+                    <>
+                        <SettingsGroup title={t('settings.appearance')}>
+                            <ThemePicker value={settings.theme} onChange={(theme) => void update({ theme })} />
+                            <label>
+                                {t('settings.language')}
+                                <select
+                                    name="locale"
+                                    value={settings.locale}
+                                    onChange={(e) => void update({ locale: e.target.value as Settings['locale'] })}
+                                >
+                                    {LOCALES.map((code) => (
+                                        <option key={code} value={code}>
+                                            {LOCALE_NAMES[code]}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        </SettingsGroup>
+                        <SettingsGroup title={t('settings.general')}>
+                            <TimeZoneSetting value={settings.timeZone} onChange={update} />
+                            <label>
+                                {t('settings.chunkChars')}
+                                <input
+                                    type="number"
+                                    name="chunkChars"
+                                    min={200}
+                                    max={4000}
+                                    step={100}
+                                    defaultValue={settings.knowledgeBase.chunkChars}
+                                    onBlur={(e) => {
+                                        const value = Number(e.target.value);
+                                        if (Number.isInteger(value) && value >= 200 && value <= 4000) {
+                                            void update({ knowledgeBase: { chunkChars: value } });
+                                        }
+                                    }}
+                                />
+                            </label>
+                            <Switch
                                 name="autoExtract"
+                                label={t('settings.autoExtractLabel')}
+                                hint={t('settings.autoExtractHint', { n: settings.memory.extractDailyLimit })}
                                 checked={settings.memory.autoExtract}
                                 disabled={savingAutoExtract}
-                                onChange={(e) => {
-                                    const autoExtract = e.target.checked;
+                                onChange={(autoExtract) => {
                                     setSavingAutoExtract(true);
                                     void update({ memory: { autoExtract } }).finally(() => setSavingAutoExtract(false));
                                 }}
-                            />{' '}
-                            {t('settings.autoExtract', { n: settings.memory.extractDailyLimit })}
-                        </label>
-                    </section>
+                            />
+                        </SettingsGroup>
+                    </>
                 );
             case 'workbench/files':
                 return <FsRoots />;
@@ -457,8 +468,7 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                 );
             case 'models/voice':
                 return (
-                    <section className="card form" aria-label={t('settings.voice')}>
-                        <h2>{t('settings.voice')}</h2>
+                    <SettingsGroup title={t('settings.voice')}>
                         <label>
                             {t('settings.voiceStt')}
                             {voiceSelect('defaultSttProfileId', 'stt')}
@@ -467,26 +477,20 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                             {t('settings.voiceTts')}
                             {voiceSelect('defaultTtsProfileId', 'tts')}
                         </label>
-                        <label className="inline">
-                            <input
-                                type="checkbox"
-                                name="voiceAutoSend"
-                                checked={settings.voice.autoSend}
-                                onChange={(e) => void update({ voice: { autoSend: e.target.checked } })}
-                            />{' '}
-                            {t('settings.voiceAutoSend')}
-                        </label>
-                        <label className="inline">
-                            <input
-                                type="checkbox"
-                                name="voiceAutoSpeak"
-                                checked={settings.voice.autoSpeak}
-                                onChange={(e) => void update({ voice: { autoSpeak: e.target.checked } })}
-                            />{' '}
-                            {t('settings.voiceAutoSpeak')}
-                        </label>
-                        <span className="small muted">{t('settings.voiceHint')}</span>
-                    </section>
+                        <Switch
+                            name="voiceAutoSend"
+                            label={t('settings.voiceAutoSend')}
+                            checked={settings.voice.autoSend}
+                            onChange={(autoSend) => void update({ voice: { autoSend } })}
+                        />
+                        <Switch
+                            name="voiceAutoSpeak"
+                            label={t('settings.voiceAutoSpeak')}
+                            hint={t('settings.voiceHint')}
+                            checked={settings.voice.autoSpeak}
+                            onChange={(autoSpeak) => void update({ voice: { autoSpeak } })}
+                        />
+                    </SettingsGroup>
                 );
             case 'models/embedding':
                 // 配置档变化(新增 embed 档、改模型)后重新读取状态
@@ -497,35 +501,28 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                 return <Preauthorizations />;
             case 'tools/browser':
                 return (
-                    <section className="card form" aria-label={t('settings.browser')}>
-                        <h2>{t('settings.browser')}</h2>
-                        <label className="inline">
-                            <input
-                                type="checkbox"
-                                name="browserEnabled"
-                                checked={settings.browser?.enabled === true}
-                                onChange={(e) => void update({ browser: { enabled: e.target.checked } })}
-                            />{' '}
-                            {t('settings.browserEnabled')}
-                        </label>
-                        <p className="small muted">{t('settings.browserNote')}</p>
-                    </section>
+                    <SettingsGroup title={t('settings.browser')}>
+                        <Switch
+                            name="browserEnabled"
+                            label={t('settings.browserEnabled')}
+                            hint={t('settings.browserNote')}
+                            risk
+                            checked={settings.browser?.enabled === true}
+                            onChange={(enabled) => void update({ browser: { enabled } })}
+                        />
+                    </SettingsGroup>
                 );
             case 'tools/market':
                 return (
-                    <section className="card form" aria-label={t('settings.pluginMarket')}>
-                        <h2>{t('plugins.title')}</h2>
-                        <label className="inline">
-                            <input
-                                type="checkbox"
-                                name="pluginMarketEnabled"
-                                checked={settings.plugins?.marketEnabled !== false}
-                                onChange={(e) => void update({ plugins: { marketEnabled: e.target.checked } })}
-                            />{' '}
-                            {t('settings.pluginMarket')}
-                        </label>
-                        <p className="small muted">{t('settings.pluginMarketNote')}</p>
-                    </section>
+                    <SettingsGroup title={t('plugins.title')}>
+                        <Switch
+                            name="pluginMarketEnabled"
+                            label={t('settings.pluginMarket')}
+                            hint={t('settings.pluginMarketNote')}
+                            checked={settings.plugins?.marketEnabled !== false}
+                            onChange={(marketEnabled) => void update({ plugins: { marketEnabled } })}
+                        />
+                    </SettingsGroup>
                 );
             case 'system/account':
                 return (
@@ -540,19 +537,16 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                 return (
                     <>
                         {settings.network ? (
-                            <section className="card form" aria-label={t('settings.network')}>
-                                <h2>{t('settings.network')}</h2>
-                                <label className="inline">
-                                    <input
-                                        type="checkbox"
-                                        name="allowFakeIp"
-                                        checked={settings.network.allowFakeIp}
-                                        onChange={(e) => void update({ network: { allowFakeIp: e.target.checked } })}
-                                    />{' '}
-                                    {t('settings.allowFakeIp')}
-                                </label>
-                                <p className="small muted">{t('settings.allowFakeIpRisk')}</p>
-                            </section>
+                            <SettingsGroup title={t('settings.network')}>
+                                <Switch
+                                    name="allowFakeIp"
+                                    label={t('settings.allowFakeIp')}
+                                    hint={t('settings.allowFakeIpRisk')}
+                                    risk
+                                    checked={settings.network.allowFakeIp}
+                                    onChange={(allowFakeIp) => void update({ network: { allowFakeIp } })}
+                                />
+                            </SettingsGroup>
                         ) : null}
                         <EgressSection />
                     </>
@@ -563,7 +557,7 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
     };
 
     const section = SETTINGS_SECTIONS.find((s) => s.id === view.section)!;
-    // 分区标签是 WAI-ARIA 的 tablist:左右方向键 / Home / End 在标签间移动并切换分区,只有选中的标签在 Tab 顺序里
+    // 左侧分类是纵向的 WAI-ARIA tablist:上下方向键 / Home / End 在分类间移动并切换,只有选中的分类在 Tab 顺序里
     const onTabKey = (event: KeyboardEvent<HTMLDivElement>) => {
         const index = SETTINGS_SECTIONS.findIndex((s) => s.id === view.section);
         const last = SETTINGS_SECTIONS.length - 1;
@@ -596,38 +590,38 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                         onKeyDown={onTabKey}
                     >
                         {SETTINGS_SECTIONS.map((s) => (
-                            <button
-                                key={s.id}
-                                type="button"
-                                role="tab"
-                                id={`settings-tab-${s.id}`}
-                                aria-controls="settings-panel"
-                                aria-selected={s.id === view.section}
-                                tabIndex={s.id === view.section ? 0 : -1}
-                                className={s.id === view.section ? 'active' : ''}
-                                onClick={() => show(s.id)}
-                            >
-                                <strong>{t(`settings.section.${s.id}`)}</strong>
-                                {t(`settings.section.${s.id}.sub`) ? (
-                                    <small>{t(`settings.section.${s.id}.sub`)}</small>
+                            <div key={s.id} className="settings-cat">
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id={`settings-tab-${s.id}`}
+                                    aria-controls="settings-panel"
+                                    aria-selected={s.id === view.section}
+                                    tabIndex={s.id === view.section ? 0 : -1}
+                                    className={s.id === view.section ? 'active' : ''}
+                                    onClick={() => show(s.id)}
+                                >
+                                    <Icon name={s.icon} size={16} />
+                                    {t(`settings.section.${s.id}`)}
+                                </button>
+                                {s.id === view.section ? (
+                                    <nav className="settings-menu" aria-label={t(`settings.section.${s.id}`)}>
+                                        {s.items.map((it) => (
+                                            <button
+                                                key={it.id}
+                                                type="button"
+                                                aria-current={it.id === view.item ? 'true' : undefined}
+                                                className={it.id === view.item ? 'active' : ''}
+                                                onClick={() => jump(s.id, it.id)}
+                                            >
+                                                {t(it.label as Parameters<typeof t>[0])}
+                                            </button>
+                                        ))}
+                                    </nav>
                                 ) : null}
-                            </button>
+                            </div>
                         ))}
                     </div>
-                    <nav className="settings-menu" aria-label={t(`settings.section.${section.id}`)}>
-                        {section.items.map((it) => (
-                            <button
-                                key={it.id}
-                                type="button"
-                                aria-current={it.id === view.item ? 'page' : undefined}
-                                className={it.id === view.item ? 'active' : ''}
-                                onClick={() => show(section.id, it.id)}
-                            >
-                                <Icon name={it.icon} size={16} />
-                                {t(it.label as Parameters<typeof t>[0])}
-                            </button>
-                        ))}
-                    </nav>
                 </aside>
                 <div
                     className="settings-content"
@@ -635,9 +629,13 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                     id="settings-panel"
                     aria-labelledby={`settings-tab-${section.id}`}
                 >
-                    {content()}
+                    {section.items.map((it) => (
+                        <div key={it.id} className="settings-slot" id={groupId(section.id, it.id)}>
+                            {content(it.id)}
+                        </div>
+                    ))}
                     {note ? (
-                        <p className="small muted" role="status">
+                        <p className="small muted settings-note" role="status">
                             {note}
                         </p>
                     ) : null}

@@ -75,10 +75,22 @@ export function currentQuality(): QualityState {
     return qualityState;
 }
 
+/** 窗口没有焦点(在后台但仍可见)时降到约 15 帧;完全隐藏时整个循环暂停(见下方 visibilitychange)。 */
+export const BACKGROUND_FRAME_MS = 66;
+
+function unfocused(): boolean {
+    return typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus();
+}
+
 function loop(now: number): void {
     frame = null;
     if (ticks.size === 0) return;
-    if (lastTs) qualityState = stepQuality(currentQuality(), now - lastTs);
+    if (lastTs && unfocused() && now - lastTs < BACKGROUND_FRAME_MS) {
+        schedule();
+        return;
+    }
+    // 降帧时的长间隔不算作卡顿,不拿去降低粒子数
+    if (lastTs && !unfocused()) qualityState = stepQuality(currentQuality(), now - lastTs);
     lastTs = now;
     for (const tick of [...ticks]) tick(now);
     schedule();

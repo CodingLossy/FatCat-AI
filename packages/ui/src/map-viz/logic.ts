@@ -36,13 +36,13 @@ export interface MapLayout {
     groups: MapGroup[];
 }
 
-/** 三种记忆类型的颜色:浅色与深色背景上对比度都 ≥ 3:1。 */
+/** 三种记忆类型的颜色:tokens.css 里的 token 名(各主题自己给值),绘制时按当前主题解析。 */
 export const MEMORY_COLORS: Readonly<Record<string, string>> = {
-    semantic: '#2563eb',
-    episodic: '#d97706',
-    procedural: '#7c3aed',
+    semantic: '--map-semantic',
+    episodic: '--map-episodic',
+    procedural: '--map-procedural',
 };
-const FALLBACK_COLOR = '#7a8699';
+const FALLBACK_COLOR = '--muted';
 
 export interface MemoryLike {
     id: string;
@@ -185,7 +185,7 @@ export function forkForest(sessions: readonly SessionLike[]): MapLayout & { stan
                 id: s.id,
                 ...p,
                 r,
-                color: s.forkedFromSessionId ? '#2563eb' : '#16a34a',
+                color: s.forkedFromSessionId ? '--map-fork' : '--map-session',
                 alpha: 1,
                 outline: false,
                 label: s.title || '—',

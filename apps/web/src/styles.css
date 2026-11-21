@@ -138,9 +138,9 @@ pre {
 
 .card {
     border: var(--border-width) solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     padding: 0.8rem 1rem;
-    background: var(--bg);
+    background: var(--surface);
 }
 
 .form {
@@ -232,7 +232,7 @@ fieldset {
 .auth-logo {
     width: 4rem;
     height: 4rem;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
 }
 
 .auth-brand h1 {
@@ -259,7 +259,7 @@ fieldset {
 
 .auth .card input {
     padding: 0.55rem 0.7rem;
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     border: var(--border-width) solid var(--border);
     background: var(--bg);
     color: inherit;
@@ -311,14 +311,14 @@ fieldset {
     margin: 0;
     padding: 0.5rem 0.7rem;
     border: var(--border-width) solid var(--danger);
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     color: var(--danger);
     font-size: 0.9rem;
 }
 
 .auth .card button.primary {
     padding: 0.6rem 1rem;
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -573,7 +573,7 @@ fieldset {
 .message.user {
     align-self: flex-end;
     background: var(--panel);
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     padding: 0.5rem 0.8rem;
     max-width: 80%;
 }
@@ -601,7 +601,7 @@ fieldset {
 
 .tool-card {
     border: var(--border-width) solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     padding: 0.5rem 0.8rem;
     margin: 0.4rem 0;
 }
@@ -755,7 +755,7 @@ fieldset {
 .run-waiting {
     display: inline-block;
     padding: 0.1rem 0.5rem;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-control);
     border: var(--border-width) solid var(--warn);
     background: color-mix(in srgb, var(--warn) 15%, transparent);
     font-weight: 600;
@@ -839,7 +839,7 @@ td .badge {
 
 .tree-row {
     padding: 0.15rem 0.3rem;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-control);
 }
 
 .tree-row.active {
@@ -979,7 +979,7 @@ td .badge {
 }
 
 .qr-login .qr-code {
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-control);
     max-width: 100%;
     height: auto;
 }
@@ -1442,7 +1442,7 @@ td .badge {
 
 .pairing-code {
     margin: 0.2rem 0;
-    font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+    font-family: var(--font-mono);
     font-size: 1.8rem;
     letter-spacing: 0.12em;
     user-select: all;
@@ -1450,7 +1450,7 @@ td .badge {
 
 /* 手机配对页:配对码用等宽大字,方便核对 */
 .pair-code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-family: var(--font-mono);
     font-size: 1.25rem;
     letter-spacing: 0.12em;
     text-align: center;
@@ -1475,7 +1475,7 @@ td .badge {
     padding: 0 var(--space-3);
     background: var(--surface-2);
     border: var(--border-width) solid var(--border-strong);
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     color: var(--muted);
 }
 
@@ -1500,7 +1500,7 @@ td .badge {
 .wb-search kbd {
     font: var(--text-small) var(--font-mono);
     border: var(--border-width) solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-control);
     padding: 0 6px;
     color: var(--muted);
 }
@@ -1517,7 +1517,7 @@ td .badge {
     list-style: none;
     background: var(--surface);
     border: var(--border-width) solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     box-shadow: var(--shadow-card);
     max-height: 320px;
     overflow: auto;
@@ -1531,7 +1531,7 @@ td .badge {
     border: none;
     background: transparent;
     color: var(--fg);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-control);
 }
 
 .wb-search-list button.on,
@@ -1567,7 +1567,7 @@ td .badge {
 .wb-glass {
     background: var(--surface-2);
     border: var(--border-width) solid var(--border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     box-shadow: var(--shadow-card);
 }
 
@@ -1598,7 +1598,7 @@ td .badge {
     gap: var(--space-2);
     padding: 7px var(--space-3);
     border: var(--border-width) solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     background: var(--surface-2);
     margin-top: 6px;
     font-size: 13px;
@@ -1957,7 +1957,7 @@ td .badge {
 .vis-card {
     margin: 8px 0;
     border: var(--border-width) solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     background: var(--surface-2);
     overflow: hidden;
 }
@@ -2057,9 +2057,6 @@ td .badge {
 
 /* 设置页(M12 主题引擎):左侧分类(分区 + 当前分区的子项)+ 右侧单列分组 */
 .settings-side {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
     position: sticky;
     top: 0;
 }
@@ -2068,15 +2065,13 @@ td .badge {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
-    padding-bottom: var(--space-3);
-    border-bottom: var(--border-width) solid var(--border);
 }
 
-.settings-tabs button {
+.settings-tabs [role='tab'] {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
     padding: var(--space-2) var(--space-3);
     background: transparent;
     border: var(--border-width) solid transparent;
@@ -2085,43 +2080,111 @@ td .badge {
     text-align: left;
 }
 
-.settings-tabs button small {
-    font-size: var(--text-small);
+.settings-tabs [role='tab']:hover {
+    color: var(--fg);
 }
 
-.settings-tabs button.active {
-    color: var(--accent);
+.settings-tabs [role='tab'].active {
+    color: var(--fg);
     border-color: var(--accent-line);
     background: var(--accent-weak);
 }
 
+.settings-tabs [role='tab'].active .icon {
+    color: var(--accent);
+}
+
 .settings-body {
     display: grid;
-    grid-template-columns: 13rem minmax(0, 44rem);
-    gap: var(--space-4);
+    grid-template-columns: 13rem minmax(0, 42rem);
+    gap: var(--space-5);
     align-items: start;
 }
 
 .settings-menu {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: 2px;
+    margin: var(--space-1) 0 var(--space-2) calc(var(--space-3) + 9px);
+    padding-left: var(--space-3);
+    border-left: var(--border-width) solid var(--border);
 }
 
 .settings-menu button {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
     text-align: left;
     background: transparent;
-    border: var(--border-width) solid transparent;
-    color: var(--fg);
+    border: 0;
+    color: var(--muted);
+    font-size: var(--text-small);
 }
 
 .settings-menu button.active {
     color: var(--accent);
-    background: var(--accent-weak);
-    border-color: var(--accent-line);
+}
+
+.settings-slot {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    scroll-margin-top: var(--space-4);
+}
+
+.settings-slot > section:not(.card) {
+    padding: var(--space-4) var(--space-5);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--glass-bg);
+    box-shadow: var(--shadow-card);
+}
+
+.settings-content .card {
+    padding: var(--space-4) var(--space-5);
+    background: var(--glass-bg);
+    box-shadow: var(--shadow-card);
+}
+
+.settings-content .card > h2:first-child,
+.settings-content section > h2:first-child {
+    margin: 0 0 var(--space-1);
+    font-size: var(--text-title);
+}
+
+.settings-note {
+    position: sticky;
+    bottom: var(--space-3);
+    align-self: flex-end;
+    padding: var(--space-1) var(--space-3);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--glass-bg);
+}
+
+/* 共享开关行:文字在左,开关在右;一句短提示在文字下方 */
+.switch-row,
+.form label.switch-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-2) 0;
+    border-top: var(--border-width) solid var(--border);
+}
+
+.switch-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.switch-text small {
+    font-size: var(--text-small);
+}
+
+.switch-row input[type='checkbox'] {
+    margin: 0;
 }
 
 .settings-content {
@@ -2147,7 +2210,7 @@ td .badge {
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4);
     border: var(--border-width) solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     background: var(--surface);
     min-width: 0;
 }
@@ -2242,14 +2305,18 @@ button.link {
         position: static;
     }
 
-    .settings-tabs,
-    .settings-menu {
+    .settings-tabs {
         flex-direction: row;
         overflow-x: auto;
     }
 
-    .settings-tabs button {
-        flex: none;
+    .settings-tabs [role='tab'] {
+        width: auto;
+        white-space: nowrap;
+    }
+
+    .settings-menu {
+        display: none;
     }
 }
 
@@ -2274,10 +2341,10 @@ button.link {
     background:
         radial-gradient(
             60% 55% at 50% 46%,
-            color-mix(in srgb, var(--accent) calc(10% + var(--hero-level) * 18%), transparent) 0%,
+            color-mix(in srgb, var(--glow-color) calc(10% + var(--hero-level) * 18%), transparent) 0%,
             transparent 70%
         ),
-        radial-gradient(90% 80% at 50% 110%, color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 70%);
+        radial-gradient(90% 80% at 50% 110%, color-mix(in srgb, var(--glow-color) 8%, transparent) 0%, transparent 70%);
     transition: opacity 0.4s ease;
 }
 
@@ -2336,7 +2403,7 @@ button.link {
     place-items: center;
     padding: 0;
     border: none;
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     background: transparent;
     color: var(--muted);
 }
@@ -2366,7 +2433,7 @@ button.link {
     min-height: 36px;
     padding: 0 var(--space-3);
     border: none;
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     background: transparent;
     color: var(--muted);
     text-decoration: none;
@@ -2441,6 +2508,18 @@ button.link {
     min-width: 0;
     min-height: 0;
     display: flex;
+}
+
+.wb-page {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding-top: calc(40px + var(--space-4));
+}
+
+.wb-page > .page {
+    max-width: 64rem;
 }
 
 .wb-stage {
@@ -2597,7 +2676,7 @@ button.link {
     transform: translateX(-50%);
     padding: var(--space-2) var(--space-3);
     border: var(--border-width) solid var(--border-strong);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     background: var(--glass-bg);
     backdrop-filter: blur(var(--glass-blur));
     box-shadow: var(--shadow-card);
@@ -2766,7 +2845,7 @@ select {
     display: block;
     width: 96px;
     height: 96px;
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     background: var(--bg);
 }
 

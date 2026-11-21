@@ -26,6 +26,7 @@ export {
 export * from './category-browser/index.js';
 export * from './knowledge-sphere/index.js';
 export * from './map-viz/index.js';
+export { cssToken, resolveColor } from './palette.js';
 export {
     ICON_NAMES,
     ICON_STROKE,

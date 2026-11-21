@@ -120,7 +120,8 @@ async function prepare(page: Page): Promise<void> {
 async function drill(page: Page, mobile: boolean): Promise<void> {
     const open = async (name: string) => {
         if (mobile) await page.getByRole('button', { name: '分类' }).first().click();
-        await page.getByRole('button', { name, exact: true }).first().click();
+        // 只在知识地图页里找分类按钮(工作台侧栏也有「邮件」等同名按钮)
+        await page.locator('.items-layout').getByRole('button', { name, exact: true }).first().click();
     };
     // 手机宽度下导航在抽屉里
     if (mobile) await page.getByRole('button', { name: '菜单' }).click();

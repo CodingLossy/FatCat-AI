@@ -612,8 +612,7 @@ export const en: Record<Key, string> = {
     'plugins.market.perm.secrets': '{n} secret(s)',
     'plugins.market.perm.items': '{n} item categor(ies)',
     'settings.pluginMarket': 'Enable the plugin market',
-    'settings.pluginMarketNote':
-        'When off, no plugin index is downloaded, the market tab is unavailable and the egress list no longer shows market addresses. Installing from a local folder still works.',
+    'settings.pluginMarketNote': 'When off, no plugin index is downloaded.',
     'plugins.secretsInvalid': 'A reference is env: followed by the variable name, e.g. env:MY_SERVICE_KEY.',
     'plugins.secretsMissing': 'Required secrets are still missing: {names}',
     'plugins.settingsTitle': 'Plugin settings',
@@ -796,12 +795,10 @@ export const en: Record<Key, string> = {
         'FatCat-AI does not save a copy to Sent. Whether the server saves one depends on the mailbox settings.',
     'mail.sentCopyDuplicate':
         'Note: this mail server already saves sent mail by itself. With FatCat-AI saving a copy too, every message will appear twice in Sent.',
-    'settings.autoExtract':
-        'Extract memories automatically (after each turn, the cheap model reads your message and the final answer; at most {n} times a day)',
     'settings.network': 'Network',
-    'settings.allowFakeIp': 'Allow the fake-IP range 198.18.0.0/15 (web.fetch)',
+    'settings.allowFakeIp': 'Allow the fake-IP range (198.18.0.0/15)',
     'settings.allowFakeIpRisk':
-        'With the fake-IP mode of proxies such as Clash, every domain resolves into this range, so web.fetch blocks it as an internal address. Turning this on allows only this range; loopback, private, link-local and cloud-metadata addresses stay blocked. Risk: without such a proxy, a malicious domain could point at a device in this range on your network. Turn it on only if you really use a fake-IP proxy. Off by default.',
+        'Turn on only with a fake-IP proxy; otherwise devices in this range on your network may be reachable.',
     'memory.autoExtractOn':
         'Automatic extraction is on: after each turn the cheap model extracts memories from your message and the final answer.',
     'memory.autoExtractOff': 'Turn off automatic extraction',
@@ -840,8 +837,7 @@ export const en: Record<Key, string> = {
     'settings.voiceTts': 'Read-aloud profile',
     'settings.voiceAutoSend': 'Send automatically after hold-to-talk (off: only fill the message box)',
     'settings.voiceAutoSpeak': 'Read replies aloud when they finish',
-    'settings.voiceHint':
-        'Voice profiles must be OpenAI-compatible with the stt or tts purpose. Recordings and spoken text are not saved or logged.',
+    'settings.voiceHint': 'Recordings and spoken text are not saved.',
     'models.voice': 'Voice (read aloud)',
     'models.voiceHint':
         'Only used for the tts purpose. Leave empty for alloy (the OpenAI default; other services use different voice names).',
@@ -1039,13 +1035,9 @@ export const en: Record<Key, string> = {
     'wb.cmd.panel.browser': 'Show browser',
     'wb.cmd.session': 'Open session: {title}',
     'settings.section.workbench': 'Workbench',
-    'settings.section.workbench.sub': '',
     'settings.section.models': 'Models & Voice',
-    'settings.section.models.sub': '',
     'settings.section.tools': 'Tools & Plugins',
-    'settings.section.tools.sub': '',
     'settings.section.system': 'System',
-    'settings.section.system.sub': '',
     'settings.item.general': 'General',
     'settings.item.files': 'Folders',
     'settings.item.mail': 'Mail accounts',
@@ -1057,10 +1049,8 @@ export const en: Record<Key, string> = {
     'settings.item.preauth': 'Pre-authorizations',
     'settings.item.browser': 'Browser',
     'settings.browser': 'Built-in browser',
-    'settings.browserEnabled':
-        'Allow the AI to use the built-in browser (browser.open / browser.read / browser.screenshot)',
-    'settings.browserNote':
-        'Off by default. When on, the first visit to a new host in each conversation asks for your approval once; the same host is not asked again in that conversation. Only public http / https addresses are allowed; private networks, this machine and IP addresses are refused, and none of your cookies are sent. Web page content is untrusted and the AI does not follow instructions found in it. Screenshots need the desktop app; the web interface can only read text.',
+    'settings.browserEnabled': 'Let the assistant use the built-in browser',
+    'settings.browserNote': 'The first visit to a new site in each conversation needs your approval.',
     'settings.item.market': 'Plugin market',
     'settings.item.account': 'Account & devices',
     'settings.item.secrets': 'Secrets',
@@ -1085,4 +1075,7 @@ export const en: Record<Key, string> = {
     'settings.card.manage': 'Manage profiles',
     'settings.card.modelConfig': 'Model setup',
     'settings.card.profileCount': '{n} profiles',
+    'settings.appearance': 'Appearance',
+    'settings.autoExtractLabel': 'Extract memories automatically',
+    'settings.autoExtractHint': 'Uses the cheap model after each turn, at most {n} times a day.',
 };

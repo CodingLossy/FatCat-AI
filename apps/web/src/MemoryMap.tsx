@@ -46,7 +46,7 @@ export function MemoryMap({ memories }: { memories: Memory[] }) {
             <ul className="legend small">
                 {layout.groups.map((g) => (
                     <li key={g.key}>
-                        <span className="swatch" style={{ background: MEMORY_COLORS[g.key] ?? '#7a8699' }} />
+                        <span className="swatch" style={{ background: `var(${MEMORY_COLORS[g.key] ?? '--muted'})` }} />
                         {g.key} ({g.count})
                     </li>
                 ))}

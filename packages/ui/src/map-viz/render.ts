@@ -4,6 +4,7 @@
 // 记忆簇 / 会话地图共用的 Canvas 2D 渲染:节点(颜色、亮度、冲突描边)、连线、悬停名称、选中环。
 // 点击选中、双击 / Enter 打开、方向键切换;不依赖第三方库,Canvas 不可用时返回 null,由调用方改用列表。
 
+import { cssToken, resolveColor } from '../palette.js';
 import { nextMapNode, pickMapNode, type MapDirection, type MapLayout } from './logic.js';
 
 export interface MapCanvasOptions {
@@ -18,11 +19,6 @@ export interface MapCanvas {
     destroy(): void;
 }
 
-const EDGE = '#9aa3b2';
-const SELECT = '#16a34a';
-const OUTLINE = '#dc2626';
-const LABEL = '#1f2937';
-
 export function createMapCanvas(canvas: HTMLCanvasElement, options: MapCanvasOptions = {}): MapCanvas | null {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
@@ -36,6 +32,12 @@ export function createMapCanvas(canvas: HTMLCanvasElement, options: MapCanvasOpt
         raf = 0;
         const c = ctx!;
         c.clearRect(0, 0, size, size);
+        // 颜色来自当前主题的 token(切主题后下一次绘制即生效)
+        const EDGE = cssToken(canvas, '--map-edge', 'gray');
+        const SELECT = cssToken(canvas, '--accent', 'white');
+        const OUTLINE = cssToken(canvas, '--danger', 'red');
+        const LABEL = cssToken(canvas, '--fg', 'white');
+        const BUBBLE = cssToken(canvas, '--surface', 'black');
         const at = new Map(layout.nodes.map((n) => [n.id, n]));
         c.strokeStyle = EDGE;
         c.lineWidth = 1.5;
@@ -51,7 +53,7 @@ export function createMapCanvas(canvas: HTMLCanvasElement, options: MapCanvasOpt
         for (const n of layout.nodes) {
             const r = Math.max(2, n.r * size);
             c.globalAlpha = n.alpha;
-            c.fillStyle = n.color;
+            c.fillStyle = resolveColor(canvas, n.color);
             c.beginPath();
             c.arc(n.x * size, n.y * size, r, 0, Math.PI * 2);
             c.fill();
@@ -73,12 +75,15 @@ export function createMapCanvas(canvas: HTMLCanvasElement, options: MapCanvasOpt
         }
         const focus = hover ? at.get(hover) : chosen;
         if (focus) {
-            c.font = '13px system-ui, sans-serif';
+            c.font = `13px ${cssToken(canvas, '--font-sans', 'system-ui, sans-serif')}`;
             const w = Math.min(size - 8, c.measureText(focus.label).width + 12);
             const x = Math.min(Math.max(4, focus.x * size - w / 2), size - w - 4);
             const y = Math.max(4, focus.y * size - Math.max(2, focus.r * size) - 28);
-            c.fillStyle = 'rgba(255,255,255,0.94)';
+            c.fillStyle = BUBBLE;
             c.fillRect(x, y, w, 20);
+            c.strokeStyle = EDGE;
+            c.lineWidth = 1;
+            c.strokeRect(x + 0.5, y + 0.5, w - 1, 19);
             c.fillStyle = LABEL;
             c.fillText(focus.label, x + 6, y + 14, w - 12);
         }

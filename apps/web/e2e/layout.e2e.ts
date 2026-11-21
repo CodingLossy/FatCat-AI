@@ -102,12 +102,13 @@ test('桌面宽度:滚动右侧内容时侧边栏高度等于视口且不动', a
     await page.getByRole('button', { name: '创建并登录' }).click();
     await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
     await page.getByRole('link', { name: '设置', exact: true }).click();
-    await expect(page.locator('main.content, .content').first()).toBeVisible();
+    // 宽屏的页面在工作台里:侧栏是 .wb-side,页面内容在 .wb-page 里滚动
+    await expect(page.locator('.wb-page')).toBeVisible();
 
     const metrics = () =>
         page.evaluate(() => {
-            const side = document.getElementById('sidebar')!.getBoundingClientRect();
-            const content = document.querySelector('.content') as HTMLElement;
+            const side = document.querySelector('.wb-side')!.getBoundingClientRect();
+            const content = document.querySelector('.wb-page') as HTMLElement;
             return {
                 sideTop: Math.round(side.top),
                 sideHeight: Math.round(side.height),
@@ -124,7 +125,7 @@ test('桌面宽度:滚动右侧内容时侧边栏高度等于视口且不动', a
     expect(before.sideTop + before.sideHeight).toBe(before.footerTop);
     expect(before.footerTop + before.footerHeight).toBe(before.viewport);
     await shot(page, 'settings-top');
-    await page.locator('.content').evaluate((el) => (el.scrollTop = el.scrollHeight));
+    await page.locator('.wb-page').evaluate((el) => (el.scrollTop = el.scrollHeight));
     const after = await metrics();
     expect(after.sideTop).toBe(0);
     expect(after.sideHeight).toBe(before.sideHeight);

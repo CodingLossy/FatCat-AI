@@ -96,6 +96,14 @@
     --hero-fog: #5fe3c8;
     --hero-line: #e2e8ff;
 
+    /* ---- Maps and knowledge views (memory types, session roots / forks, edges) ---- */
+    --map-semantic: var(--hero-star-c);
+    --map-episodic: var(--hero-star-b);
+    --map-procedural: #f2d38a;
+    --map-session: var(--hero-star-c);
+    --map-fork: var(--hero-star-b);
+    --map-edge: var(--border-strong);
+
     /* ---- Typography [owner: body 14px sans, code 12px mono] ---- */
     --font-sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
     --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, 'Liberation Mono', monospace;

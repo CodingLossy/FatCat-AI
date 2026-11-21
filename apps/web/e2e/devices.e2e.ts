@@ -141,8 +141,8 @@ test('手机视口:配对码与设备列表不横向溢出', async ({ page }) =>
     await page.getByRole('button', { name: '登录' }).click();
     await page.getByRole('button', { name: '菜单' }).click();
     await page.getByRole('link', { name: '设置', exact: true }).click();
+    // 窄屏只显示分类;分区内的分组单列排开,不用再点子项
     await page.getByRole('tab', { name: /系统设置/ }).click();
-    await page.getByRole('button', { name: '账户与设备' }).click();
     const section = page.getByRole('region', { name: '已配对设备' });
     await section.getByRole('button', { name: '添加设备' }).click();
     await expect(page.getByTestId('pairing-code')).toBeVisible();
