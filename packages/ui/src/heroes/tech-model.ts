@@ -96,7 +96,7 @@ export interface TechLook {
     readonly lines: number;
 }
 
-/** 聆听偏青、思考偏紫并缓慢旋转、说话保持白色(星点随音量起伏由绘制处处理)、待机最暗;知识模式整体压暗。 */
+/** 聆听偏青、思考偏紫并缓慢旋转、说话保持白色(星点随音量起伏由绘制处处理)、待机最暗;知识模式整体压暗且不画装饰连线。 */
 export function techLook(state: OrbState, knowledge: boolean): TechLook {
     const base: TechLook =
         state === 'listening'
@@ -106,7 +106,8 @@ export function techLook(state: OrbState, knowledge: boolean): TechLook {
               : state === 'speaking'
                 ? { tintAmount: 0.12, tintColor: 2, spin: 0.06, brightness: 1, lines: 0.55 }
                 : { tintAmount: 0, tintColor: 2, spin: 0.04, brightness: 0.75, lines: 0.4 };
-    return knowledge ? { ...base, spin: base.spin * 0.5, brightness: base.brightness * 0.6 } : base;
+    // 知识模式:星球压暗、装饰用的星座连线隐去,只留知识节点自己的连线
+    return knowledge ? { ...base, spin: base.spin * 0.5, brightness: base.brightness * 0.6, lines: 0 } : base;
 }
 
 /** 说话时单颗星点向外的位移比例,随电平和各自的相位起伏;其他状态为 0。 */

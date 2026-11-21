@@ -113,6 +113,16 @@ test.afterAll(async () => {
 
 test.describe.configure({ mode: 'serial' });
 
+/** 记忆并入「知识」入口后,侧栏没有记忆按钮;记忆面板用 Ctrl+K 的「打开记忆」命令打开。 */
+async function openMemoryPanel(page: import('@playwright/test').Page) {
+    await page.keyboard.press('Control+k');
+    const input = page.locator('.wb-palette input');
+    await input.fill('打开记忆');
+    await expect(page.getByRole('option', { name: '打开记忆', exact: true })).toBeVisible();
+    await input.press('Enter');
+    await expect(page.locator('.wb-float')).toBeVisible();
+}
+
 test('初始化、配置档、流式中刷新、审批与记忆管理', async ({ page }) => {
     page.on('dialog', (d) => void d.accept());
 
@@ -163,7 +173,7 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
     await expect(page.getByRole('button', { name: '拒绝' })).toHaveCount(0);
     await remembered.getByRole('button', { name: '撤销' }).click();
     await expect(remembered).toHaveText('已撤销这条记忆');
-    await page.getByRole('button', { name: '记忆', exact: true }).click();
+    await openMemoryPanel(page);
     await expect(page.getByText('还没有记忆。')).toBeVisible();
 
     // 再写一次,保留下来
@@ -180,7 +190,7 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
     await composer.press('Enter');
     await page.getByRole('button', { name: '拒绝' }).click();
     await expect(page.locator('.message.assistant').last()).toContainText('好的,已更新。');
-    await page.getByRole('button', { name: '记忆', exact: true }).click();
+    await openMemoryPanel(page);
     await expect(page.locator('.memory')).toHaveCount(1);
     await expect(page.locator('.memory')).toContainText('用户常住杭州');
 
@@ -207,7 +217,7 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
     await expect(used).toContainText('已更正');
 
     // 记忆页:只看到更正后的值,历史中能看到更替链;编辑、忘记(验收 ⑦)
-    await page.getByRole('button', { name: '记忆', exact: true }).click();
+    await openMemoryPanel(page);
     const item = page.locator('.memory');
     await expect(item).toHaveCount(1);
     await expect(item).toContainText('用户住在苏州');
@@ -246,7 +256,7 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
     await page.getByRole('textbox', { name: '文件夹路径' }).fill(books);
     await page.getByRole('button', { name: '授权', exact: true }).click();
     await expect(page.locator(`[data-fs-root="${books.replaceAll('\\', '\\\\')}"]`)).toBeVisible();
-    await page.getByRole('link', { name: '知识地图' }).click();
+    await page.goto(`${base}/items`);
     await page.getByRole('button', { name: '立即同步' }).click();
     await page.getByRole('button', { name: /^小说$/ }).click();
     await page.locator('.item-row').filter({ hasText: '凡人' }).click();

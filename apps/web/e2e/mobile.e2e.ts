@@ -204,7 +204,7 @@ test('手机宽度:登录、发消息、设置、邮件、记忆、审计,各宽
     await shot(page, 'chat');
 
     // 其余页面:每个宽度各检查一遍
-    for (const link of ['记忆', '审计', '邮件', '设置', '知识地图']) {
+    for (const link of ['知识', '审计', '邮件', '设置']) {
         await goto(page, link);
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
         for (const vp of VIEWPORTS) {

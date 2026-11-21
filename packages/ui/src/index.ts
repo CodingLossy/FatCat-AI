@@ -24,9 +24,20 @@ export {
     waveHeights,
 } from './voice-orb.js';
 export * from './category-browser/index.js';
-export * from './knowledge-sphere/index.js';
 export * from './map-viz/index.js';
 export { cssToken, resolveColor } from './palette.js';
+export {
+    EMPTY_SCENE,
+    expandedId,
+    firstSentence,
+    hitPath,
+    MAX_VISIBLE_NODES,
+    orderNodes,
+    pickNode,
+    type KnowledgeNode,
+    type KnowledgeScene,
+    type ScreenNode,
+} from './knowledge-model.js';
 export {
     ICON_NAMES,
     ICON_STROKE,

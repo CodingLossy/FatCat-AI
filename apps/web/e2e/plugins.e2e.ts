@@ -182,7 +182,7 @@ test('plugins page: install, configure, stop, uninstall and see the disabled tas
     expect(created.ok(), await created.text()).toBe(true);
 
     // 知识地图:插件的类别出现在浏览器里,能下钻并打开;条目内容由插件提供
-    await page.getByRole('link', { name: '知识地图' }).click();
+    await page.goto(`${base}/items`);
     await page.getByRole('button', { name: '立即同步' }).click();
     await page.getByRole('button', { name: '视频', exact: true }).first().click();
     await page.locator('.item-row').filter({ hasText: 'Video one' }).click();

@@ -68,7 +68,7 @@ test.afterAll(async () => {
     if (dir) rmSync(dir, { recursive: true, force: true });
 });
 
-test('记忆地图与会话地图', async ({ page }) => {
+test('会话地图', async ({ page }) => {
     await page.goto(base);
     await page.getByLabel('用户名').fill('owner');
     await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
@@ -80,26 +80,6 @@ test('记忆地图与会话地图', async ({ page }) => {
         expect(res.ok(), `${path} ${res.status()}`).toBe(true);
         return (await res.json()) as { id?: string };
     };
-
-    // 记忆:三种类型各几条
-    const texts: [string, string][] = [
-        ['semantic', '用户喜欢喝无糖乌龙茶'],
-        ['semantic', '用户住在杭州'],
-        ['semantic', '用户的猫叫团团'],
-        ['episodic', '上周三和朋友一起看了电影'],
-        ['episodic', '周末去了西湖边散步'],
-        ['procedural', '写周报时先列本周完成的事项'],
-    ];
-    for (const [memType, text] of texts) await post('/memory', { text, memType });
-    await page.getByRole('button', { name: '记忆', exact: true }).click();
-    await expect(page.locator('[data-memory-id]')).toHaveCount(texts.length);
-    await page.getByRole('button', { name: '记忆地图' }).click();
-    const memoryMap = page.getByTestId('memory-map').getByRole('application');
-    await expect(memoryMap).toBeVisible();
-    await memoryMap.focus();
-    await page.keyboard.press('ArrowRight');
-    await expect(page.getByTestId('memory-map').getByRole('status')).toBeVisible();
-    if (SHOTS) await page.screenshot({ path: join(SHOTS, 'memory-map.png'), fullPage: true });
 
     // 会话:a ← b ← d,a ← c,外加一个独立会话;fork 关系直接写库(应用里还没有创建分叉的入口)
     const ids: Record<string, string> = {};

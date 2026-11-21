@@ -4,15 +4,18 @@
 // 科技主视觉:纯黑底上一颗几千星点的球(白、淡紫、青),内部淡青星云雾,边缘几簇星座连线。
 // 颜色来自 tokens.css 的 --hero-* 变量;所有主视觉共用 voice-orb.ts 里的帧循环(页面不可见时暂停)。
 
+import { expandedId, type KnowledgeScene, pickNode, type ScreenNode } from '../knowledge-model.js';
 import { MAX_PARTICLES, orbEnergy, type OrbState, projectPoint, type Projection } from '../orb-model.js';
 import type { Hero, HeroMode, HeroOptions } from '../theme.js';
 import { addTick, currentQuality, fitCanvas, prefersReducedMotion } from '../voice-orb.js';
+import { drawTechKnowledge, type KnowledgePalette } from './tech-knowledge.js';
 import { starLift, TECH_STAR_COUNT, techConstellations, techLook, techStars } from './tech-model.js';
 
 interface Palette {
     stars: [string, string, string];
     fog: string;
     line: string;
+    knowledge: KnowledgePalette;
 }
 
 function readPalette(el: HTMLElement): Palette {
@@ -22,6 +25,15 @@ function readPalette(el: HTMLElement): Palette {
         stars: [get('--hero-star-a', '#fff'), get('--hero-star-b', '#b9a8ff'), get('--hero-star-c', '#5fe3c8')],
         fog: get('--hero-fog', '#5fe3c8'),
         line: get('--hero-line', '#e2e8ff'),
+        knowledge: {
+            star: get('--hero-star-a', '#fff'),
+            hit: get('--hero-star-c', '#5fe3c8'),
+            accent: get('--accent', '#38bdf8'),
+            danger: get('--danger', '#e5857f'),
+            line: get('--hero-line', '#e2e8ff'),
+            label: get('--fg', '#e2e8ff'),
+            font: get('--font-sans', 'system-ui, sans-serif'),
+        },
     };
 }
 
@@ -47,6 +59,13 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
     let lastMs = 0;
     let frames = 0;
     const start = performance.now();
+    let scene: KnowledgeScene | null = null;
+    let screen: ScreenNode[] = [];
+    let explodeAt = 0;
+    let explodeFrom: { x: number; y: number } | null = null;
+    // 知识层的漂移时间:有选中的节点(气泡打开)时停住,气泡不跟着跑
+    let layoutT = 0;
+    let lastLayoutMs = 0;
 
     const draw = (nowMs: number) => {
         if (!reduced && ++frames % 120 === 0) palette = readPalette(canvas);
@@ -126,6 +145,26 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
             }
         }
         g.globalAlpha = 1;
+
+        // 知识模式:在压暗的星球上画节点层
+        if (mode === 'knowledge' && scene) {
+            if (!reduced && lastLayoutMs && !scene.selectedId) layoutT += Math.min(0.1, (nowMs - lastLayoutMs) / 1000);
+            lastLayoutMs = nowMs;
+            screen = drawTechKnowledge(
+                g,
+                scene,
+                {
+                    cx: proj.cx,
+                    cy: proj.cy,
+                    radius: R,
+                    tSec: layoutT,
+                    explode: reduced ? 1 : (nowMs - explodeAt) / 650,
+                    from: explodeFrom,
+                },
+                palette.knowledge,
+            );
+        } else screen = [];
+        g.globalAlpha = 1;
     };
 
     draw(performance.now());
@@ -154,6 +193,25 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
             if (destroyed) return;
             mode = next;
             if (reduced) draw(performance.now());
+        },
+        setScene(next) {
+            if (destroyed) return;
+            const before = scene ? expandedId(scene) : null;
+            const after = next ? expandedId(next) : null;
+            if (after !== before) {
+                // 新展开的节点从它现在的位置飞到中心
+                explodeFrom = after ? (screen.find((n) => n.id === after) ?? null) : null;
+                explodeAt = performance.now();
+            }
+            scene = next;
+            if (reduced) draw(performance.now());
+        },
+        pick(x, y) {
+            return pickNode(screen, x, y);
+        },
+        locate(id) {
+            const n = screen.find((s) => s.id === id);
+            return n ? { x: n.x, y: n.y } : null;
         },
         destroy() {
             destroyed = true;
