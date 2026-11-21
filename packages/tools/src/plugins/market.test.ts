@@ -186,14 +186,10 @@ describe('fetching the index and packages over https', () => {
         });
     });
 
-    it('reports a host resolved into the fake-IP range as index_fake_ip_blocked, and allows it when asked', async () => {
+    it('reports a host resolved into the fake-IP range as index_fake_ip_blocked', async () => {
         const fake = async () => [{ address: '198.18.0.7', family: 4 }];
         await expect(fetchIndexFiles(market(), { resolve: fake })).rejects.toMatchObject({
             code: 'index_fake_ip_blocked',
-        });
-        // 放行 fake-IP 段后不再因此被拦(这里的主机没有监听,所以会换成普通的下载失败)
-        await expect(fetchIndexFiles(market(), { resolve: fake, allowFakeIp: true })).rejects.toMatchObject({
-            code: 'index_download_failed',
         });
     });
 

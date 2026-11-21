@@ -737,9 +737,9 @@ export function Workbench({
                                     <p className="wb-empty">{t('wb.changesEmpty')}</p>
                                 )
                             ) : null}
-                            {panel.panel === 'mail' ? <MailPage /> : null}
+                            {panel.panel === 'mail' ? <MailPage key={panel.opened} /> : null}
                             {panel.panel === 'memory' ? (
-                                <MemoryPage settings={settings} onSettings={onSettings} />
+                                <MemoryPage key={panel.opened} settings={settings} onSettings={onSettings} />
                             ) : null}
                             {panel.panel === 'browser' ? (
                                 browser ? (
