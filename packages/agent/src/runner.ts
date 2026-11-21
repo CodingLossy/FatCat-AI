@@ -4,6 +4,7 @@
 import type {
     AgentEvent,
     ApprovalPreview,
+    ApprovalWarning,
     AuditEntry,
     ImageMessagePart,
     MemoryDegradation,
@@ -824,7 +825,13 @@ export class RunManager {
                 const askContext = this.toolContextFor(ctx);
                 const base = tool.summarize(call.input, askContext);
                 const summary = ctx.initiator ? `[${ctx.initiator}] ${base}` : base;
-                const warnings = tool.warnings?.(call.input, askContext) ?? [];
+                // 警示只是附加提示:工具自己的 warnings 出错时不带警示,审批照常发出(仍然要人批准)
+                let warnings: ApprovalWarning[];
+                try {
+                    warnings = tool.warnings?.(call.input, askContext) ?? [];
+                } catch {
+                    warnings = [];
+                }
                 let preview: ApprovalPreview | undefined;
                 try {
                     preview = tool.preview?.(call.input, askContext);
