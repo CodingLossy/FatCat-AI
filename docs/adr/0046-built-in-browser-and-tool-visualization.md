@@ -281,3 +281,11 @@ M12 **不包含**任何合成鼠标或键盘输入、或在浏览器面板之外
 - **主视觉(`heroes/cat*.ts`):** 线稿由圆弧、直线和三次贝塞尔按固定步长取点组成(头、两只耳朵、身子、前腿、尾巴、脸、胡须),纯函数部分在 `cat-model.ts` 并有单测。聆听:两只耳朵轮流绕耳根抖动;思考:尾巴绕尾根摆;说话:一段光沿整条轮廓(不含脸)流动,亮度和速度随平滑后的电平;待机:轻微呼吸。线上的光点是暖色光晕加亮芯,低画质时隔得更开。
 - **知识模式:** 和自然共用 `anchored-knowledge.ts`(原 `nature-knowledge.ts` 改名并加 `style: 'leaf' | 'whisker'`)。第一层按弧长均匀挂在轮廓上(不含脸和前腿),点开后猫身压暗,子项排在该点外侧,用直线(胡须)连回去,内容子项是肉垫粉圆点。
 - **未做:** 「进度是毛线球」:界面里目前没有进度条元素,等有了再用 `--slider-thumb-paint` 的同一套。图标本来就是线稿风格,没有另做一套。
+
+## 20. 补充:system.open 的实现(M12,`feat/open-external`)
+
+- **工具**(`packages/tools/src/builtin/system-open.ts`):风险 `external`、`preauthorizable: false`、`forceApproval` 恒为真(会话内已批准、任务白名单都不生效)、`enabledFor` 读设置 `systemOpen.enabled`(新增,默认 false,旧服务器不返回时按关闭)。参数只有 `url` 或 `path` 二选一(`strict`,多给任何字段都拒绝)。`precheck` 在审批之前完成 §5.2 的全部校验;`execute` 批准之后**再校验一次**(防止审批期间文件被换掉),然后交给宿主适配器。审批卡片的说明用解析后的真实路径或规范化后的完整网址;长查询串沿用 `url_carries_data` 警示。审计沿用通用的工具调用审计(批准、拒绝、审批前被拒都记)。
+- **执行端**:核心不启动进程。宿主适配器 `createClientOpenHost` 走与截图相同的 client-call 通道:`ClientCapabilities` 增加可选的 `open`,只有声明了它的连接(桌面壳里的主界面)才会收到 `system.open` 帧;只声明了 `browser` 的旧桌面客户端收不到。`ClientCall` 改成按 `tool` 区分的联合,新增 `{ tool: 'system.open', target: { kind: 'url' | 'file', … } }`;结果新增 `{ ok: true, opened: true }`。OpenAPI 文档里结果仍是 `oneOf`(多了一项),本地用 CI 同版本 oasdiff 1.35.0 对比 `main`:无破坏性变更。
+- **壳**(`apps/desktop/src-tauri/src/open_policy.rs`、`system_open.rs`):新命令 `system_open` 只允许主窗口里、来源是本应用核心的页面调用(与浏览器命令同一道检查,并在能力文件里单列权限)。按同一规则再查一次(协议、凭据、绝对路径、存在、普通文件、扩展名黑名单、链接解析后的扩展名、POSIX 可执行位;授权目录只有核心知道,由核心查),然后用平台固定的打开程序(Windows `explorer.exe`、macOS `/usr/bin/open`、Linux `xdg-open`)加**一个**参数启动:不经 shell,没有其他参数或工作目录,环境变量只保留找到桌面会话所需的几项。没有新增 crate。
+- **不做模拟输入**:新增 `pnpm check:no-input-sim`(CI 里在占位符检查之后运行):依赖或 Cargo 清单里出现 robotjs、nut-js、enigo、rdev、autopilot、iohook 等,或我们的源码里出现 `SendInput(`、`keybd_event(`、`mouse_event(`、`CGEventPost(`、XTest、windows crate 的 `KeyboardAndMouse` 模块,就失败。
+- **未验证**:壳的打开动作需要 Windows / macOS / Linux 桌面真机(云端容器没有图形界面,也无法编译 Tauri);Windows 上 `explorer.exe` 对 mailto 与带空格路径的行为、macOS Gatekeeper 对下载文件的提示,列在 PR 的手工清单里。

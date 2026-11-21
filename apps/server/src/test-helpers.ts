@@ -12,7 +12,7 @@ import { type Connection, createRepositories, openStorage, type Repositories } f
 import type { BrowserToolOptions, WebFetchOptions } from '@fatcat-ai/tools';
 import { createItemService, createKnowledgeBase, type KnowledgeBase } from '@fatcat-ai/items';
 import { createChannelPushTool } from './scheduler/channel-push-tool.js';
-import { ClientCalls, createClientBrowserHost } from './client-calls.js';
+import { ClientCalls, createClientBrowserHost, createClientOpenHost } from './client-calls.js';
 import { createMailComplete, createSummarizer, createToolRegistry } from './agent-setup.js';
 import { type AttachmentFiles, createAttachmentFiles, createImageLoader } from './attachment-files.js';
 import { createApp, type AppDeps } from './app.js';
@@ -168,6 +168,7 @@ export async function createTestServer(
                           },
                       }
                     : {}),
+                ...(options.clientCalls ? { systemOpen: { host: createClientOpenHost(options.clientCalls) } } : {}),
             },
             {
                 runner: mailRunner,

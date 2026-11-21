@@ -510,6 +510,14 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                             checked={settings.browser?.enabled === true}
                             onChange={(enabled) => void update({ browser: { enabled } })}
                         />
+                        <Switch
+                            name="systemOpenEnabled"
+                            label={t('settings.systemOpenEnabled')}
+                            hint={t('settings.systemOpenNote')}
+                            risk
+                            checked={settings.systemOpen?.enabled === true}
+                            onChange={(enabled) => void update({ systemOpen: { enabled } })}
+                        />
                     </SettingsGroup>
                 );
             case 'tools/market':

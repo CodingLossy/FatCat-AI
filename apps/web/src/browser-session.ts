@@ -2,11 +2,11 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 桌面壳里的浏览器会话:一个进程级的控制器,加上两件必须在整个登录期间一直在的事——
-// 接收壳发来的页面事件;向服务器声明「我能截图」并执行服务器请求的截图(ADR 0046 第 14 节)。
+// 接收壳发来的页面事件;向服务器声明「我能截图、能用默认程序打开」并执行服务器请求的调用(ADR 0046 第 5、14 节)。
 // 放在外壳(Shell)里调用,这样用户切到设置等页面时也不会丢事件。
 import { useEffect } from 'react';
 import { api } from './api.js';
-import { BROWSER_EVENT, BrowserController, shellInvoke } from './browser-panel.js';
+import { BROWSER_EVENT, BrowserController, openWithShell, shellInvoke } from './browser-panel.js';
 
 let instance: BrowserController | null | undefined;
 
@@ -33,13 +33,14 @@ export function useBrowserShell(): void {
         window.addEventListener(BROWSER_EVENT, onEvent);
         const connection = api.connectEvents({
             onEvent: () => undefined,
-            capabilities: { browser: true },
+            capabilities: { browser: true, open: true },
             onClientCall: (call) => {
                 if (!isFresh(call.expiresAt)) return;
-                void controller
-                    .screenshot(call.url)
-                    .then((result) => api.clientCalls.result(call.callId, result))
-                    .catch(() => undefined);
+                const run =
+                    call.tool === 'system.open'
+                        ? openWithShell(controller.invoke, call.target)
+                        : controller.screenshot(call.url);
+                void run.then((result) => api.clientCalls.result(call.callId, result)).catch(() => undefined);
             },
         });
         return () => {

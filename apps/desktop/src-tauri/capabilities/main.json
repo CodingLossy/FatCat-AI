@@ -15,6 +15,7 @@
     "allow-browser-set-bounds",
     "allow-browser-set-visible",
     "allow-browser-close",
-    "allow-browser-screenshot"
+    "allow-browser-screenshot",
+    "allow-system-open"
   ]
 }

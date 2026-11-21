@@ -5,7 +5,7 @@
 import type { ClientCall, ClientCallResult } from '@fatcat-ai/shared';
 import type { ToolContext } from '@fatcat-ai/tools';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ClientCalls, createClientBrowserHost } from './client-calls.js';
+import { ClientCalls, createClientBrowserHost, createClientOpenHost } from './client-calls.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]).toString('base64');
@@ -166,5 +166,47 @@ describe('POST /api/v1/tool-calls/{callId}/result', () => {
         expect((await post(id, png())).status).toBe(204);
         await expect(pending).resolves.toMatchObject({ ok: true });
         expect((await post(id, png())).status).toBe(409);
+    });
+});
+
+describe('system.open 的宿主适配器(ADR 0046 第 5 节)', () => {
+    const target = { kind: 'file', path: '/home/me/a.pdf' } as const;
+
+    it('只发给声明了 open 能力的连接;只声明了浏览器的旧桌面客户端收不到', async () => {
+        const calls = new ClientCalls();
+        const { seen: browserOnly } = desktop(calls, 'o1', () => ({ ok: true, opened: true }));
+        const host = createClientOpenHost(calls);
+        await expect(host.open(target, never, context)).rejects.toMatchObject({ code: 'desktop_unavailable' });
+        expect(browserOnly).toHaveLength(0);
+
+        const seen: ClientCall[] = [];
+        const handle = calls.register('o1', {
+            send: (call) => {
+                seen.push(call);
+                queueMicrotask(() => calls.complete('o1', call.callId, { ok: true, opened: true }));
+            },
+        });
+        handle.declare({ browser: true, open: true });
+        await host.open(target, never, context);
+        expect(seen[0]).toMatchObject({ tool: 'system.open', target });
+        expect(browserOnly).toHaveLength(0);
+    });
+
+    it('别人的连接收不到;壳拒绝或答非所问时失败', async () => {
+        const calls = new ClientCalls();
+        const other: ClientCall[] = [];
+        calls.register('o2', { send: (c) => other.push(c) }).declare({ browser: true, open: true });
+        const host = createClientOpenHost(calls);
+        await expect(host.open(target, never, context)).rejects.toMatchObject({ code: 'desktop_unavailable' });
+        expect(other).toHaveLength(0);
+
+        const answers: ClientCallResult[] = [{ ok: false, code: 'blocked' }, png()];
+        calls
+            .register('o1', {
+                send: (call) => queueMicrotask(() => calls.complete('o1', call.callId, answers.shift()!)),
+            })
+            .declare({ browser: false, open: true });
+        await expect(host.open(target, never, context)).rejects.toMatchObject({ code: 'blocked' });
+        await expect(host.open(target, never, context)).rejects.toMatchObject({ code: 'failed' });
     });
 });

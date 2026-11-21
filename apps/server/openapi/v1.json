@@ -12120,6 +12120,17 @@
                       "required": [
                         "enabled"
                       ]
+                    },
+                    "systemOpen": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
                     }
                   },
                   "required": [
@@ -12512,6 +12523,14 @@
                         "type": "boolean"
                       }
                     }
+                  },
+                  "systemOpen": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      }
+                    }
                   }
                 }
               }
@@ -12665,6 +12684,17 @@
                       ]
                     },
                     "browser": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "systemOpen": {
                       "type": "object",
                       "properties": {
                         "enabled": {
@@ -56291,7 +56321,7 @@
         "tags": [
           "tools"
         ],
-        "summary": "Return the result of a call the server asked the desktop client to run (for example a screenshot)",
+        "summary": "Return the result of a call the server asked the desktop client to run (a screenshot, or opening a file or address)",
         "parameters": [
           {
             "schema": {
@@ -56347,6 +56377,27 @@
                       "width",
                       "height",
                       "data"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "ok": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      },
+                      "opened": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      }
+                    },
+                    "required": [
+                      "ok",
+                      "opened"
                     ]
                   },
                   {

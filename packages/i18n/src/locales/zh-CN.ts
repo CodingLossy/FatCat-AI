@@ -1015,4 +1015,6 @@ export const zh = {
     'knowledge.pin': '置顶',
     'knowledge.unpin': '取消置顶',
     'knowledge.deleteConfirm': '确认删除',
+    'settings.systemOpenEnabled': '允许助手用默认程序打开文件和网址',
+    'settings.systemOpenNote': '每次都要你批准;程序和脚本不会被打开。',
 };

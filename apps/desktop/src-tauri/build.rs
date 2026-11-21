@@ -12,6 +12,8 @@ const BROWSER_COMMANDS: &[&str] = &[
     "browser_set_visible",
     "browser_close",
     "browser_screenshot",
+    // system.open(ADR 0046 第 5 节):核心校验、用户逐次批准之后才会被调用,壳再检查一次
+    "system_open",
 ];
 
 fn main() {

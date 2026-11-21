@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import { ClientCalls, createClientBrowserHost } from './client-calls.js';
+import { ClientCalls, createClientBrowserHost, createClientOpenHost } from './client-calls.js';
 import { watchParentExit } from './parent-exit.js';
 import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -207,7 +207,10 @@ const runs = new RunManager({
         repos,
         items,
         kb,
-        { browser: { host: createClientBrowserHost(clientCalls) } },
+        {
+            browser: { host: createClientBrowserHost(clientCalls) },
+            systemOpen: { host: createClientOpenHost(clientCalls) },
+        },
         {
             runner: runInWorker,
             secret: (ref) => secrets.resolve(ref),
