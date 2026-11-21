@@ -71,7 +71,6 @@ export function McpServers() {
     return (
         <section>
             <h2>{t('mcp.title')}</h2>
-            <p className="muted small">{t('mcp.hint')}</p>
             {error ? <p className="error">{error}</p> : null}
             {items?.length === 0 ? <p className="muted">{t('mcp.empty')}</p> : null}
             <ul className="list">

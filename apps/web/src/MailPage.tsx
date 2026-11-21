@@ -97,7 +97,6 @@ export function MailPage() {
     return (
         <div className="page mail-page">
             <h1>{t('mail.title')}</h1>
-            <p className="muted small">{t('mail.hint')}</p>
             {error ? <p className="error">{error}</p> : null}
             {note ? <p className="small muted">{note}</p> : null}
             {accounts.length === 0 ? (

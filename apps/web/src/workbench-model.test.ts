@@ -8,6 +8,7 @@ import {
     matchCommands,
     panelForTool,
     reducePanel,
+    shouldAutoClose,
     toolSummary,
     visibleToolRows,
 } from './workbench-model.js';
@@ -70,6 +71,50 @@ describe('panel follow', () => {
         expect(state).toMatchObject({ panel: 'browser', pinned: false, runId: 'r2' });
         state = reducePanel(state, { type: 'live', runId: 'r2', toolName: 'calc.sum' });
         expect(state.panel).toBe('browser');
+    });
+
+    it('空闲时面板收起;工具自动打开它;本轮手动收起后不再被工具打开,下一轮恢复', () => {
+        let state = initialPanel();
+        expect(state.open).toBe(false);
+        state = reducePanel(state, { type: 'live', runId: 'r1', toolName: 'fs.read' });
+        expect(state).toMatchObject({ open: true, panel: 'files', pinned: false });
+        state = reducePanel(state, { type: 'close' });
+        state = reducePanel(state, { type: 'live', runId: 'r1', toolName: 'mail.list' });
+        expect(state).toMatchObject({ open: false, panel: 'mail' });
+        state = reducePanel(state, { type: 'live', runId: 'r2', toolName: 'mail.list' });
+        expect(state.open).toBe(true);
+    });
+
+    it('ui.panel 每个调用只执行一次:打开即固定,收起即清除固定;参数不合法时忽略', () => {
+        const call = (callId: string, input: unknown) =>
+            ({ type: 'live', runId: 'r1', toolName: 'ui.panel', callId, input }) as const;
+        let state = reducePanel(initialPanel(), call('c1', { action: 'open', panel: 'memory' }));
+        expect(state).toMatchObject({ open: true, panel: 'memory', pinned: true });
+        // 之后的工具不会把固定的面板切走;同一个调用重渲染也不会重复执行
+        state = reducePanel(state, { type: 'live', runId: 'r1', toolName: 'fs.read' });
+        expect(state.panel).toBe('memory');
+        state = reducePanel(state, { type: 'close' });
+        state = reducePanel(state, call('c1', { action: 'open', panel: 'memory' }));
+        expect(state.open).toBe(false);
+        state = reducePanel(state, call('c2', { action: 'open', panel: 'terminal' }));
+        expect(state.open).toBe(false);
+        state = reducePanel(
+            reducePanel(state, call('c3', { action: 'open', panel: 'mail' })),
+            call('c4', { action: 'close' }),
+        );
+        expect(state).toMatchObject({ open: false, pinned: false });
+    });
+
+    it('只有运行结束、未固定、没有待审批时才自动收起', () => {
+        const open = reducePanel(initialPanel(), { type: 'live', runId: 'r1', toolName: 'fs.read' });
+        expect(shouldAutoClose(open, true, 0)).toBe(false);
+        expect(shouldAutoClose(open, false, 1)).toBe(false);
+        expect(shouldAutoClose(open, false, 0)).toBe(true);
+        const pinned = reducePanel(open, { type: 'pin', panel: 'files' });
+        expect(shouldAutoClose(pinned, false, 0)).toBe(false);
+        expect(reducePanel(pinned, { type: 'auto-close' }).open).toBe(true);
+        expect(reducePanel(open, { type: 'auto-close' }).open).toBe(false);
+        expect(shouldAutoClose(initialPanel(), false, 0)).toBe(false);
     });
 
     it('命令按名称和关键词过滤,空查询保留全部', () => {

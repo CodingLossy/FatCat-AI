@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
 import { navigate } from './router.js';
+import { openSettingsAt } from './settings-model.js';
 import { defaultMarketVersion, marketAction, marketErrorKey, permissionSummary, pickText } from './plugin-ui.js';
 
 /**
@@ -101,7 +102,6 @@ export function PluginMarket({
 
     return (
         <div data-testid="plugin-market">
-            <p className="muted small">{t('plugins.market.hint')}</p>
             {error ? <p className="error">{error}</p> : null}
             {listing?.markets.map((m) => (
                 <div key={m.id} className="small" data-testid="market-status" data-state={m.state}>
@@ -120,6 +120,19 @@ export function PluginMarket({
                             {m.state === 'stale' && m.fetchedAt
                                 ? ` ${t('plugins.market.staleNote', { at: new Date(m.fetchedAt).toLocaleString(locale) })}`
                                 : ''}
+                            {m.error.code === 'index_download_failed' ? ` (${m.error.message})` : ''}
+                            {m.error.code === 'index_fake_ip_blocked' ? (
+                                <>
+                                    {' '}
+                                    <button
+                                        type="button"
+                                        className="link small"
+                                        onClick={() => openSettingsAt('system', 'network')}
+                                    >
+                                        {t('plugins.market.openNetwork')}
+                                    </button>
+                                </>
+                            ) : null}
                         </p>
                     ) : null}
                 </div>

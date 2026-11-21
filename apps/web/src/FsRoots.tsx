@@ -68,7 +68,6 @@ export function FsRoots() {
     return (
         <section>
             <h2>{t('fsRoots.title')}</h2>
-            <p className="muted small">{t('fsRoots.hint')}</p>
             {error ? <p className="error">{error}</p> : null}
             {items?.length === 0 ? <p className="muted">{t('fsRoots.empty')}</p> : null}
             <ul className="list">

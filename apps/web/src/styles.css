@@ -1465,33 +1465,6 @@ td .badge {
 }
 
 /* 工作台(M12):顶栏、左侧舞台、导轨和面板。颜色只用 token。 */
-.wb-shell {
-    flex-direction: column;
-    min-width: 0;
-}
-
-.wb-top {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    height: 56px;
-    padding: 0 var(--space-4);
-    border-bottom: 1px solid var(--border);
-    flex: none;
-    background: var(--bg);
-}
-
-.wb-brand {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    color: var(--fg);
-    text-decoration: none;
-    font-size: var(--text-title);
-    font-weight: 600;
-    white-space: nowrap;
-}
-
 .wb-brand small {
     color: var(--muted);
     font-weight: 400;
@@ -1599,69 +1572,6 @@ td .badge {
     white-space: nowrap;
 }
 
-.wb-new {
-    color: var(--fg);
-    text-decoration: none;
-    font-size: var(--text-small);
-    white-space: nowrap;
-}
-
-.wb-sessions {
-    display: flex;
-    gap: var(--space-3);
-    align-items: center;
-    margin: 0;
-    padding: 6px var(--space-4);
-    list-style: none;
-    overflow-x: auto;
-    border-bottom: 1px solid var(--border);
-    flex: none;
-}
-
-.wb-sessions li {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex: none;
-}
-
-.wb-sessions a {
-    color: var(--fg);
-    text-decoration: none;
-    max-width: 16rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.wb-sessions a.on {
-    color: var(--accent);
-}
-
-.wb-confirm {
-    margin: var(--space-2) var(--space-4);
-}
-
-.wb {
-    flex: 1;
-    min-height: 0;
-    display: grid;
-    grid-template-columns: minmax(340px, 40%) minmax(0, 1fr);
-}
-
-.wb-stage {
-    position: relative;
-    min-width: 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    border-right: 1px solid var(--border);
-    background:
-        radial-gradient(55% 48% at 50% 46%, color-mix(in srgb, var(--surface-2) 85%, transparent) 0%, transparent 72%),
-        var(--bg);
-}
-
 .wb-glass {
     background: var(--surface-2);
     border: 1px solid var(--border);
@@ -1674,15 +1584,6 @@ td .badge {
         background: var(--glass-bg);
         backdrop-filter: blur(var(--glass-blur));
     }
-}
-
-.wb-running {
-    position: absolute;
-    z-index: 3;
-    left: var(--space-4);
-    top: var(--space-4);
-    width: min(280px, 58%);
-    padding: var(--space-3);
 }
 
 .wb-running h4 {
@@ -1729,57 +1630,6 @@ td .badge {
     border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.9s linear infinite;
-}
-
-.wb-right {
-    display: grid;
-    grid-template-columns: 48px minmax(0, 1fr);
-    min-width: 0;
-    min-height: 0;
-}
-
-.wb-rail {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: var(--space-2) 0;
-    border-right: 1px solid var(--border);
-    overflow-y: auto;
-}
-
-.wb-rail a,
-.wb-rail button {
-    width: 36px;
-    height: 36px;
-    display: grid;
-    place-items: center;
-    border-radius: var(--radius);
-    color: var(--muted);
-    background: transparent;
-    border: none;
-    padding: 0;
-    text-decoration: none;
-}
-
-.wb-rail a.on,
-.wb-rail button.on,
-.wb-rail a[aria-current='page'] {
-    color: var(--accent);
-    background: var(--accent-weak);
-}
-
-.wb-rail .gap {
-    flex: 1;
-    min-height: var(--space-3);
-}
-
-.wb-main {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    min-height: 0;
-    background: var(--surface);
 }
 
 .wb-panel {
@@ -2110,19 +1960,6 @@ td .badge {
     left: var(--space-4);
 }
 
-.chat-stage .messages {
-    flex: none;
-    max-height: 32%;
-    overflow: auto;
-    margin: 0;
-    padding: 0 var(--space-4);
-    background: color-mix(in srgb, var(--bg) 90%, transparent);
-}
-
-.chat-stage .composer {
-    padding: var(--space-2) var(--space-4) var(--space-3);
-}
-
 .chat-stage .composer textarea {
     min-height: 2.6rem;
 }
@@ -2415,5 +2252,389 @@ button.link {
     .settings-tabs button {
         min-width: 0;
         flex: 1 1 40%;
+    }
+}
+
+/* 工作台 M12:主视觉铺满窗口;左侧栏两态;右侧面板和输入框都是浮在主视觉上的玻璃卡片 */
+.wb-shell {
+    position: relative;
+    flex-direction: row;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--bg);
+    --hero-energy: 0.3;
+    --hero-level: 0;
+}
+
+/* 全窗口光晕:在所有内容之下,不被左栏裁切;能量随状态,亮度随说话音量 */
+.wb-glow {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: calc(0.35 + var(--hero-energy) * 0.45 + var(--hero-level) * 0.2);
+    background:
+        radial-gradient(
+            60% 55% at 50% 46%,
+            color-mix(in srgb, var(--accent) calc(10% + var(--hero-level) * 18%), transparent) 0%,
+            transparent 70%
+        ),
+        radial-gradient(90% 80% at 50% 110%, color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 70%);
+    transition: opacity 0.4s ease;
+}
+
+.wb-side,
+.wb-world {
+    position: relative;
+    z-index: 1;
+}
+
+.wb-side {
+    flex: none;
+    width: 15rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    min-height: 0;
+    border-right: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+    transition: width 0.18s ease;
+}
+
+.wb-shell[data-sidebar='min'] .wb-side {
+    width: 56px;
+    padding: var(--space-3) 6px;
+    align-items: center;
+}
+
+.wb-side-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.wb-shell[data-sidebar='min'] .wb-side-head {
+    flex-direction: column;
+}
+
+.wb-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--fg);
+    text-decoration: none;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.wb-side-toggle,
+.wb-capsule-btn,
+.wb-float-close {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--muted);
+}
+
+.wb-side-toggle:hover,
+.wb-capsule-btn:hover,
+.wb-float-close:hover,
+.wb-side-item:hover {
+    background: var(--accent-weak);
+    color: var(--accent);
+}
+
+.wb-side-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.wb-side-fill {
+    flex: 1;
+}
+
+.wb-side-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 36px;
+    padding: 0 var(--space-3);
+    border: none;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: var(--text-small);
+    white-space: nowrap;
+    text-align: left;
+}
+
+.wb-side-item.on,
+.wb-side-item[aria-current='page'] {
+    color: var(--accent);
+    background: var(--accent-weak);
+}
+
+.wb-new {
+    color: var(--fg);
+    border: 1px solid var(--accent-line);
+}
+
+.wb-shell[data-sidebar='min'] .wb-side-item {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+}
+
+.wb-shell[data-sidebar='min'] .wb-side-text,
+.wb-shell[data-sidebar='min'] .wb-sessions {
+    display: none;
+}
+
+.wb-sessions {
+    flex: 1;
+    min-height: 0;
+    margin: var(--space-2) 0;
+    padding: 0;
+    list-style: none;
+    overflow-y: auto;
+}
+
+.wb-sessions li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 30px;
+}
+
+.wb-sessions a {
+    flex: 1;
+    min-width: 0;
+    color: var(--fg);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wb-sessions a.on {
+    color: var(--accent);
+}
+
+.wb-sessions li > button {
+    opacity: 0;
+}
+
+.wb-sessions li:hover > button,
+.wb-sessions li:focus-within > button {
+    opacity: 1;
+}
+
+.wb-world {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+}
+
+.wb-stage {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: padding-right 0.2s ease;
+}
+
+.wb-world:has(.wb-float) .chat-stage {
+    right: min(596px, 50%);
+}
+
+/* 左上角小胶囊:标题和两三个按钮 */
+.wb-capsule {
+    position: absolute;
+    z-index: 6;
+    top: var(--space-3);
+    left: var(--space-3);
+    max-width: calc(100% - var(--space-5));
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 40px;
+    padding: 0 var(--space-2) 0 var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+}
+
+.wb-capsule-title {
+    max-width: 16rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.wb-capsule-title small {
+    color: var(--muted);
+    font-weight: 400;
+}
+
+.wb-palette {
+    position: absolute;
+    z-index: 20;
+    top: 14vh;
+    left: 50%;
+    width: min(560px, 90%);
+    transform: translateX(-50%);
+}
+
+.wb-palette .wb-search {
+    max-width: none;
+    margin: 0;
+    height: 44px;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+}
+
+.wb-confirm {
+    position: absolute;
+    z-index: 30;
+    top: 30vh;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.wb-running {
+    position: absolute;
+    z-index: 3;
+    left: var(--space-3);
+    top: 64px;
+    width: min(280px, 58%);
+    padding: var(--space-3);
+}
+
+/* 右侧面板:浮在主视觉上的半透明圆角卡片,四周留白 */
+.wb-float {
+    position: absolute;
+    z-index: 5;
+    top: var(--space-3);
+    right: var(--space-3);
+    bottom: var(--space-3);
+    width: min(580px, 48%);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.wb-float-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--border);
+}
+
+.wb-float-head h3 {
+    margin: 0;
+    font-size: var(--text-body);
+}
+
+/* 主视觉铺满窗口,输入框浮在底部居中 */
+.chat-stage {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    height: auto;
+    transition: right 0.2s ease;
+}
+
+.chat-stage .voice-orb-wrap {
+    top: 46%;
+    width: min(70vmin, 760px);
+}
+
+.chat-stage .voice-label {
+    left: 50%;
+    bottom: 132px;
+    transform: translateX(-50%);
+    font-size: 16px;
+}
+
+.chat-stage .voice-wave {
+    left: 50%;
+    right: auto;
+    bottom: 100px;
+    width: min(320px, 60%);
+    transform: translateX(-50%);
+}
+
+.chat-stage .messages {
+    position: absolute;
+    left: 50%;
+    bottom: 150px;
+    width: min(720px, calc(100% - 2 * var(--space-5)));
+    max-height: 42%;
+    transform: translateX(-50%);
+    overflow: auto;
+    padding: 0 var(--space-3);
+    background: transparent;
+    mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
+}
+
+.chat-stage .messages:empty,
+.chat-stage .messages:has(> .empty:only-of-type) {
+    pointer-events: none;
+}
+
+.chat-stage .composer {
+    position: absolute;
+    left: 50%;
+    bottom: var(--space-4);
+    width: min(720px, calc(100% - 2 * var(--space-5)));
+    transform: translateX(-50%);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    box-shadow: var(--shadow-card);
+}
+
+.chat-stage .composer textarea {
+    min-height: 2.6rem;
+    background: transparent;
+    border: none;
+}
+
+.chat-stage .chat-head > button {
+    display: none;
+}
+
+.chat-stage .agent-picker {
+    top: var(--space-3);
+}
+
+.chat-stage .agent-picker {
+    right: var(--space-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wb-glow,
+    .wb-side,
+    .chat-stage {
+        transition: none;
     }
 }

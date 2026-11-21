@@ -105,7 +105,6 @@ export function PluginsPage() {
     return (
         <div className="page" data-page="plugins">
             <h1>{t('plugins.title')}</h1>
-            <p className="muted small">{t('plugins.hint')}</p>
             <div className="row" role="tablist">
                 {(['installed', 'market'] as const).map((name) => (
                     <button

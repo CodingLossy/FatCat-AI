@@ -101,7 +101,6 @@ export function DevicesSection() {
     return (
         <section className="card form" aria-label={t('devices.title')}>
             <h2>{t('devices.title')}</h2>
-            <p className="small muted">{t('devices.hint')}</p>
             {error ? (
                 <p className="error" role="alert">
                     {error}

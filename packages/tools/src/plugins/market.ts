@@ -28,6 +28,8 @@ export type MarketErrorCode =
     | 'index_wrong_market'
     | 'index_rollback'
     | 'index_expired'
+    /** 索引主机被解析到 fake-IP 段(Clash 等代理)而被拦截;设置里可以放行。 */
+    | 'index_fake_ip_blocked'
     | 'plugin_download_failed'
     | 'plugin_too_large'
     | 'plugin_checksum_mismatch';
@@ -190,6 +192,12 @@ function describeFetchError(error: unknown): string {
     return error instanceof Error ? error.message : 'request failed';
 }
 
+/** 被拦截的原因是 fake-IP 段:原错误可能被请求层包了一层,所以也看说明文字里的地址段。 */
+function isFakeIpBlock(error: unknown): boolean {
+    if (error instanceof WebFetchError && error.code === 'fake_ip_blocked') return true;
+    return error instanceof Error && error.message.includes('198.18.0.0/15');
+}
+
 /** 下载 index.json 与 index.json.sig。 */
 export async function fetchIndexFiles(
     market: MarketConfig,
@@ -201,7 +209,10 @@ export async function fetchIndexFiles(
         try {
             fetched = await fetchLimited(url, { ...options, allowedHosts, maxBytes, timeoutMs: INDEX_TIMEOUT_MS });
         } catch (error) {
-            throw new MarketError('index_download_failed', describeFetchError(error));
+            throw new MarketError(
+                isFakeIpBlock(error) ? 'index_fake_ip_blocked' : 'index_download_failed',
+                describeFetchError(error),
+            );
         }
         if (fetched.status !== 200) {
             throw new MarketError('index_download_failed', `the server answered HTTP ${fetched.status}`);

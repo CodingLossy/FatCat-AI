@@ -92,6 +92,7 @@ const MARKET_ERROR_CODES = [
     'index_wrong_market',
     'index_rollback',
     'index_expired',
+    'index_fake_ip_blocked',
 ] as const;
 
 /** 市场状态里的原因码 → 界面文案的键;不认识的码返回 null(界面直接显示服务器给的说明)。 */

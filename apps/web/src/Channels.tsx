@@ -96,7 +96,6 @@ export function Channels() {
     return (
         <section>
             <h2>{t('channels.title')}</h2>
-            <p className="muted small">{t('channels.hint')}</p>
             {error ? <p className="error">{error}</p> : null}
             {items?.length === 0 ? <p className="muted">{t('channels.empty')}</p> : null}
             <ul className="list">

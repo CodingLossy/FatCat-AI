@@ -231,7 +231,6 @@ export function TasksPage() {
     return (
         <div className="page">
             <h1>{t('tasks.title')}</h1>
-            <p className="muted small">{t('tasks.hint')}</p>
             {error ? <p className="error">{error}</p> : null}
             {!form && !draft ? (
                 <form className="card task-card" onSubmit={(e) => void propose(e)}>

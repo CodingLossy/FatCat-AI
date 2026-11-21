@@ -4,6 +4,7 @@
 // 设置页(M12 PR 5,docs/design/ui-redesign.md 第 9 节)的纯逻辑:分区与子菜单、用量汇总、折线点。
 
 import type { IconName } from '@fatcat-ai/ui/icons';
+import { navigate } from './router.js';
 
 export type SettingsSectionId = 'workbench' | 'models' | 'tools' | 'system';
 
@@ -76,6 +77,19 @@ export function resolveView(section: unknown, item: unknown): SettingsView {
     if (!s) return { ...DEFAULT_SETTINGS_VIEW };
     const it = s.items.find((x) => x.id === item) ?? s.items[0]!;
     return { section: s.id, item: it.id };
+}
+
+/** 设置页记住上次所在分区用的 sessionStorage 键。 */
+export const SETTINGS_VIEW_KEY = 'fatcat.settings.view';
+
+/** 先记下要去的分区和子项,再切到设置页;设置页挂载时读取。sessionStorage 不可用时落到默认分区。 */
+export function openSettingsAt(section: SettingsSectionId, item: string): void {
+    try {
+        window.sessionStorage.setItem(SETTINGS_VIEW_KEY, JSON.stringify(resolveView(section, item)));
+    } catch {
+        // 没有 sessionStorage:打开默认分区
+    }
+    navigate({ name: 'settings' });
 }
 
 export interface UsageLike {

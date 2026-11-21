@@ -309,6 +309,7 @@ describe('评测:真实 OpenAI 兼容 provider 回放 memory.save 往返', () =>
             'memory__forget',
             'time',
             'calc',
+            'ui__panel',
             'web__fetch',
             'fs__list',
             'fs__read',

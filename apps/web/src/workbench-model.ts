@@ -66,7 +66,7 @@ export function visibleToolRows(
     return { rows: rows.slice(rows.length - limit), hidden: rows.length - limit };
 }
 
-export type WorkbenchPanel = 'files' | 'search' | 'changes' | 'mail' | 'memory' | 'browser';
+export type WorkbenchPanel = 'files' | 'changes' | 'mail' | 'memory' | 'browser';
 
 /** 工具名对应的面板;不认识的工具不切换(聊天里仍用原来的卡片)。 */
 export function panelForTool(name: string): WorkbenchPanel | null {
@@ -80,30 +80,74 @@ export function panelForTool(name: string): WorkbenchPanel | null {
 
 export interface PanelState {
     panel: WorkbenchPanel;
-    /** 用户点了导轨之后为真,直到下一轮运行开始。 */
+    /** 面板是否显示。空闲时为假,主视觉铺满窗口。 */
+    open: boolean;
+    /** 用户点了导轨或命令、或助手用 ui.panel 打开之后为真:不跟随工具,也不自动收起,直到下一轮运行。 */
     pinned: boolean;
     runId: string | null;
+    /** 本轮里用户收起过面板:这一轮不再被工具自动打开。 */
+    dismissedRun: string | null;
+    /** 已处理过的 ui.panel 调用,避免重渲染时重复执行。 */
+    uiCallId: string | null;
 }
 
 export function initialPanel(): PanelState {
-    return { panel: 'files', pinned: false, runId: null };
+    return { panel: 'files', open: false, pinned: false, runId: null, dismissedRun: null, uiCallId: null };
 }
 
 export type PanelAction =
-    { type: 'pin'; panel: WorkbenchPanel } | { type: 'live'; runId: string | null; toolName: string | null };
+    | { type: 'pin'; panel: WorkbenchPanel }
+    | { type: 'close' }
+    | { type: 'auto-close' }
+    | { type: 'live'; runId: string | null; toolName: string | null; callId?: string | null; input?: unknown };
+
+/** 运行结束后面板自动收起前的等待时间。 */
+export const AUTO_CLOSE_MS = 8000;
+
+/** ui.panel 的入参 → 要执行的动作;参数不合法时返回 null(忽略)。 */
+export function uiPanelRequest(input: unknown): { action: 'open'; panel: WorkbenchPanel } | { action: 'close' } | null {
+    if (!input || typeof input !== 'object') return null;
+    const { action, panel } = input as { action?: unknown; panel?: unknown };
+    if (action === 'close') return { action: 'close' };
+    if (action === 'open' && typeof panel === 'string' && UI_PANELS.includes(panel as WorkbenchPanel)) {
+        return { action: 'open', panel: panel as WorkbenchPanel };
+    }
+    return null;
+}
+
+const UI_PANELS: readonly WorkbenchPanel[] = ['files', 'changes', 'mail', 'memory', 'browser'];
 
 /**
- * 新的 runId 先取消固定,再按本轮最近一个工具切换。
- * 固定期间忽略工具切换。没有对应面板的工具保持当前面板。
+ * 新的 runId 先取消固定和「本轮已收起」,再按本轮最近一个工具切换并打开面板。
+ * ui.panel 是助手明确的指令:每个 callId 只执行一次,打开即固定,收起即清除固定。
+ * 固定期间忽略工具切换;本轮用户收起过则不再自动打开;没有对应面板的工具保持现状。
  */
 export function reducePanel(state: PanelState, action: PanelAction): PanelState {
-    if (action.type === 'pin') return { ...state, panel: action.panel, pinned: true };
+    if (action.type === 'pin') return { ...state, panel: action.panel, open: true, pinned: true };
+    if (action.type === 'close') return { ...state, open: false, pinned: false, dismissedRun: state.runId };
+    if (action.type === 'auto-close') return state.pinned ? state : { ...state, open: false };
     let next = state;
-    if (action.runId && action.runId !== state.runId) next = { ...next, pinned: false, runId: action.runId };
-    else if (!action.runId && state.runId) next = { ...next, runId: null };
+    if (action.runId && action.runId !== state.runId) {
+        next = { ...next, pinned: false, runId: action.runId, dismissedRun: null };
+    } else if (!action.runId && state.runId) next = { ...next, runId: null };
+    if (action.toolName === 'ui.panel') {
+        if (!action.callId || action.callId === next.uiCallId) return next;
+        const request = uiPanelRequest(action.input);
+        if (!request) return { ...next, uiCallId: action.callId };
+        return request.action === 'open'
+            ? { ...next, panel: request.panel, open: true, pinned: true, dismissedRun: null, uiCallId: action.callId }
+            : { ...next, open: false, pinned: false, dismissedRun: next.runId, uiCallId: action.callId };
+    }
     if (next.pinned || !action.toolName) return next;
     const panel = panelForTool(action.toolName);
-    return panel ? { ...next, panel } : next;
+    if (!panel) return next;
+    if (next.dismissedRun !== null && next.dismissedRun === next.runId) return { ...next, panel };
+    return { ...next, panel, open: true };
+}
+
+/** 运行已结束、面板是自动打开的(未固定)、也没有待审批时才自动收起。 */
+export function shouldAutoClose(state: PanelState, runActive: boolean, approvalsPending: number): boolean {
+    return state.open && !state.pinned && !runActive && approvalsPending === 0;
 }
 
 function mergeTool(prev: LiveTool | undefined, next: LiveTool): LiveTool {

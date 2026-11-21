@@ -43,6 +43,7 @@ export {
 } from './builtin/browser.js';
 export { createDelegateTool } from './builtin/delegate.js';
 export { createTimeTool } from './builtin/time.js';
+export { createUiPanelTool, UI_PANELS, type UiPanel } from './builtin/ui.js';
 export {
     checkUrl,
     createWebFetchTool,

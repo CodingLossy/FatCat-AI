@@ -83,7 +83,7 @@ export function App() {
     }, [refresh]);
 
     useEffect(() => {
-        applyTheme(settings?.theme ?? 'system');
+        applyTheme(settings?.theme ?? 'dark');
         document.documentElement.lang = locale;
     }, [settings?.theme, locale]);
 
