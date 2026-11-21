@@ -12,6 +12,7 @@ import { AuditPage } from './AuditPage.js';
 import { cachedSessions, clearCache, isOffline, isUnauthorized, refreshCache } from './cache.js';
 import { ChatView } from './ChatView.js';
 import { ItemsPage } from './ItemsPage.js';
+import { KnowledgePage } from './KnowledgePage.js';
 import { MailPage } from './MailPage.js';
 import { PluginsPage } from './PluginsPage.js';
 import { TasksPage } from './TasksPage.js';
@@ -167,6 +168,8 @@ export function Shell({
     const page =
         route.name === 'settings' ? (
             <SettingsPage settings={settings} onSettings={onSettings} />
+        ) : route.name === 'knowledge' ? (
+            <KnowledgePage settings={settings} onSettings={onSettings} />
         ) : route.name === 'memory' ? (
             <MemoryPage settings={settings} onSettings={onSettings} />
         ) : route.name === 'audit' ? (
@@ -303,9 +306,12 @@ export function Shell({
                     </div>
                 ) : null}
                 <div className="sidebar-foot">
-                    <Link to={{ name: 'items' }} className={route.name === 'items' ? 'active' : ''}>
-                        <Icon name="globe" size={16} />
-                        {t('nav.items')}
+                    <Link
+                        to={{ name: 'knowledge' }}
+                        className={['knowledge', 'items', 'memory'].includes(route.name) ? 'active' : ''}
+                    >
+                        <Icon name="brain" size={16} />
+                        {t('nav.knowledge')}
                     </Link>
                     <Link to={{ name: 'mail' }} className={route.name === 'mail' ? 'active' : ''}>
                         <Icon name="mail" size={16} />
@@ -330,10 +336,6 @@ export function Shell({
                     <Link to={{ name: 'plugins' }} className={route.name === 'plugins' ? 'active' : ''}>
                         <Icon name="plug" size={16} />
                         {t('nav.plugins')}
-                    </Link>
-                    <Link to={{ name: 'memory' }} className={route.name === 'memory' ? 'active' : ''}>
-                        <Icon name="brain" size={16} />
-                        {t('nav.memory')}
                     </Link>
                     <Link to={{ name: 'audit' }} className={route.name === 'audit' ? 'active' : ''}>
                         <Icon name="pulse" size={16} />

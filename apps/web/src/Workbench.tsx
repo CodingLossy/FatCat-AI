@@ -87,7 +87,7 @@ const SIDE_PANELS: { id: WorkbenchPanel; icon: IconName; label: Key }[] = [
 const PAGE_LINKS: { to: Route; icon: IconName; label: Key }[] = [
     { to: { name: 'settings' }, icon: 'gear', label: 'nav.settings' },
     { to: { name: 'plugins' }, icon: 'plug', label: 'nav.plugins' },
-    { to: { name: 'items' }, icon: 'folder', label: 'nav.items' },
+    { to: { name: 'knowledge' }, icon: 'brain', label: 'nav.knowledge' },
     { to: { name: 'tasks' }, icon: 'clock', label: 'nav.tasks' },
     { to: { name: 'agents' }, icon: 'cat', label: 'nav.agents' },
     { to: { name: 'audit' }, icon: 'pulse', label: 'nav.audit' },
@@ -302,7 +302,12 @@ export function Workbench({
             { id: 'plugins', label: t('nav.plugins'), keywords: 'plugins', run: go({ name: 'plugins' }) },
             { id: 'agents', label: t('nav.agents'), keywords: 'agents', run: go({ name: 'agents' }) },
             { id: 'audit', label: t('nav.audit'), keywords: 'audit', run: go({ name: 'audit' }) },
-            { id: 'items', label: t('nav.items'), keywords: 'items map', run: go({ name: 'items' }) },
+            {
+                id: 'knowledge',
+                label: t('nav.knowledge'),
+                keywords: 'knowledge items map memory',
+                run: go({ name: 'knowledge' }),
+            },
             {
                 id: 'voice',
                 label: t('wb.cmd.voice'),
@@ -451,6 +456,7 @@ export function Workbench({
         settings: 'nav.settings',
         plugins: 'nav.plugins',
         items: 'nav.items',
+        knowledge: 'nav.knowledge',
         tasks: 'nav.tasks',
         agents: 'nav.agents',
         audit: 'nav.audit',
@@ -491,7 +497,8 @@ export function Workbench({
                     <span className="wb-side-text">{t('nav.newChat')}</span>
                 </Link>
                 <nav className="wb-side-group" aria-label={t('wb.railLabel')}>
-                    {SIDE_PANELS.map((item) => (
+                    {/* 记忆并入「知识」入口;记忆面板仍可由 ui.panel 或命令打开 */}
+                    {SIDE_PANELS.filter((item) => item.id !== 'memory').map((item) => (
                         <button
                             key={item.id}
                             type="button"
@@ -546,7 +553,10 @@ export function Workbench({
                             to={item.to}
                             className="wb-side-item"
                             label={t(item.label)}
-                            current={route.name === item.to.name}
+                            current={
+                                route.name === item.to.name ||
+                                (item.to.name === 'knowledge' && (route.name === 'items' || route.name === 'memory'))
+                            }
                         >
                             <Icon name={item.icon} size={20} />
                             <span className="wb-side-text">{t(item.label)}</span>

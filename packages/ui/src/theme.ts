@@ -5,6 +5,7 @@
 // 主视觉同时是语音球和知识地图,所有主题实现同一个接口,界面只面对接口,不认具体主题。
 
 import { createTechHero } from './heroes/tech.js';
+import type { KnowledgeScene } from './knowledge-model.js';
 import type { OrbState } from './orb-model.js';
 import { resolveTheme, type ThemeId } from './theme-ids.js';
 
@@ -18,6 +19,12 @@ export interface Hero {
     /** 本地录音 / 播放的电平(0–1);null 表示没有电平。说话时主视觉随它起伏。 */
     setLevel(level: number | null): void;
     setMode(mode: HeroMode): void;
+    /** 知识模式画的内容:第一层、展开路径、子项、选中、命中路径。null 表示不画节点。 */
+    setScene(scene: KnowledgeScene | null): void;
+    /** 画布坐标(CSS 像素)处的节点 id;没有时为 null。 */
+    pick(x: number, y: number): string | null;
+    /** 节点当前在画布上的位置(CSS 像素),用来摆放气泡;不在画面上时为 null。 */
+    locate(id: string): { x: number; y: number } | null;
     destroy(): void;
 }
 

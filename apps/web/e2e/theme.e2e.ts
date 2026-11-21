@@ -119,7 +119,8 @@ test('科技为默认主题,旧值 light 按科技显示且不改写,主题选�
         .toBe('tech');
     await shot(page, 'settings');
 
-    await page.goto(`${base}/items`);
+    await page.goto(`${base}/knowledge`);
+    await expect(page.getByTestId('knowledge')).toBeVisible();
     await shot(page, 'knowledge');
     await page.goto(`${base}/mail`);
     await shot(page, 'mail');

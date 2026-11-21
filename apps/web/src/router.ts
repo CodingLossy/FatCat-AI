@@ -11,6 +11,7 @@ export type Route =
     | { name: 'memory' }
     | { name: 'audit' }
     | { name: 'items' }
+    | { name: 'knowledge' }
     | { name: 'mail' }
     | { name: 'tasks' }
     | { name: 'plugins' }
@@ -25,6 +26,7 @@ export function parseRoute(path: string): Route {
     if (path === '/memory') return { name: 'memory' };
     if (path === '/audit') return { name: 'audit' };
     if (path === '/items') return { name: 'items' };
+    if (path === '/knowledge') return { name: 'knowledge' };
     if (path === '/mail') return { name: 'mail' };
     if (path === '/tasks') return { name: 'tasks' };
     if (path === '/plugins') return { name: 'plugins' };

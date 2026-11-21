@@ -123,9 +123,8 @@ async function drill(page: Page, mobile: boolean): Promise<void> {
         // 只在知识地图页里找分类按钮(工作台侧栏也有「邮件」等同名按钮)
         await page.locator('.items-layout').getByRole('button', { name, exact: true }).first().click();
     };
-    // 手机宽度下导航在抽屉里
-    if (mobile) await page.getByRole('button', { name: '菜单' }).click();
-    await page.getByRole('link', { name: '知识地图' }).click();
+    // 知识分类的列表视图(批量管理)在 /items;导航里的「知识」入口是星图
+    await page.goto(`${base}/items`);
     const sync = page.getByRole('button', { name: '立即同步' });
     await sync.click();
     // 先等同步结束(按钮恢复可用)再开始下钻,否则列表可能还在重新加载

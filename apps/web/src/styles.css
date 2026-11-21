@@ -2857,3 +2857,195 @@ select {
     font-family: var(--font-display);
     font-weight: 600;
 }
+
+/* ---- 知识(M12 knowledge-hero):主视觉的知识模式铺满主区域,左上胶囊是面包屑和搜索 ---- */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.wb-page:has(.kn-page) {
+    position: relative;
+    padding-top: 0;
+    overflow: hidden;
+}
+
+.wb-world:has(.kn-page) > .wb-capsule {
+    display: none;
+}
+
+.kn-page {
+    position: absolute;
+    inset: 0;
+    min-height: 420px;
+}
+
+.shell:not(.wb-shell) .kn-page {
+    position: relative;
+    height: calc(100dvh - 120px);
+}
+
+.kn-stage {
+    position: absolute;
+    inset: 0;
+}
+
+.kn-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.kn-capsule {
+    position: absolute;
+    z-index: 5;
+    top: var(--space-3);
+    left: var(--space-3);
+    max-width: calc(100% - 12rem);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 40px;
+    padding: 0 var(--space-2) 0 var(--space-4);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+}
+
+.kn-crumbs {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.kn-crumbs button {
+    padding: 2px var(--space-1);
+    border: 0;
+    background: none;
+    color: var(--muted);
+}
+
+.kn-crumbs button[aria-current],
+.kn-crumbs > button:only-child {
+    color: var(--fg);
+    font-weight: 600;
+}
+
+.kn-crumbs span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    color: var(--muted);
+}
+
+input.kn-search {
+    width: 13rem;
+    height: 28px;
+    padding: 0 var(--space-3);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--fg);
+}
+
+.kn-view {
+    position: absolute;
+    z-index: 5;
+    top: var(--space-3);
+    right: var(--space-3);
+}
+
+.kn-list {
+    position: absolute;
+    inset: 0;
+    padding: calc(40px + var(--space-5)) 0 var(--space-4);
+    overflow-y: auto;
+}
+
+.kn-list > .segmented {
+    margin-left: var(--space-5);
+}
+
+.kn-bubble {
+    position: absolute;
+    z-index: 4;
+    max-width: 18rem;
+    padding: var(--space-2) var(--space-3);
+    transform: translate(-50%, calc(-100% - 14px));
+    border: var(--border-width) solid var(--border-strong);
+    border-radius: var(--radius-card);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    box-shadow: var(--shadow-panel);
+    color: var(--fg);
+    font-size: var(--text-small);
+    text-align: left;
+    line-height: var(--line-body);
+}
+
+.kn-more {
+    position: absolute;
+    z-index: 4;
+    bottom: var(--space-5);
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: var(--radius-pill);
+    background: var(--glass-bg);
+}
+
+.kn-empty {
+    position: absolute;
+    left: 50%;
+    bottom: 18%;
+    margin: 0;
+    transform: translateX(-50%);
+}
+
+.kn-error {
+    position: absolute;
+    z-index: 5;
+    left: var(--space-3);
+    bottom: var(--space-3);
+    margin: 0;
+}
+
+.kn-card {
+    position: absolute;
+    z-index: 6;
+    top: calc(40px + var(--space-5));
+    right: var(--space-3);
+    bottom: var(--space-3);
+    width: min(28rem, calc(100% - var(--space-5)));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    overflow-y: auto;
+}
+
+.kn-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.kn-card-head h3 {
+    margin: 0;
+    font-size: var(--text-title);
+}
+
+.kn-card-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
