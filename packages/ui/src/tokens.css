@@ -96,6 +96,14 @@
     --hero-fog: #5fe3c8;
     --hero-line: #e2e8ff;
 
+    /* ---- Nature hero palette [owner]: gold trunk, pale green canopy, root glow, low mist, fireflies. Defined on
+       :root (not per theme) so the theme picker can preview the tree whichever theme is active. ---- */
+    --nature-trunk: #e8c27a;
+    --nature-canopy: #a6d99a;
+    --nature-root: #e8c27a;
+    --nature-mist: #a6d99a;
+    --nature-firefly: #e9f29b;
+
     /* ---- Maps and knowledge views (memory types, session roots / forks, edges) ---- */
     --map-semantic: var(--hero-star-c);
     --map-episodic: var(--hero-star-b);
@@ -144,6 +152,57 @@
     /* ---- Diff [proposed] ---- */
     --diff-add-bg: var(--ok-bg);
     --diff-del-bg: var(--danger-bg);
+}
+
+/*
+ * Nature: a misty night forest (#050806 to #0B1410 [owner]), dark-green frosted glass panels, serif titles, a warm gold
+ * accent and leaf-shaped slider and switch thumbs. Same token names as :root; anything not listed keeps the Tech value.
+ */
+:root[data-theme='nature'] {
+    --bg: #050806;
+    --surface: #0d1711;
+    --surface-2: #122019;
+    --border: #1f3328;
+    --border-strong: #567563;
+    --accent: #e8c27a;
+    --fg: #e6efe0;
+    --muted: #9fb5a4;
+    --accent-fg: #050806;
+    --accent-weak: rgb(232 194 122 / 14%);
+    --accent-line: rgb(232 194 122 / 55%);
+    --on-danger: #050806;
+    --on-warn: #050806;
+    --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+
+    --shadow-card: 0 8px 28px rgb(0 0 0 / 40%);
+    --shadow-panel: 0 10px 36px rgb(0 0 0 / 50%);
+    --glass-bg: rgb(13 23 17 / 68%);
+    --glass-blur: 16px;
+
+    --radius-control: 8px;
+    --radius-card: 16px;
+    --font-display:
+        'Iowan Old Style', 'Palatino Linotype', Georgia, 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun',
+        serif;
+    /* low mist above the ground and the night gradient, fixed behind the page */
+    --texture:
+        radial-gradient(120% 38% at 50% 104%, rgb(166 217 154 / 7%) 0%, transparent 70%),
+        linear-gradient(180deg, #0b1410 0%, #050806 72%);
+    --glow-color: var(--nature-trunk);
+
+    /* leaf-shaped thumbs: two opposite corners rounded */
+    --switch-thumb-radius: 50% 0;
+    --slider-thumb: 16px;
+    --slider-thumb-radius: 50% 0;
+    --slider-track-h: 2px;
+    --segment-radius: 8px;
+    --select-radius: 8px;
+
+    --map-semantic: var(--nature-canopy);
+    --map-episodic: var(--nature-trunk);
+    --map-procedural: var(--nature-firefly);
+    --map-session: var(--nature-canopy);
+    --map-fork: var(--nature-trunk);
 }
 
 @media (prefers-reduced-motion: reduce) {

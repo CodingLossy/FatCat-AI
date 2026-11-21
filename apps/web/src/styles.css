@@ -17,6 +17,7 @@ body {
     color: var(--fg);
     background: var(--bg);
     background-image: var(--texture);
+    background-attachment: fixed;
 }
 
 h1,
