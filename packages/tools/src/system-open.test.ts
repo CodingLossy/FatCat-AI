@@ -22,7 +22,7 @@ let outside = '';
 const posix = process.platform !== 'win32';
 
 beforeAll(() => {
-    base = realpathSync(mkdtempSync(join(tmpdir(), 'fatcat-open-')));
+    base = realpathSync.native(mkdtempSync(join(tmpdir(), 'fatcat-open-')));
     root = join(base, 'root');
     outside = join(base, 'outside');
     mkdirSync(root);
