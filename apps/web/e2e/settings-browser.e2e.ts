@@ -123,7 +123,7 @@ test('设置:浏览器开关、分区标签的键盘操作、语音页开关', a
 
     // 浏览器开关:默认关闭,打开后写入设置,工具列表里的 browser.open 变为需审批
     await page.getByRole('tab', { name: /工具插件/ }).click();
-    await page.getByRole('button', { name: '浏览器' }).click();
+    await page.getByRole('navigation', { name: '工具插件' }).getByRole('button', { name: '浏览器' }).click();
     const enabled = page.locator('input[name="browserEnabled"]');
     await expect(enabled).not.toBeChecked();
     const toolInfo = async () =>

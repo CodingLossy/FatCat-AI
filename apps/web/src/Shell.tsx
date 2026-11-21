@@ -163,7 +163,29 @@ export function Shell({
         }
     };
 
-    if (wide && (route.name === 'home' || route.name === 'session')) {
+    // 设置、邮件、任务等页面:宽屏时放进工作台(同一侧栏、主题与面板),窄屏仍在抽屉布局里
+    const page =
+        route.name === 'settings' ? (
+            <SettingsPage settings={settings} onSettings={onSettings} />
+        ) : route.name === 'memory' ? (
+            <MemoryPage settings={settings} onSettings={onSettings} />
+        ) : route.name === 'audit' ? (
+            <AuditPage />
+        ) : route.name === 'items' ? (
+            <ItemsPage />
+        ) : route.name === 'mail' ? (
+            <MailPage />
+        ) : route.name === 'tasks' ? (
+            <TasksPage />
+        ) : route.name === 'plugins' ? (
+            <PluginsPage />
+        ) : route.name === 'agents' ? (
+            <AgentsPage />
+        ) : route.name === 'session-map' ? (
+            <SessionMapPage />
+        ) : null;
+
+    if (wide) {
         return (
             <Workbench
                 serverVersion={serverVersion}
@@ -175,6 +197,7 @@ export function Shell({
                 onClearSessions={clearSessions}
                 onSessionsChanged={reloadSessions}
                 onApprovalCount={setApprovalCount}
+                pageView={page}
             />
         );
     }
@@ -327,27 +350,7 @@ export function Shell({
             </aside>
             <main className="content">
                 <ApprovalPanel currentSessionId={activeId} onCount={setApprovalCount} />
-                {route.name === 'settings' ? (
-                    <SettingsPage settings={settings} onSettings={onSettings} />
-                ) : route.name === 'memory' ? (
-                    <MemoryPage settings={settings} onSettings={onSettings} />
-                ) : route.name === 'audit' ? (
-                    <AuditPage />
-                ) : route.name === 'items' ? (
-                    <ItemsPage />
-                ) : route.name === 'mail' ? (
-                    <MailPage />
-                ) : route.name === 'tasks' ? (
-                    <TasksPage />
-                ) : route.name === 'plugins' ? (
-                    <PluginsPage />
-                ) : route.name === 'agents' ? (
-                    <AgentsPage />
-                ) : route.name === 'session-map' ? (
-                    <SessionMapPage />
-                ) : (
-                    <ChatView key={activeId ?? 'new'} sessionId={activeId} onSessionsChanged={reloadSessions} />
-                )}
+                {page ?? <ChatView key={activeId ?? 'new'} sessionId={activeId} onSessionsChanged={reloadSessions} />}
             </main>
         </div>
     );

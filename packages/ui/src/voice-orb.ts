@@ -55,7 +55,7 @@ export interface VoiceOrb {
     destroy(): void;
 }
 
-function prefersReducedMotion(): boolean {
+export function prefersReducedMotion(): boolean {
     return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
@@ -67,7 +67,7 @@ let frame: number | null = null;
 let lastTs = 0;
 let qualityState: QualityState | null = null;
 
-function currentQuality(): QualityState {
+export function currentQuality(): QualityState {
     if (!qualityState) {
         const nav = typeof navigator === 'undefined' ? undefined : (navigator as Navigator & { deviceMemory?: number });
         qualityState = { quality: initialQuality(nav?.hardwareConcurrency, nav?.deviceMemory), slow: 0 };
@@ -75,10 +75,22 @@ function currentQuality(): QualityState {
     return qualityState;
 }
 
+/** 窗口没有焦点(在后台但仍可见)时降到约 15 帧;完全隐藏时整个循环暂停(见下方 visibilitychange)。 */
+export const BACKGROUND_FRAME_MS = 66;
+
+function unfocused(): boolean {
+    return typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus();
+}
+
 function loop(now: number): void {
     frame = null;
     if (ticks.size === 0) return;
-    if (lastTs) qualityState = stepQuality(currentQuality(), now - lastTs);
+    if (lastTs && unfocused() && now - lastTs < BACKGROUND_FRAME_MS) {
+        schedule();
+        return;
+    }
+    // 降帧时的长间隔不算作卡顿,不拿去降低粒子数
+    if (lastTs && !unfocused()) qualityState = stepQuality(currentQuality(), now - lastTs);
     lastTs = now;
     for (const tick of [...ticks]) tick(now);
     schedule();
@@ -90,7 +102,7 @@ function schedule(): void {
     frame = requestAnimationFrame(loop);
 }
 
-function addTick(tick: Tick): () => void {
+export function addTick(tick: Tick): () => void {
     ticks.add(tick);
     schedule();
     return () => {
@@ -139,7 +151,7 @@ function readPalette(el: HTMLElement): Palette {
     }
 }
 
-function fitCanvas(canvas: HTMLCanvasElement): { ctx: CanvasRenderingContext2D; w: number; h: number } | null {
+export function fitCanvas(canvas: HTMLCanvasElement): { ctx: CanvasRenderingContext2D; w: number; h: number } | null {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
     const dpr = Math.min(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, 2);

@@ -3,6 +3,10 @@
 
 /*
  * FatCat-AI design tokens (M12, ADR 0046 / docs/design/ui-redesign.md).
+ * Theme engine: a theme is a set of these tokens plus a hero (packages/ui/src/theme.ts). `:root` holds the Tech theme,
+ * the default; every other theme overrides the same names under `:root[data-theme='<id>']`. Beyond colours a theme
+ * sets shape (radii, border width, shadow), type (display / numeric fonts), texture, glow colour and the variants of
+ * the switch, slider, select and segmented controls. Components read only these names.
  * Single source of truth, imported by the web app (and so the PWA and the desktop shell) as
  * `@fatcat-ai/ui/tokens.css`. Raw colour values live here only (a unit test enforces it); components use the
  * semantic names below.
@@ -15,7 +19,7 @@
     color-scheme: dark;
 
     /* ---- Palette [owner] ---- */
-    --fc-deep-navy: #0b0d1d; /* base background */
+    --fc-black: #000000; /* Tech theme base: pure black */
     --fc-obsidian: #121216; /* surface (cards, panels); owner decision 2026-11-19: the brief's #121512 was a typo (green tint) */
     --fc-slate: #12151e; /* secondary surface (inputs, hover rows, glass cards) */
     --fc-border-grey: #1f2633; /* 1px hairlines */
@@ -24,7 +28,7 @@
     --fc-muted: #94a3b8; /* secondary text, default icon colour */
 
     /* ---- Semantic colours ---- */
-    --bg: var(--fc-deep-navy);
+    --bg: var(--fc-black);
     --surface: var(--fc-obsidian);
     --surface-2: var(--fc-slate);
     --border: var(--fc-border-grey);
@@ -35,7 +39,7 @@
     --panel: var(--surface);
 
     /* [proposed] text on an accent-filled surface (primary button): base colour, 9.5:1 on the accent */
-    --accent-fg: var(--fc-deep-navy);
+    --accent-fg: var(--fc-black);
     /* [proposed] 1px border for interactive controls; --border alone is only 1.27:1 against the base, below the 3:1
        non-text contrast target (WCAG 1.4.11) that inputs, buttons and switches need */
     --border-strong: #5b687c;
@@ -53,8 +57,8 @@
     --ok-bg: rgb(127 201 154 / 16%);
     --warn: #d8b36a;
     /* text on a solid --danger / --warn fill (recording button, alert badge) */
-    --on-danger: var(--fc-deep-navy);
-    --on-warn: var(--fc-deep-navy);
+    --on-danger: var(--fc-black);
+    --on-warn: var(--fc-black);
 
     /* soft, low-contrast shadows (no coloured glow) and the drawer scrim */
     --shadow-card: 0 6px 24px rgb(0 0 0 / 28%);
@@ -64,6 +68,41 @@
     /* Glass card (RUNNING TOOLS): matte, 1px border, a light backdrop blur, no glow */
     --glass-bg: rgb(18 21 30 / 72%);
     --glass-blur: 12px;
+
+    /* ---- Theme engine: shape, type, texture, glow and control variants (Tech values) ---- */
+    --border-width: 1px;
+    --radius-control: var(--radius-sm); /* buttons, inputs, selects */
+    --radius-card: var(--radius-lg); /* cards, floating panels */
+    --shadow-panel: 0 8px 32px rgb(0 0 0 / 45%);
+    --font-display: var(--font-sans); /* titles */
+    --font-numeric: var(--font-mono); /* numbers, counters, timestamps */
+    --numeric-features: 'tnum';
+    --texture: none; /* background-image layered over --bg (grain, paper, ...) */
+    --glow-color: var(--fc-ice-cyan); /* the window-wide halo behind the hero */
+    --switch-radius: var(--radius-pill);
+    --switch-thumb-radius: 50%;
+    --switch-w: 36px;
+    --switch-h: 20px;
+    --slider-track-h: 2px;
+    --slider-thumb: 14px;
+    --slider-thumb-radius: 50%;
+    --segment-radius: var(--radius-sm);
+    --select-radius: var(--radius-sm);
+
+    /* ---- Tech hero palette: star dots (white, pale violet, mint), inner nebula fog, constellation lines ---- */
+    --hero-star-a: #ffffff;
+    --hero-star-b: #b9a8ff;
+    --hero-star-c: #5fe3c8;
+    --hero-fog: #5fe3c8;
+    --hero-line: #e2e8ff;
+
+    /* ---- Maps and knowledge views (memory types, session roots / forks, edges) ---- */
+    --map-semantic: var(--hero-star-c);
+    --map-episodic: var(--hero-star-b);
+    --map-procedural: #f2d38a;
+    --map-session: var(--hero-star-c);
+    --map-fork: var(--hero-star-b);
+    --map-edge: var(--border-strong);
 
     /* ---- Typography [owner: body 14px sans, code 12px mono] ---- */
     --font-sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
@@ -112,69 +151,4 @@
         --motion-fast: 0ms;
         --motion: 0ms;
     }
-}
-
-/*
- * Light theme: not redesigned in M12 (owner decision Q2, 2026-11-19). `data-theme="light"` and the system light
- * preference keep the pre-M12 palette until light tokens are designed. Only the colour tokens differ.
- */
-@media (prefers-color-scheme: light) {
-    :root:not([data-theme='dark']) {
-        --bg: #ffffff;
-        --surface: #f5f5f7;
-        --surface-2: #ececf0;
-        --border: #d2d2d7;
-        --border-strong: #8e8e93;
-        --muted: #6e6e73;
-        --fg: #1d1d1f;
-        --accent: #0a66c2;
-        --accent-fg: #ffffff;
-        --accent-weak: rgb(10 102 194 / 12%);
-        --accent-line: rgb(10 102 194 / 55%);
-        --danger: #b3261e;
-        --ok: #1e7b34;
-        --warn: #8a5a00;
-        --on-danger: #ffffff;
-        --on-warn: #ffffff;
-        --shadow-card: 0 6px 24px rgb(0 0 0 / 8%);
-        --shadow-drawer: 0 0 24px rgb(0 0 0 / 30%);
-        --scrim: rgb(0 0 0 / 40%);
-        --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
-        --code-keyword: #a626a4;
-        --code-string: #50a14f;
-        --code-number: #b76b01;
-        --code-title: #4078f2;
-        --code-comment: #8a8a93;
-        --glass-bg: rgb(255 255 255 / 78%);
-        color-scheme: light;
-    }
-}
-
-:root[data-theme='light'] {
-    --bg: #ffffff;
-    --surface: #f5f5f7;
-    --surface-2: #ececf0;
-    --border: #d2d2d7;
-    --border-strong: #8e8e93;
-    --muted: #6e6e73;
-    --fg: #1d1d1f;
-    --accent: #0a66c2;
-    --accent-fg: #ffffff;
-    --accent-weak: rgb(10 102 194 / 12%);
-    --accent-line: rgb(10 102 194 / 55%);
-    --danger: #b3261e;
-    --ok: #1e7b34;
-    --warn: #8a5a00;
-    --on-danger: #ffffff;
-    --on-warn: #ffffff;
-    --shadow-card: 0 6px 24px rgb(0 0 0 / 8%);
-    --shadow-drawer: 0 0 24px rgb(0 0 0 / 30%);
-    --scrim: rgb(0 0 0 / 40%);
-    --code-keyword: #a626a4;
-    --code-string: #50a14f;
-    --code-number: #b76b01;
-    --code-title: #4078f2;
-    --code-comment: #8a8a93;
-    --glass-bg: rgb(255 255 255 / 78%);
-    color-scheme: light;
 }

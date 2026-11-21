@@ -65,11 +65,11 @@ export function SessionMapPage() {
                     />
                     <ul className="legend small">
                         <li>
-                            <span className="swatch" style={{ background: '#16a34a' }} />
+                            <span className="swatch" style={{ background: 'var(--map-session)' }} />
                             {t('sessionMap.root')}
                         </li>
                         <li>
-                            <span className="swatch" style={{ background: '#2563eb' }} />
+                            <span className="swatch" style={{ background: 'var(--map-fork)' }} />
                             {t('sessionMap.fork')}
                         </li>
                     </ul>

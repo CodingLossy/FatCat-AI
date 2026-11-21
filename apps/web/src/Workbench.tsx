@@ -50,11 +50,13 @@ function Link({
     to,
     className,
     label,
+    current,
     children,
 }: {
     to: Route;
     className?: string;
     label: string;
+    current?: boolean;
     children: ReactNode;
 }) {
     return (
@@ -62,6 +64,7 @@ function Link({
             href={routePath(to)}
             className={className}
             aria-label={label}
+            aria-current={current ? 'page' : undefined}
             onClick={(e) => {
                 if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
                 e.preventDefault();
@@ -126,6 +129,7 @@ export function Workbench({
     onClearSessions,
     onSessionsChanged,
     onApprovalCount,
+    pageView = null,
 }: {
     serverVersion: string | null;
     settings: Settings;
@@ -136,6 +140,8 @@ export function Workbench({
     onClearSessions: () => Promise<void>;
     onSessionsChanged: () => Promise<void>;
     onApprovalCount: (n: number) => void;
+    /** 设置、邮件等页面:代替对话舞台显示在主区域;侧栏、搜索和面板照常可用。 */
+    pageView?: ReactNode;
 }) {
     const { t } = useI18n();
     const route = useRoute();
@@ -196,6 +202,12 @@ export function Workbench({
     }, [browser, overlayOpen]);
     const selected = picked ?? workspace.selectedPath ?? opened?.path ?? null;
     const activeRow = [...running.rows].reverse().find((row) => row.status === 'running' || row.status === 'waiting');
+
+    // 换到设置、邮件等页面时收起浮动面板,不挡住页面内容
+    const pagePath = pageView ? routePath(route) : null;
+    useEffect(() => {
+        if (pagePath) dispatch({ type: 'close' });
+    }, [pagePath]);
 
     const latest = liveTools.length > 0 ? liveTools[liveTools.length - 1]! : null;
     const latestName = latest?.name ?? null;
@@ -435,7 +447,20 @@ export function Workbench({
         const item = SIDE_PANELS.find((entry) => entry.id === id);
         return item ? t(item.label) : '';
     };
-    const sessionTitle = sessions.find((session) => session.id === sessionId)?.title || t('nav.newChat');
+    const pageTitle: Partial<Record<Route['name'], Key>> = {
+        settings: 'nav.settings',
+        plugins: 'nav.plugins',
+        items: 'nav.items',
+        tasks: 'nav.tasks',
+        agents: 'nav.agents',
+        audit: 'nav.audit',
+        mail: 'nav.mail',
+        memory: 'nav.memory',
+    };
+    const pageKey = pageView ? pageTitle[route.name] : undefined;
+    const sessionTitle = pageKey
+        ? t(pageKey)
+        : sessions.find((session) => session.id === sessionId)?.title || t('nav.newChat');
 
     return (
         <div
@@ -516,7 +541,13 @@ export function Workbench({
                 )}
                 <nav className="wb-side-group wb-side-foot" aria-label={t('wb.pages')}>
                     {PAGE_LINKS.map((item) => (
-                        <Link key={item.label} to={item.to} className="wb-side-item" label={t(item.label)}>
+                        <Link
+                            key={item.label}
+                            to={item.to}
+                            className="wb-side-item"
+                            label={t(item.label)}
+                            current={route.name === item.to.name}
+                        >
                             <Icon name={item.icon} size={20} />
                             <span className="wb-side-text">{t(item.label)}</span>
                         </Link>
@@ -656,42 +687,46 @@ export function Workbench({
                         </div>
                     </div>
                 ) : null}
-                <section className="wb-stage">
-                    <div className="wb-glass wb-running" aria-live="polite">
-                        <h4>{t('wb.running')}</h4>
-                        {running.hidden > 0 ? (
-                            <p className="wb-more-count">{t('wb.runningMore', { n: running.hidden })}</p>
-                        ) : null}
-                        {running.rows.length === 0 ? <p className="muted small">{t('wb.runningEmpty')}</p> : null}
-                        {running.rows.map((row) => {
-                            const icon = statusIcon(row.status);
-                            return (
-                                <div
-                                    key={row.callId}
-                                    className={`wb-tool${row.callId === activeRow?.callId ? ' active' : ''}`}
-                                >
-                                    <span>{row.summary}</span>
-                                    <span className="state">
-                                        {icon ? (
-                                            <Icon name={icon} size={16} />
-                                        ) : (
-                                            <span className="wb-spin" aria-hidden="true" />
-                                        )}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <ChatView
-                        key={sessionId ?? 'new'}
-                        sessionId={sessionId}
-                        onSessionsChanged={onSessionsChanged}
-                        workbench
-                        profileEpoch={epoch}
-                        onActivity={onActivity}
-                        askRef={askRef}
-                    />
-                </section>
+                {pageView ? (
+                    <main className="wb-page">{pageView}</main>
+                ) : (
+                    <section className="wb-stage">
+                        <div className="wb-glass wb-running" aria-live="polite">
+                            <h4>{t('wb.running')}</h4>
+                            {running.hidden > 0 ? (
+                                <p className="wb-more-count">{t('wb.runningMore', { n: running.hidden })}</p>
+                            ) : null}
+                            {running.rows.length === 0 ? <p className="muted small">{t('wb.runningEmpty')}</p> : null}
+                            {running.rows.map((row) => {
+                                const icon = statusIcon(row.status);
+                                return (
+                                    <div
+                                        key={row.callId}
+                                        className={`wb-tool${row.callId === activeRow?.callId ? ' active' : ''}`}
+                                    >
+                                        <span>{row.summary}</span>
+                                        <span className="state">
+                                            {icon ? (
+                                                <Icon name={icon} size={16} />
+                                            ) : (
+                                                <span className="wb-spin" aria-hidden="true" />
+                                            )}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <ChatView
+                            key={sessionId ?? 'new'}
+                            sessionId={sessionId}
+                            onSessionsChanged={onSessionsChanged}
+                            workbench
+                            profileEpoch={epoch}
+                            onActivity={onActivity}
+                            askRef={askRef}
+                        />
+                    </section>
+                )}
                 {panel.open ? (
                     <aside className="wb-float wb-glass" aria-label={panelTitle(panel.panel)}>
                         <header className="wb-float-head">

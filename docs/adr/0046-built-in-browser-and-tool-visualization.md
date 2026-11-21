@@ -246,3 +246,12 @@ M12 **不包含**任何合成鼠标或键盘输入、或在浏览器面板之外
 - `ui.panel`(risk `read`,无副作用):入参 `{action:'open', panel:'files'|'changes'|'mail'|'memory'|'browser'}` 或 `{action:'close'}`,只回显请求,由看到调用的 Web 客户端切换面板,因此说话和打字走同一条路。打开即固定到下一轮运行;每个 callId 只执行一次。
 - 新安装默认主题改为 `dark`(`DEFAULT_SETTINGS.theme`);已保存的设置不变。枚举值不动,取消 light / system 在主题引擎 PR 里做。
 - 插件市场新增稳定原因码 `index_fake_ip_blocked`(索引主机被解析进 198.18.0.0/15);界面据此给出跳转到「设置 → 网络与外连」的链接。
+
+## 16. 补充:主题引擎(M12,`feat/theme-engine`)
+
+- **主题 = token + 主视觉。** token 在 `@fatcat-ai/ui/tokens.css`:`:root` 是科技(默认),其他主题在 `:root[data-theme='<id>']` 覆盖同名变量。除颜色外还有形状(`--radius-control` / `--radius-card`、`--border-width`、`--shadow-panel`)、字体(`--font-display` / `--font-numeric`)、底纹 `--texture`、光晕色 `--glow-color`,以及开关、滑块、下拉、分段控件的变体(`--switch-*`、`--slider-*`、`--select-radius`、`--segment-radius`)。`apps/web` 的样式表不写颜色字面量(单测强制),圆角只用语义 token;canvas 绘制用 token 名取当前主题的值(`cssToken` / `resolveColor`)。
+- **主视觉接口**(`packages/ui/src/theme.ts` 的 `Hero`):`setState`(idle / listening / thinking / speaking / executing)、`setLevel`(说话音量)、`setMode`(assistant / knowledge)、`destroy`。界面只面对接口,`createHero(theme, canvas)` 按主题选实现;知识模式的节点数据接口在 `feat/knowledge-hero` 里加。
+- **只留三套主题:** `tech` / `nature` / `cat`。`Settings.theme` 枚举只做增量:新增这三个值,旧值 `system` / `light` / `dark` 仍然接受(API v1 不破坏);客户端读到旧值、未知值或尚未完成的主题,一律按科技显示,**不改写已存的设置**。黑曜石、旧浅色、跟随系统、星云取消。新安装默认 `tech`。
+- **性能与无障碍:** 所有主视觉共用一个帧循环;页面隐藏时暂停,窗口失焦时约 15 帧;按 `hardwareConcurrency` / `deviceMemory` 起步并在连续慢帧后自动减少粒子数;`prefers-reduced-motion` 时每次变化只画一帧静态图;文字对比度 ≥ 4.5:1。
+- **设置页:**左侧分类(纵向 tablist,方向键 / Home / End),右侧单列分组;开关、分段控件来自共享组件 `controls.tsx`;文案只在配置项和有风险的选项旁留一句短提示。
+- **宽屏页面统一进工作台:**设置、邮件、任务、插件、知识地图、代理、审计在 900px 以上都显示在工作台主区域里,和对话共用侧栏、搜索与面板;窄屏布局在 `feat/narrow-layout`。
