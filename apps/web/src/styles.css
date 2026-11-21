@@ -2591,7 +2591,7 @@ button.link {
     overflow: auto;
     padding: 0 var(--space-3);
     background: transparent;
-    mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
+    mask-image: linear-gradient(to bottom, transparent 0, black 24px);
 }
 
 .chat-stage .messages:empty,
