@@ -19,16 +19,26 @@ import {
     tipsFor,
     TREE_BASE,
 } from './heroes/nature-model.js';
-import { clusterCenter } from './heroes/nature-knowledge.js';
+import { clusterCenter } from './heroes/anchored-knowledge.js';
+import {
+    catPose,
+    catStrokes,
+    EAR_L_PIVOT,
+    flowGlow,
+    outlineAnchors,
+    posePoint,
+    TAIL_PIVOT,
+} from './heroes/cat-model.js';
 import { DEFAULT_THEME, resolveTheme } from './theme-ids.js';
 
 describe('resolveTheme', () => {
     it('旧值、未知值和还没做好的主题一律按科技处理;科技本身保持', () => {
-        for (const old of ['system', 'light', 'dark', 'obsidian', 'nebula', 'cat', '', null, undefined, 3]) {
+        for (const old of ['system', 'light', 'dark', 'obsidian', 'nebula', '', null, undefined, 3]) {
             expect(resolveTheme(old)).toBe(DEFAULT_THEME);
         }
         expect(resolveTheme('tech')).toBe('tech');
         expect(resolveTheme('nature')).toBe('nature');
+        expect(resolveTheme('cat')).toBe('cat');
         expect(DEFAULT_THEME).toBe('tech');
     });
 });
@@ -112,5 +122,52 @@ describe('nature hero model', () => {
         const c = clusterCenter({ x: 5, y: 5 }, { x: 200, y: 400 }, 200, 400, 400);
         expect(c.x).toBeGreaterThan(0);
         expect(c.y).toBeGreaterThan(0);
+    });
+});
+
+describe('cat hero model', () => {
+    const strokes = catStrokes();
+
+    it('线稿有头、两只耳朵、身子、尾巴和脸,点都在 [-1, 1] 里', () => {
+        const parts = new Set(strokes.map((s) => s.part));
+        for (const p of ['head', 'earL', 'earR', 'body', 'tail', 'face']) expect(parts.has(p as never)).toBe(true);
+        for (const s of strokes) {
+            for (const [x, y] of s.points) {
+                expect(Math.abs(x)).toBeLessThanOrEqual(1);
+                expect(Math.abs(y)).toBeLessThanOrEqual(1);
+            }
+        }
+    });
+
+    it('聆听时耳朵动、思考时尾巴摆、说话时光流动且随音量变快;知识模式静下来', () => {
+        const ears = Array.from({ length: 40 }, (_, k) => catPose('listening', 0, k * 0.05, false).earL);
+        expect(Math.max(...ears)).toBeGreaterThan(0.1);
+        expect(catPose('idle', 0, 0.3, false).earL).toBe(0);
+        const tails = Array.from({ length: 40 }, (_, k) => Math.abs(catPose('thinking', 0, k * 0.05, false).tail));
+        expect(Math.max(...tails)).toBeGreaterThan(0.25);
+        expect(catPose('speaking', 1, 0, false).flowSpeed).toBeGreaterThan(catPose('speaking', 0, 0, false).flowSpeed);
+        expect(catPose('idle', 0, 0, false).flow).toBe(0);
+        expect(catPose('speaking', 1, 0, true).flow).toBe(0);
+        expect(flowGlow(0.5, 0, 1)).toBe(0);
+        expect(flowGlow(0.25, 0.25, 1)).toBe(1);
+    });
+
+    it('耳朵绕耳根、尾巴绕尾根转,支点自己不动', () => {
+        const pose = { earL: 0.3, earR: 0, tail: 0.4, breathe: 0, flow: 0, flowSpeed: 0, brightness: 1 };
+        const pivot = posePoint('earL', EAR_L_PIVOT, pose);
+        expect(pivot[0]).toBeCloseTo(EAR_L_PIVOT[0], 9);
+        expect(pivot[1]).toBeCloseTo(EAR_L_PIVOT[1], 9);
+        const tip = posePoint('tail', TAIL_PIVOT, pose);
+        expect(tip[0]).toBeCloseTo(TAIL_PIVOT[0], 9);
+        expect(tip[1]).toBeCloseTo(TAIL_PIVOT[1], 9);
+        expect(posePoint('earL', [-0.34, -0.9], pose)).not.toEqual([-0.34, -0.9]);
+    });
+
+    it('第一层节点均匀挂在轮廓上(不在脸上),位置互不相同', () => {
+        const a = outlineAnchors(strokes, 8);
+        expect(a).toHaveLength(8);
+        expect(new Set(a.map((x) => `${x.stroke}:${x.index}`)).size).toBe(8);
+        for (const x of a) expect(['face', 'legs']).not.toContain(strokes[x.stroke]!.part);
+        expect(outlineAnchors(strokes, 0)).toEqual([]);
     });
 });

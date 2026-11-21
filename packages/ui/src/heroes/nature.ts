@@ -8,7 +8,7 @@ import { expandedId, type KnowledgeScene, pickNode, type ScreenNode } from '../k
 import type { OrbState } from '../orb-model.js';
 import type { Hero, HeroMode, HeroOptions } from '../theme.js';
 import { addTick, currentQuality, fitCanvas, prefersReducedMotion } from '../voice-orb.js';
-import { drawNatureKnowledge, type NatureKnowledgePalette } from './nature-knowledge.js';
+import { type AnchoredKnowledgePalette, drawAnchoredKnowledge } from './anchored-knowledge.js';
 import {
     branchChain,
     climbGlow,
@@ -26,7 +26,7 @@ interface Palette {
     root: string;
     mist: string;
     firefly: string;
-    knowledge: NatureKnowledgePalette;
+    knowledge: AnchoredKnowledgePalette;
 }
 
 function readPalette(el: HTMLElement): Palette {
@@ -241,7 +241,7 @@ export function createNatureHero(canvas: HTMLCanvasElement, options: HeroOptions
         if (knowledge && scene) {
             if (!reduced && lastLayoutMs && !scene.selectedId) layoutT += Math.min(0.1, (nowMs - lastLayoutMs) / 1000);
             lastLayoutMs = nowMs;
-            screen = drawNatureKnowledge(
+            screen = drawAnchoredKnowledge(
                 g,
                 scene,
                 {
@@ -251,6 +251,7 @@ export function createNatureHero(canvas: HTMLCanvasElement, options: HeroOptions
                     tSec: layoutT,
                     explode: reduced ? 1 : (nowMs - explodeAt - 250) / 650,
                     base: { x: bx, y: by },
+                    style: 'leaf',
                     rootAt: (i) => {
                         const b = TREE.branches[tips[i] ?? -1];
                         return b ? { x: X(b.x1, b.y1), y: Y(b.y1) } : { x: cx, y: cy };

@@ -2734,7 +2734,8 @@ input[type='checkbox']::after {
     width: calc(var(--switch-h) - 10px);
     height: calc(var(--switch-h) - 10px);
     border-radius: var(--switch-thumb-radius);
-    background: var(--muted);
+    color: var(--muted);
+    background: var(--switch-thumb-paint);
     transform: translateY(-50%);
     transition:
         transform var(--motion-fast) var(--ease),
@@ -2747,7 +2748,7 @@ input[type='checkbox']:checked {
 }
 
 input[type='checkbox']:checked::after {
-    background: var(--accent);
+    color: var(--accent);
     transform: translate(calc(var(--switch-w) - var(--switch-h) + 0px), -50%);
 }
 
@@ -2783,7 +2784,7 @@ input[type='range']::-webkit-slider-thumb {
     margin-top: calc((var(--slider-track-h) - var(--slider-thumb)) / 2);
     border: none;
     border-radius: var(--slider-thumb-radius);
-    background: var(--accent);
+    background: var(--slider-thumb-paint);
 }
 
 input[type='range']::-moz-range-thumb {
@@ -2791,7 +2792,7 @@ input[type='range']::-moz-range-thumb {
     height: var(--slider-thumb);
     border: none;
     border-radius: var(--slider-thumb-radius);
-    background: var(--accent);
+    background: var(--slider-thumb-paint);
 }
 
 select {
@@ -2986,7 +2987,7 @@ input.kn-search {
     transform: translate(-50%, calc(-100% - 14px));
     border: var(--border-width) solid var(--border-strong);
     border-radius: var(--radius-card);
-    background: var(--glass-bg);
+    background: var(--bubble-bg);
     backdrop-filter: blur(var(--glass-blur));
     box-shadow: var(--shadow-panel);
     color: var(--fg);
@@ -3049,4 +3050,19 @@ input.kn-search {
 .kn-card-text {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+}
+
+/* 气泡前的小标记(猫咪主题是肉垫爪印;其他主题为 none,不占位) */
+.kn-bubble::before {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: var(--space-1);
+    vertical-align: -2px;
+    background: var(--bubble-mark) center / contain no-repeat;
+}
+
+:root:not([data-theme='cat']) .kn-bubble::before {
+    display: none;
 }

@@ -88,6 +88,12 @@
     --slider-thumb-radius: 50%;
     --segment-radius: var(--radius-sm);
     --select-radius: var(--radius-sm);
+    /* what fills the switch thumb and the slider thumb; the switch thumb is painted in currentColor */
+    --switch-thumb-paint: currentColor;
+    --slider-thumb-paint: var(--accent);
+    /* the knowledge bubble: background and an optional mark before the text */
+    --bubble-bg: var(--glass-bg);
+    --bubble-mark: none;
 
     /* ---- Tech hero palette: star dots (white, pale violet, mint), inner nebula fog, constellation lines ---- */
     --hero-star-a: #ffffff;
@@ -103,6 +109,13 @@
     --nature-root: #e8c27a;
     --nature-mist: #a6d99a;
     --nature-firefly: #e9f29b;
+
+    /* ---- Cat hero palette [owner]: orange line drawing, small sparks on the line, cocoa whiskers, paw pink ---- */
+    --cat-line: #f28c38;
+    --cat-spark: #ffb061;
+    --cat-spark-core: #ffffff;
+    --cat-whisker: #3b2a20;
+    --cat-paw: #f6b6b0;
 
     /* ---- Maps and knowledge views (memory types, session roots / forks, edges) ---- */
     --map-semantic: var(--hero-star-c);
@@ -203,6 +216,86 @@
     --map-procedural: var(--nature-firefly);
     --map-session: var(--nature-canopy);
     --map-fork: var(--nature-trunk);
+}
+
+/*
+ * Cat: a light theme on cream #FFF6EC with cocoa text #3B2A20 [owner]. Paw pink #F6B6B0 [owner] is too light for text
+ * on cream (1.6:1), so it fills selections, bubbles and the paw marks, and the accent used for text, links and the
+ * primary button is a deeper paw pink (#A8463F, 5.4:1 on cream). Panels have 20px corners, the switch thumb is a paw
+ * print and the slider thumb a ball of yarn.
+ */
+:root[data-theme='cat'] {
+    color-scheme: light;
+
+    --bg: #fff6ec;
+    --surface: #fffdf9;
+    --surface-2: #fbebdd;
+    --border: #ebd6c4;
+    --border-strong: #9a7b66;
+    --accent: #a8463f;
+    --fg: #3b2a20;
+    --muted: #6b5143;
+    --accent-fg: #ffffff;
+    --accent-weak: rgb(246 182 176 / 45%);
+    --accent-line: rgb(168 70 63 / 55%);
+    --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+
+    --danger: #b3261e;
+    --danger-bg: rgb(179 38 30 / 10%);
+    --ok: #2a6f42;
+    --ok-bg: rgb(42 111 66 / 12%);
+    --warn: #8a5a00;
+    --on-danger: #ffffff;
+    --on-warn: #ffffff;
+
+    --shadow-card: 0 6px 20px rgb(59 42 32 / 10%);
+    --shadow-drawer: 0 0 24px rgb(59 42 32 / 16%);
+    --shadow-panel: 0 10px 30px rgb(59 42 32 / 14%);
+    --scrim: rgb(59 42 32 / 35%);
+    --glass-bg: rgb(255 253 249 / 86%);
+    --glass-blur: 10px;
+
+    --radius-control: 12px;
+    --radius-card: 20px;
+    --font-display: ui-rounded, 'SF Pro Rounded', 'Nunito', var(--font-sans);
+    --texture: radial-gradient(80% 60% at 50% 40%, rgb(255 255 255 / 70%) 0%, transparent 70%);
+    --glow-color: var(--cat-line);
+
+    --switch-w: 44px;
+    --switch-h: 26px;
+    --switch-thumb-radius: 0;
+    /* paw print: a pad and three toes */
+    --switch-thumb-paint:
+        radial-gradient(36% 28% at 50% 72%, currentColor 0 94%, transparent 100%),
+        radial-gradient(circle at 16% 38%, currentColor 0 13%, transparent 15%),
+        radial-gradient(circle at 50% 20%, currentColor 0 13%, transparent 15%),
+        radial-gradient(circle at 84% 38%, currentColor 0 13%, transparent 15%);
+    --slider-track-h: 4px;
+    --slider-thumb: 18px;
+    --slider-thumb-radius: 50%;
+    /* ball of yarn: crossed strands and a highlight */
+    --slider-thumb-paint:
+        radial-gradient(circle at 34% 30%, rgb(255 255 255 / 55%) 0 14%, transparent 18%),
+        repeating-linear-gradient(-55deg, transparent 0 4px, rgb(168 70 63 / 45%) 4px 5px),
+        repeating-linear-gradient(35deg, #f28c38 0 3px, #d9702a 3px 4px);
+    --segment-radius: 12px;
+    --select-radius: 12px;
+
+    --bubble-bg: #ffffff;
+    --bubble-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cg fill='%23F6B6B0'%3E%3Cellipse cx='10' cy='13.5' rx='4.6' ry='3.8'/%3E%3Ccircle cx='4' cy='8' r='2'/%3E%3Ccircle cx='8' cy='4.5' r='2'/%3E%3Ccircle cx='12' cy='4.5' r='2'/%3E%3Ccircle cx='16' cy='8' r='2'/%3E%3C/g%3E%3C/svg%3E");
+
+    --map-semantic: var(--cat-line);
+    --map-episodic: var(--accent);
+    --map-procedural: var(--ok);
+    --map-session: var(--cat-line);
+    --map-fork: var(--accent);
+    --map-edge: var(--border-strong);
+
+    --code-keyword: #8a3b6e;
+    --code-string: #2a6f42;
+    --code-number: #8a5a00;
+    --code-title: #1f5f8b;
+    --code-comment: #7a6658;
 }
 
 @media (prefers-reduced-motion: reduce) {
