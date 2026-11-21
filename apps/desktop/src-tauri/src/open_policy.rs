@@ -4,17 +4,19 @@
 //! `system.open` 在壳这一侧的第二道检查(ADR 0046 第 5.2 节)。纯逻辑,不依赖 Tauri,可以单独测试。
 //!
 //! 核心已经校验过目标并经用户批准;壳不信任这一点,再按同一份规则检查一次:网址只允许 https / http / mailto、
-//! 不带凭据;文件必须是存在的绝对路径、是普通文件、不是程序或脚本(按扩展名,POSIX 上再看可执行位,
+//! 不带凭据;文件必须是存在的绝对路径、是普通文件、扩展名在允许清单里(POSIX 上再看可执行位,
 //! macOS 的 `.app` 包是目录所以本来就会被拒)。授权目录只有核心知道,由核心检查。
 
 use std::path::{Path, PathBuf};
 use url::Url;
 
-/// 拒绝的扩展名,与核心 `BLOCKED_EXTENSIONS` 相同(全部小写、不带点)。
-pub const BLOCKED_EXTENSIONS: &[&str] = &[
-    "exe", "com", "bat", "cmd", "msi", "msp", "scr", "ps1", "psm1", "vbs", "vbe", "js", "jse", "wsf", "wsh", "hta",
-    "cpl", "jar", "lnk", "url", "reg", "dll", "sys", "app", "command", "sh", "bash", "zsh", "run", "appimage",
-    "desktop", "dmg", "pkg", "deb", "rpm", "iso",
+/// 允许打开的扩展名,与核心 `ALLOWED_EXTENSIONS` 相同(全部小写、不带点):只有常见的文档、图片、音频和视频。
+/// 用允许清单而不是拒绝清单,因为会被默认程序执行或转去打开别的地址的类型列不全。
+pub const ALLOWED_EXTENSIONS: &[&str] = &[
+    "pdf", "txt", "md", "markdown", "rtf", "csv", "tsv", "log", "json", "xml", "yaml", "yml", "toml", "doc", "docx",
+    "odt", "xls", "xlsx", "ods", "ppt", "pptx", "odp", "epub", "png", "jpg", "jpeg", "gif", "webp", "bmp", "tif",
+    "tiff", "heic", "heif", "avif", "mp3", "wav", "flac", "aac", "m4a", "ogg", "oga", "opus", "mp4", "m4v", "mov",
+    "mkv", "webm", "avi", "wmv",
 ];
 
 /// 拒绝原因的稳定码(界面和核心都只看这个)。
@@ -53,11 +55,19 @@ pub fn check_url(raw: &str) -> Result<String, OpenDenied> {
     Ok(url.to_string())
 }
 
-/// 文件名最后一个扩展名是否在拒绝清单里(`a.pdf.exe` 按 exe 拒绝)。
+/// 文件名是否不能打开:最后一个扩展名不在允许清单里(`a.pdf.exe` 按 exe 拒绝,没有扩展名的也拒绝),
+/// 或文件名里有冒号(Windows 的备用数据流 `a.exe:x.pdf`)。
 pub fn blocked_extension(path: &Path) -> bool {
-    path.extension()
+    let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+        return true;
+    };
+    if name.contains(':') {
+        return true;
+    }
+    !path
+        .extension()
         .and_then(|e| e.to_str())
-        .map(|e| BLOCKED_EXTENSIONS.contains(&e.to_ascii_lowercase().as_str()))
+        .map(|e| ALLOWED_EXTENSIONS.contains(&e.to_ascii_lowercase().as_str()))
         .unwrap_or(false)
 }
 
@@ -127,10 +137,32 @@ mod tests {
             "x.app",
             "x.lnk",
             "x.sh",
+            "x.pif",
+            "x.msc",
+            "x.scf",
+            "x.appref-ms",
+            "x.settingcontent-ms",
+            "x.library-ms",
+            "x.searchconnector-ms",
+            "x.website",
+            "x.chm",
+            "x.jnlp",
+            "x.py",
+            "x.pyw",
+            "x.terminal",
+            "x.webloc",
+            "x.inetloc",
+            "x.html",
+            "x.svg",
+            "x.docm",
+            "x.zip",
+            "Makefile",
+            "invoice.pif.",
+            "notes.exe:x.pdf",
         ] {
             assert!(blocked_extension(Path::new(bad)), "{bad}");
         }
-        for ok in ["a.pdf", "notes.txt", "Makefile", "photo.JPG"] {
+        for ok in ["a.pdf", "A.PDF", "notes.txt", "b.docx", "photo.JPG", "clip.mp4"] {
             assert!(!blocked_extension(Path::new(ok)), "{ok}");
         }
     }
@@ -162,10 +194,11 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::{symlink, PermissionsExt};
-            std::fs::write(dir.join("run-me"), b"#!/bin/sh").unwrap();
-            std::fs::set_permissions(dir.join("run-me"), std::fs::Permissions::from_mode(0o755)).unwrap();
+            // 扩展名在允许清单里,只靠可执行位拒绝
+            std::fs::write(dir.join("run-me.txt"), b"#!/bin/sh").unwrap();
+            std::fs::set_permissions(dir.join("run-me.txt"), std::fs::Permissions::from_mode(0o755)).unwrap();
             assert_eq!(
-                check_file(dir.join("run-me").to_str().unwrap()),
+                check_file(dir.join("run-me.txt").to_str().unwrap()),
                 Err(OpenDenied::Blocked)
             );
             let _ = std::fs::remove_file(dir.join("innocent.pdf"));

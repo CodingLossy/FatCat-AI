@@ -43,7 +43,7 @@ export {
 } from './builtin/browser.js';
 export { createDelegateTool } from './builtin/delegate.js';
 export {
-    BLOCKED_EXTENSIONS,
+    ALLOWED_EXTENSIONS,
     blockedExtension,
     checkOpenFile,
     checkOpenUrl,

@@ -31,11 +31,13 @@ beforeAll(() => {
     writeFileSync(join(root, 'notes.pdf'), 'x');
     writeFileSync(join(root, 'setup.exe'), 'x');
     writeFileSync(join(root, 'report.pdf.exe'), 'x');
+    writeFileSync(join(root, 'notes.PDF.pif'), 'x');
     writeFileSync(join(outside, 'secret.pdf'), 'x');
     writeFileSync(join(outside, 'tool.exe'), 'x');
     if (posix) {
-        writeFileSync(join(root, 'run-me'), '#!/bin/sh');
-        chmodSync(join(root, 'run-me'), 0o755);
+        // 扩展名在允许清单里,只靠可执行位拒绝
+        writeFileSync(join(root, 'run-me.txt'), '#!/bin/sh');
+        chmodSync(join(root, 'run-me.txt'), 0o755);
         symlinkSync(join(outside, 'secret.pdf'), join(root, 'link-out.pdf'));
         symlinkSync(join(outside, 'tool.exe'), join(root, 'innocent.pdf'));
     }
@@ -94,26 +96,104 @@ describe('system.open', () => {
         expect(t.precheck?.({ path: join(root, 'notes.pdf'), cwd: '/' }, ctx)).not.toBeNull();
     });
 
-    it('文件:必须在授权目录内、存在、是文件;程序和脚本按扩展名拒绝', () => {
+    it('文件:必须在授权目录内、存在、是文件;只打开允许清单里的类型', () => {
         const t = tool();
         expect(t.precheck?.({ path: join(root, 'notes.pdf') }, ctx)).toBeNull();
         expect(t.precheck?.({ path: join(outside, 'secret.pdf') }, ctx)).toMatch(/outside/);
         expect(t.precheck?.({ path: join(root, '..', 'outside', 'secret.pdf') }, ctx)).not.toBeNull();
         expect(t.precheck?.({ path: join(root, 'missing.pdf') }, ctx)).not.toBeNull();
         expect(t.precheck?.({ path: join(root, 'folder') }, ctx)).toMatch(/folders/);
-        expect(t.precheck?.({ path: join(root, 'setup.exe') }, ctx)).toMatch(/never opened/);
-        expect(t.precheck?.({ path: join(root, 'report.pdf.exe') }, ctx)).toMatch(/never opened/);
-        for (const ext of ['EXE', 'ps1', 'sh', 'app', 'lnk', 'AppImage', 'dmg', 'jar', 'hta']) {
+        expect(t.precheck?.({ path: join(root, 'setup.exe') }, ctx)).toMatch(/not this type/);
+        expect(t.precheck?.({ path: join(root, 'report.pdf.exe') }, ctx)).toMatch(/not this type/);
+        expect(t.precheck?.({ path: join(root, 'notes.PDF.pif') }, ctx)).toMatch(/not this type/);
+    });
+
+    it('🔒 越权:不在允许清单里的类型一律拒绝(含旧拒绝清单漏掉的可执行、快捷方式和脚本类型)', () => {
+        for (const ext of [
+            // 旧清单里就有的
+            'EXE',
+            'ps1',
+            'sh',
+            'app',
+            'lnk',
+            'url',
+            'AppImage',
+            'dmg',
+            'jar',
+            'hta',
+            'bat',
+            'cmd',
+            'js',
+            'vbs',
+            'desktop',
+            // Windows:会被执行或交给特殊处理程序
+            'pif',
+            'msc',
+            'scf',
+            'appref-ms',
+            'application',
+            'settingcontent-ms',
+            'library-ms',
+            'searchconnector-ms',
+            'website',
+            'chm',
+            'jnlp',
+            'inf',
+            'gadget',
+            'xll',
+            'wsc',
+            'ps1xml',
+            'psd1',
+            'cpl',
+            'msp',
+            'mst',
+            // 装了解释器就会运行
+            'py',
+            'pyw',
+            'pyz',
+            'rb',
+            'pl',
+            'php',
+            'lua',
+            // macOS:执行命令或转去打开别的地址
+            'terminal',
+            'command',
+            'tool',
+            'webloc',
+            'inetloc',
+            'fileloc',
+            'workflow',
+            'scpt',
+            'action',
+            // 浏览器里会跑脚本、带宏的文档、压缩包
+            'html',
+            'htm',
+            'svg',
+            'xhtml',
+            'mht',
+            'docm',
+            'xlsm',
+            'pptm',
+            'zip',
+            'iso',
+            '7z',
+        ]) {
             expect(blockedExtension(`a.${ext}`), ext).not.toBeNull();
         }
-        expect(blockedExtension('a.pdf')).toBeNull();
-        expect(blockedExtension('Makefile')).toBeNull();
+        // 没有扩展名、末尾是点(Windows 会去掉末尾的点)、备用数据流
+        expect(blockedExtension('Makefile')).not.toBeNull();
+        expect(blockedExtension('invoice.pif.')).not.toBeNull();
+        expect(blockedExtension('notes.exe:x.pdf')).not.toBeNull();
+        expect(blockedExtension('.pdf')).not.toBeNull();
+        for (const ok of ['a.pdf', 'A.PDF', 'notes.txt', 'b.docx', 'c.xlsx', 'photo.JPG', 'clip.mp4', 'song.mp3']) {
+            expect(blockedExtension(ok), ok).toBeNull();
+        }
     });
 
     it.skipIf(!posix)('符号链接指向目录之外或指向程序时拒绝;有可执行位的文件拒绝', () => {
         const t = tool();
         expect(t.precheck?.({ path: join(root, 'link-out.pdf') }, ctx)).toMatch(/outside/);
-        expect(t.precheck?.({ path: join(root, 'run-me') }, ctx)).toMatch(/executable/);
+        expect(t.precheck?.({ path: join(root, 'run-me.txt') }, ctx)).toMatch(/executable/);
         // innocent.pdf → outside/tool.exe:先因越界被拒
         expect(t.precheck?.({ path: join(root, 'innocent.pdf') }, ctx)).not.toBeNull();
     });
