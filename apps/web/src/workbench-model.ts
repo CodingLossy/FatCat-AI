@@ -89,10 +89,12 @@ export interface PanelState {
     dismissedRun: string | null;
     /** 已处理过的 ui.panel 调用,避免重渲染时重复执行。 */
     uiCallId: string | null;
+    /** 每次明确打开面板(点侧栏、命令、ui.panel)加一:界面据此重新载入面板内容。 */
+    opened: number;
 }
 
 export function initialPanel(): PanelState {
-    return { panel: 'files', open: false, pinned: false, runId: null, dismissedRun: null, uiCallId: null };
+    return { panel: 'files', open: false, pinned: false, runId: null, dismissedRun: null, uiCallId: null, opened: 0 };
 }
 
 export type PanelAction =
@@ -123,7 +125,8 @@ const UI_PANELS: readonly WorkbenchPanel[] = ['files', 'changes', 'mail', 'memor
  * 固定期间忽略工具切换;本轮用户收起过则不再自动打开;没有对应面板的工具保持现状。
  */
 export function reducePanel(state: PanelState, action: PanelAction): PanelState {
-    if (action.type === 'pin') return { ...state, panel: action.panel, open: true, pinned: true };
+    if (action.type === 'pin')
+        return { ...state, panel: action.panel, open: true, pinned: true, opened: state.opened + 1 };
     if (action.type === 'close') return { ...state, open: false, pinned: false, dismissedRun: state.runId };
     if (action.type === 'auto-close') return state.pinned ? state : { ...state, open: false };
     let next = state;
@@ -135,7 +138,15 @@ export function reducePanel(state: PanelState, action: PanelAction): PanelState 
         const request = uiPanelRequest(action.input);
         if (!request) return { ...next, uiCallId: action.callId };
         return request.action === 'open'
-            ? { ...next, panel: request.panel, open: true, pinned: true, dismissedRun: null, uiCallId: action.callId }
+            ? {
+                  ...next,
+                  panel: request.panel,
+                  open: true,
+                  pinned: true,
+                  dismissedRun: null,
+                  uiCallId: action.callId,
+                  opened: next.opened + 1,
+              }
             : { ...next, open: false, pinned: false, dismissedRun: next.runId, uiCallId: action.callId };
     }
     if (next.pinned || !action.toolName) return next;

@@ -91,7 +91,7 @@ test('记忆地图与会话地图', async ({ page }) => {
         ['procedural', '写周报时先列本周完成的事项'],
     ];
     for (const [memType, text] of texts) await post('/memory', { text, memType });
-    await page.getByRole('link', { name: '记忆', exact: true }).click();
+    await page.getByRole('button', { name: '记忆', exact: true }).click();
     await expect(page.locator('[data-memory-id]')).toHaveCount(texts.length);
     await page.getByRole('button', { name: '记忆地图' }).click();
     const memoryMap = page.getByTestId('memory-map').getByRole('application');

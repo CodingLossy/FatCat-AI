@@ -163,7 +163,7 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
     await expect(page.getByRole('button', { name: '拒绝' })).toHaveCount(0);
     await remembered.getByRole('button', { name: '撤销' }).click();
     await expect(remembered).toHaveText('已撤销这条记忆');
-    await page.getByRole('link', { name: '记忆' }).click();
+    await page.getByRole('button', { name: '记忆', exact: true }).click();
     await expect(page.getByText('还没有记忆。')).toBeVisible();
 
     // 再写一次,保留下来
@@ -180,7 +180,7 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
     await composer.press('Enter');
     await page.getByRole('button', { name: '拒绝' }).click();
     await expect(page.locator('.message.assistant').last()).toContainText('好的,已更新。');
-    await page.getByRole('link', { name: '记忆' }).click();
+    await page.getByRole('button', { name: '记忆', exact: true }).click();
     await expect(page.locator('.memory')).toHaveCount(1);
     await expect(page.locator('.memory')).toContainText('用户常住杭州');
 
@@ -207,7 +207,7 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
     await expect(used).toContainText('已更正');
 
     // 记忆页:只看到更正后的值,历史中能看到更替链;编辑、忘记(验收 ⑦)
-    await page.getByRole('link', { name: '记忆' }).click();
+    await page.getByRole('button', { name: '记忆', exact: true }).click();
     const item = page.locator('.memory');
     await expect(item).toHaveCount(1);
     await expect(item).toContainText('用户住在苏州');
@@ -217,7 +217,7 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
     await item.getByRole('button', { name: '编辑' }).click();
     await item.getByRole('textbox').fill('用户常住杭州西湖区');
     await item.getByRole('button', { name: '保存' }).click();
-    await expect(page.locator('.memory-text')).toHaveText('用户常住杭州西湖区');
+    await expect(page.locator('.wb-float .memory-text')).toHaveText('用户常住杭州西湖区');
     await page.locator('.memory').getByRole('button', { name: '删除' }).click();
     await expect(page.getByText('还没有记忆。')).toBeVisible();
 
