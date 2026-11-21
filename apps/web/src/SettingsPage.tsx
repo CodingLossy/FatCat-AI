@@ -12,6 +12,7 @@ import {
     resolveView,
     type SettingsSectionId,
     type SettingsView,
+    SETTINGS_VIEW_KEY,
 } from './settings-model.js';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
@@ -305,11 +306,9 @@ function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) =>
     );
 }
 
-const VIEW_KEY = 'fatcat.settings.view';
-
 function loadView(): SettingsView {
     try {
-        const raw = window.sessionStorage.getItem(VIEW_KEY);
+        const raw = window.sessionStorage.getItem(SETTINGS_VIEW_KEY);
         if (raw) {
             const v = JSON.parse(raw) as { section?: unknown; item?: unknown };
             return resolveView(v.section, v.item);
@@ -332,7 +331,7 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
         const next = resolveView(section, item);
         setView(next);
         try {
-            window.sessionStorage.setItem(VIEW_KEY, JSON.stringify(next));
+            window.sessionStorage.setItem(SETTINGS_VIEW_KEY, JSON.stringify(next));
         } catch {
             // 存不下也不影响使用
         }

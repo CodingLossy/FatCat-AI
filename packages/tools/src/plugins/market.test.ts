@@ -186,6 +186,13 @@ describe('fetching the index and packages over https', () => {
         });
     });
 
+    it('reports a host resolved into the fake-IP range as index_fake_ip_blocked', async () => {
+        const fake = async () => [{ address: '198.18.0.7', family: 4 }];
+        await expect(fetchIndexFiles(market(), { resolve: fake })).rejects.toMatchObject({
+            code: 'index_fake_ip_blocked',
+        });
+    });
+
     it('downloads a package whose size and sha256 match, following same-host redirects', async () => {
         expect((await downloadPackage(version('/pkg'), ['ok.test'], net)).equals(payload)).toBe(true);
         expect((await downloadPackage(version('/redirect'), ['ok.test'], net)).equals(payload)).toBe(true);

@@ -120,6 +120,7 @@ describe('/api/v1/tools、/approvals、/preauthorizations、/audit', () => {
             ['memory.search', 'read', 'auto', true, null],
             ['memory.write', 'write', 'required', true, null],
             ['time', 'read', 'auto', true, null],
+            ['ui.panel', 'read', 'auto', true, null],
             ['web.fetch', 'read', 'required', true, 'domain'],
         ]);
 

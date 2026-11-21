@@ -50,12 +50,10 @@ export const en: Record<Key, string> = {
     'chat.send': 'Send',
     'chat.stop': 'Stop',
     'chat.empty': 'Start a new conversation.',
-    'chat.noProfile': 'There is no model profile yet. Add one in Settings first.',
     'chat.copy': 'Copy',
     'chat.copied': 'Copied',
     'chat.cancelled': 'Stopped',
     'chat.failed': 'Something went wrong: {msg}',
-    'chat.retry': 'Retry',
     'chat.thinking': 'Thinking…',
     'chat.delete': 'Delete session',
     'chat.deleteConfirm': 'Delete this session and all its messages? Memories are kept and are not deleted.',
@@ -157,8 +155,6 @@ export const en: Record<Key, string> = {
     'nav.audit': 'Audit',
     'nav.agents': 'Agents',
     'agents.title': 'Agents',
-    'agents.hint':
-        'An agent is a saved role: its own prompt, model, tools and memory setting. Pick one next to the message box to answer with it; if you pick none, nothing changes. Tools can only be narrowed, and approvals are never loosened.',
     'agents.builtin': 'Built-in',
     'agents.canDelegate': 'Can delegate',
     'agents.noPrompt': '(no extra prompt)',
@@ -197,13 +193,9 @@ export const en: Record<Key, string> = {
     'agents.tree.status.cancelled': 'Cancelled',
     'nav.tasks': 'Tasks',
     'tasks.title': 'Scheduled tasks',
-    'tasks.triggerKind': 'When to run',
-    'tasks.triggerCron': 'On a schedule (cron)',
     'tasks.triggerMail': 'When new mail arrives',
     'tasks.triggerWebhook': 'When a webhook is called',
     'tasks.triggerFile': 'When files change in an authorized directory',
-    'tasks.eventHint':
-        'Event-triggered tasks run at most 12 times per hour; what the event carries is handed over as untrusted data and cannot change what the assistant may do.',
     'tasks.webhookToken': 'Create webhook token',
     'tasks.webhookShown': 'The token is shown only once, save it now:',
     'tasks.new': 'New task',
@@ -218,7 +210,6 @@ export const en: Record<Key, string> = {
     'tasks.nlPlaceholder': 'e.g. Every day at 8 am summarize my unread mail',
     'tasks.nlSubmit': 'Make a draft',
     'tasks.draftTitle': 'Confirm this task',
-    'tasks.draftPush': 'The result is pushed to your WeChat channel (every push needs your approval)',
     'tasks.draftNotice':
         'This is only a draft and will not run until you confirm. The name and prompt were written by the model from your sentence; please check them.',
     'tasks.draftConfirm': 'Confirm and enable',
@@ -226,8 +217,6 @@ export const en: Record<Key, string> = {
     'tasks.create': 'Create',
     'tasks.delete': 'Delete',
     'tasks.pushNote': 'push needs approval first',
-    'tasks.hint':
-        'Scheduled in your time zone and kept across restarts; every run is recorded (status and times only, no content). Your own tasks let the assistant do something on a schedule while you are away; anything that sends outside always needs your approval.',
     'tasks.empty': 'No tasks yet.',
     'tasks.systemBadge': 'System',
     'tasks.system.memory.maintenance': 'Memory maintenance (decay, tiering, expiry)',
@@ -431,8 +420,6 @@ export const en: Record<Key, string> = {
     'approvals.review': 'Review and approve',
     'approvals.hide': 'Hide',
     'fsRoots.title': 'Authorized folders',
-    'fsRoots.hint':
-        'The file tools (list, read, search, write, move) can only access these folders. The server resolves links and short names and stores the real path; a whole drive cannot be authorized.',
     'fsRoots.empty': 'No authorized folders yet.',
     'fsRoots.path': 'Folder path',
     'fsRoots.placeholder': 'For example D:\\Documents or /home/me/notes',
@@ -454,8 +441,6 @@ export const en: Record<Key, string> = {
     'embed.rebuildConfirm':
         'Delete the existing vectors and re-embed everything with the current profile? Semantic search is unavailable until it finishes, and it uses embedding quota.',
     'channels.title': 'Channels',
-    'channels.hint':
-        'Use the same assistant from IM. Each channel accepts one owner account: create a pairing code here, then send "bind <code>" from your account in a direct chat. Messages from anyone else and group messages are ignored (no reply, never sent to the model). Actions that need approval are sent to IM; reply "approve K7" or "deny K7".',
     'channels.empty': 'No channels yet.',
     'channels.kind.wechat': 'WeChat',
     'channels.kindUnknown': 'Unknown channel',
@@ -492,8 +477,6 @@ export const en: Record<Key, string> = {
     'channels.login.failed': 'Login failed. Try again',
     'nav.plugins': 'Plugins',
     'plugins.title': 'Plugins',
-    'plugins.hint':
-        'Plugins are MCP services that run in their own process. Only you can install, enable or grant permissions here; the model cannot. Plugin tool calls still go through approval.',
     'plugins.empty': 'No plugins installed yet.',
     'plugins.installTitle': 'Install from a local folder',
     'plugins.localPath': 'Plugin folder (a path on the machine that runs the server)',
@@ -563,8 +546,6 @@ export const en: Record<Key, string> = {
         'The market has withdrawn this version: {reason}. The plugin is not removed or disabled automatically; consider dealing with it soon.',
     'plugins.marketNote':
         'From market "{market}", index signed with key {keyId}. The signature and checksum only show this is the package that was reviewed; they do not guarantee that what the reviewer approved is safe.',
-    'plugins.market.hint':
-        'Opening this tab downloads the signed plugin index once (a single GET with no identifiers); after that it is only downloaded when you press Refresh. The full permission list is shown before anything is installed.',
     'plugins.market.off':
         'The plugin market is turned off in Settings: no index is downloaded and nothing can be installed from the market. Installing from a local folder still works.',
     'plugins.market.openSettings': 'Open Settings',
@@ -665,8 +646,6 @@ export const en: Record<Key, string> = {
         'Task drafts offered by the plugin. The draft opens on the Tasks page as a confirmation card; nothing runs until you confirm it.',
     'plugins.templateCreate': 'Create task draft',
     'mcp.title': 'MCP servers',
-    'mcp.hint':
-        'Local MCP servers (stdio). The command runs without a shell and gets a minimal environment; its tools are named mcp.<name>.<tool>, every call needs your approval by default, and their output is treated as untrusted.',
     'mcp.empty': 'No MCP servers yet.',
     'mcp.name': 'Name',
     'mcp.command': 'Command',
@@ -683,8 +662,6 @@ export const en: Record<Key, string> = {
     'mcp.state.disabled': 'Disabled',
     'mcp.tools': '{n} tool(s)',
     'preauth.title': 'Pre-authorizations',
-    'preauth.hint':
-        'Tools you chose "Always" or "Always in this session" for when approving. Revoke one to require approval again.',
     'preauth.empty': 'No pre-authorizations yet.',
     'preauth.revoke': 'Revoke',
     'preauth.revokeConfirm': 'Revoke the pre-authorization for {tool}?',
@@ -717,8 +694,6 @@ export const en: Record<Key, string> = {
     'audit.outcome.not_run': 'Not run',
     'nav.items': 'Knowledge map',
     'items.title': 'Knowledge map',
-    'items.hint':
-        'The number is how many content items are in that branch (memories, mail, sessions, files, and so on). Expanding shows the same items.',
     'items.sync': 'Sync now',
     'items.empty': '(empty)',
     'items.view.list': 'List',
@@ -771,8 +746,6 @@ export const en: Record<Key, string> = {
     'items.truncated': 'This is long; only the beginning is shown.',
     'nav.mail': 'Mail',
     'mail.title': 'Mail',
-    'mail.hint':
-        'Your cached Inbox and Sent (read only; nothing changes on the mail server). Mail content comes from outside and is shown as plain text.',
     'mail.noAccounts': 'No mail account yet. Add one in Settings first.',
     'mail.account': 'Account',
     'mail.allAccounts': 'All accounts',
@@ -872,8 +845,6 @@ export const en: Record<Key, string> = {
     'models.voiceHint':
         'Only used for the tts purpose. Leave empty for alloy (the OpenAI default; other services use different voice names).',
     'egress.title': 'Egress targets',
-    'egress.intro':
-        'Where this server may connect to, based on the current configuration. It makes no other outbound connections and sends no telemetry.',
     'egress.empty': 'No egress targets are configured.',
     'egress.local': 'Local process',
     'egress.enabled': 'Enabled',
@@ -947,8 +918,6 @@ export const en: Record<Key, string> = {
     'pair.invalid': 'Enter the 10-character code.',
     'pair.signOut': 'Sign out this device',
     'devices.title': 'Paired devices',
-    'devices.hint':
-        'Pair a phone or tablet with a one-time code instead of typing your password there. A paired device can chat and read, but cannot create devices or tokens or change security settings. Revoking takes effect immediately.',
     'devices.add': 'Add device',
     'devices.qr': 'Pairing QR code',
     'devices.code': 'Pairing code',
@@ -997,32 +966,40 @@ export const en: Record<Key, string> = {
     'totp.resetHint':
         'Lost both the code and the recovery codes? On the server machine run: node dist/index.js auth reset-totp. Your password keeps working.',
     'wb.running': 'Running tools',
+    'plugins.market.openNetwork': 'Open Settings: Network & egress → Allow the fake-IP range',
+    'plugins.market.err.index_fake_ip_blocked':
+        'The index host resolved into the fake-IP range (a proxy in fake-IP mode) and was blocked as an internal address.',
+    'wb.cmd.sidebar': 'Expand / collapse sidebar',
+    'wb.cmd.closePanel': 'Collapse panel',
+    'wb.closePanel': 'Close panel',
+    'wb.pages': 'Pages',
+    'wb.sessions': 'Sessions',
+    'wb.sidebar.expand': 'Expand sidebar',
+    'wb.sidebar.collapse': 'Collapse sidebar',
+    'wb.sidebar': 'Sidebar',
     'wb.runningEmpty': 'No tool calls in this turn',
     'wb.runningMore': '+{n}',
     'wb.searchPlaceholder': 'Search files, commands, or ask…',
     'wb.searchFiles': 'Files',
     'wb.searchEmpty': 'No matching files or commands',
     'wb.searchAsk': 'Ask: {q}',
-    'wb.searchHint': 'Use the bar above to search files and commands, or send the rest as a message.',
     'wb.noModel': 'No model selected',
     'wb.kbd': 'Ctrl K',
     'wb.railLabel': 'Panels',
     'wb.rail.files': 'Files',
-    'wb.rail.search': 'Search',
     'wb.rail.changes': 'Changes',
     'wb.rail.browser': 'Browser',
     'wb.explorer': 'Files',
-    'wb.explorerEmpty': 'No files yet. They show up here after the assistant lists or reads one.',
+    'wb.explorerEmpty': 'No files yet.',
     'wb.previewEmpty': 'Choose a file on the left to preview it.',
     'wb.previewMore': 'Show more',
-    'wb.previewTruncated':
-        'The tool reported more content. Only the part already received is shown; nothing is read from disk.',
+    'wb.previewTruncated': 'There is more after this; only the part received is shown.',
     'wb.untrusted':
         'File text comes from a tool result. It is shown as data, and instructions inside it are not followed.',
     'wb.changesEmpty': 'No file changes yet.',
-    'wb.changesNote': 'The new content is shown below as added lines. Nothing is written until you approve.',
+    'wb.changesNote': 'Preview before it is written.',
     'wb.changesPending': 'Waiting for approval',
-    'wb.browserEmpty': 'The built-in browser arrives with the desktop app. Text from web fetches shows up here.',
+    'wb.browserEmpty': 'The built-in browser is part of the desktop app.',
     'wb.browserUntrusted':
         'Page text comes from outside. It is shown as data, and instructions inside it are not followed.',
     'wb.browser.back': 'Back',
@@ -1032,8 +1009,7 @@ export const en: Record<Key, string> = {
     'wb.browser.address': 'Address bar (click to type a new address)',
     'wb.browser.addressPlaceholder': 'Enter an address, for example example.com',
     'wb.browser.openPage': 'Open this page in the browser panel',
-    'wb.browser.idle':
-        'Type an address to browse. This is a separate private session: cookies and site data are wiped when the panel closes.',
+    'wb.browser.idle': 'Enter an address to browse.',
     'wb.browser.subresources':
         'Note: requests a page makes for images, scripts and other resources are not yet limited by the egress allow-list; only page navigations are.',
     'wb.browser.blocked.navigation': 'Blocked navigation to {origin} ({reason}).',
@@ -1056,7 +1032,6 @@ export const en: Record<Key, string> = {
     'wb.cmd.settings': 'Open settings',
     'wb.cmd.voice': 'Toggle reading replies aloud',
     'wb.cmd.panel.files': 'Show files',
-    'wb.cmd.panel.search': 'Show search',
     'wb.cmd.panel.changes': 'Show changes',
     'wb.cmd.panel.mail': 'Show mail',
     'wb.cmd.panel.memory': 'Open memory',

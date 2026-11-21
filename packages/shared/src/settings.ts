@@ -85,7 +85,7 @@ export const DEFAULT_SETTINGS: Settings = {
     defaultChatProfileId: null,
     defaultCheapProfileId: null,
     locale: 'zh-CN',
-    theme: 'system',
+    theme: 'dark',
     memory: { autoExtract: false, extractDailyLimit: 200, alwaysApprove: false, digestTokens: 400, blockTokens: 1200 },
     knowledgeBase: { chunkChars: 1000 },
     voice: DEFAULT_VOICE_SETTINGS,

@@ -10,6 +10,7 @@ import {
     checkUrl,
     createCalcTool,
     createTimeTool,
+    createUiPanelTool,
     createWebFetchTool,
     evaluate,
     guardedFetch,
@@ -346,5 +347,25 @@ describe('isFakeIpAddress', () => {
         expect(isFakeIpAddress('198.17.255.255')).toBe(false);
         expect(isFakeIpAddress('10.0.0.1')).toBe(false);
         expect(isFakeIpAddress('example.com')).toBe(false);
+    });
+});
+
+describe('ui.panel', () => {
+    const tool = createUiPanelTool();
+
+    it('只回显要打开或收起的面板,没有副作用', async () => {
+        expect(await tool.execute({ action: 'open', panel: 'mail' }, ctx)).toEqual({
+            ok: true,
+            action: 'open',
+            panel: 'mail',
+        });
+        expect(await tool.execute({ action: 'close' }, ctx)).toEqual({ ok: true, action: 'close' });
+        expect(tool.risk).toBe('read');
+    });
+
+    it('拒绝未知面板、缺少面板和多余字段', async () => {
+        await expect(tool.execute({ action: 'open', panel: 'terminal' }, ctx)).rejects.toThrow();
+        await expect(tool.execute({ action: 'open' }, ctx)).rejects.toThrow();
+        await expect(tool.execute({ action: 'close', panel: 'files' }, ctx)).rejects.toThrow();
     });
 });

@@ -168,7 +168,7 @@ test('不在桌面壳里:不声明浏览器能力,浏览器面板仍是文字卡
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page.getByRole('button', { name: '浏览器', exact: true })).toBeVisible();
     await page.getByRole('button', { name: '浏览器', exact: true }).click();
-    await expect(page.getByText('内置浏览器将在桌面版提供')).toBeVisible();
+    await expect(page.getByText('内置浏览器在桌面版提供')).toBeVisible();
     expect(sent.some((frame) => frame.includes('client-capabilities'))).toBe(false);
     await shot(page, 'browser-panel-web-fallback');
 });

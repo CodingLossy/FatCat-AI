@@ -372,7 +372,6 @@ export function ItemsPage() {
                     </button>
                 </div>
             </div>
-            <p className="muted small">{t('items.hint')}</p>
             {error ? <p className="error">{error}</p> : null}
             <div className="items-layout">
                 <nav className={`items-tree${drawer ? ' open' : ''}`} aria-label={t('items.categories')}>

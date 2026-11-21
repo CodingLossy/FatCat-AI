@@ -8,6 +8,15 @@ import type { AssistantState } from '@fatcat-ai/shared';
 import type { VoiceOrb } from '@fatcat-ai/ui';
 import { useEffect, useRef, useState } from 'react';
 
+/** 各状态下光晕的基础强度(0–1)。 */
+const ENERGY: Record<AssistantState, number> = {
+    idle: 0.3,
+    listening: 0.5,
+    thinking: 0.75,
+    speaking: 0.65,
+    executing: 0.75,
+};
+
 export function VoiceIndicator({
     state,
     label,
@@ -43,10 +52,23 @@ export function VoiceIndicator({
         orb.current?.setState(state);
     }, [state, noCanvas]);
 
+    // 全窗口光晕跟主视觉:能量按状态、亮度随说话音量;写在工作台外壳的 CSS 变量上,减少动态时保持静态
+    const shell = useRef<HTMLElement | null>(null);
     useEffect(() => {
-        const timer = setInterval(() => orb.current?.setLevel(level.current), 50);
-        return () => clearInterval(timer);
-    }, [level]);
+        shell.current = canvas.current?.closest<HTMLElement>('.wb-shell') ?? null;
+        const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const base = ENERGY[state];
+        shell.current?.style.setProperty('--hero-energy', String(base));
+        const timer = setInterval(() => {
+            const value = level.current;
+            orb.current?.setLevel(value);
+            if (!reduced) shell.current?.style.setProperty('--hero-level', (value ?? 0).toFixed(2));
+        }, 50);
+        return () => {
+            clearInterval(timer);
+            shell.current?.style.removeProperty('--hero-level');
+        };
+    }, [level, state]);
 
     return (
         <div className="voice-indicator" data-testid="voice-indicator" data-state={state}>

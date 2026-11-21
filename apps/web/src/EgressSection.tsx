@@ -35,7 +35,6 @@ export function EgressSection() {
     return (
         <section className="card form" aria-label={t('egress.title')}>
             <h2>{t('egress.title')}</h2>
-            <p className="small muted">{t('egress.intro')}</p>
             {groups.length === 0 ? <p className="small">{t('egress.empty')}</p> : null}
             {groups.map(({ category, items }) => (
                 <div key={category} data-testid={`egress-${category}`}>

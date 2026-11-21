@@ -5,6 +5,7 @@ import type { ToolDefinition } from '../types.js';
 import { createBrowserTools, type BrowserToolOptions } from './browser.js';
 import { createCalcTool } from './calc.js';
 import { createTimeTool } from './time.js';
+import { createUiPanelTool } from './ui.js';
 import { createWebFetchTool, type WebFetchOptions } from './web-fetch.js';
 
 export interface BuiltinToolOptions {
@@ -21,6 +22,7 @@ export function createBuiltinTools(options: BuiltinToolOptions = {}): ToolDefini
     return [
         createTimeTool(options.now, options.timeZoneOf),
         createCalcTool(),
+        createUiPanelTool(),
         createWebFetchTool(options.webFetch),
         ...(options.browser ? createBrowserTools(options.browser) : []),
     ];

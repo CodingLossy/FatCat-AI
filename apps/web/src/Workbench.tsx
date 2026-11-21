@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// 桌面宽度的工作台(ui-redesign.md 第 5 节):顶栏、左侧舞台、导轨和面板。
-// 900px 以下仍用原来的侧栏,手机单栏在后面的 PR 里做。
+// 桌面宽度的工作台(M12 重做):主视觉铺满窗口;左侧栏有展开 / 收起两态;右侧面板是浮在主视觉上的玻璃卡片,
+// 空闲时不显示,工具调用或 ui.panel 时打开,运行结束 8 秒后自动收起。900px 以下仍用原来的抽屉,手机单栏在后面的 PR 里做。
 import type { Item, Session, Settings } from '@fatcat-ai/shared';
 import type { IconName } from '@fatcat-ai/ui/icons';
 import {
@@ -35,9 +35,11 @@ import { MailPage } from './MailPage.js';
 import { MemoryPage } from './MemoryPage.js';
 import { navigate, routePath, useRoute, type Route } from './router.js';
 import {
+    AUTO_CLOSE_MS,
     initialPanel,
     matchCommands,
     reducePanel,
+    shouldAutoClose,
     toolsFromTranscript,
     visibleToolRows,
     type ToolRowStatus,
@@ -71,9 +73,8 @@ function Link({
     );
 }
 
-const RAIL_PANELS: { id: WorkbenchPanel; icon: IconName; label: Key }[] = [
+const SIDE_PANELS: { id: WorkbenchPanel; icon: IconName; label: Key }[] = [
     { id: 'files', icon: 'files', label: 'wb.rail.files' },
-    { id: 'search', icon: 'search', label: 'wb.rail.search' },
     { id: 'changes', icon: 'diff', label: 'wb.rail.changes' },
     { id: 'mail', icon: 'mail', label: 'nav.mail' },
     { id: 'memory', icon: 'brain', label: 'nav.memory' },
@@ -88,6 +89,25 @@ const PAGE_LINKS: { to: Route; icon: IconName; label: Key }[] = [
     { to: { name: 'agents' }, icon: 'cat', label: 'nav.agents' },
     { to: { name: 'audit' }, icon: 'pulse', label: 'nav.audit' },
 ];
+
+const SIDEBAR_KEY = 'fatcat.sidebar';
+
+/** 左侧栏是否收成图标栏;记在本机浏览器里,读写失败时用展开。 */
+function loadCollapsed(): boolean {
+    try {
+        return window.localStorage.getItem(SIDEBAR_KEY) === 'min';
+    } catch {
+        return false;
+    }
+}
+
+function saveCollapsed(collapsed: boolean): void {
+    try {
+        window.localStorage.setItem(SIDEBAR_KEY, collapsed ? 'min' : 'full');
+    } catch {
+        // 存不下也不影响使用
+    }
+}
 
 function statusIcon(status: ToolRowStatus): IconName | null {
     if (status === 'done') return 'check';
@@ -137,6 +157,21 @@ export function Workbench({
     const [clicked, setClicked] = useState<{ path: string; line: number } | null>(null);
     const [pending, setPending] = useState<{ kind: 'one'; id: string } | { kind: 'all' } | null>(null);
     const [busy, setBusy] = useState(false);
+    const [collapsed, setCollapsed] = useState(loadCollapsed);
+    const [approvals, setApprovals] = useState(0);
+    const onApprovals = useCallback(
+        (n: number) => {
+            setApprovals(n);
+            onApprovalCount(n);
+        },
+        [onApprovalCount],
+    );
+    const toggleSidebar = useCallback(() => {
+        setCollapsed((value) => {
+            saveCollapsed(!value);
+            return !value;
+        });
+    }, []);
 
     const tools = useMemo(() => toolsFromTranscript(activity?.messages ?? [], activity?.live ?? null), [activity]);
     const liveTools = activity?.live?.tools ?? [];
@@ -155,18 +190,30 @@ export function Workbench({
         };
     }, [browser]);
     // 搜索下拉、模型菜单和确认框会盖在面板上,而原生 webview 总在界面之上:这些浮层打开时先藏起来
-    const overlayOpen = searchOpen || modelOpen || pending !== null;
+    const overlayOpen = searchOpen || modelOpen || pending !== null || !panel.open;
     useEffect(() => {
         browser?.setHidden(overlayOpen);
     }, [browser, overlayOpen]);
     const selected = picked ?? workspace.selectedPath ?? opened?.path ?? null;
     const activeRow = [...running.rows].reverse().find((row) => row.status === 'running' || row.status === 'waiting');
 
-    const latestName = liveTools.length > 0 ? liveTools[liveTools.length - 1]!.name : null;
+    const latest = liveTools.length > 0 ? liveTools[liveTools.length - 1]! : null;
+    const latestName = latest?.name ?? null;
+    const latestCallId = latest?.callId ?? null;
+    const latestInput = latest?.input;
     const runId = activity?.live?.runId ?? null;
+    const runActive = activity?.live != null;
     useEffect(() => {
-        dispatch({ type: 'live', runId, toolName: latestName });
-    }, [runId, latestName]);
+        dispatch({ type: 'live', runId, toolName: latestName, callId: latestCallId, input: latestInput });
+    }, [runId, latestName, latestCallId, latestInput]);
+
+    // 运行结束后 8 秒自动收起;固定、有待审批、或又开始新一轮时不收
+    const autoClose = shouldAutoClose(panel, runActive, approvals);
+    useEffect(() => {
+        if (!autoClose) return;
+        const timer = window.setTimeout(() => dispatch({ type: 'auto-close' }), AUTO_CLOSE_MS);
+        return () => window.clearTimeout(timer);
+    }, [autoClose]);
 
     useEffect(() => {
         let alive = true;
@@ -188,15 +235,24 @@ export function Workbench({
         const onKey = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
                 e.preventDefault();
-                searchRef.current?.focus();
                 setSearchOpen(true);
-            } else if (e.key === 'Escape') {
-                setModelOpen(false);
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+                e.preventDefault();
+                toggleSidebar();
+            } else if (e.key === 'Escape' && !e.defaultPrevented) {
+                // 先关菜单和搜索,再收起面板
+                if (modelOpen) setModelOpen(false);
+                else if (pending) setPending(null);
+                else if (panel.open) dispatch({ type: 'close' });
             }
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, []);
+    }, [modelOpen, pending, panel.open, toggleSidebar]);
+
+    useEffect(() => {
+        if (searchOpen) searchRef.current?.focus();
+    }, [searchOpen]);
 
     const seq = useRef(0);
     useEffect(() => {
@@ -219,14 +275,16 @@ export function Workbench({
     const commands = useMemo(() => {
         const go = (target: Route) => () => navigate(target);
         const pin = (id: WorkbenchPanel) => () => dispatch({ type: 'pin', panel: id });
+        const close = () => dispatch({ type: 'close' });
         const list: { id: string; label: string; keywords: string; run: () => void }[] = [
             { id: 'new', label: t('nav.newChat'), keywords: 'new chat session', run: go({ name: 'home' }) },
             { id: 'settings', label: t('wb.cmd.settings'), keywords: 'settings', run: go({ name: 'settings' }) },
             { id: 'files', label: t('wb.cmd.panel.files'), keywords: 'files', run: pin('files') },
-            { id: 'search', label: t('wb.cmd.panel.search'), keywords: 'search', run: pin('search') },
             { id: 'changes', label: t('wb.cmd.panel.changes'), keywords: 'diff changes', run: pin('changes') },
             { id: 'mail', label: t('wb.cmd.panel.mail'), keywords: 'mail', run: pin('mail') },
-            { id: 'memory', label: t('wb.cmd.panel.memory'), keywords: 'memory', run: go({ name: 'memory' }) },
+            { id: 'memory', label: t('wb.cmd.panel.memory'), keywords: 'memory', run: pin('memory') },
+            { id: 'close-panel', label: t('wb.cmd.closePanel'), keywords: 'close collapse hide panel', run: close },
+            { id: 'sidebar', label: t('wb.cmd.sidebar'), keywords: 'sidebar collapse expand', run: toggleSidebar },
             { id: 'browser', label: t('wb.cmd.panel.browser'), keywords: 'browser', run: pin('browser') },
             { id: 'tasks', label: t('nav.tasks'), keywords: 'tasks', run: go({ name: 'tasks' }) },
             { id: 'plugins', label: t('nav.plugins'), keywords: 'plugins', run: go({ name: 'plugins' }) },
@@ -255,7 +313,7 @@ export function Workbench({
             });
         }
         return list;
-    }, [onSettings, sessions, settings.voice.autoSpeak, t]);
+    }, [onSettings, sessions, settings.voice.autoSpeak, t, toggleSidebar]);
 
     const shownFiles = query.trim() ? files : [];
     const shownCommands = matchCommands(commands, query).slice(0, 8);
@@ -331,6 +389,7 @@ export function Workbench({
             e.preventDefault();
             activate(activeHit);
         } else if (e.key === 'Escape') {
+            e.preventDefault();
             setSearchOpen(false);
             searchRef.current?.blur();
         }
@@ -372,140 +431,231 @@ export function Workbench({
         }
     };
 
+    const panelTitle = (id: WorkbenchPanel): string => {
+        const item = SIDE_PANELS.find((entry) => entry.id === id);
+        return item ? t(item.label) : '';
+    };
+    const sessionTitle = sessions.find((session) => session.id === sessionId)?.title || t('nav.newChat');
+
     return (
-        <div className="shell wb-shell">
-            <header className="wb-top">
-                <Link to={{ name: 'home' }} className="wb-brand" label="FatCat-AI">
-                    <Icon name="paw" size={24} />
-                    <span>FatCat-AI{serverVersion ? <small> v{serverVersion}</small> : null}</span>
-                </Link>
-                <div className="wb-search">
-                    <Icon name="search" size={16} />
-                    <input
-                        ref={searchRef}
-                        value={query}
-                        placeholder={t('wb.searchPlaceholder')}
-                        aria-label={t('wb.searchPlaceholder')}
-                        aria-expanded={searchOpen}
-                        aria-controls="wb-search-list"
-                        role="combobox"
-                        onChange={(e) => {
-                            setQuery(e.target.value);
-                            setCursor(0);
-                            setSearchOpen(true);
-                        }}
-                        onFocus={() => setSearchOpen(true)}
-                        onBlur={() => window.setTimeout(() => setSearchOpen(false), 150)}
-                        onKeyDown={onSearchKey}
-                    />
-                    <kbd>{t('wb.kbd')}</kbd>
-                    {searchOpen ? (
-                        <ul className="wb-search-list" id="wb-search-list" role="listbox">
-                            {hits.length === 0 ? <li className="muted">{t('wb.searchEmpty')}</li> : null}
-                            {shownFiles.length > 0 ? <li className="wb-search-label">{t('wb.searchFiles')}</li> : null}
-                            {hits.map((hit, index) => (
-                                <li key={hit.kind === 'file' ? hit.item.id : hit.kind === 'command' ? hit.id : 'ask'}>
-                                    <button
-                                        type="button"
-                                        role="option"
-                                        aria-selected={index === cursor}
-                                        className={index === cursor ? 'on' : ''}
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => activate(hit)}
-                                    >
-                                        {hit.kind === 'file'
-                                            ? hit.item.title
-                                            : hit.kind === 'command'
-                                              ? hit.label
-                                              : t('wb.searchAsk', { q: query.trim() })}
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : null}
-                </div>
-                <div className="wb-model">
+        <div
+            className="shell wb-shell"
+            data-sidebar={collapsed ? 'min' : 'full'}
+            data-panel={panel.open ? 'open' : 'closed'}
+        >
+            <div className="wb-glow" aria-hidden="true" />
+            <aside className="wb-side" aria-label={t('wb.sidebar')}>
+                <div className="wb-side-head">
+                    <Link to={{ name: 'home' }} className="wb-brand" label="FatCat-AI">
+                        <Icon name="paw" size={24} />
+                        <span className="wb-side-text">FatCat-AI</span>
+                    </Link>
                     <button
                         type="button"
-                        className="wb-pill"
-                        aria-haspopup="listbox"
-                        aria-expanded={modelOpen}
-                        onClick={() => setModelOpen((open) => !open)}
+                        className="wb-side-toggle"
+                        aria-expanded={!collapsed}
+                        aria-label={collapsed ? t('wb.sidebar.expand') : t('wb.sidebar.collapse')}
+                        title={`${collapsed ? t('wb.sidebar.expand') : t('wb.sidebar.collapse')} (Ctrl B)`}
+                        onClick={toggleSidebar}
                     >
-                        <Icon name="cat" size={16} />
-                        {modelLabel}
+                        <Icon name={collapsed ? 'fwd' : 'back'} size={16} />
                     </button>
-                    {modelOpen ? (
-                        <ul className="wb-model-menu" role="listbox">
-                            {chatProfiles.length === 0 ? <li className="muted">{t('wb.noModel')}</li> : null}
-                            {chatProfiles.map((profile) => (
-                                <li key={profile.id}>
+                </div>
+                <Link to={{ name: 'home' }} className="wb-side-item wb-new" label={t('nav.newChat')}>
+                    <Icon name="chat" size={20} />
+                    <span className="wb-side-text">{t('nav.newChat')}</span>
+                </Link>
+                <nav className="wb-side-group" aria-label={t('wb.railLabel')}>
+                    {SIDE_PANELS.map((item) => (
+                        <button
+                            key={item.id}
+                            type="button"
+                            className={`wb-side-item${panel.open && panel.panel === item.id ? ' on' : ''}`}
+                            aria-label={t(item.label)}
+                            aria-pressed={panel.open && panel.panel === item.id}
+                            title={t(item.label)}
+                            onClick={() => dispatch({ type: 'pin', panel: item.id })}
+                        >
+                            <Icon name={item.icon} size={20} />
+                            <span className="wb-side-text">{t(item.label)}</span>
+                        </button>
+                    ))}
+                </nav>
+                {sessions.length > 0 ? (
+                    <ul className="wb-sessions" aria-label={t('wb.sessions')}>
+                        {sessions.map((session) => {
+                            const title = session.title || t('nav.untitled');
+                            return (
+                                <li key={session.id}>
+                                    <Link
+                                        to={{ name: 'session', id: session.id }}
+                                        className={session.id === sessionId ? 'on' : ''}
+                                        label={title}
+                                    >
+                                        {title}
+                                    </Link>
                                     <button
                                         type="button"
-                                        role="option"
-                                        aria-selected={profile.id === activity?.profile?.id}
-                                        onClick={() => void chooseModel(profile.id)}
+                                        className="link small"
+                                        aria-label={`${t('chat.delete')}: ${title}`}
+                                        onClick={() => setPending({ kind: 'one', id: session.id })}
                                     >
-                                        {profile.label}
+                                        {t('nav.deleteSession')}
                                     </button>
                                 </li>
-                            ))}
-                        </ul>
-                    ) : null}
-                </div>
-                <Link to={{ name: 'home' }} className="wb-new" label={t('nav.newChat')}>
-                    {t('nav.newChat')}
-                </Link>
-                <button type="button" className="link small" onClick={() => void onLogout()}>
-                    {t('auth.logout')}
-                </button>
-            </header>
-            <ApprovalPanel currentSessionId={sessionId} onCount={onApprovalCount} />
-            {sessions.length > 0 ? (
-                <ul className="wb-sessions">
-                    {sessions.map((session) => {
-                        const title = session.title || t('nav.untitled');
-                        return (
-                            <li key={session.id}>
-                                <Link
-                                    to={{ name: 'session', id: session.id }}
-                                    className={session.id === sessionId ? 'on' : ''}
-                                    label={title}
-                                >
-                                    {title}
-                                </Link>
-                                <button
-                                    type="button"
-                                    className="link small"
-                                    aria-label={`${t('chat.delete')}: ${title}`}
-                                    onClick={() => setPending({ kind: 'one', id: session.id })}
-                                >
-                                    {t('nav.deleteSession')}
-                                </button>
-                            </li>
-                        );
-                    })}
-                    <li>
-                        <button type="button" className="link small" onClick={() => setPending({ kind: 'all' })}>
-                            {t('nav.clearSessions')}
+                            );
+                        })}
+                        <li>
+                            <button type="button" className="link small" onClick={() => setPending({ kind: 'all' })}>
+                                {t('nav.clearSessions')}
+                            </button>
+                        </li>
+                    </ul>
+                ) : (
+                    <span className="wb-side-fill" />
+                )}
+                <nav className="wb-side-group wb-side-foot" aria-label={t('wb.pages')}>
+                    {PAGE_LINKS.map((item) => (
+                        <Link key={item.label} to={item.to} className="wb-side-item" label={t(item.label)}>
+                            <Icon name={item.icon} size={20} />
+                            <span className="wb-side-text">{t(item.label)}</span>
+                        </Link>
+                    ))}
+                    <button
+                        type="button"
+                        className="wb-side-item"
+                        aria-label={t('auth.logout')}
+                        title={t('auth.logout')}
+                        onClick={() => void onLogout()}
+                    >
+                        <Icon name="lock" size={20} />
+                        <span className="wb-side-text">{t('auth.logout')}</span>
+                    </button>
+                </nav>
+            </aside>
+            <div className="wb-world">
+                <div className="wb-capsule">
+                    <span className="wb-capsule-title" title={sessionTitle}>
+                        {sessionTitle}
+                        {serverVersion ? <small> v{serverVersion}</small> : null}
+                    </span>
+                    <button
+                        type="button"
+                        className="wb-capsule-btn"
+                        aria-label={t('wb.searchPlaceholder')}
+                        title={`${t('wb.searchPlaceholder')} (${t('wb.kbd')})`}
+                        onClick={() => setSearchOpen(true)}
+                    >
+                        <Icon name="search" size={16} />
+                    </button>
+                    <div className="wb-model">
+                        <button
+                            type="button"
+                            className="wb-pill"
+                            aria-haspopup="listbox"
+                            aria-expanded={modelOpen}
+                            onClick={() => setModelOpen((open) => !open)}
+                        >
+                            <Icon name="cat" size={16} />
+                            {modelLabel}
                         </button>
-                    </li>
-                </ul>
-            ) : null}
-            {pending ? (
-                <div className="card wb-confirm" role="dialog">
-                    <p>{pending.kind === 'all' ? t('nav.clearSessionsConfirm') : t('chat.deleteConfirm')}</p>
-                    <div className="row">
-                        <button type="button" className="danger" disabled={busy} onClick={() => void confirmPending()}>
-                            {t('nav.confirm')}
-                        </button>
-                        <button type="button" onClick={() => setPending(null)}>
-                            {t('nav.cancel')}
-                        </button>
+                        {modelOpen ? (
+                            <ul className="wb-model-menu" role="listbox">
+                                {chatProfiles.length === 0 ? <li className="muted">{t('wb.noModel')}</li> : null}
+                                {chatProfiles.map((profile) => (
+                                    <li key={profile.id}>
+                                        <button
+                                            type="button"
+                                            role="option"
+                                            aria-selected={profile.id === activity?.profile?.id}
+                                            onClick={() => void chooseModel(profile.id)}
+                                        >
+                                            {profile.label}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : null}
                     </div>
                 </div>
-            ) : null}
-            <div className="wb">
+                {searchOpen ? (
+                    <div className="wb-palette">
+                        <div className="wb-search">
+                            <Icon name="search" size={16} />
+                            <input
+                                ref={searchRef}
+                                value={query}
+                                placeholder={t('wb.searchPlaceholder')}
+                                aria-label={t('wb.searchPlaceholder')}
+                                aria-expanded={searchOpen}
+                                aria-controls="wb-search-list"
+                                role="combobox"
+                                onChange={(e) => {
+                                    setQuery(e.target.value);
+                                    setCursor(0);
+                                    setSearchOpen(true);
+                                }}
+                                onFocus={() => setSearchOpen(true)}
+                                onBlur={() => window.setTimeout(() => setSearchOpen(false), 150)}
+                                onKeyDown={onSearchKey}
+                            />
+                            <kbd>{t('wb.kbd')}</kbd>
+                            {searchOpen ? (
+                                <ul className="wb-search-list" id="wb-search-list" role="listbox">
+                                    {hits.length === 0 ? <li className="muted">{t('wb.searchEmpty')}</li> : null}
+                                    {shownFiles.length > 0 ? (
+                                        <li className="wb-search-label">{t('wb.searchFiles')}</li>
+                                    ) : null}
+                                    {hits.map((hit, index) => (
+                                        <li
+                                            key={
+                                                hit.kind === 'file'
+                                                    ? hit.item.id
+                                                    : hit.kind === 'command'
+                                                      ? hit.id
+                                                      : 'ask'
+                                            }
+                                        >
+                                            <button
+                                                type="button"
+                                                role="option"
+                                                aria-selected={index === cursor}
+                                                className={index === cursor ? 'on' : ''}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                onClick={() => activate(hit)}
+                                            >
+                                                {hit.kind === 'file'
+                                                    ? hit.item.title
+                                                    : hit.kind === 'command'
+                                                      ? hit.label
+                                                      : t('wb.searchAsk', { q: query.trim() })}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : null}
+                        </div>
+                    </div>
+                ) : null}
+                <ApprovalPanel currentSessionId={sessionId} onCount={onApprovals} />
+                {pending ? (
+                    <div className="card wb-confirm" role="dialog">
+                        <p>{pending.kind === 'all' ? t('nav.clearSessionsConfirm') : t('chat.deleteConfirm')}</p>
+                        <div className="row">
+                            <button
+                                type="button"
+                                className="danger"
+                                disabled={busy}
+                                onClick={() => void confirmPending()}
+                            >
+                                {t('nav.confirm')}
+                            </button>
+                            <button type="button" onClick={() => setPending(null)}>
+                                {t('nav.cancel')}
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
                 <section className="wb-stage">
                     <div className="wb-glass wb-running" aria-live="polite">
                         <h4>{t('wb.running')}</h4>
@@ -542,42 +692,20 @@ export function Workbench({
                         askRef={askRef}
                     />
                 </section>
-                <div className="wb-right">
-                    <nav className="wb-rail" aria-label={t('wb.railLabel')}>
-                        {RAIL_PANELS.map((item) =>
-                            item.id === 'memory' ? (
-                                <Link
-                                    key={item.id}
-                                    to={{ name: 'memory' }}
-                                    className={panel.panel === 'memory' ? 'on' : ''}
-                                    label={t(item.label)}
-                                >
-                                    <Icon name={item.icon} size={20} />
-                                </Link>
-                            ) : (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    className={panel.panel === item.id ? 'on' : ''}
-                                    aria-label={t(item.label)}
-                                    aria-pressed={panel.panel === item.id}
-                                    onClick={() => {
-                                        dispatch({ type: 'pin', panel: item.id });
-                                        if (item.id === 'search') searchRef.current?.focus();
-                                    }}
-                                >
-                                    <Icon name={item.icon} size={20} />
-                                </button>
-                            ),
-                        )}
-                        <span className="gap" />
-                        {PAGE_LINKS.map((item) => (
-                            <Link key={item.label} to={item.to} label={t(item.label)}>
-                                <Icon name={item.icon} size={20} />
-                            </Link>
-                        ))}
-                    </nav>
-                    <div className="wb-main">
+                {panel.open ? (
+                    <aside className="wb-float wb-glass" aria-label={panelTitle(panel.panel)}>
+                        <header className="wb-float-head">
+                            <h3>{panelTitle(panel.panel)}</h3>
+                            <button
+                                type="button"
+                                className="wb-float-close"
+                                aria-label={t('wb.closePanel')}
+                                title={`${t('wb.closePanel')} (Esc)`}
+                                onClick={() => dispatch({ type: 'close' })}
+                            >
+                                <Icon name="x" size={16} />
+                            </button>
+                        </header>
                         <div className="wb-panel">
                             {panel.panel === 'files' ? (
                                 <FileTree
@@ -590,7 +718,6 @@ export function Workbench({
                                     onLine={onLine}
                                 />
                             ) : null}
-                            {panel.panel === 'search' ? <p className="wb-empty">{t('wb.searchHint')}</p> : null}
                             {panel.panel === 'changes' ? (
                                 write && write.text ? (
                                     <div className="wb-editor-wrap">
@@ -610,9 +737,9 @@ export function Workbench({
                                     <p className="wb-empty">{t('wb.changesEmpty')}</p>
                                 )
                             ) : null}
-                            {panel.panel === 'mail' ? <MailPage /> : null}
+                            {panel.panel === 'mail' ? <MailPage key={panel.opened} /> : null}
                             {panel.panel === 'memory' ? (
-                                <MemoryPage settings={settings} onSettings={onSettings} />
+                                <MemoryPage key={panel.opened} settings={settings} onSettings={onSettings} />
                             ) : null}
                             {panel.panel === 'browser' ? (
                                 browser ? (
@@ -658,8 +785,8 @@ export function Workbench({
                                 </span>
                             ) : null}
                         </footer>
-                    </div>
-                </div>
+                    </aside>
+                ) : null}
             </div>
         </div>
     );

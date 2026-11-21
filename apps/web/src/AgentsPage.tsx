@@ -61,7 +61,6 @@ export function AgentsPage() {
     return (
         <div className="page">
             <h1>{t('agents.title')}</h1>
-            <p className="muted small">{t('agents.hint')}</p>
             {error ? <p className="error">{error}</p> : null}
             {agents === null ? <p className="muted">{t('common.loading')}</p> : null}
             <ul className="list" data-testid="agent-list">

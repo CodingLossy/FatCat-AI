@@ -45,7 +45,6 @@ export function Preauthorizations() {
     return (
         <section>
             <h2>{t('preauth.title')}</h2>
-            <p className="muted small">{t('preauth.hint')}</p>
             {error ? <p className="error">{error}</p> : null}
             {items?.length === 0 ? <p className="muted">{t('preauth.empty')}</p> : null}
             <ul className="list">
