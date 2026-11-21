@@ -206,3 +206,36 @@ M12 **不包含**任何合成鼠标或键盘输入、或在浏览器面板之外
 **第 3.2 节的 Origin 核实。** 改变状态的路由已经要求 `X-CSRF-Token`(Cookie 鉴权,`app.test.ts` 有用例),WebSocket 要求 Origin 与 Host 一致(`ws.test.ts`);个人访问令牌与设备令牌不是自动携带的凭据。浏览器 webview 里没有主窗口的 Cookie 与 CSRF 令牌,所以未新增 Origin 检查;PR 7 加壳时再验证。
 
 **出网登记。** `scripts/egress-registry.json` 新增 `packages/tools/src/builtin/browser.ts`(`dynamic`)。
+
+## 14. 补充:浏览器面板与客户端执行的调用(M12 PR 7)
+
+本节记录 PR 7 实际交付的范围、第 11 节「尚未验证」项的处理结果,以及与第 3–4 节不同的地方。
+
+**交付。** 桌面壳里的浏览器面板(`apps/desktop/src-tauri/src/browser.rs`、`browser_policy.rs`、`browser_windows.rs`、`capabilities/main.json`);界面一侧的 `BrowserPanel` 与控制器;核心一侧的 `client-call` 帧与 `POST /api/v1/tool-calls/{callId}/result`;`browser.screenshot` 接到桌面客户端;界面的内容安全策略。
+
+**子 webview 与隔离(第 3.1、3.2、3.4 节)。**
+
+- 子 webview 用 Tauri 的 `Window::add_child`,该接口目前只在 `unstable` 特性下提供,`Cargo.toml` 因此启用 `unstable`。只在 Windows 与 macOS 上支持;Linux(WebKitGTK)的子 webview 需要不同的窗口构建方式,按 Q-F 留在手工验证之后,在 Linux 上命令返回错误,界面显示「这个系统暂不支持」。
+- 数据存储:`incognito(true)` 加上每次新建的 `<app_data>/browser-profile/<pid>-<时间>` 数据目录。关闭面板时删除整个目录(Windows 上进程可能还握着文件,重试 10 次),应用启动时清掉整个 `browser-profile`(防崩溃残留),应用退出时再清一次。macOS 不使用 `data_store_identifier`(需要 macOS 14 以上),只靠 `incognito`;它是否真的与主界面的存储隔离**待在 macOS 真机上验证**。
+- 能力:新增 `capabilities/main.json`,用 `webviews: ["main"]`(**不用** `windows`:按窗口授权会让同一窗口里的子 webview 一并获得能力)和 `remote.urls = ["http://127.0.0.1:*/*"]`,只给 `main` webview 九个应用命令的许可。`browser` webview 没有任何能力文件,所以页面里的 `invoke` 一律被拒绝。每个命令还自己再查一遍:调用方的 webview 标签必须是 `main`,它当前的地址必须是核心的回环来源 `http://127.0.0.1:<sidecar 端口>`(`browser_policy::is_app_origin`)。
+- 不注入任何脚本,不启用 `withGlobalTauri`。页面事件(开始导航、加载完成、被拦截)由壳用 `eval` 向 `main` 分发一个 `fatcat-browser` 自定义事件;界面对事件逐项校验,只取已知字段。
+- 下载一律取消并提示;`window.open` / 新窗口一律拒绝并提示;顶层导航由 `browser_policy::check_navigation` 把关(仅 https、无内嵌凭据、无字面 IP——包括 `127.1`、`0x7f.1`、十进制整数这类会被解析成 IPv4 的写法——、无 `localhost`、单标签和内部后缀)。`http:` 只在用户或模型给的地址上升级为 `https:`,页面里的重定向和链接不升级,直接拒绝。日志和界面提示只含来源(`scheme://host[:port]`)。
+- Windows 上通过 WebView2 的接口(`browser_windows::harden`)拒绝所有权限请求、关闭页面的 alert / confirm / prompt 对话框、状态栏、密码保存与自动填充,发布版关闭开发者工具。macOS 上 Tauri 没有对应接口,**权限请求仍可能由系统弹窗询问用户**(未处理的缺口,写在 PR 里和界面说明里)。
+
+**第 3.3 节的代理没有做(Q-E 的退路)。** `proxy_url` 在各平台是否可用、是否可靠需要在真机上验证,云端容器没有图形界面也没有 Windows,因此本 PR 只发布导航过滤,并在面板底部写明「子资源出站不受限」。字面 IP 之外的主机名解析到私网地址(DNS 重绑定)也**不会**被拦截,这与第 3.3 节的设想有差距,是已知缺口,留给单独的代理 PR(在平台上验证 `proxy_url` 之后)。核心自己的 `browser.open` 取页不受影响:它仍用 `guardedFetch`,连接时校验解析出的地址。
+
+**客户端执行的调用(第 3.6 节,Q-B)。**
+
+- WebSocket 新增两种帧(只增不改,ADR 0030):客户端 → 服务器 `client-capabilities {browser: boolean}`,服务器 → 客户端 `client-call {callId, tool, url, expiresAt}`。服务器只把 `client-call` 发给 hello 之后声明了 `browser` 能力的连接,旧客户端永远收不到。核心把声明了能力的连接记在内存里(`ClientCalls`)。
+- `POST /api/v1/tool-calls/{callId}/result`:只接受有会话的所有者、该所有者名下仍在等待的调用、一次、且在超时(20 秒)之前;未知或别人的调用 404,已有结果或已过期或已取消的 409,请求体格式或图像类型不对 400。`callId` 是服务器生成的 18 字节随机数(`cc_…`),和模型的工具调用 id 无关。
+- 与第 3.6 节的差别:结果上限不是统一的 64 KiB。图像解码后最多 1,500,000 字节(默认的 2 MiB 请求体上限已经够 base64 之后的大小,所以没有单独放宽请求体限制);其他结果仍是 64 KiB。图像字节必须真的以声明的格式(PNG / JPEG)的签名开头,否则 `browser_unavailable`。同一个所有者最多 4 个调用同时进行。
+- 没有声明了能力的连接时 `browser.screenshot` 立即返回 `browser_unavailable`(不会悄悄退回别的方式),有连接但 20 秒内没有答复返回 `timeout`。
+- 截图的流程:界面收到 `client-call`,把浏览器面板切到前台,让壳加载这个地址(同样要过第 3.3 节的检查),等页面加载完成,再让壳截图,POST 回结果。图像只做验证和返回元数据,不保存,不交给模型;用户看到的就是面板里的页面。**平台**:Windows 用 WebView2 的 `CapturePreview`(JPEG,面板可见大小);macOS 尚未实现(`takeSnapshot` 需要在 macOS 上编译验证),壳返回 `unsupported`,核心告诉模型 `browser_unavailable`。
+
+**界面的 CSP(第 3.4 节)。** 主窗口加载的是核心提供的页面,Tauri 的 `app.security.csp` 管不到外部地址,所以 CSP 由核心作为响应头发出(`secureHeaders`):`default-src 'self'`、`script-src 'self'`、`style-src 'self' 'unsafe-inline'`(React 的 style 属性)、`img-src 'self' data: blob:`、`media-src 'self' blob:`、`connect-src 'self'`、`worker-src 'self'`、`manifest-src 'self'`、`object-src 'none'`、`frame-ancestors 'none'`、`base-uri 'self'`、`form-action 'self'`。与第 3.4 节的差别:`img-src` 多了 `blob:`(发送前的图片预览)、`media-src` 多了 `blob:`(朗读),`connect-src` 只写 `'self'`(WebView2、WKWebView 与现代浏览器都把它当作同源的 ws / wss;核心前面有反向代理时也不需要事先知道公开地址)。
+
+**没做的(留给后续 PR,需业主决定,推荐如下)。** `browser.click` / `browser.fill` / `browser.submit`、快照、元素引用、「AI 正在操作」的描边叠层与审批条。它们依赖第 3.4 节提到的「页面快照如何安全地交回壳」,需要在 Windows 与 macOS 上先验证那条通道,而本 PR 的壳和通道本身还没有在真机上跑过。推荐:先在真机上确认本 PR 的壳(隔离、拦截、截图),再单独做 `feat/browser-actions`。
+
+**第 11 节的处理。** `proxy_url` 与独立数据存储的可用性:**未验证**,见上。注入脚本的安全通道:**不需要**(本 PR 不注入脚本)。核心是否已在改变状态的路由上拒绝外来 `Origin`:PR 6 已核实。
+
+**测试。** 壳:`browser_policy` 的 9 个单测(协议、凭据、IP 的各种写法、内部名、`example.com:8443` 与 `mailto:` 的区分、只记来源、只有本应用来源可调用);Windows 目标上 `cargo check`(类型检查)通过,但**没有运行过**。核心:`ClientCalls`(无连接、签名校验、他人 / 未知 / 重复 / 迟到 / 取消 / 并发上限)、端点(401、404、400、204、409)、WebSocket(只有声明了能力的连接收到帧、断开后注销)、CSP 响应头。界面:控制器与事件校验的单测;用假的 `__TAURI_INTERNALS__` 在真实浏览器里点过地址栏、拦截提示、声明能力和关闭面板(`e2e/browser-panel.e2e.ts`)。**真机清单**见 PR 描述。

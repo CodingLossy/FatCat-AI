@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
+import { ClientCalls, createClientBrowserHost } from './client-calls.js';
 import { watchParentExit } from './parent-exit.js';
 import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -193,6 +194,8 @@ const items = createItemService({
     onSynced: (ownerId) => void kb.index(ownerId),
 });
 const bus = new EventBus();
+// 客户端执行的调用:桌面壳通过 WebSocket 声明能力,浏览器截图交给它(ADR 0046 第 14 节)
+const clientCalls = new ClientCalls();
 const attachmentFiles = createAttachmentFiles(config.dataDir);
 const runs = new RunManager({
     repos,
@@ -204,7 +207,7 @@ const runs = new RunManager({
         repos,
         items,
         kb,
-        {},
+        { browser: { host: createClientBrowserHost(clientCalls) } },
         {
             runner: runInWorker,
             secret: (ref) => secrets.resolve(ref),
@@ -321,6 +324,7 @@ const mail = createMailService({
 mail.start();
 
 const app = createApp({
+    clientCalls,
     channels,
     wechat,
     scheduler,
@@ -354,7 +358,7 @@ const app = createApp({
 const server = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
     logger.info({ host: info.address, port: info.port, dataDir: config.dataDir }, 'listening');
 }) as Server;
-const websockets = attachWebSocket(server, { repos, bus, logger });
+const websockets = attachWebSocket(server, { repos, bus, logger, clientCalls });
 
 function shutdown(signal: string): void {
     logger.info({ signal }, 'shutdown');

@@ -92,7 +92,10 @@ const ctx = (ownerId = 'owner1') => ({ ownerId }) as never;
  * afterEach 要停掉子进程并删除临时目录。Windows 上释放进程与文件句柄比 Linux 慢得多,
  * vitest 默认的 10 秒钩子超时曾偶发超时,所以单独放宽(测试本身的超时已经逐个设置)。
  */
-const HOOK_TIMEOUT_MS = 30_000;
+const HOOK_TIMEOUT_MS = process.platform === 'win32' ? 90_000 : 30_000;
+/** 等「崩溃」事件的上限与整条用例的超时:Windows 上启动、终止 node 子进程都慢,Linux 上保持原值。 */
+const CRASH_WAIT_MS = process.platform === 'win32' ? 60_000 : 20_000;
+const CRASH_TEST_TIMEOUT_MS = process.platform === 'win32' ? 120_000 : 30_000;
 
 /** 轮询等待条件成立,代替固定的 sleep:慢机器(Windows 上起 node 进程)多等,快机器立刻继续。 */
 async function waitUntil(condition: () => boolean, what: string, timeoutMs = 20_000): Promise<void> {
@@ -261,14 +264,18 @@ describe('plugin runtime', () => {
         ]);
     }, 30_000);
 
-    it('never writes the secret value to events or state when the plugin prints it to stderr and crashes', async () => {
-        await h.runtime.apply(h.record);
-        await run(h, 'probe', { attack: 'secret-stderr' }).catch(() => undefined);
-        await waitUntil(() => h.events.some((e) => e.kind === 'crashed'), 'the crash event');
-        const dump = JSON.stringify([h.events, h.states]);
-        expect(dump).not.toContain(SECRET);
-        expect(h.events.some((e) => e.kind === 'crashed')).toBe(true);
-    }, 30_000);
+    it(
+        'never writes the secret value to events or state when the plugin prints it to stderr and crashes',
+        async () => {
+            await h.runtime.apply(h.record);
+            await run(h, 'probe', { attack: 'secret-stderr' }).catch(() => undefined);
+            await waitUntil(() => h.events.some((e) => e.kind === 'crashed'), 'the crash event', CRASH_WAIT_MS);
+            const dump = JSON.stringify([h.events, h.states]);
+            expect(dump).not.toContain(SECRET);
+            expect(h.events.some((e) => e.kind === 'crashed')).toBe(true);
+        },
+        CRASH_TEST_TIMEOUT_MS,
+    );
 
     it('disables the plugin after 3 crashes within 5 minutes', async () => {
         await h.runtime.apply(h.record);

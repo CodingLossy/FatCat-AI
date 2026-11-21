@@ -9,6 +9,7 @@ import { ServerFrame } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
+import { ClientCalls } from './client-calls.js';
 import { attachWebSocket, WS_PATH } from './ws.js';
 
 let s: TestServer;
@@ -33,7 +34,7 @@ const provider: ModelProvider = {
     test: () => Promise.resolve({ ok: true, latencyMs: 0 }),
 };
 
-async function start() {
+async function start(clientCalls?: ClientCalls) {
     s = await createTestServer({}, { provider });
     server = serve({ fetch: s.app.fetch, hostname: '127.0.0.1', port: 0 }) as Server;
     await new Promise<void>((r) => server.once('listening', () => r()));
@@ -41,6 +42,7 @@ async function start() {
         repos: s.repos,
         bus: s.bus,
         logger: (await import('./log.js')).createLogger({ level: 'error' }),
+        ...(clientCalls ? { clientCalls } : {}),
     });
     const port = (server.address() as AddressInfo).port;
 
@@ -336,5 +338,42 @@ describe('WebSocket /api/v1/ws', () => {
         const closed = new Promise<number>((r) => c.ws.once('close', (code) => r(code)));
         c.ws.send(JSON.stringify({ v: 1, type: 'voice-state', id: 'v', payload: { state: 'idle', sessionId: null } }));
         expect(await closed).toBe(4400);
+    });
+});
+
+describe('WebSocket client-call 帧(ADR 0046 第 14 节)', () => {
+    it('只有 hello 之后声明了 browser 能力的连接才收到 client-call;没声明的连接收不到', async () => {
+        const calls = new ClientCalls();
+        const { port, cookie } = await start(calls);
+        const origin = `http://127.0.0.1:${port}`;
+        const desktop = connect(port, { cookie, origin });
+        const plain = connect(port, { cookie, origin });
+        await Promise.all([desktop.opened, plain.opened]);
+        desktop.hello();
+        plain.hello();
+        await Promise.all([
+            desktop.until(() => desktop.frames.length >= 1),
+            plain.until(() => plain.frames.length >= 1),
+        ]);
+        const ownerId = s.repos.owners.ids()[0]!;
+        expect(calls.hasBrowser(ownerId)).toBe(false);
+        desktop.ws.send(JSON.stringify({ v: 1, type: 'client-capabilities', id: 'c2', payload: { browser: true } }));
+        const deadline = Date.now() + 2000;
+        while (!calls.hasBrowser(ownerId) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));
+        expect(calls.hasBrowser(ownerId)).toBe(true);
+
+        const pending = calls.request(
+            ownerId,
+            { tool: 'browser.screenshot', url: 'https://a.example/' },
+            { signal: new AbortController().signal, timeoutMs: 200 },
+        );
+        await desktop.until(() => desktop.frames.some((f) => f.type === 'client-call'));
+        expect(plain.frames.some((f) => f.type === 'client-call')).toBe(false);
+        await expect(pending).rejects.toMatchObject({ code: 'timeout' });
+
+        desktop.ws.close();
+        const gone = Date.now() + 2000;
+        while (calls.hasBrowser(ownerId) && Date.now() < gone) await new Promise((r) => setTimeout(r, 20));
+        expect(calls.hasBrowser(ownerId)).toBe(false);
     });
 });

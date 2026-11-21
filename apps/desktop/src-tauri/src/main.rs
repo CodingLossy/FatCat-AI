@@ -6,6 +6,10 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod browser;
+mod browser_policy;
+#[cfg(windows)]
+mod browser_windows;
 mod deeplink;
 mod sidecar;
 
@@ -99,6 +103,18 @@ fn show_main(app: &AppHandle) {
 fn main() {
     let quick_ask_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space);
     let app = tauri::Builder::default()
+        .manage(browser::BrowserState::default())
+        .invoke_handler(tauri::generate_handler![
+            browser::browser_open,
+            browser::browser_navigate,
+            browser::browser_back,
+            browser::browser_forward,
+            browser::browser_reload,
+            browser::browser_set_bounds,
+            browser::browser_set_visible,
+            browser::browser_close,
+            browser::browser_screenshot,
+        ])
         // 第二次启动(含 Windows / Linux 上点深链接)只把参数交给已运行的实例。
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             show_main(app);
@@ -120,6 +136,8 @@ fn main() {
         )
         .setup(move |app| {
             let text = texts_for(&system_locale());
+            // 内置浏览器的数据目录是临时的:上次崩溃或被强杀留下的先清掉(ADR 0046 第 3.2 节)
+            browser::clear_stale_profiles(app.handle());
             let data_dir = app.path().app_data_dir()?;
             let resource_dir = app.path().resource_dir().ok();
             let sc = match sidecar::Sidecar::start(&data_dir, resource_dir.as_deref()) {
@@ -197,6 +215,9 @@ fn main() {
 
     app.run(|app, event| {
         if let RunEvent::Exit = event {
+            if let Some(browser) = app.try_state::<browser::BrowserState>() {
+                browser::close_session(app, &browser);
+            }
             if let Some(state) = app.try_state::<SidecarState>() {
                 if let Some(sc) = state.0.lock().unwrap().take() {
                     sc.stop();

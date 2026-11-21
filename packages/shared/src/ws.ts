@@ -2,6 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { z } from 'zod';
+import { ClientCall, ClientCapabilities } from './client-calls.js';
 import { EventEnvelope } from './events.js';
 import { ProblemDetails } from './errors.js';
 import { PROTOCOL_VERSION } from './meta.js';
@@ -32,6 +33,8 @@ export const ClientFrame = z.discriminatedUnion('type', [
     frame('ping', z.object({})),
     /** 浏览器上报正在收音 / 朗读(ADR 0021 第 6 节);服务器转成 assistant-state 推给本人所有在线的端。自 M4 起提供。 */
     frame('voice-state', VoiceStateReport),
+    /** 声明本端能执行哪类客户端调用(ADR 0046 第 14 节);之后服务器才会给这个连接发 client-call。自 M12 起提供。 */
+    frame('client-capabilities', ClientCapabilities),
 ]);
 export type ClientFrame = z.infer<typeof ClientFrame>;
 
@@ -48,6 +51,8 @@ export const ServerFrame = z.discriminatedUnion('type', [
     ),
     frame('event', EventEnvelope).extend({ seq: z.number().int().positive() }),
     frame('pong', z.object({})),
+    /** 请客户端执行一次调用(ADR 0046 第 14 节),只发给声明了对应能力的连接;结果走 POST /tool-calls/{callId}/result。 */
+    frame('client-call', ClientCall),
     frame('error', ProblemDetails),
 ]);
 export type ServerFrame = z.infer<typeof ServerFrame>;

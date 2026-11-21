@@ -20,6 +20,7 @@ import { MemoryPage } from './MemoryPage.js';
 import { useInstallPrompt } from './pwa.js';
 import { navigate, routePath, useRoute, type Route } from './router.js';
 import { SettingsPage } from './SettingsPage.js';
+import { useBrowserShell } from './browser-session.js';
 import { Workbench } from './Workbench.js';
 
 function Link({ to, className, children }: { to: Route; className?: string; children: React.ReactNode }) {
@@ -63,6 +64,8 @@ export function Shell({
     serverVersion: string | null;
 }) {
     const wide = useWideWorkbench();
+    // 桌面壳里:接收内置浏览器的页面事件,并响应服务器请求的截图
+    useBrowserShell();
     const { t } = useI18n();
     const { canInstall, install } = useInstallPrompt();
     const route = useRoute();

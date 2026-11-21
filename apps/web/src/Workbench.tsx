@@ -17,6 +17,8 @@ import {
 } from 'react';
 import { api, errorText } from './api.js';
 import { ApprovalPanel } from './ApprovalPanel.js';
+import { BrowserPanel } from './BrowserPanel.js';
+import { browserController } from './browser-session.js';
 import { ChatView, type ChatActivity } from './ChatView.js';
 import { FileTree, PreviewBody } from './FilePanel.js';
 import {
@@ -142,6 +144,21 @@ export function Workbench({
     const workspace = useMemo(() => buildWorkspace(tools), [tools]);
     const write = useMemo(() => latestWrite(tools), [tools]);
     const page = useMemo(() => latestFetchedPage(tools), [tools]);
+    // 桌面壳里有可控制的浏览器面板;纯网页和手机上为 null,继续显示文字卡片
+    const browser = browserController();
+    useEffect(() => {
+        if (!browser) return;
+        // 服务器要截图而面板不在前台时,切到浏览器面板
+        browser.onRequestPanel(() => dispatch({ type: 'pin', panel: 'browser' }));
+        return () => {
+            browser.onRequestPanel(() => undefined);
+        };
+    }, [browser]);
+    // 搜索下拉、模型菜单和确认框会盖在面板上,而原生 webview 总在界面之上:这些浮层打开时先藏起来
+    const overlayOpen = searchOpen || modelOpen || pending !== null;
+    useEffect(() => {
+        browser?.setHidden(overlayOpen);
+    }, [browser, overlayOpen]);
     const selected = picked ?? workspace.selectedPath ?? opened?.path ?? null;
     const activeRow = [...running.rows].reverse().find((row) => row.status === 'running' || row.status === 'waiting');
 
@@ -598,7 +615,25 @@ export function Workbench({
                                 <MemoryPage settings={settings} onSettings={onSettings} />
                             ) : null}
                             {panel.panel === 'browser' ? (
-                                page ? (
+                                browser ? (
+                                    <BrowserPanel
+                                        controller={browser}
+                                        pageUrl={page?.url ?? null}
+                                        fallback={
+                                            page ? (
+                                                <PreviewBody
+                                                    path={page.url}
+                                                    text={page.text}
+                                                    truncatedByTool={page.truncated}
+                                                    highlightLine={null}
+                                                    notice={t('wb.browserUntrusted')}
+                                                />
+                                            ) : (
+                                                <p className="wb-empty">{t('wb.browser.idle')}</p>
+                                            )
+                                        }
+                                    />
+                                ) : page ? (
                                     <PreviewBody
                                         path={page.url}
                                         text={page.text}

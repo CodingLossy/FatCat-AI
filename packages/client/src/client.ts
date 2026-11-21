@@ -106,6 +106,7 @@ import type {
     EgressTargetList,
     ToolInfo,
     ToolRisk,
+    ClientCallResult,
     UpdateSessionRequest,
     MailAccount,
     MailAccountInput,
@@ -419,6 +420,12 @@ export function createClient(options: ClientOptions) {
         tools: {
             /** 工具及其风险级别与默认审批方式(ADR 0010)。 */
             list: () => t.json<Page<ToolInfo>>('/tools'),
+        },
+
+        clientCalls: {
+            /** 桌面客户端把服务器请它执行的调用(例如浏览器截图)的结果交回(ADR 0046 第 14 节)。 */
+            result: (callId: string, result: ClientCallResult) =>
+                t.json<void>(`/tool-calls/${enc(callId)}/result`, { method: 'POST', body: result }),
         },
 
         approvals: {

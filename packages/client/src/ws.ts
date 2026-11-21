@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ClientFrame, EventEnvelope, ProblemDetails, ServerFrame, VoiceStateReport } from '@fatcat-ai/shared';
+import type {
+    ClientCall,
+    ClientCapabilities,
+    ClientFrame,
+    EventEnvelope,
+    ProblemDetails,
+    ServerFrame,
+    VoiceStateReport,
+} from '@fatcat-ai/shared';
 
 /** 与 shared 的 PROTOCOL_VERSION 一致(这里不在运行时加载 shared)。 */
 export const CLIENT_PROTOCOL_VERSION = 1;
@@ -32,6 +40,12 @@ export interface ConnectEventsOptions {
      * 在收到第一个事件之前断线重连可能漏掉这段时间的事件。
      */
     lastSeq?: number;
+    /**
+     * 本端能执行的客户端调用(桌面壳里的浏览器面板,ADR 0046 第 14 节)。给出后每次握手完成就声明一次,
+     * 服务器才会发 client-call 帧;不给时不声明,行为与以前完全一致。
+     */
+    capabilities?: ClientCapabilities;
+    onClientCall?: (call: ClientCall) => void;
     /** 断线自动重连,默认 true。 */
     reconnect?: boolean;
     backoffMs?: (attempt: number) => number;
@@ -98,6 +112,14 @@ export function connectEvents(
             if (frame.type === 'welcome') {
                 attempt = 0;
                 ready = ws;
+                if (options.capabilities) {
+                    send(ws, {
+                        v: CLIENT_PROTOCOL_VERSION,
+                        type: 'client-capabilities',
+                        id: `c${++frameId}`,
+                        payload: options.capabilities,
+                    });
+                }
                 if (voice && voice.state !== 'idle') sendVoice(ws, voice);
                 options.onWelcome?.({
                     serverVersion: frame.payload.serverVersion,
@@ -108,6 +130,8 @@ export function connectEvents(
                 if (lastSeq !== undefined && frame.seq <= lastSeq) return;
                 lastSeq = frame.seq;
                 options.onEvent(frame.payload);
+            } else if (frame.type === 'client-call') {
+                options.onClientCall?.(frame.payload);
             } else if (frame.type === 'error') {
                 options.onError?.({ problem: frame.payload });
             }
