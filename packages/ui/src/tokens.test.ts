@@ -27,6 +27,27 @@ describe('design tokens', () => {
         expect(offenders).toEqual([]);
     });
 
+    it('科技是默认主题(:root),不再有浅色 / 跟随系统的色板', () => {
+        const css = stripComments(readFileSync(join(here, 'tokens.css'), 'utf8'));
+        expect(css).toMatch(/--bg:\s*var\(--fc-black\)/);
+        expect(css).not.toMatch(/prefers-color-scheme|data-theme='light'/);
+        for (const name of [
+            '--radius-control',
+            '--border-width',
+            '--shadow-panel',
+            '--font-numeric',
+            '--texture',
+            '--glow-color',
+            '--switch-radius',
+            '--slider-thumb-radius',
+            '--segment-radius',
+            '--select-radius',
+            '--hero-star-b',
+        ]) {
+            expect(css).toContain(`${name}:`);
+        }
+    });
+
     it('surface 是 #121216(业主 2026-11-19:原稿的 #121512 是笔误),且旧变量 --panel 映射到 --surface', () => {
         const css = stripComments(readFileSync(join(here, 'tokens.css'), 'utf8'));
         expect(css).toMatch(/--fc-obsidian:\s*#121216/);

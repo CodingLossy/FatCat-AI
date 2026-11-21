@@ -21,6 +21,10 @@
       "default": "./dist/index.js"
     },
     "./tokens.css": "./src/tokens.css",
+    "./theme-ids": {
+      "types": "./dist/theme-ids.d.ts",
+      "default": "./dist/theme-ids.js"
+    },
     "./icons": {
       "types": "./dist/icons.d.ts",
       "default": "./dist/icons.js"

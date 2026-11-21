@@ -55,7 +55,7 @@ export interface VoiceOrb {
     destroy(): void;
 }
 
-function prefersReducedMotion(): boolean {
+export function prefersReducedMotion(): boolean {
     return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
@@ -67,7 +67,7 @@ let frame: number | null = null;
 let lastTs = 0;
 let qualityState: QualityState | null = null;
 
-function currentQuality(): QualityState {
+export function currentQuality(): QualityState {
     if (!qualityState) {
         const nav = typeof navigator === 'undefined' ? undefined : (navigator as Navigator & { deviceMemory?: number });
         qualityState = { quality: initialQuality(nav?.hardwareConcurrency, nav?.deviceMemory), slow: 0 };
@@ -90,7 +90,7 @@ function schedule(): void {
     frame = requestAnimationFrame(loop);
 }
 
-function addTick(tick: Tick): () => void {
+export function addTick(tick: Tick): () => void {
     ticks.add(tick);
     schedule();
     return () => {
@@ -139,7 +139,7 @@ function readPalette(el: HTMLElement): Palette {
     }
 }
 
-function fitCanvas(canvas: HTMLCanvasElement): { ctx: CanvasRenderingContext2D; w: number; h: number } | null {
+export function fitCanvas(canvas: HTMLCanvasElement): { ctx: CanvasRenderingContext2D; w: number; h: number } | null {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
     const dpr = Math.min(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, 2);

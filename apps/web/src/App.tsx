@@ -12,6 +12,7 @@ import { Footer } from './Footer.js';
 import { I18nContext, translator, type Locale } from './i18n.js';
 import { PairPage } from './PairPage.js';
 import { useOnline } from './pwa.js';
+import { DEFAULT_THEME, resolveTheme } from '@fatcat-ai/ui/theme-ids';
 import { useRoute } from './router.js';
 import { Shell } from './Shell.js';
 
@@ -19,9 +20,9 @@ function browserLocale(): Locale {
     return navigator.language.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
 }
 
-/** 主题写到 <html data-theme>;system 时交给 prefers-color-scheme。 */
+/** 主题写到 <html data-theme>;旧值(system / light / dark 等)按科技处理,不改写已存的设置。 */
 function applyTheme(theme: Settings['theme']): void {
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.theme = resolveTheme(theme);
 }
 
 function loadAuth(): Promise<{ status: AuthStatus; settings: Settings | null }> {
@@ -83,7 +84,7 @@ export function App() {
     }, [refresh]);
 
     useEffect(() => {
-        applyTheme(settings?.theme ?? 'dark');
+        applyTheme(settings?.theme ?? DEFAULT_THEME);
         document.documentElement.lang = locale;
     }, [settings?.theme, locale]);
 

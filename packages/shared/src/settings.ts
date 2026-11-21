@@ -8,7 +8,12 @@ import { DEFAULT_VOICE_SETTINGS, VoiceSettings } from './voice.js';
 
 export const Locale = z.enum(['zh-CN', 'en']);
 export type Locale = z.infer<typeof Locale>;
-export const Theme = z.enum(['system', 'light', 'dark']);
+/**
+ * 主题(M12,ADR 0046):科技 / 自然 / 猫咪。system、light、dark 是旧值:仍然接受(API v1 只做增量),
+ * 客户端读到时一律按科技处理,不改写已存的设置。
+ */
+export const Theme = z.enum(['tech', 'nature', 'cat', 'system', 'light', 'dark']);
+export type Theme = z.infer<typeof Theme>;
 
 /** GET / PUT /api/v1/settings。PUT 接受部分字段并与现有设置合并。 */
 /** 网络相关设置(ADR 0038)。自 M6 真机修复起提供。 */
@@ -85,7 +90,7 @@ export const DEFAULT_SETTINGS: Settings = {
     defaultChatProfileId: null,
     defaultCheapProfileId: null,
     locale: 'zh-CN',
-    theme: 'dark',
+    theme: 'tech',
     memory: { autoExtract: false, extractDailyLimit: 200, alwaysApprove: false, digestTokens: 400, blockTokens: 1200 },
     knowledgeBase: { chunkChars: 1000 },
     voice: DEFAULT_VOICE_SETTINGS,

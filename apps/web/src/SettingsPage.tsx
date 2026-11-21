@@ -27,6 +27,7 @@ import { EgressSection } from './EgressSection.js';
 import { SecretsSection } from './SecretsSection.js';
 import { DevicesSection } from './DevicesSection.js';
 import { TotpSection } from './TotpSection.js';
+import { ThemePicker } from './ThemePicker.js';
 import { TimeZoneSetting } from './TimeZoneSetting.js';
 
 const PURPOSES: ModelPurpose[] = ['chat', 'cheap', 'stt', 'tts'];
@@ -401,18 +402,7 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                                 ))}
                             </select>
                         </label>
-                        <label>
-                            {t('settings.theme')}
-                            <select
-                                name="theme"
-                                value={settings.theme}
-                                onChange={(e) => void update({ theme: e.target.value as Settings['theme'] })}
-                            >
-                                <option value="system">{t('settings.themeSystem')}</option>
-                                <option value="light">{t('settings.themeLight')}</option>
-                                <option value="dark">{t('settings.themeDark')}</option>
-                            </select>
-                        </label>
+                        <ThemePicker value={settings.theme} onChange={(theme) => void update({ theme })} />
                         <TimeZoneSetting value={settings.timeZone} onChange={update} />
                         <label>
                             {t('settings.chunkChars')}
@@ -578,9 +568,9 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
         const index = SETTINGS_SECTIONS.findIndex((s) => s.id === view.section);
         const last = SETTINGS_SECTIONS.length - 1;
         const next =
-            event.key === 'ArrowRight'
+            event.key === 'ArrowRight' || event.key === 'ArrowDown'
                 ? (index + 1) % SETTINGS_SECTIONS.length
-                : event.key === 'ArrowLeft'
+                : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
                   ? (index - 1 + SETTINGS_SECTIONS.length) % SETTINGS_SECTIONS.length
                   : event.key === 'Home'
                     ? 0
@@ -596,45 +586,55 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
     return (
         <div className="page settings-page">
             <h1>{t('settings.title')}</h1>
-            <div className="settings-tabs" role="tablist" aria-label={t('settings.title')} onKeyDown={onTabKey}>
-                {SETTINGS_SECTIONS.map((s) => (
-                    <button
-                        key={s.id}
-                        type="button"
-                        role="tab"
-                        id={`settings-tab-${s.id}`}
-                        aria-controls="settings-panel"
-                        aria-selected={s.id === view.section}
-                        tabIndex={s.id === view.section ? 0 : -1}
-                        className={s.id === view.section ? 'active' : ''}
-                        onClick={() => show(s.id)}
+            <div className="settings-body">
+                <aside className="settings-side">
+                    <div
+                        className="settings-tabs"
+                        role="tablist"
+                        aria-orientation="vertical"
+                        aria-label={t('settings.title')}
+                        onKeyDown={onTabKey}
                     >
-                        <strong>{t(`settings.section.${s.id}`)}</strong>
-                        {t(`settings.section.${s.id}.sub`) ? <small>{t(`settings.section.${s.id}.sub`)}</small> : null}
-                    </button>
-                ))}
-            </div>
-            <div
-                className="settings-body"
-                role="tabpanel"
-                id="settings-panel"
-                aria-labelledby={`settings-tab-${section.id}`}
-            >
-                <nav className="settings-menu" aria-label={t(`settings.section.${section.id}`)}>
-                    {section.items.map((it) => (
-                        <button
-                            key={it.id}
-                            type="button"
-                            aria-current={it.id === view.item ? 'page' : undefined}
-                            className={it.id === view.item ? 'active' : ''}
-                            onClick={() => show(section.id, it.id)}
-                        >
-                            <Icon name={it.icon} size={16} />
-                            {t(it.label as Parameters<typeof t>[0])}
-                        </button>
-                    ))}
-                </nav>
-                <div className="settings-content">
+                        {SETTINGS_SECTIONS.map((s) => (
+                            <button
+                                key={s.id}
+                                type="button"
+                                role="tab"
+                                id={`settings-tab-${s.id}`}
+                                aria-controls="settings-panel"
+                                aria-selected={s.id === view.section}
+                                tabIndex={s.id === view.section ? 0 : -1}
+                                className={s.id === view.section ? 'active' : ''}
+                                onClick={() => show(s.id)}
+                            >
+                                <strong>{t(`settings.section.${s.id}`)}</strong>
+                                {t(`settings.section.${s.id}.sub`) ? (
+                                    <small>{t(`settings.section.${s.id}.sub`)}</small>
+                                ) : null}
+                            </button>
+                        ))}
+                    </div>
+                    <nav className="settings-menu" aria-label={t(`settings.section.${section.id}`)}>
+                        {section.items.map((it) => (
+                            <button
+                                key={it.id}
+                                type="button"
+                                aria-current={it.id === view.item ? 'page' : undefined}
+                                className={it.id === view.item ? 'active' : ''}
+                                onClick={() => show(section.id, it.id)}
+                            >
+                                <Icon name={it.icon} size={16} />
+                                {t(it.label as Parameters<typeof t>[0])}
+                            </button>
+                        ))}
+                    </nav>
+                </aside>
+                <div
+                    className="settings-content"
+                    role="tabpanel"
+                    id="settings-panel"
+                    aria-labelledby={`settings-tab-${section.id}`}
+                >
                     {content()}
                     {note ? (
                         <p className="small muted" role="status">

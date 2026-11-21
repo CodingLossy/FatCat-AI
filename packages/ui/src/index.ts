@@ -36,3 +36,26 @@ export {
     resolveIconName,
 } from './icons.js';
 export type { IconName } from './icons.js';
+export {
+    createHero,
+    DEFAULT_THEME,
+    resolveTheme,
+    THEME_IDS,
+    THEMES,
+    type Hero,
+    type HeroFactory,
+    type HeroMode,
+    type HeroOptions,
+    type ThemeId,
+} from './theme.js';
+export {
+    starLift,
+    STARS_PER_CONSTELLATION,
+    TECH_CONSTELLATIONS,
+    TECH_STAR_COUNT,
+    techConstellations,
+    techLook,
+    techStars,
+    type TechLook,
+    type TechStar,
+} from './heroes/tech-model.js';
