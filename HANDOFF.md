@@ -62,7 +62,7 @@ FatCat-AI:可自托管的开源个人 AI 助手框架(AGPL-3.0-only + 商业许�
 ## 5. 踩过的坑
 
 - **环境**:云容器默认 Node 22,pnpm 失败;要自己装 Node 24 压缩包。web 类型检查前先 `pnpm turbo run build --filter=@fatcat-ai/web^...`。Playwright 用 `/opt/pw-browsers/chromium`,`--no-sandbox`。
-- **提交身份**:全局是 Claude 用户;身份检查要全名;不要 `claude/` 分支名。
+- **提交身份**:云容器全局 git 身份不是业主,见 §2;身份检查要全名;不要 `claude/` 分支名。
 - **远端分支会被业主 / X 中途改写**(曾替换面板代码、删掉 Co-authored-by):推送前一定 `git fetch`,看 `HEAD..FETCH_HEAD`,在独立 worktree 里把自己的改动叠上去,别 reset。
 - **CodeQL `js/xss-through-dom`**:任何由拖入文件 `createObjectURL` 喂给 `<img src>` 的都会被标记;X 接受的做法是用 `<canvas>` + `createImageBitmap` 画缩略图。别再新增这类 `img src`。
 - **浏览器工具审批**:同主机免审批曾跳过了 `url_carries_data` 警告(X 拦下);现在长查询串 / 片段总是询问,即使有预授权。任何新的「跳过审批」捷径都要对照会泄露数据的 URL 检查。
