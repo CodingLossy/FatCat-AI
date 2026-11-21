@@ -289,3 +289,11 @@ M12 **不包含**任何合成鼠标或键盘输入、或在浏览器面板之外
 - **壳**(`apps/desktop/src-tauri/src/open_policy.rs`、`system_open.rs`):新命令 `system_open` 只允许主窗口里、来源是本应用核心的页面调用(与浏览器命令同一道检查,并在能力文件里单列权限)。按同一规则再查一次(协议、凭据、绝对路径、存在、普通文件、扩展名允许清单、链接解析后的扩展名、POSIX 可执行位;授权目录只有核心知道,由核心查),然后用平台固定的打开程序(Windows `explorer.exe`、macOS `/usr/bin/open`、Linux `xdg-open`)加**一个**参数启动:不经 shell,没有其他参数或工作目录,环境变量只保留找到桌面会话所需的几项。没有新增 crate。
 - **不做模拟输入**:新增 `pnpm check:no-input-sim`(CI 里在占位符检查之后运行):依赖或 Cargo 清单里出现 robotjs、nut-js、enigo、rdev、autopilot、iohook 等,或我们的源码里出现 `SendInput(`、`keybd_event(`、`mouse_event(`、`CGEventPost(`、XTest、windows crate 的 `KeyboardAndMouse` 模块,就失败。
 - **未验证**:壳的打开动作需要 Windows / macOS / Linux 桌面真机(云端容器没有图形界面,也无法编译 Tauri);Windows 上 `explorer.exe` 对 mailto 与带空格路径的行为、macOS Gatekeeper 对下载文件的提示,列在 PR 的手工清单里。
+
+## 21. 补充:手机单栏(M12,`feat/narrow-layout`)
+
+- **一个工作台,两种形态**:900px 以下不再用旧的顶栏 + 侧栏抽屉,改用同一个 `Workbench` 的 `narrow` 形态,旧的抽屉代码和样式删除。胶囊铺满顶部(菜单、标题、搜索图标、模型),侧栏收进抽屉(打开时焦点到「新对话」,Esc 或点遮罩关闭并把焦点还给「菜单」,换页自动关闭),底部标签栏是 对话 / 文件 / 浏览器 / 设置。抽屉里多一个邮件页面入口(宽屏用邮件面板),「变更」面板留在抽屉里,页脚(许可证与源码链接)也放进抽屉。
+- **面板**:手机上面板铺满胶囊和标签栏之间的区域,会盖住对话,所以**不随工具调用自动打开**,只在点标签(或命令、抽屉)时打开;点「对话」收起。从页面回到对话时回到最近打开的会话。待审批仍在原来的审批条里,不受影响。
+- **其他**:RUNNING TOOLS 铺满宽度放在上面,没有工具时不占地方;球约占一半宽度;搜索全屏;触控目标 44px;顶部、底部、两侧都按安全区留白;设置卡片单列;知识页在手机上保留胶囊(菜单入口),星图从胶囊下面开始。
+- **粒子数**:`initialQuality` 多一个参数(屏幕短边),短边小于 600px 的手机和低端设备一样从 60% 起步,之后照常按帧时间调整。
+- **PWA**:`<meta name="theme-color">` 跟着主题的 `--bg` 变(手机状态栏和独立窗口颜色随主题),iOS 状态栏用 `black-translucent` 配合安全区。离线缓存、配对和 service worker 不变。

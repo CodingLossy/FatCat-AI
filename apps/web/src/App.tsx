@@ -20,9 +20,16 @@ function browserLocale(): Locale {
     return navigator.language.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
 }
 
-/** 主题写到 <html data-theme>;旧值(system / light / dark 等)按科技处理,不改写已存的设置。 */
+/**
+ * 主题写到 <html data-theme>;旧值(system / light / dark 等)按科技处理,不改写已存的设置。
+ * 同时把 <meta name="theme-color"> 换成主题的背景色,手机的状态栏和 PWA 窗口跟着变。
+ */
 function applyTheme(theme: Settings['theme']): void {
-    document.documentElement.dataset.theme = resolveTheme(theme);
+    const root = document.documentElement;
+    root.dataset.theme = resolveTheme(theme);
+    const bg = getComputedStyle(root).getPropertyValue('--bg').trim();
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (meta && bg) meta.content = bg;
 }
 
 function loadAuth(): Promise<{ status: AuthStatus; settings: Settings | null }> {
@@ -109,6 +116,7 @@ export function App() {
                 onSettings={setSettings}
                 onLogout={logout}
                 serverVersion={meta?.serverVersion ?? null}
+                meta={meta}
             />
         );
     else body = <p className="muted page-message">{i18n.t('common.loading')}</p>;

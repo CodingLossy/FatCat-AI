@@ -2,8 +2,9 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 桌面宽度的工作台(M12 重做):主视觉铺满窗口;左侧栏有展开 / 收起两态;右侧面板是浮在主视觉上的玻璃卡片,
-// 空闲时不显示,工具调用或 ui.panel 时打开,运行结束 8 秒后自动收起。900px 以下仍用原来的抽屉,手机单栏在后面的 PR 里做。
-import type { Item, Session, Settings } from '@fatcat-ai/shared';
+// 空闲时不显示,工具调用或 ui.panel 时打开,运行结束 8 秒后自动收起。
+// 900px 以下是手机单栏(narrow):侧栏收成抽屉,底部标签栏(对话 / 文件 / 浏览器 / 设置),面板铺满主区域,只在点标签时打开。
+import type { Item, MetaResponse, Session, Settings } from '@fatcat-ai/shared';
 import type { IconName } from '@fatcat-ai/ui/icons';
 import {
     type KeyboardEvent as ReactKeyboardEvent,
@@ -21,6 +22,7 @@ import { BrowserPanel } from './BrowserPanel.js';
 import { browserController } from './browser-session.js';
 import { ChatView, type ChatActivity } from './ChatView.js';
 import { FileTree, PreviewBody } from './FilePanel.js';
+import { Footer } from './Footer.js';
 import {
     buildWorkspace,
     languageOf,
@@ -33,6 +35,7 @@ import { Icon } from './Icon.js';
 import { useI18n, type Key } from './i18n.js';
 import { MailPage } from './MailPage.js';
 import { MemoryPage } from './MemoryPage.js';
+import { useInstallPrompt } from './pwa.js';
 import { navigate, routePath, useRoute, type Route } from './router.js';
 import {
     AUTO_CLOSE_MS,
@@ -93,6 +96,13 @@ const PAGE_LINKS: { to: Route; icon: IconName; label: Key }[] = [
     { to: { name: 'audit' }, icon: 'pulse', label: 'nav.audit' },
 ];
 
+/** 手机单栏的抽屉里多一个邮件页面入口(宽屏用邮件面板)。 */
+const NARROW_PAGE_LINKS: { to: Route; icon: IconName; label: Key }[] = [
+    ...PAGE_LINKS.slice(0, 3),
+    { to: { name: 'mail' }, icon: 'mail', label: 'nav.mail' },
+    ...PAGE_LINKS.slice(3),
+];
+
 const SIDEBAR_KEY = 'fatcat.sidebar';
 
 /** 左侧栏是否收成图标栏;记在本机浏览器里,读写失败时用展开。 */
@@ -121,6 +131,8 @@ function statusIcon(status: ToolRowStatus): IconName | null {
 
 export function Workbench({
     serverVersion,
+    meta = null,
+    narrow = false,
     settings,
     onSettings,
     onLogout,
@@ -132,6 +144,10 @@ export function Workbench({
     pageView = null,
 }: {
     serverVersion: string | null;
+    /** 手机单栏把页脚(许可证与源码链接)放进抽屉。 */
+    meta?: MetaResponse | null;
+    /** 900px 以下的手机单栏。 */
+    narrow?: boolean;
     settings: Settings;
     onSettings: (s: Settings) => void;
     onLogout: () => Promise<void>;
@@ -165,6 +181,27 @@ export function Workbench({
     const [busy, setBusy] = useState(false);
     const [collapsed, setCollapsed] = useState(loadCollapsed);
     const [approvals, setApprovals] = useState(0);
+    const { canInstall, install } = useInstallPrompt();
+    // 手机抽屉:记下打开时的路由,换页后自动关闭;Esc 关闭并把焦点还给「菜单」
+    const routeKey = routePath(route);
+    const [drawerAt, setDrawerAt] = useState<string | null>(null);
+    const drawer = narrow && drawerAt === routeKey;
+    const menuRef = useRef<HTMLButtonElement>(null);
+    const sideRef = useRef<HTMLElement>(null);
+    const lastSession = useRef<string | null>(null);
+    useEffect(() => {
+        if (sessionId) lastSession.current = sessionId;
+    }, [sessionId]);
+    useEffect(() => {
+        if (!drawer) return;
+        // 抽屉的 visibility 有过渡:打开的那一帧还不可聚焦
+        const timer = window.setTimeout(() => sideRef.current?.querySelector<HTMLElement>('.wb-new')?.focus(), 50);
+        return () => window.clearTimeout(timer);
+    }, [drawer]);
+    const closeDrawer = useCallback((refocus: boolean) => {
+        setDrawerAt(null);
+        if (refocus) menuRef.current?.focus();
+    }, []);
     const onApprovals = useCallback(
         (n: number) => {
             setApprovals(n);
@@ -216,8 +253,10 @@ export function Workbench({
     const runId = activity?.live?.runId ?? null;
     const runActive = activity?.live != null;
     useEffect(() => {
+        // 手机上面板会盖住对话,不随工具调用自动打开,只在点标签时打开
+        if (narrow) return;
         dispatch({ type: 'live', runId, toolName: latestName, callId: latestCallId, input: latestInput });
-    }, [runId, latestName, latestCallId, latestInput]);
+    }, [narrow, runId, latestName, latestCallId, latestInput]);
 
     // 运行结束后 8 秒自动收起;固定、有待审批、或又开始新一轮时不收
     const autoClose = shouldAutoClose(panel, runActive, approvals);
@@ -252,15 +291,16 @@ export function Workbench({
                 e.preventDefault();
                 toggleSidebar();
             } else if (e.key === 'Escape' && !e.defaultPrevented) {
-                // 先关菜单和搜索,再收起面板
-                if (modelOpen) setModelOpen(false);
+                // 先关抽屉、菜单和搜索,再收起面板
+                if (drawer) closeDrawer(true);
+                else if (modelOpen) setModelOpen(false);
                 else if (pending) setPending(null);
                 else if (panel.open) dispatch({ type: 'close' });
             }
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [modelOpen, pending, panel.open, toggleSidebar]);
+    }, [drawer, closeDrawer, modelOpen, pending, panel.open, toggleSidebar]);
 
     useEffect(() => {
         if (searchOpen) searchRef.current?.focus();
@@ -468,14 +508,50 @@ export function Workbench({
         ? t(pageKey)
         : sessions.find((session) => session.id === sessionId)?.title || t('nav.newChat');
 
+    const sidePanels = SIDE_PANELS.filter((item) =>
+        // 记忆并入「知识」入口;手机上文件和浏览器在底部标签栏里
+        narrow ? item.id === 'changes' : item.id !== 'memory',
+    );
+    const pageLinks = narrow ? NARROW_PAGE_LINKS : PAGE_LINKS;
+    type TabId = 'chat' | 'files' | 'browser' | 'settings';
+    const tabs: { id: TabId; icon: IconName; label: string; on: boolean }[] = [
+        { id: 'chat', icon: 'chat', label: t('wb.tab.chat'), on: !pageView && !panel.open },
+        { id: 'files', icon: 'files', label: t('wb.rail.files'), on: panel.open && panel.panel === 'files' },
+        { id: 'browser', icon: 'globe', label: t('wb.rail.browser'), on: panel.open && panel.panel === 'browser' },
+        { id: 'settings', icon: 'gear', label: t('nav.settings'), on: route.name === 'settings' && !panel.open },
+    ];
+    const runTab = (id: TabId) => {
+        if (id === 'files' || id === 'browser') {
+            dispatch({ type: 'pin', panel: id });
+            return;
+        }
+        dispatch({ type: 'close' });
+        if (id === 'settings') navigate({ name: 'settings' });
+        // 从页面回到对话:回到最近一次打开的会话
+        else if (pageView)
+            navigate(lastSession.current ? { name: 'session', id: lastSession.current } : { name: 'home' });
+    };
+
     return (
         <div
             className="shell wb-shell"
-            data-sidebar={collapsed ? 'min' : 'full'}
+            data-sidebar={collapsed && !narrow ? 'min' : 'full'}
             data-panel={panel.open ? 'open' : 'closed'}
+            data-narrow={narrow ? '' : undefined}
         >
             <div className="wb-glow" aria-hidden="true" />
-            <aside className="wb-side" aria-label={t('wb.sidebar')}>
+            {drawer ? <div className="wb-backdrop" aria-hidden="true" onClick={() => closeDrawer(true)} /> : null}
+            <aside
+                id="wb-side"
+                ref={sideRef}
+                className="wb-side"
+                aria-label={t('wb.sidebar')}
+                data-open={drawer ? '' : undefined}
+                // 点了抽屉里的链接或面板按钮就收起(指向当前页的链接不会换页,这里补上)
+                onClick={(e) => {
+                    if (drawer && (e.target as HTMLElement).closest('a, .wb-side-item')) closeDrawer(false);
+                }}
+            >
                 <div className="wb-side-head">
                     <Link to={{ name: 'home' }} className="wb-brand" label="FatCat-AI">
                         <Icon name="paw" size={24} />
@@ -497,8 +573,8 @@ export function Workbench({
                     <span className="wb-side-text">{t('nav.newChat')}</span>
                 </Link>
                 <nav className="wb-side-group" aria-label={t('wb.railLabel')}>
-                    {/* 记忆并入「知识」入口;记忆面板仍可由 ui.panel 或命令打开 */}
-                    {SIDE_PANELS.filter((item) => item.id !== 'memory').map((item) => (
+                    {/* 记忆面板仍可由 ui.panel 或命令打开 */}
+                    {sidePanels.map((item) => (
                         <button
                             key={item.id}
                             type="button"
@@ -547,7 +623,7 @@ export function Workbench({
                     <span className="wb-side-fill" />
                 )}
                 <nav className="wb-side-group wb-side-foot" aria-label={t('wb.pages')}>
-                    {PAGE_LINKS.map((item) => (
+                    {pageLinks.map((item) => (
                         <Link
                             key={item.label}
                             to={item.to}
@@ -572,10 +648,30 @@ export function Workbench({
                         <Icon name="lock" size={20} />
                         <span className="wb-side-text">{t('auth.logout')}</span>
                     </button>
+                    {narrow && canInstall ? (
+                        <button type="button" className="wb-side-item" onClick={() => void install()}>
+                            <Icon name="paw" size={20} />
+                            <span className="wb-side-text">{t('pwa.install')}</span>
+                        </button>
+                    ) : null}
                 </nav>
+                {narrow ? <Footer meta={meta} /> : null}
             </aside>
             <div className="wb-world">
                 <div className="wb-capsule">
+                    {narrow ? (
+                        <button
+                            type="button"
+                            ref={menuRef}
+                            className="wb-capsule-btn wb-menu"
+                            aria-label={t('nav.menu')}
+                            aria-expanded={drawer}
+                            aria-controls="wb-side"
+                            onClick={() => setDrawerAt(drawer ? null : routeKey)}
+                        >
+                            <Icon name="menu" size={20} />
+                        </button>
+                    ) : null}
                     <span className="wb-capsule-title" title={sessionTitle}>
                         {sessionTitle}
                         {serverVersion ? <small> v{serverVersion}</small> : null}
@@ -701,7 +797,10 @@ export function Workbench({
                     <main className="wb-page">{pageView}</main>
                 ) : (
                     <section className="wb-stage">
-                        <div className="wb-glass wb-running" aria-live="polite">
+                        <div
+                            className={`wb-glass wb-running${running.rows.length === 0 ? ' empty' : ''}`}
+                            aria-live="polite"
+                        >
                             <h4>{t('wb.running')}</h4>
                             {running.hidden > 0 ? (
                                 <p className="wb-more-count">{t('wb.runningMore', { n: running.hidden })}</p>
@@ -833,6 +932,22 @@ export function Workbench({
                     </aside>
                 ) : null}
             </div>
+            {narrow ? (
+                <nav className="wb-tabs" aria-label={t('wb.tabs')}>
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            className="wb-tab"
+                            aria-current={tab.on ? 'page' : undefined}
+                            onClick={() => runTab(tab.id)}
+                        >
+                            <Icon name={tab.icon} size={20} />
+                            <span>{tab.label}</span>
+                        </button>
+                    ))}
+                </nav>
+            ) : null}
         </div>
     );
 }

@@ -58,11 +58,12 @@ export function particleCount(preset: OrbPreset, quality: number): number {
     return Math.max(0, Math.floor(MAX_PARTICLES * preset.density * Math.min(1, Math.max(MIN_QUALITY, quality))));
 }
 
-/** 低端设备(核心数或内存 ≤ 4)从 60% 起步。 */
-export function initialQuality(hardwareConcurrency?: number, deviceMemory?: number): number {
+/** 低端设备(核心数或内存 ≤ 4)和手机(屏幕短边 < 600px)从 60% 起步。 */
+export function initialQuality(hardwareConcurrency?: number, deviceMemory?: number, screenShortSide?: number): number {
     const low =
         (hardwareConcurrency !== undefined && hardwareConcurrency <= 4) ||
-        (deviceMemory !== undefined && deviceMemory <= 4);
+        (deviceMemory !== undefined && deviceMemory <= 4) ||
+        (screenShortSide !== undefined && screenShortSide > 0 && screenShortSide < 600);
     return low ? 0.6 : 1;
 }
 

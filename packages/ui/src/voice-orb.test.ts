@@ -42,6 +42,10 @@ describe('core orb model', () => {
         expect(initialQuality(4, undefined)).toBe(0.6);
         expect(initialQuality(undefined, 2)).toBe(0.6);
         expect(initialQuality(8, 8)).toBe(1);
+        // 手机屏幕(短边 < 600px)从降低的粒子数起步;读不到屏幕尺寸时不算
+        expect(initialQuality(8, 8, 390)).toBe(0.6);
+        expect(initialQuality(8, 8, 1080)).toBe(1);
+        expect(initialQuality(8, 8, 0)).toBe(1);
     });
 
     it('粒子生成是确定的、在单位球面上,投影近大远小', () => {
