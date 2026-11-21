@@ -102,17 +102,13 @@ pre {
     min-height: 100vh;
 }
 
-/* 桌面宽度:整页固定为视口高度,侧边栏满高不随右侧内容拉伸,长页面只在 .content 里滚动。
-   窄屏(<=720px)仍由整页滚动,侧边栏是抽屉,见下方媒体查询。 */
+/* 桌面宽度:整页固定为视口高度,侧边栏满高不随右侧内容拉伸,长页面只在工作台的 .wb-page 里滚动。
+   手机单栏的高度规则见文件末尾。 */
 @media (min-width: 721px) {
     .layout {
         height: 100vh;
         height: 100dvh;
         min-height: 0;
-    }
-
-    .content {
-        overflow-y: auto;
     }
 }
 
@@ -358,86 +354,9 @@ fieldset {
     min-height: 0;
 }
 
-.sidebar {
-    width: 16rem;
-    flex-shrink: 0;
-    border-right: var(--border-width) solid var(--border);
-    background: var(--panel);
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-    padding: 0.8rem;
-}
-
-.new-chat {
-    text-align: center;
-}
-
-.session-list {
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-}
-
-.session-link {
-    padding: 0.4rem 0.5rem;
-    border-radius: var(--radius-control);
-    color: var(--fg);
-    text-decoration: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.session-link.active,
-.sidebar-foot a.active {
-    background: var(--surface-2);
-    color: var(--accent);
-}
-
-.sidebar-foot a {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--muted);
-    text-decoration: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--radius-control);
-}
-
-.sidebar-foot a:hover {
-    color: var(--fg);
-}
-
-.sidebar-foot a.active:hover {
-    color: var(--accent);
-}
-
-.sidebar-brand {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    font-weight: 600;
-    font-size: var(--text-title);
-}
-
-.brand-logo {
-    border-radius: var(--radius-control);
-    flex: none;
-}
-
 .icon {
     flex: none;
     vertical-align: middle;
-}
-
-.new-chat {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
 }
 
 .message.assistant {
@@ -452,21 +371,6 @@ fieldset {
     width: 1.5rem;
     height: 1.5rem;
     border-radius: 50%;
-}
-
-.sidebar-foot {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    align-items: flex-start;
-}
-
-.content {
-    flex: 1;
-    min-width: 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
 }
 
 .page {
@@ -865,20 +769,7 @@ td .badge {
     overflow-y: auto;
 }
 
-.session-row {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.session-row .session-link {
-    flex: 1;
-    min-width: 0;
-}
-
-/* 手机顶栏与侧栏抽屉:桌面宽度下顶栏与遮罩不显示 */
-.topbar,
-.sidebar-backdrop,
+/* 邮件的「返回」按钮只在手机宽度显示 */
 .mail-back {
     display: none;
 }
@@ -1108,77 +999,6 @@ td .badge {
         flex-direction: column;
     }
 
-    .topbar {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        padding: 0.4rem 0.8rem;
-        padding-top: max(0.4rem, env(safe-area-inset-top));
-        padding-left: max(0.8rem, env(safe-area-inset-left));
-        padding-right: max(0.8rem, env(safe-area-inset-right));
-        border-bottom: var(--border-width) solid var(--border);
-        background: var(--panel);
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-
-    .topbar-title {
-        font-weight: 600;
-    }
-
-    .sidebar {
-        position: fixed;
-        inset: 0 auto 0 0;
-        width: min(18rem, 85vw);
-        z-index: 31;
-        border-right: var(--border-width) solid var(--border);
-        overflow-y: auto;
-        transform: translateX(-100%);
-        visibility: hidden;
-        transition:
-            transform 0.15s ease,
-            visibility 0.15s;
-        padding-top: max(0.8rem, env(safe-area-inset-top));
-        padding-bottom: max(0.8rem, env(safe-area-inset-bottom));
-    }
-
-    .sidebar.open {
-        transform: none;
-        visibility: visible;
-        box-shadow: var(--shadow-drawer);
-    }
-
-    .sidebar-backdrop {
-        display: block;
-        position: fixed;
-        inset: 0;
-        z-index: 30;
-        background: var(--scrim);
-    }
-
-    .session-list {
-        min-height: 8rem;
-    }
-
-    .sidebar-foot {
-        gap: 0;
-    }
-
-    .sidebar-foot a,
-    .sidebar-foot button,
-    .session-link,
-    .session-row button {
-        display: inline-flex;
-        align-items: center;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .sidebar {
-            transition: none;
-        }
-    }
-
     /* 触控目标与输入框 */
     button,
     .button,
@@ -1192,13 +1012,6 @@ td .badge {
     .tree-row button,
     .mail-row {
         min-height: 2.75rem;
-    }
-
-    .sidebar-foot a,
-    .sidebar-foot button,
-    .session-link {
-        min-height: 2.75rem;
-        width: 100%;
     }
 
     input,
@@ -3065,4 +2878,237 @@ input.kn-search {
 
 :root:not([data-theme='cat']) .kn-bubble::before {
     display: none;
+}
+
+/* ---- 手机单栏(900px 以下,工作台的 narrow 形态):胶囊铺满顶部,侧栏收成抽屉,底部标签栏,面板铺满主区域 ---- */
+.layout:has(> .wb-shell[data-narrow]) {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+}
+
+/* 页脚(许可证与源码链接)放进抽屉 */
+.layout:has(> .wb-shell[data-narrow]) > .footer {
+    display: none;
+}
+
+.wb-shell[data-narrow] {
+    flex-direction: column;
+    --wb-top: calc(max(var(--space-3), env(safe-area-inset-top)) + 48px + var(--space-2));
+}
+
+.wb-shell[data-narrow] .wb-side {
+    position: fixed;
+    z-index: 41;
+    inset: 0 auto 0 0;
+    width: min(18rem, 85vw);
+    overflow-y: auto;
+    background: var(--surface);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+        transform 0.15s ease,
+        visibility 0.15s;
+    padding-top: max(var(--space-3), env(safe-area-inset-top));
+    padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
+    padding-left: max(var(--space-3), env(safe-area-inset-left));
+}
+
+.wb-shell[data-narrow] .wb-side[data-open] {
+    transform: none;
+    visibility: visible;
+    box-shadow: var(--shadow-drawer);
+}
+
+.wb-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: var(--scrim);
+}
+
+.wb-shell[data-narrow] .wb-side-toggle {
+    display: none;
+}
+
+.wb-shell[data-narrow] .wb-side-item,
+.wb-shell[data-narrow] .wb-sessions li {
+    min-height: 44px;
+}
+
+.wb-shell[data-narrow] .wb-sessions {
+    flex: none;
+    overflow: visible;
+}
+
+/* 触屏上没有悬停:删除按钮一直显示 */
+.wb-shell[data-narrow] .wb-sessions li > button {
+    opacity: 1;
+}
+
+.wb-side .footer {
+    padding: var(--space-3) 0 0;
+    text-align: left;
+}
+
+.wb-shell[data-narrow] .wb-capsule {
+    top: max(var(--space-3), env(safe-area-inset-top));
+    left: max(var(--space-3), env(safe-area-inset-left));
+    right: max(var(--space-3), env(safe-area-inset-right));
+    max-width: none;
+    height: 48px;
+    padding: 0 var(--space-1);
+}
+
+.wb-shell[data-narrow] .wb-capsule-title {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+}
+
+.wb-shell[data-narrow] .wb-capsule-btn {
+    width: 44px;
+    height: 44px;
+}
+
+.wb-shell[data-narrow] .wb-pill {
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 知识页在手机上保留胶囊(菜单入口),星图从胶囊下面开始 */
+.wb-shell[data-narrow] .wb-world:has(.kn-page) > .wb-capsule {
+    display: flex;
+}
+
+.wb-shell[data-narrow] .kn-page {
+    top: var(--wb-top);
+}
+
+.wb-shell[data-narrow] .wb-page {
+    padding-top: var(--wb-top);
+}
+
+.wb-shell[data-narrow] .wb-page:has(.kn-page) {
+    padding-top: 0;
+}
+
+/* 搜索:全屏 */
+.wb-shell[data-narrow] .wb-palette {
+    position: fixed;
+    z-index: 45;
+    inset: 0;
+    width: auto;
+    transform: none;
+    padding: max(var(--space-3), env(safe-area-inset-top)) max(var(--space-3), env(safe-area-inset-right)) 0
+        max(var(--space-3), env(safe-area-inset-left));
+    background: var(--bg);
+}
+
+.wb-shell[data-narrow] .wb-palette .wb-search-list {
+    max-height: calc(100dvh - 96px);
+    overflow-y: auto;
+}
+
+.wb-shell[data-narrow] .wb-confirm {
+    left: var(--space-3);
+    right: var(--space-3);
+    transform: none;
+}
+
+/* RUNNING TOOLS 铺满宽度放在上面;没有工具时不占地方 */
+.wb-shell[data-narrow] .wb-running {
+    left: var(--space-3);
+    right: var(--space-3);
+    top: calc(var(--wb-top) + 48px);
+    width: auto;
+    max-height: 30%;
+    overflow-y: auto;
+}
+
+.wb-shell[data-narrow] .wb-running.empty {
+    display: none;
+}
+
+.wb-shell[data-narrow] .chat-stage .agent-picker {
+    top: var(--wb-top);
+    right: var(--space-3);
+}
+
+/* 球约占一半宽度,对话和输入框在下面 */
+.wb-shell[data-narrow] .chat-stage .voice-orb-wrap {
+    top: 36%;
+    width: min(56vw, 44vh);
+}
+
+.wb-shell[data-narrow] .chat-stage .voice-label {
+    bottom: 104px;
+}
+
+.wb-shell[data-narrow] .chat-stage .messages {
+    bottom: 96px;
+    width: calc(100% - 2 * var(--space-3));
+    max-height: 38%;
+}
+
+.wb-shell[data-narrow] .chat-stage .composer {
+    bottom: var(--space-2);
+    width: calc(100% - 2 * var(--space-3));
+}
+
+/* 面板铺满主区域(胶囊之下、标签栏之上) */
+.wb-shell[data-narrow] .wb-float {
+    top: var(--wb-top);
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-2);
+    width: auto;
+}
+
+.wb-shell[data-narrow] .wb-world:has(.wb-float) .chat-stage {
+    right: 0;
+}
+
+.wb-shell[data-narrow] .dash-grid {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/* 底部标签栏:对话 / 文件 / 浏览器 / 设置,带安全区内边距 */
+.wb-tabs {
+    position: relative;
+    z-index: 7;
+    flex: none;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    border-top: var(--border-width) solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+}
+
+.wb-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 56px;
+    padding: var(--space-1) 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.wb-tab[aria-current='page'] {
+    color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wb-shell[data-narrow] .wb-side {
+        transition: none;
+    }
 }

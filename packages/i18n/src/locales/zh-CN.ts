@@ -905,6 +905,8 @@ export const zh = {
     'wb.rail.files': '文件',
     'wb.rail.changes': '变更',
     'wb.rail.browser': '浏览器',
+    'wb.tab.chat': '对话',
+    'wb.tabs': '主导航',
     'wb.explorer': '文件',
     'wb.explorerEmpty': '还没有文件。',
     'wb.previewEmpty': '选择左侧的文件查看内容。',

@@ -971,6 +971,8 @@ export const en: Record<Key, string> = {
     'wb.rail.files': 'Files',
     'wb.rail.changes': 'Changes',
     'wb.rail.browser': 'Browser',
+    'wb.tab.chat': 'Chat',
+    'wb.tabs': 'Main navigation',
     'wb.explorer': 'Files',
     'wb.explorerEmpty': 'No files yet.',
     'wb.previewEmpty': 'Choose a file on the left to preview it.',

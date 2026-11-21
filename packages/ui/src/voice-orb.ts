@@ -70,7 +70,8 @@ let qualityState: QualityState | null = null;
 export function currentQuality(): QualityState {
     if (!qualityState) {
         const nav = typeof navigator === 'undefined' ? undefined : (navigator as Navigator & { deviceMemory?: number });
-        qualityState = { quality: initialQuality(nav?.hardwareConcurrency, nav?.deviceMemory), slow: 0 };
+        const scr = typeof screen === 'undefined' ? undefined : Math.min(screen.width, screen.height);
+        qualityState = { quality: initialQuality(nav?.hardwareConcurrency, nav?.deviceMemory, scr), slow: 0 };
     }
     return qualityState;
 }

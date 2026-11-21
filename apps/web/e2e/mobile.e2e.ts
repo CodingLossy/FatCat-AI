@@ -177,6 +177,28 @@ test('手机宽度:登录、发消息、设置、邮件、记忆、审计,各宽
     await page.getByRole('link', { name: '新对话' }).click();
     await expect(page.getByRole('link', { name: '新对话' })).toBeHidden();
 
+    // 底部标签栏:对话 / 文件 / 浏览器 / 设置。文件面板铺满主区域,点「对话」收起
+    const tabs = page.getByRole('navigation', { name: '主导航' });
+    await expect(tabs.getByRole('button')).toHaveText(['对话', '文件', '浏览器', '设置']);
+    await expect(tabs.getByRole('button', { name: '对话' })).toHaveAttribute('aria-current', 'page');
+    await shot(page, 'idle');
+    await tabs.getByRole('button', { name: '文件' }).click();
+    await expect(page.locator('.wb-float')).toBeVisible();
+    await expect(tabs.getByRole('button', { name: '文件' })).toHaveAttribute('aria-current', 'page');
+    await noHorizontalScroll(page, '文件面板');
+    await tabs.getByRole('button', { name: '对话' }).click();
+    await expect(page.locator('.wb-float')).toBeHidden();
+    // 触控目标至少 44px
+    for (const box of [
+        await tabs.getByRole('button', { name: '设置' }).boundingBox(),
+        await page.getByRole('button', { name: '菜单' }).boundingBox(),
+    ])
+        expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    await tabs.getByRole('button', { name: '设置' }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await tabs.getByRole('button', { name: '对话' }).click();
+    await expect(page.getByRole('textbox', { name: /输入消息/ })).toBeVisible();
+
     // 配置档
     await goto(page, '设置');
     await page.getByRole('button', { name: '添加配置档' }).click();
@@ -207,6 +229,12 @@ test('手机宽度:登录、发消息、设置、邮件、记忆、审计,各宽
     for (const link of ['知识', '审计', '邮件', '设置']) {
         await goto(page, link);
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+        if (link === '知识') {
+            // 星图从胶囊下面开始,菜单仍可用
+            await expect(page.getByTestId('knowledge')).toBeVisible();
+            await expect(page.getByRole('button', { name: '菜单' })).toBeVisible();
+            await shot(page, 'knowledge');
+        }
         for (const vp of VIEWPORTS) {
             await page.setViewportSize({ width: vp.width, height: vp.height });
             await noHorizontalScroll(page, `${link} @ ${vp.name}`);

@@ -157,6 +157,8 @@ test('科技为默认主题,旧值 light 按科技显示且不改写,主题选�
         getComputedStyle(document.documentElement).getPropertyValue('--bg').trim().toLowerCase(),
     );
     expect(bg).toBe('#fff6ec');
+    // 手机状态栏和 PWA 窗口跟着主题的背景色
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#fff6ec');
     await page.goto(base);
     await expect(page.getByTestId('voice-indicator')).toBeVisible();
     await shot(page, 'idle', 'cat');
