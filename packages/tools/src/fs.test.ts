@@ -190,6 +190,23 @@ describe('真实文件系统', () => {
         await expect(t['fs.list']!.execute({ path: 'notes.md' }, ctx)).rejects.toThrow(/not a folder/);
     });
 
+    // 命名管道没有写端时,同步打开会一直阻塞并卡死整个服务(#108 审查):读、列、搜都不能去打开它
+    it.skipIf(isWindows)('🔒 FIFO:fs.read 拒绝、fs.list 标成 other、fs.search 跳过,都不会卡住', async () => {
+        const t = tools();
+        const fifo = path.join(root, 'pipe');
+        spawnSync('mkfifo', [fifo]);
+        const started = Date.now();
+        await expect(t['fs.read']!.execute({ path: 'pipe' }, ctx)).rejects.toThrow(/not a file/);
+        const list = (await t['fs.list']!.execute({ path: root }, ctx)) as { content: string };
+        expect(list.content.split('\n')).toContain('other\tpipe');
+        const found = (await t['fs.search']!.execute({ path: root, query: 'pipe' }, ctx)) as { content: string };
+        expect(found.content).not.toContain('pipe');
+        // 同名不同类型:在 sub 里放一个叫 pipe.txt 的 FIFO,扩展名也骗不过去
+        spawnSync('mkfifo', [path.join(root, 'sub', 'pipe.txt')]);
+        await expect(t['fs.read']!.execute({ path: path.join('sub', 'pipe.txt') }, ctx)).rejects.toThrow(/not a file/);
+        expect(Date.now() - started).toBeLessThan(2000);
+    });
+
     it('fs.write 原子写入、默认不覆盖、拒绝写目录;fs.move 不能移动授权目录、不能移进自己', async () => {
         const t = tools();
         await expect(t['fs.write']!.execute({ path: 'out.md', content: '# 标题' }, ctx)).resolves.toMatchObject({

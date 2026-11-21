@@ -1,6 +1,6 @@
 # HANDOFF · 新会话接手说明
 
-> 写于 2026-11-21。用途:让新会话不用通读历史就能接着干。本文件是快照,进度以 `git log`、GitHub PR 和 `docs/milestones` 为准;和它们冲突时以它们为准。
+> 写于 2026-11-21,M12 的 PR 全部开出后更新。用途:让新会话不用通读历史就能接着干。本文件是快照,进度以 `git log`、GitHub PR 和 `docs/milestones` 为准;和它们冲突时以它们为准。
 > 先读 [CLAUDE.md](CLAUDE.md) 和 [AGENTS.md](AGENTS.md),它们是硬规则。**不要在本文件、PR、提交里写任何密钥、API Key 或个人隐私。**
 
 ## 1. 项目是什么
@@ -28,23 +28,23 @@ FatCat-AI:可自托管的开源个人 AI 助手框架(AGPL-3.0-only + 商业许�
 | 净室       | 记忆模块只依据 `docs/plan` 与 ADR 的自有规格,不看 GPL / AGPL 项目的代码。                                                                                                                                                                                                                                                                              |
 | 依赖       | 不引入遥测、常驻服务依赖、第三方 copyleft;只允许宽松许可(`pnpm check:licenses`)。                                                                                                                                                                                                                                                                      |
 | 流程       | 开工前读当前里程碑方案里对应的那一节和引用的 ADR,不通读代码;改 `packages/shared` 契约前先写 ADR;计划没写清选更简单更安全的做法。截图放 `docs/pr-screenshots` 分支(永不合并)的 `m12-*/` 目录。新文件带 SPDX 头。                                                                                                                                        |
-| 例外(M12)  | 业主 2026-11-21 对 M12 放宽「一次一个 PR」:每个 M12 PR 从上一个 PR 的分支切出,描述里写明依赖的 PR,不必等审查和合并。**但业主随后让 M12 在 #112 之后暂停**(见 §6)。                                                                                                                                                                                     |
+| 例外(M12)  | 业主 2026-11-21 对 M12 放宽「一次一个 PR」:每个 M12 PR 从上一个 PR 的分支切出,描述里写明依赖的 PR,不必等审查和合并;开完 PR 不等 CI,CI 挂了再回来修;主题截图只要空闲态和知识模式两张。#116–#119 合并前**不要 rebase、不要强推**这几条分支(见 §6)。                                                                                                      |
 
 ## 3. 进度快照(截至 2026-11-21)
 
-`main` 最新合并是 #110(`feat/browser-tool`,409d970)。
+`main` 最新合并是 #115(`feat/knowledge-hero`,1b78b59)。M12 的 PR 已全部开出,#116–#119 待合并(见 §6)。
 
-| 里程碑 | 状态              | 要点                                                                                                                                                                                                                                                             |
-| ------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0–M5c | 完成              | 脚手架;对话核心 + BYO LLM;工具框架与审批;邮件(IMAP/SMTP);语音与图片(M4);渠道框架 + 微信 iLink(M5a;企业微信推迟);知识地图分类浏览器、TOTP、密钥整体加密、外连清单(M5b);部署与发布准备、API v1 冻结检查(M5c)。1.0 发布说明还是草稿,**没有打过 tag 或发 Release**。 |
-| M6     | 完成              | 定时任务、自然语言建任务、任务工具集、预授权域名(ADR 0033–0039)。                                                                                                                                                                                                |
-| M7     | 完成到市场收尾    | 插件系统与市场(ADR 0040):`plugin.json`、子进程 + stdio MCP、受控网络、Ed25519 签名索引、升级与回滚、开发指南。Windows 真机 W1 脚本 33/33 通过。见 `docs/milestones/M7-self-check.md`。                                                                           |
-| M8     | 完成              | 多智能体:代理、`delegate`、预置角色、委派树界面(ADR 0042)。不做「中断后续跑」、只能整棵树取消。                                                                                                                                                                  |
-| M9     | 完成              | `@fatcat-ai/i18n`、`check:i18n`、文档站(Astro Starlight,ADR 0043)。                                                                                                                                                                                              |
-| M10    | 完成(待真机)      | Tauri 桌面壳、sidecar、三平台安装包工作流、知识粒子球、记忆地图与会话地图(ADR 0044)。已修 Windows 闪退(`\\?\` 路径前缀)等真机问题。自动更新、通知、文件拖拽、远程模式未做。                                                                                      |
-| M11    | 部分完成          | 设备配对、`/api/v1/sync`、PWA 壳、离线只读缓存、手机配对页(ADR 0045)。方案里的 `feat/web-push`(Web Push)、`feat/mobile-access`(局域网开关与文档)、`docs/m11-self-check` 在 CHANGELOG 和远端分支里都没找到,按未做处理(接手前向业主确认)。                         |
-| M12    | **进行中,已暂停** | UI 重设计 / 工具结果可视化 / 内置浏览器 / 应用图标(ADR 0046、`docs/design/ui-redesign.md`)。已合并:#104 设计、#105 视觉与图标、#106 核心球、#107 工作台布局、#108 工具结果卡片、#109 设置页、#110 `browser.*` 工具。开放:#111、#112(见 §6)。                     |
-| M13    | 未开始            | 稳定化与 2.0(多用户、QQ 等渠道)。原「M12 稳定化与 2.0」已改名 M13。                                                                                                                                                                                              |
+| 里程碑 | 状态                      | 要点                                                                                                                                                                                                                                                                                                 |
+| ------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0–M5c | 完成                      | 脚手架;对话核心 + BYO LLM;工具框架与审批;邮件(IMAP/SMTP);语音与图片(M4);渠道框架 + 微信 iLink(M5a;企业微信推迟);知识地图分类浏览器、TOTP、密钥整体加密、外连清单(M5b);部署与发布准备、API v1 冻结检查(M5c)。1.0 发布说明还是草稿,**没有打过 tag 或发 Release**。                                     |
+| M6     | 完成                      | 定时任务、自然语言建任务、任务工具集、预授权域名(ADR 0033–0039)。                                                                                                                                                                                                                                    |
+| M7     | 完成到市场收尾            | 插件系统与市场(ADR 0040):`plugin.json`、子进程 + stdio MCP、受控网络、Ed25519 签名索引、升级与回滚、开发指南。Windows 真机 W1 脚本 33/33 通过。见 `docs/milestones/M7-self-check.md`。                                                                                                               |
+| M8     | 完成                      | 多智能体:代理、`delegate`、预置角色、委派树界面(ADR 0042)。不做「中断后续跑」、只能整棵树取消。                                                                                                                                                                                                      |
+| M9     | 完成                      | `@fatcat-ai/i18n`、`check:i18n`、文档站(Astro Starlight,ADR 0043)。                                                                                                                                                                                                                                  |
+| M10    | 完成(待真机)              | Tauri 桌面壳、sidecar、三平台安装包工作流、知识粒子球、记忆地图与会话地图(ADR 0044)。已修 Windows 闪退(`\\?\` 路径前缀)等真机问题。自动更新、通知、文件拖拽、远程模式未做。                                                                                                                          |
+| M11    | 部分完成                  | 设备配对、`/api/v1/sync`、PWA 壳、离线只读缓存、手机配对页(ADR 0045)。方案里的 `feat/web-push`(Web Push)、`feat/mobile-access`(局域网开关与文档)、`docs/m11-self-check` 在 CHANGELOG 和远端分支里都没找到,按未做处理(接手前向业主确认)。                                                             |
+| M12    | **开发完成,待合并与真机** | UI 重设计 / 工具结果可视化 / 内置浏览器 / 应用图标 / 三套主题 / 手机单栏(ADR 0046 §1–§21、`docs/design/ui-redesign.md`)。已合并:#104–#112、#114 主题引擎、#115 知识模式。开放:#116 自然主题、#117 猫咪主题、#118 `system.open`、#119 手机单栏(链式,CI 全绿),以及收尾 PR `fix/m12-followups`(见 §6)。 |
+| M13    | 未开始                    | 稳定化与 2.0(多用户、QQ 等渠道)。原「M12 稳定化与 2.0」已改名 M13。                                                                                                                                                                                                                                  |
 
 ## 4. 核心设计决策(别推翻)
 
@@ -77,26 +77,32 @@ FatCat-AI:可自托管的开源个人 AI 助手框架(AGPL-3.0-only + 商业许�
 
 ## 6. 现在的状态与下一步 TODO
 
-### 6.1 正在飞的 M12 链(业主 2026-11-21 说「做完 #112 先停一下」)
+### 6.1 M12 收尾状态(2026-11-21)
 
-- **#111** `feat/browser-panel`(base: main,CI 绿):桌面浏览器面板 + 桌面截图 + 界面 CSP。**待业主 / X 合并**,并做 Windows / macOS 真机清单(见 PR 描述:面板随窗口缩放、页面不能调用 Tauri、cookie 隔离、下载 / 弹窗 / 权限提示被拦、`file:` / `data:` / IP 被拒、`browser.screenshot` 端到端、语音在 CSP 下播放;macOS 权限提示未拦,截图返回 `browser_unavailable`)。
-- **#112** `feat/workbench-idle`(base: `feat/browser-panel`):空闲布局、浮动面板、`ui.panel` 工具、默认深色。依赖 #111;#111 合并后要把 base 改到 `main`。待决:记忆仍以面板打开(推荐保持)。
-- **`feat/theme-engine`**:已推送,只有一个 WIP 提交(Theme 枚举增量、`packages/ui` 的 hero 注册表与 tech hero、主题选择器、`theme.e2e.ts`)。**还没有 PR、没上传截图**。恢复步骤:截图传到 `docs/pr-screenshots` 的 `m12-themes/`(idle / working / knowledge / settings / mail / narrow),补 CHANGELOG 中英条目,开 PR 并写明依赖 #112,无署名。**没有业主同意不要恢复。**
-- **不要碰 M12 链上的分支**,除非业主让你继续。
+- **开放的链式 PR**(每个的 base 是上一个分支;上一个合并后把 base 改到 `main`):**#116** `feat/theme-nature`(base main)→ **#117** `feat/theme-cat` → **#118** `feat/open-external` → **#119** `feat/narrow-layout`。CI 全绿。等业主看完主题截图后由 X 按顺序合并;**期间不要 rebase、不要强推这几条分支**。PR 描述里的自动尾注由业主删。
+- **#119 待业主决定**(描述里有推荐):手机上面板只在点标签时打开(推荐);旧抽屉里「任务」上的待批数字随旧抽屉一起去掉,与桌面一致(推荐)。
+- **收尾 PR `fix/m12-followups`**(base main):#108 审查遗留的 FIFO 测试(读 / 列 / 搜对 FIFO 不卡住,`readHead` 非阻塞打开并在句柄上确认普通文件);#110 审查遗留(`browser.ts` 按调用顺序整理辅助函数,`checkBrowserUrl` 的注释回到原位;runner 调工具的 `warnings` 时加 try/catch,出错时不带警示、审批照常);本文件。知识模式「星图 / 列表」切换在自然和猫咪主题下沿用现有命名,不改。
+- 截图都在 `docs/pr-screenshots` 分支:`m12-themes/`(自然、猫咪)、`m12-narrow/`(手机空闲、手机知识)。
 
-### 6.2 M12 剩余顺序(每个新开线程)
+### 6.2 M12 之后
 
-`feat/theme-engine`(+ Tech 默认)→ `feat/knowledge-hero` → `feat/theme-nature` → `feat/theme-cat` → `feat/open-external`(`system.open` + 审批)→ `feat/narrow-layout`。后续还有 `feat/browser-actions`(click / fill / submit,真机确认壳之后)和过滤代理(`proxy_url` 逐平台核实之后)。主题 PR 的截图要业主看过再合并;参考视频 / 图片不提交;最终猫的插画是单独的绘制任务。
+M12 计划内的 PR 都已开出。等业主给下一个计划再动手(做完收尾 PR 就停)。计划外但已知的后续:`feat/browser-actions`(click / fill / submit,真机确认壳之后)、过滤代理(`proxy_url` 逐平台核实之后)、最终猫咪插画(单独的绘制任务)。参考视频 / 图片不提交。
 
 ### 6.3 已知未结事项(需业主点头或真机)
 
 1. `apps/web` `Channels.tsx:68` 扫码轮询 bug,**需业主同意再修**。
 2. 插件网络隔离后续:挂载命名空间 / Landlock;`detectNetIsolation` 异步并缓存;macOS `sandbox-exec` 真机检查。
 3. 业主侧:`@fatcat-ai/plugin-sdk` 的 npm 发布(C 不发布,步骤见 `docs/plugins/publishing-sdk.md`);索引仓库的 `FATCAT_AI_REF` 改到新合并提交;官方索引建好后做真实签名端到端。
-4. 真机清单:M7(Windows 打包通过索引 CI、真实市场安装、`pnpm dev` Ctrl+C 后锁文件、macOS)、M8(迁移 0019 在真实库副本上、`/agents` 页、真实模型下委派与审批)、M10(三平台安装包首发、冷启动耗时、SmartScreen / 右键打开说明)、M11(iOS Safari / Android Chrome 安装与推送、局域网配对)、M12(见 #111)。
-5. M8 遗留决定:整棵树取消是否够用、中断后重试还是做续跑(推荐先重试);越界路径目前是先审批后由工具拒绝,可改为审批前校验。
-6. 发布:v1.0 说明仍是草稿,无 tag / Release / GHCR 镜像;首发用 `1.0.0` 由发布流程设置;自动更新要业主先生成密钥;桌面通知、文件拖拽、远程模式需要页面到壳的桥接设计。
-7. 企业微信推迟、QQ 以后做(1.x 优先 / M13);1.0 仅单用户,多用户在 M13。
+4. 真机清单:M7(Windows 打包通过索引 CI、真实市场安装、`pnpm dev` Ctrl+C 后锁文件、macOS)、M8(迁移 0019 在真实库副本上、`/agents` 页、真实模型下委派与审批)、M10(三平台安装包首发、冷启动耗时、SmartScreen / 右键打开说明)、M11(iOS Safari / Android Chrome 安装与推送、局域网配对)、M12 见下一条。
+5. **M12 真机清单**(都没在真机上验证过):
+   - #111 浏览器面板(Windows 与 macOS):面板随窗口缩放、页面不能调用 Tauri、cookie 隔离、下载 / 弹窗 / 权限提示被拦、`file:` / `data:` / IP 被拒、`browser.screenshot` 端到端、语音在 CSP 下播放;macOS 权限提示未拦、截图返回 `browser_unavailable`。
+   - #112 空闲布局(Windows 与 macOS):浮动面板盖在原生浏览器 webview 上时的遮挡与隐藏、Ctrl+B / Ctrl+K、运行结束 8 秒自动收起。
+   - #118 `system.open`:三平台的打开动作;Windows `explorer.exe` 对 mailto 和带空格路径的行为;macOS Gatekeeper 对下载文件的提示。
+   - #119 手机单栏(真实 iPhone / Android):刘海和底部横条的安全区留白、屏幕键盘弹出时输入框的位置、安装成 PWA 后状态栏颜色随主题变化;窄的桌面窗口里原生浏览器面板与底部标签栏的叠放。
+   - #108 遗留:真实模型下 fs.write 审批的差异预览;Windows 上反斜杠根目录和路径显示;Windows 命名管道路径不会挂住(FIFO 测试在 win32 跳过)。
+6. M8 遗留决定:整棵树取消是否够用、中断后重试还是做续跑(推荐先重试);越界路径目前是先审批后由工具拒绝,可改为审批前校验。
+7. 发布:v1.0 说明仍是草稿,无 tag / Release / GHCR 镜像;首发用 `1.0.0` 由发布流程设置;自动更新要业主先生成密钥;桌面通知、文件拖拽、远程模式需要页面到壳的桥接设计。
+8. 企业微信推迟、QQ 以后做(1.x 优先 / M13);1.0 仅单用户,多用户在 M13。
 
 ## 7. 速查
 
@@ -104,4 +110,4 @@ FatCat-AI:可自托管的开源个人 AI 助手框架(AGPL-3.0-only + 商业许�
 - 文档入口:`docs/plan/`(总纲 + 记忆补充设计)、`docs/milestones/M*-plan.md` 与 `M*-self-check.md`、`docs/adr/`(0001–0046)、`docs/design/ui-redesign.md`、`CHANGELOG.md`(中英)、`docs/plugins/`、`docs/release/`。
 - 手动测试端点(只记引用,不记密钥):对话用 DeepSeek,密钥来自环境变量引用;语音用 SiliconFlow 的 ASR 与 TTS。提交前扫一遍 fixtures 和日志有没有泄露密钥。
 - 业主联系邮箱见 `SECURITY.md`。
-- 新会话开场建议:`git status` 确认干净 → `git switch main && git pull --ff-only` → 读本文件 §6 → 向业主确认现在做哪一项。
+- 新会话开场建议:`git status` 确认干净 → `git switch main && git pull --ff-only` → 读本文件 §6 → 向业主确认现在做哪一项(M12 之后的计划还没定)。

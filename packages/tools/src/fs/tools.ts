@@ -6,6 +6,8 @@
 import { randomBytes } from 'node:crypto';
 import {
     closeSync,
+    constants,
+    fstatSync,
     lstatSync,
     openSync,
     readdirSync,
@@ -54,10 +56,16 @@ function looksBinary(buffer: Buffer): boolean {
     return buffer.subarray(0, 8192).includes(0);
 }
 
+/**
+ * 读文件开头。以非阻塞方式打开并在打开的句柄上再确认是普通文件:调用方的 stat 和这里的 open 之间文件可能被换成
+ * FIFO,同步打开没有写端的 FIFO 会一直阻塞整个服务(#108)。普通文件上 O_NONBLOCK 不影响读取;Windows 没有这个标志。
+ */
 function readHead(file: string, offset: number, length: number): { buffer: Buffer; size: number } {
-    const fd = openSync(file, 'r');
+    const fd = openSync(file, constants.O_RDONLY | (constants.O_NONBLOCK ?? 0));
     try {
-        const size = statSync(file).size;
+        const info = fstatSync(fd);
+        if (!info.isFile()) throw new PathError('not a file');
+        const size = info.size;
         const buffer = Buffer.alloc(Math.max(0, Math.min(length, size - offset)));
         const read = buffer.length > 0 ? readSync(fd, buffer, 0, buffer.length, offset) : 0;
         return { buffer: buffer.subarray(0, read), size };

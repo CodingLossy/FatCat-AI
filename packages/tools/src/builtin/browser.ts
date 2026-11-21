@@ -107,22 +107,6 @@ function internalName(host: string): boolean {
  * 静态校验网址(不联网):只允许 http / https,无内嵌凭据,拒绝字面 IP 与内部主机名。
  * 解析后的地址由 guardedFetch 在连接时再校验一次(防 DNS 重绑定与重定向绕过)。
  */
-/** 按 owner 与会话一起作键,将来 sessionId 不是全局唯一时也不会串号。 */
-function sessionKey(context: ToolContext): string {
-    return `${context.ownerId}\u0000${context.sessionId}`;
-}
-
-/** 地址的查询串加片段超过上限:可能带着对话内容(ADR 0046 第 4.1 节)。 */
-export function carriesData(raw: string | null): boolean {
-    if (raw === null) return false;
-    try {
-        const url = new URL(raw);
-        return url.search.length + url.hash.length > URL_DATA_WARN_CHARS;
-    } catch {
-        return false;
-    }
-}
-
 export function checkBrowserUrl(raw: string): URL {
     if (raw.length > 2048) throw new BrowserError('the URL is too long', 'bad_url');
     let url: URL;
@@ -168,6 +152,22 @@ function hostOfInput(input: unknown): string | null {
         return normalizeHost(checkBrowserUrl(raw).hostname);
     } catch {
         return null;
+    }
+}
+
+/** 按 owner 与会话一起作键,将来 sessionId 不是全局唯一时也不会串号。 */
+function sessionKey(context: ToolContext): string {
+    return `${context.ownerId}\u0000${context.sessionId}`;
+}
+
+/** 地址的查询串加片段超过上限:可能带着对话内容(ADR 0046 第 4.1 节)。 */
+export function carriesData(raw: string | null): boolean {
+    if (raw === null) return false;
+    try {
+        const url = new URL(raw);
+        return url.search.length + url.hash.length > URL_DATA_WARN_CHARS;
+    } catch {
+        return false;
     }
 }
 
@@ -275,24 +275,15 @@ export function createBrowserTools(options: BrowserToolOptions): ToolDefinition[
             );
         },
         summarize: (input) => `Open ${urlOf(input) ?? '(invalid URL)'} in the browser`,
-        warnings: (input): ApprovalWarning[] => {
-            const raw = urlOf(input);
-            if (raw === null) return [];
-            try {
-                if (carriesData(raw)) {
-                    return [
-                        {
-                            code: 'url_carries_data',
-                            message:
-                                'This address carries a long query or fragment that may contain conversation data.',
-                        },
-                    ];
-                }
-            } catch {
-                // 地址无效时 precheck 已经拒绝
-            }
-            return [];
-        },
+        warnings: (input): ApprovalWarning[] =>
+            carriesData(urlOf(input))
+                ? [
+                      {
+                          code: 'url_carries_data',
+                          message: 'This address carries a long query or fragment that may contain conversation data.',
+                      },
+                  ]
+                : [],
         execute: async (raw, context) => {
             countCall(context);
             const { url: requested } = OpenInput.parse(raw);

@@ -567,6 +567,26 @@ describe('审批预览(ADR 0046 第 12 节)', () => {
         await m.idle();
         expect(saved).toEqual([]);
     });
+
+    it('警示抛错时审批照常发出(不带警示,仍然要批准),运行不中断', async () => {
+        steps = [callTool('memory.save', { text: 'real' }), answer('ok')];
+        const m = manager({
+            tools: new ToolRegistry().register({
+                ...saveTool,
+                warnings: () => {
+                    throw new Error('boom');
+                },
+            }),
+        });
+        const session = repos.sessions.create(ownerId);
+        const required = waitFor('approval-required');
+        m.start({ ownerId, sessionId: session.id, profile, text: 'go' });
+        const event = (await required).event as { callId: string; warnings?: unknown };
+        expect(event.warnings).toBeUndefined();
+        expect(m.resolveApproval(ownerId, event.callId, 'approve')).toBe('resolved');
+        await m.idle();
+        expect(saved).toEqual([{ text: 'real' }]);
+    });
 });
 
 // Windows 没有 mkfifo(命名管道的语义与 POSIX FIFO 不同),这一组只在 POSIX 上跑
