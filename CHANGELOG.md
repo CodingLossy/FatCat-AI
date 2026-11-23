@@ -4,6 +4,13 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### M13 · Agent loop deepening (in progress)
+
+#### Changed
+
+- Tool groups (ADR 0047): in a normal conversation the model now starts with the everyday tools only (memory, `calc`, `time`, items and knowledge base, `ui.panel`, `delegate` where allowed) plus the new `tools.enable`. Files (`fs`), mail, `web`, `browser`, `channel`, `system`, each MCP server (`mcp.<server>`) and each plugin (`plugin.<id>`) are groups the model turns on with `tools.enable({ group })` for the current answer; the system prompt ends with a one-line list of these groups. Calling a tool from a group that is not on answers `unknown tool: <name> (enable group <g> with tools.enable first)` and is audited as an unknown tool. Turning on a group never changes risk levels, approvals or pre-authorizations. Tasks and agents with a tool set get the tools it names right away and cannot turn on groups outside it; tasks that send to a chat channel start with `channel.push` available. In a test with every built-in tool registered, the first step now sends 17 tool descriptions instead of 29. `GET /api/v1/tools` returns an optional `group` for each tool (additive). Chinese summary: 工具分组与按需开启:普通对话第一步只交常用工具和新的 `tools.enable`,文件、邮件、网页、浏览器、渠道、系统打开、每个 MCP 服务器和插件按组开启,只在这次回答内有效;没开启就硬调用按未知工具处理;开启不改变任何审批;有工具集的任务和代理不受影响;`GET /api/v1/tools` 多了可选的 `group` 字段。
+- Each answer in a normal conversation or scheduled task can now take up to 10 tool steps (was 5) and has a token budget of 60,000 summed over all steps; when it is used up no further step starts and the answer ends with a short note. Agents keep their own step limit and budgets. Chinese summary: 普通对话与定时任务每次回答的工具步数上限从 5 改为 10,并新增 60,000 token 的预算,用完后不再开始下一步并在回答末尾说明;代理沿用自己的设置。
+
 ### M12 · UI redesign (in progress)
 
 #### Added

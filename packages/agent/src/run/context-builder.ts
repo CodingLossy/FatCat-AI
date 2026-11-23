@@ -6,7 +6,7 @@ import type { Settings } from '@fatcat-ai/shared';
 import { effectiveTimeZone, formatPromptTime } from '@fatcat-ai/shared';
 import type { ChatMessage } from '@fatcat-ai/providers';
 import type { ModelProfileRecord } from '@fatcat-ai/storage';
-import { promptText } from '@fatcat-ai/i18n';
+import { promptText, toolGroupLabel } from '@fatcat-ai/i18n';
 import { DEFAULT_CONTEXT_WINDOW, planContext, SUMMARY_PREFIX, textOf, toChatMessages, transcript } from '../context.js';
 import type { MemoryTurnContext, RunHost, StartedRun, StartRunInput } from './common.js';
 
@@ -26,12 +26,20 @@ export function currentTimeLine(settings: Pick<Settings, 'locale' | 'timeZone'>,
     return promptText('currentTime', settings.locale, { time });
 }
 
-/** 通用系统提示加当前时间;根运行和子运行共用(只有注册了工具时才加)。 */
-export function systemMessage(host: RunHost, ownerId: string): ChatMessage {
-    return {
-        role: 'system',
-        content: `${SYSTEM_PROMPT}\n${currentTimeLine(host.options.repos.settings.get(ownerId), host.now())}`,
-    };
+/** 按需组目录行(ADR 0047 第 1.4 节):`Optional tool groups …: fs (local files …), mail (e-mail).`。 */
+export function groupCatalogLine(groups: readonly string[]): string {
+    return promptText('toolGroupCatalog', 'en', { groups: groups.map(toolGroupLabel).join(', ') });
+}
+
+/**
+ * 通用系统提示加当前时间;根运行和子运行共用(只有注册了工具时才加)。
+ * groups 是能用 tools.enable 开启的按需组,非空时在时间行之前加一行目录(时间行保持在最后,ADR 0023 第 4 节)。
+ */
+export function systemMessage(host: RunHost, ownerId: string, groups: readonly string[] = []): ChatMessage {
+    const lines = [SYSTEM_PROMPT];
+    if (groups.length > 0) lines.push(groupCatalogLine(groups));
+    lines.push(currentTimeLine(host.options.repos.settings.get(ownerId), host.now()));
+    return { role: 'system', content: lines.join('\n') };
 }
 
 /** 本轮的记忆上下文;未配置或失败时为空,失败不影响这一轮。 */
@@ -81,6 +89,7 @@ export async function buildContext(
     signal: AbortSignal,
     memory: readonly string[] = [],
     persona = '',
+    groups: readonly string[] = [],
 ): Promise<ChatMessage[]> {
     const { options } = host;
     const { repos } = options;
@@ -109,7 +118,7 @@ export async function buildContext(
         }
     }
     const out: ChatMessage[] = [];
-    if (options.tools?.size) out.push(systemMessage(host, ownerId));
+    if (options.tools?.size) out.push(systemMessage(host, ownerId, groups));
     // 代理的人格提示词放在通用系统提示之后;它只能补充角色,工具集与审批不由提示词决定
     if (persona.trim()) out.push({ role: 'system', content: persona.trim() });
     // digest 与记忆块是数据:放在系统提示之后、对话之前(补充设计第 4.4–4.5 节)

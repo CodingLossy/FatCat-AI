@@ -171,6 +171,8 @@ export interface LoopCtx {
     /** 工具集链:一个工具必须在每一项里才可用(只缩小,ADR 0042 第 2 节)。 */
     toolSets: { set: string[]; label: 'task' | 'agent' }[];
     withheldPrefixes: string[];
+    /** 本次运行用 tools.enable 开启的按需组(ADR 0047 第 1.3 节);不跨运行,不写库。 */
+    activeGroups: Set<string>;
     noMemory: boolean;
     /** 子运行里的代理名,出现在审批卡上;根运行为 undefined。 */
     initiator?: string;

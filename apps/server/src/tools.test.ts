@@ -17,7 +17,14 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { isBlockedAddress } from '@fatcat-ai/tools';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
+import {
+    enableGroupFor,
+    createTestServer,
+    jsonBody,
+    sessionFrom,
+    TEST_PASSWORD,
+    type TestServer,
+} from './test-helpers.js';
 
 let s: TestServer;
 afterEach(async () => {
@@ -28,6 +35,7 @@ type Step = (request: ChatRequest) => AsyncGenerator<ChatChunk>;
 
 const callTool = (name: string, input: unknown): Step =>
     async function* () {
+        yield* enableGroupFor(name, 'c1');
         yield { type: 'tool-call', callId: 'c1', name, input };
         yield { type: 'finish', reason: 'tool-calls' };
     };
@@ -122,6 +130,7 @@ describe('/api/v1/tools、/approvals、/preauthorizations、/audit', () => {
             // system.open:设置里打开之前是 disabled,永远不能预授权(ADR 0046 第 5 节)
             ['system.open', 'external', 'disabled', false, null],
             ['time', 'read', 'auto', true, null],
+            ['tools.enable', 'read', 'auto', true, null],
             ['ui.panel', 'read', 'auto', true, null],
             ['web.fetch', 'read', 'required', true, 'domain'],
         ]);
@@ -428,6 +437,7 @@ describe('browser.*(设置开关、首次主机审批、注入评测)', () => {
         steps.push(
             async function* () {
                 // 同一个已批准的主机,但带 250 字符的查询串:不能直接运行
+                yield* enableGroupFor('browser.open', 'c3b');
                 yield {
                     type: 'tool-call',
                     callId: 'c3b',

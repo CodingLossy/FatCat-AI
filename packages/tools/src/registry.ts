@@ -3,6 +3,7 @@
 
 import { defaultActivityLabel } from './activity.js';
 import type { PreauthConstraintKind, ToolInfo } from '@fatcat-ai/shared';
+import { groupOf } from './groups.js';
 import { defaultApproval, isEnabled, isPreauthorizable, type PolicyOptions } from './policy.js';
 import type { ToolDefinition } from './types.js';
 
@@ -64,6 +65,11 @@ export class ToolRegistry {
         return this.tools.size;
     }
 
+    /** 工具所属的组(ADR 0047 第 1.1 节):工具自己声明的 group 优先,否则由名字推出;未注册的工具按名字推出。 */
+    groupOf(name: string): string {
+        return this.tools.get(name)?.group ?? groupOf(name);
+    }
+
     /** 交给模型的工具:被禁用的工具不提供;给出 ownerId 时,设置里关闭的工具(enabledFor)也不提供。 */
     specs(ownerId?: string): ToolSpecLike[] {
         return [...this.tools.values()]
@@ -84,6 +90,7 @@ export class ToolRegistry {
                 risk: t.risk,
                 approval: this.enabledFor(t, ownerId) ? defaultApproval(t, this.options) : 'disabled',
                 source: t.source ?? 'builtin',
+                group: t.group ?? groupOf(t.name),
                 server: t.server ?? null,
                 preauthorizable: isPreauthorizable(t) && isEnabled(t, this.options) && this.enabledFor(t, ownerId),
                 constraints: Object.keys(t.constraints ?? {}) as PreauthConstraintKind[],

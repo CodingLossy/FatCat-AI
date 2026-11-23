@@ -41,6 +41,17 @@ export interface ToolContext {
      * 深度与预算都没超限」时才提供;没有时 delegate 工具直接报错。
      */
     delegate?: (request: DelegateRequest) => Promise<DelegateResult>;
+    /**
+     * 对本次运行开启一个按需工具组(ADR 0047 第 1.3 节),返回组里现在可用的工具。只由 core 提供;
+     * 组不存在或被工具集排除时抛错。开启只决定工具说明是否交给模型,不改变任何工具的审批。
+     */
+    enableGroup?: (group: string) => ToolGroupInfo;
+}
+
+/** tools.enable 的结果:组名与组里每个工具的一句话说明。 */
+export interface ToolGroupInfo {
+    group: string;
+    tools: { name: string; description: string }[];
 }
 
 export interface DelegateRequest {
@@ -75,6 +86,8 @@ export interface ToolDefinition {
     /** 为 false 时不允许预授权,每次都要审批(例如 memory.forget)。 */
     preauthorizable?: false;
     source?: 'builtin' | 'mcp' | 'plugin';
+    /** 所属的工具组(ADR 0047 第 1.1 节);不给时由工具名推出(groupOf)。 */
+    group?: string;
     /** 执行时语音指示器下的状态文字(ADR 0021 第 7 节);不给时内置工具按名称取默认值,MCP 工具没有。 */
     activityLabel?: ActivityLabel;
     /** MCP 工具所属的服务器名,或插件工具所属的插件 id。 */

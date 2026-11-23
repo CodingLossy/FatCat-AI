@@ -142,6 +142,8 @@ async function runChild(
         untrusted: parent.untrusted,
         toolSets: [...parent.toolSets, { set: agent.toolSet, label: 'agent' }],
         withheldPrefixes: parent.withheldPrefixes,
+        // 子运行总有代理的工具集,按需组不生效;开启状态也不从父运行继承
+        activeGroups: new Set(),
         noMemory: parent.noMemory || agent.memoryScope === 'none',
         initiator: agent.name,
         depth: parent.depth + 1,

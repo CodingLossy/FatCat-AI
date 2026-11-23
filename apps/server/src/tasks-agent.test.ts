@@ -6,7 +6,14 @@ import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers
 import { ApprovalRequest, pageOf, Task, TaskRun } from '@fatcat-ai/shared';
 import { ProviderError } from '@fatcat-ai/providers';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
+import {
+    enableGroupFor,
+    createTestServer,
+    jsonBody,
+    sessionFrom,
+    TEST_PASSWORD,
+    type TestServer,
+} from './test-helpers.js';
 
 let s: TestServer;
 afterEach(() => s?.cleanup());
@@ -14,6 +21,7 @@ afterEach(() => s?.cleanup());
 type Step = (request: ChatRequest) => AsyncGenerator<ChatChunk>;
 const callTool = (name: string, input: unknown): Step =>
     async function* () {
+        yield* enableGroupFor(name, 'c1');
         yield { type: 'tool-call', callId: 'c1', name, input };
         yield { type: 'finish', reason: 'tool-calls' };
     };

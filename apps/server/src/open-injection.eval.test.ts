@@ -10,7 +10,15 @@ import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers
 import { type AgentEvent, type ClientCall, EventEnvelope, Session } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ClientCalls } from './client-calls.js';
-import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
+import {
+    enableGroupFor,
+    toolResultsOf,
+    createTestServer,
+    jsonBody,
+    sessionFrom,
+    TEST_PASSWORD,
+    type TestServer,
+} from './test-helpers.js';
 
 let s: TestServer;
 afterEach(async () => {
@@ -23,7 +31,9 @@ type Approval = Extract<AgentEvent, { type: 'approval-required' }>;
 let seq = 0;
 const call = (name: string, input: unknown): Step =>
     async function* () {
-        yield { type: 'tool-call', callId: `o${++seq}`, name, input };
+        const callId = `o${++seq}`;
+        yield* enableGroupFor(name, callId);
+        yield { type: 'tool-call', callId, name, input };
         yield { type: 'finish', reason: 'tool-calls' };
     };
 const say = (text: string): Step =>
@@ -114,7 +124,7 @@ async function setup(enabled = true) {
                 }
             }
         }
-        const results = events.filter((e) => e.type === 'tool-result');
+        const results = toolResultsOf(events);
         return { approvals, results, rememberStatus, events };
     }
     return { steps, root, newSession, turn, opened };

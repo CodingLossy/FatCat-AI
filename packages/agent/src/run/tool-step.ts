@@ -1,33 +1,101 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// 一步里的工具调用(ADR 0010、0042):哪些工具交给模型、未知工具的原因、工具上下文、
+// 一步里的工具调用(ADR 0010、0042、0047):哪些工具交给模型(含按需工具组)、未知工具的原因、工具上下文、
 // 每个调用的审批与执行、结果回填,以及不可信内容的标记。根运行与子运行共用同一份逻辑。
 import { toolInSet } from '@fatcat-ai/shared';
 import type { ChatMessage, ToolCall } from '@fatcat-ai/providers';
 import { newId } from '@fatcat-ai/storage';
-import { type DelegateRequest, type ToolContext, ToolDeniedError } from '@fatcat-ai/tools';
+import {
+    type DelegateRequest,
+    isCoreGroup,
+    type ToolContext,
+    ToolDeniedError,
+    type ToolGroupInfo,
+} from '@fatcat-ai/tools';
 import { assistantLabel } from '../labels.js';
 import { auditCall, gate } from './approval-gate.js';
 import type { LoopCtx, RunHost, ToolOutcome } from './common.js';
 import { delegate, mayDelegate } from './delegation.js';
 
-export function isWithheld(host: RunHost, ctx: LoopCtx, name: string): boolean {
-    return (
-        ctx.withheldPrefixes.some((prefix) => name.startsWith(prefix)) ||
-        (ctx.noMemory && name.startsWith('memory.')) ||
-        ctx.toolSets.some(({ set }) => !toolInSet(name, set)) ||
-        (name === 'delegate' && !mayDelegate(host, ctx))
-    );
+/** 工具被任务 / 代理的设置排除的原因(括号里的部分);没被排除时为 undefined,只被前缀扣下时为 ''。 */
+function exclusion(host: RunHost, ctx: LoopCtx, name: string): string | undefined {
+    for (const { set, label } of ctx.toolSets) {
+        if (!toolInSet(name, set)) return `not in this ${label}'s tool set`;
+    }
+    if (ctx.noMemory && name.startsWith('memory.')) return 'this agent does not use memory';
+    if (name === 'delegate' && !mayDelegate(host, ctx)) return 'delegation is not available here';
+    if (ctx.withheldPrefixes.some((prefix) => name.startsWith(prefix))) return '';
+    return undefined;
 }
 
-export function unknownToolReason(ctx: LoopCtx, name: string): string {
-    for (const { set, label } of ctx.toolSets) {
-        if (!toolInSet(name, set)) return `unknown tool: ${name} (not in this ${label}'s tool set)`;
-    }
-    if (ctx.noMemory && name.startsWith('memory.')) return `unknown tool: ${name} (this agent does not use memory)`;
-    if (name === 'delegate') return 'unknown tool: delegate (delegation is not available here)';
+/**
+ * 按需工具组是否生效(ADR 0047 第 1.4 节):注册了 tools.enable、且本次运行没有任务或代理的工具集时才生效。
+ * 有工具集时,工具集里点名的工具都视为已开启,已有的定时任务和代理行为不变;没有 tools.enable 时无法开启,也就不扣下。
+ */
+function groupsGated(host: RunHost, ctx: LoopCtx): boolean {
+    return ctx.toolSets.length === 0 && host.options.tools?.get('tools.enable') !== undefined;
+}
+
+/** 工具所在的按需组还没开启时返回组名。 */
+function closedGroup(host: RunHost, ctx: LoopCtx, name: string): string | undefined {
+    const tools = host.options.tools;
+    if (!tools || !groupsGated(host, ctx)) return undefined;
+    const group = tools.groupOf(name);
+    return isCoreGroup(group) || ctx.activeGroups.has(group) ? undefined : group;
+}
+
+export function isWithheld(host: RunHost, ctx: LoopCtx, name: string): boolean {
+    return exclusion(host, ctx, name) !== undefined || closedGroup(host, ctx, name) !== undefined;
+}
+
+export function unknownToolReason(host: RunHost, ctx: LoopCtx, name: string): string {
+    const why = exclusion(host, ctx, name);
+    if (why) return `unknown tool: ${name} (${why})`;
+    const group = why === undefined && host.options.tools?.get(name) ? closedGroup(host, ctx, name) : undefined;
+    if (group) return `unknown tool: ${name} (enable group ${group} with tools.enable first)`;
     return `unknown tool: ${name}`;
+}
+
+/** 按需组目录(系统提示末尾一行):按需组生效时,本次运行能开启的组;否则为空。 */
+export function optionalGroups(host: RunHost, ctx: LoopCtx): string[] {
+    const tools = host.options.tools;
+    if (!tools || !groupsGated(host, ctx)) return [];
+    const groups = new Set<string>();
+    for (const { name } of tools.specs(ctx.ownerId)) {
+        const group = tools.groupOf(name);
+        if (!isCoreGroup(group) && exclusion(host, ctx, name) === undefined) groups.add(group);
+    }
+    return [...groups].sort();
+}
+
+/** 说明的第一句,给 tools.enable 的结果用。 */
+function firstSentence(text: string): string {
+    const end = text.search(/\.(\s|$)/);
+    return (end < 0 ? text : text.slice(0, end + 1)).slice(0, 200);
+}
+
+/**
+ * tools.enable 的执行(ADR 0047 第 1.3 节):对本次运行开启一个组,返回组里可用的工具。
+ * 组不存在、被工具集排除或在设置里关闭时报错;开启不改变组内任何工具的审批。
+ */
+export function enableGroup(host: RunHost, ctx: LoopCtx, group: string): ToolGroupInfo {
+    const tools = host.options.tools;
+    const inGroup = (name: string) => tools!.groupOf(name) === group;
+    const registered = tools ? tools.specs().filter((spec) => inGroup(spec.name)) : [];
+    if (registered.length === 0) throw new Error(`unknown tool group: ${group}`);
+    const forOwner = tools!.specs(ctx.ownerId).filter((spec) => inGroup(spec.name));
+    const available = forOwner.filter((spec) => exclusion(host, ctx, spec.name) === undefined);
+    if (available.length === 0) {
+        if (forOwner.length === 0) throw new Error(`tool group ${group} is turned off in settings`);
+        const why = exclusion(host, ctx, forOwner[0]!.name);
+        throw new Error(why ? `unknown tool group: ${group} (${why})` : `unknown tool group: ${group}`);
+    }
+    ctx.activeGroups.add(group);
+    return {
+        group,
+        tools: available.map((spec) => ({ name: spec.name, description: firstSentence(spec.description) })),
+    };
 }
 
 export function toolContextFor(host: RunHost, ctx: LoopCtx): ToolContext {
@@ -40,6 +108,7 @@ export function toolContextFor(host: RunHost, ctx: LoopCtx): ToolContext {
         untrustedContentSeen: ctx.untrusted.seen,
         ...(ctx.task ? { task: ctx.task } : {}),
         ...(mayDelegate(host, ctx) ? { delegate: (request: DelegateRequest) => delegate(host, ctx, request) } : {}),
+        enableGroup: (group: string) => enableGroup(host, ctx, group),
     };
 }
 
@@ -94,7 +163,7 @@ async function runToolCall(host: RunHost, ctx: LoopCtx, call: ToolCall): Promise
     let output: unknown = null;
     let error: string | undefined;
     if (!tool) {
-        error = unknownToolReason(ctx, call.name);
+        error = unknownToolReason(host, ctx, call.name);
         auditCall(host, ownerId, sessionId, ctx.runId, callId, call, null, 'denied', 'not_run', error);
     } else {
         const verdict = await gate(host, ctx, tool, call, callId, () => toolContextFor(host, ctx));

@@ -39,6 +39,8 @@ export const ToolInfo = z.object({
     requiredConstraint: PreauthConstraintKind.nullable().optional(),
     /** 执行时语音指示器下的状态文字,中英文各一句(ADR 0021 第 7 节);MCP 工具没有。自 M4 起提供。 */
     activityLabel: ActivityLabel.optional(),
+    /** 所属的工具组(fs、mail、mcp.<server>、plugin.<id> …,ADR 0047 第 1.1 节)。自 M13 起提供。 */
+    group: z.string().min(1).max(200).optional(),
 });
 export type ToolInfo = z.infer<typeof ToolInfo>;
 

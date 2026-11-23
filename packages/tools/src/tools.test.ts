@@ -5,7 +5,10 @@ import type { Preauthorization } from '@fatcat-ai/shared';
 import { describe, expect, it } from 'vitest';
 import {
     checkRemember,
+    createToolsEnableTool,
     decide,
+    groupOf,
+    isCoreGroup,
     inputDigest,
     redactedInput,
     ToolRegistry,
@@ -195,5 +198,52 @@ describe('审计摘要', () => {
         const cyclic: Record<string, unknown> = {};
         cyclic.self = cyclic;
         expect(redactedInput(cyclic, redact)).toBe('[unserializable input]');
+    });
+});
+
+describe('工具分组(ADR 0047 第 1.1 节)', () => {
+    it('groupOf:第一个 . 之前是组名;MCP 与插件工具多带一段;没有 . 的工具自成一组', () => {
+        expect(groupOf('fs.read')).toBe('fs');
+        expect(groupOf('mcp.notes.add')).toBe('mcp.notes');
+        expect(groupOf('plugin.weather.forecast')).toBe('plugin.weather');
+        expect(groupOf('calc')).toBe('calc');
+        expect(groupOf('tools.enable')).toBe('tools');
+    });
+
+    it('核心组只有 memory、calc、time、items、kb、ui、delegate、tools', () => {
+        for (const g of ['memory', 'calc', 'time', 'items', 'kb', 'ui', 'delegate', 'tools'])
+            expect(isCoreGroup(g)).toBe(true);
+        for (const g of ['fs', 'mail', 'web', 'browser', 'channel', 'system', 'mcp.notes', 'plugin.weather']) {
+            expect(isCoreGroup(g)).toBe(false);
+        }
+    });
+
+    it('注册表:显式的 group 优先;info 每项带 group', () => {
+        const tool = (name: string, group?: string): ToolDefinition => ({
+            name,
+            description: name,
+            parameters: { type: 'object' },
+            risk: 'read',
+            ...(group ? { group } : {}),
+            summarize: () => name,
+            execute: () => Promise.resolve(null),
+        });
+        const registry = new ToolRegistry().register(tool('fs.read'), tool('notes.add', 'mcp.notes'));
+        expect(registry.groupOf('fs.read')).toBe('fs');
+        expect(registry.groupOf('notes.add')).toBe('mcp.notes');
+        expect(registry.info().map((i) => [i.name, i.group])).toEqual([
+            ['fs.read', 'fs'],
+            ['notes.add', 'mcp.notes'],
+        ]);
+    });
+
+    it('tools.enable 是不需要审批的 read 工具;没有 core 提供的 enableGroup 时报错', async () => {
+        const enable = createToolsEnableTool();
+        expect(enable.risk).toBe('read');
+        expect(enable.approval).toBeUndefined();
+        expect(decide(enable, { group: 'fs' }, ctx(), [])).toMatchObject({ action: 'run' });
+        await expect(enable.execute({ group: 'fs' }, ctx())).rejects.toThrow('tool groups are not available');
+        const result = await enable.execute({ group: 'fs' }, ctx({ enableGroup: (group) => ({ group, tools: [] }) }));
+        expect(result).toEqual({ group: 'fs', tools: [] });
     });
 });

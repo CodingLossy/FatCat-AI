@@ -359,6 +359,9 @@ importers:
 
   packages/tools:
     dependencies:
+      '@fatcat-ai/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@fatcat-ai/shared':
         specifier: workspace:*
         version: link:../shared

@@ -53640,6 +53640,11 @@
                               "zh-CN",
                               "en"
                             ]
+                          },
+                          "group": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
                           }
                         },
                         "required": [
