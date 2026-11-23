@@ -26,6 +26,7 @@ import { createApp } from './app.js';
 import { createMcpControl } from './mcp-setup.js';
 import { PluginService } from './plugin-setup.js';
 import { createMailService } from './mail-setup.js';
+import { promptRef } from '@fatcat-ai/i18n';
 import { createSleeper } from '@fatcat-ai/memory';
 import { createMemoryStack } from './memory-setup.js';
 import { scheduleDaily, startMaintenance } from './maintenance-setup.js';
@@ -228,7 +229,7 @@ const runs = new RunManager({
     // 设置中「memory.write 每次都要审批」关闭条件预授权(ADR 0010 第 4 节)
     disableConditional: (ownerId) => repos.settings.get(ownerId).memory.alwaysApprove,
     onTurnFinished: createTurnExtractor(repos, memory, providerFor, (err, { runId }) =>
-        logger.warn({ err, runId }, 'memory extraction failed'),
+        logger.warn({ err, runId, prompt: promptRef('memory.extract') }, 'memory extraction failed'),
     ),
     onError: (err, { runId }) => logger.error({ err, runId }, 'run failed unexpectedly'),
 });

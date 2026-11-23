@@ -35,6 +35,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fatcat-ai/i18n": "workspace:*",
     "@fatcat-ai/shared": "workspace:*",
     "@fatcat-ai/storage": "workspace:*"
   }

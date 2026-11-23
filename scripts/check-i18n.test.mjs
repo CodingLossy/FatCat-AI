@@ -37,3 +37,22 @@ test('English phrase in JSX text or attribute fails', () => {
     assert.equal(run('export const A = () => <p>Save the file</p>;\n').status, 1);
     assert.equal(run('export const A = () => <input placeholder="Type a message" />;\n').status, 1);
 });
+
+function runPrompts(source) {
+    const web = mkdtempSync(join(tmpdir(), 'check-i18n-web-'));
+    const src = mkdtempSync(join(tmpdir(), 'check-i18n-src-'));
+    try {
+        writeFileSync(join(src, 'prompts.ts'), source);
+        return spawnSync(process.execPath, [script, web, src], { encoding: 'utf8' });
+    } finally {
+        rmSync(web, { recursive: true, force: true });
+        rmSync(src, { recursive: true, force: true });
+    }
+}
+
+test('a new *_PROMPT = [ constant outside the registry fails; an alias passes', () => {
+    const bad = runPrompts("export const FOO_PROMPT = [\n    'Do things.',\n].join(' ');\n");
+    assert.equal(bad.status, 1);
+    assert.match(bad.stderr, /prompt constant outside the prompt registry/);
+    assert.equal(runPrompts("export const FOO_PROMPT = promptText('system.base');\n").status, 0);
+});
