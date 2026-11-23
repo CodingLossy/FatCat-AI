@@ -1,0 +1,62 @@
+# M13 方案 · 前段:Agent 循环深化与 Skills
+
+设计记录见 [ADR 0047](../adr/0047-agent-loop-deepening.md)(工具分组、预算停止、提示注册表)与 ADR 0048(Skills,前段 PR 4 写)。开发计划第 9 节 M13 原本是「稳定化与 2.0」;业主 2026-11-21 决定前段先做 Agent 循环深化与 Skills,QQ 渠道和多用户排在后面。
+
+## 规则
+
+- 顺序固定:PR 1 → PR 2 → PR 3 → PR 4。一次只开一个功能 PR,上一个合并后从最新的 `main` 切下一个。
+- 本组不新增数据库迁移;PR 4 只写文档。
+- 提交作者和提交者都是业主身份,不加任何署名或尾注;PR 描述包含改了什么、怎么测的、截图(有界面改动时)、还没验证的、需业主决定的,最后是「全窗口通用 PR 摘要」。
+- 每个 PR 另有一份真实模型下的手工测试清单,由业主另开窗口执行;本方案只记开发部分。
+
+## 前段四个 PR
+
+### PR 1 · `refactor/runner-split`:拆分 runner,定 M13 方案与 ADR 0047
+
+- 文档:本文件;ADR 0047(已采纳),三节:工具分组、预算停止、提示注册表,取值见 PR 2、PR 3;契约影响只有 `ToolInfo` 增加可选的 `group`(`/api/v1` 向后兼容增量,不改 WS 协议)。
+- 重构,不改任何行为:`packages/agent/src/run/` 下拆出
+  - `context-builder.ts`:系统提示、时间行、记忆上下文、`planContext` / `toChatMessages` 的组装;
+  - `tool-step.ts`:单步工具调用,`isWithheld`、`unknownToolReason`、`toolContextFor`、结果回填与不可信标记;
+  - `approval-gate.ts`:预授权匹配、会话内已批准、`forceApproval`、审批等待与超时、审计写入;
+  - `delegation.ts`:`delegate`、`mayDelegate`、子运行的预算与深度、`MAX_DELEGATE_TEXT`、`DEFAULT_DELEGATE_PARALLELISM`;
+  - `common.ts`:上面几个模块共用的类型(`RunManagerOptions`、`StartRunInput`、`LoopCtx` 等)和小工具。
+- `runner.ts` 只保留 `RunManager` 的公开方法、运行生命周期和主循环,不超过 450 行;`packages/agent` 的导出名和签名一个都不变。
+- 测试不新增,已有测试不改断言。验收:agent 包测试、server 的 `chat` / `agents` / `agent-delegation.eval` 测试全过,lint、typecheck、`check:spdx` 通过。
+
+### PR 2 · `feat/tool-groups-budget`:工具分组、按需开启、预算停止
+
+- 分组:工具名第一个 `.` 之前是组名;MCP 工具是 `mcp.<server>`,插件工具是 `plugin.<id>`;没有 `.` 的工具各自成组。
+- 核心组(始终交给模型):`memory`、`calc`、`time`、`items`、`kb`、`ui`、`delegate`、`tools`(`tools.enable` 本身),以及服务端注册的任务类工具组(核对结果见 ADR 0047 第 2 节)。
+- 按需组(默认不交):其余全部,即 `fs`、`mail`、`web`、`browser`、`channel`、`system`、`mcp.*`、`plugin.*`。
+- 新核心工具 `tools.enable({ group })`:`risk: 'read'`、不需要审批;只在本次运行内有效,不写库;开启一个组不改变组内任何工具的风险等级和审批。
+- 任务或代理的 `toolSet` 点名的工具或前缀直接视为已开启,已有定时任务和代理的行为不变。
+- `MAX_TOOL_STEPS` 从 5 改为 10;`AgentRole.maxSteps` 不变。
+- 普通对话与定时任务每次运行的 token 预算 `DEFAULT_RUN_TOKEN_BUDGET = 60_000`,超出按 `stopped = 'budget'` 结束;代理运行沿用 ADR 0042 的预算。
+- 契约:`ToolDefinition.group?`、`ToolInfo.group?`;系统提示末尾加一行按需组目录。
+- 测试:`groupOf` 单测;未开启的组不在 specs 里、开启后出现;越权(代理 `toolSet` 是 `['kb.']` 时 `tools.enable({group:'fs'})` 报错);预算停止;评测 `tool-groups.eval.test.ts`(先开 fs 组再读文件,审批卡照常出现)。
+- 不做:界面上的组开关、按会话持久化开启状态、迁移。
+
+### PR 3 · `refactor/prompt-registry`:提示注册表
+
+- 注册表放在 `packages/i18n/src/prompts.ts`,每条提示有固定 `id` 和整数 `version`(从 1 开始,改文字就加一);`en` 必填,`zh-CN` 可选,缺失回落 `en`。
+- `promptRef(name)` 返回 `"<id>@<version>"`,日志和评测只记 ref,不记全文。
+- 迁入注册表,文字逐字不变:`system.base`(`SYSTEM_PROMPT`)、`conversation.summary`(`SUMMARY_PROMPT`)、`memory.extract`(`EXTRACT_PROMPT`)、`memory.sleep`(`SLEEP_PROMPT`)、`tools.groupCatalog`(PR 2 的按需组目录行)。原导出名保留为别名。
+- `packages/memory` 依赖 `@fatcat-ai/i18n`(只能 memory → i18n)。
+- `check:i18n` 新规则:禁止新出现 `_PROMPT = [` 开头的常量定义,白名单在 `scripts/i18n-allowlist.json`。
+- 测试:迁移前后 `en` 文本逐字一致的快照;`promptRef` 的值;未知 name 编译期报错。验收:记忆评测指标与 `main` 完全相同。
+- 不做:改任何提示文字、加中文版提示。
+
+### PR 4 · `docs/adr-0048-skills`:Skills 设计(只写文档)
+
+- ADR 0048(已采纳):Skill 是指令包(`id`、多语言 `name`、给模型看的 `description`、包内 markdown `instructions`、`toolSet`、可选的任务模板);`plugin.json` 增加可选的 `skills[]`,`entry` 可选(纯指令插件不起子进程);`skill.use({ id })` 注入说明并对本次运行开启 Skill 覆盖的组;Skill 的 `toolSet` 与当前代理或任务取交集,只缩小不扩大;三个内置 Skill;不加表、不写迁移。
+- Skills 的实现 PR 拆分写进 ADR 0048 第 11 节,并追加到本文件。
+- 开发计划第 18 节追加一条调整记录。
+
+## 后段顺序
+
+前段合并之后,按下面的顺序继续(每项开工前先写或更新 ADR):
+
+1. channels hub 与 PluginService 下沉:把渠道中枢和插件服务从 `apps/server` 下沉到对应的包,`apps/server` 只做装配和路由。
+2. ownerId 覆盖审计:逐个仓储和路由核对 `ownerId` 过滤,补越权用例,为多用户做准备。
+3. QQ 渠道。
+4. 多用户 ADR(2.0)。
