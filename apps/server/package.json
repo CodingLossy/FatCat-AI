@@ -32,6 +32,7 @@
   "dependencies": {
     "@fatcat-ai/agent": "workspace:*",
     "@fatcat-ai/channels": "workspace:*",
+    "@fatcat-ai/i18n": "workspace:*",
     "@fatcat-ai/items": "workspace:*",
     "@fatcat-ai/mail": "workspace:*",
     "@fatcat-ai/memory": "workspace:*",

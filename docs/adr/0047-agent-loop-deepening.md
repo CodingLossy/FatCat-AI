@@ -80,8 +80,18 @@
 | `memory.extract`       | 1       | `packages/memory/src/extract.ts` 的 `EXTRACT_PROMPT` | `EXTRACT_PROMPT` |
 | `memory.sleep`         | 1       | `packages/memory/src/sleep.ts` 的 `SLEEP_PROMPT`     | `SLEEP_PROMPT`   |
 | `tools.groupCatalog`   | 1       | 第 1.4 节的按需组目录行(PR 2 新增)                   | 无               |
+| `currentTime`          | 1       | 原 `templates` 的时间行(ADR 0023)                    | 无               |
+| `usingTool`            | 1       | 原 `templates` 的「正在使用」状态文字                | 无               |
+| `runBudget`            | 1       | 第 2 节的预算用尽说明(PR 2 新增)                     | 无               |
 
 迁移时文字逐字不变;中文版提示另开 PR,需要评测对比。
+
+实现(PR 3):
+
+- 注册表就是原来的 `templates`,扩成 `{ version, en, 'zh-CN'? }`,值可以是字符串或模板函数;用 `as const satisfies` 保留键名,所以 `PromptName` 是字面量联合,未知的名字编译期报错。原来已有的三条短文案(`currentTime`、`usingTool`、`runBudget`)也带上 version,id 沿用原键名。
+- `memory.extract` 原文里的 `at most ${MAX_ITEMS_PER_TURN} items` 在注册表里写成字面量 `3`,由 memory 包的单测保证两者一致。
+- 记忆生成日志的 `prompt_version` 列原来写提示原文 SHA-256 的前 12 位,现在写 `promptRef`(`memory.extract@1`、`memory.sleep@1`)。列不变,不写迁移;旧行保留哈希值。
+- 服务端「记忆抽取失败」的 pino 日志带 `prompt: 'memory.extract@1'`。
 
 ## 4. 契约影响
 

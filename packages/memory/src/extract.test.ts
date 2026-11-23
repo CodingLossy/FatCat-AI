@@ -6,7 +6,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type Connection, createRepositories, openStorage, type Repositories } from '@fatcat-ai/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Complete, createExtractor, EXTRACT_PROMPT, EXTRACT_PROMPT_VERSION, type TurnInfo } from './extract.js';
+import {
+    type Complete,
+    createExtractor,
+    EXTRACT_PROMPT,
+    EXTRACT_PROMPT_VERSION,
+    MAX_ITEMS_PER_TURN,
+    type TurnInfo,
+} from './extract.js';
 import { createMemoryService, type MemoryService } from './service.js';
 
 let dir: string;
@@ -73,6 +80,9 @@ describe('自动抽取', () => {
         expect(model.calls).toHaveLength(1);
         const [system, user] = model.calls[0]!;
         expect(system).toEqual({ role: 'system', content: EXTRACT_PROMPT });
+        // 提示在注册表里写的是字面量 3,必须与代码里的上限一致
+        expect(EXTRACT_PROMPT).toContain(`at most ${MAX_ITEMS_PER_TURN} items`);
+        expect(EXTRACT_PROMPT_VERSION).toBe('memory.extract@1');
         expect(user!.content).toBe('User message:\n我住在杭州\n\nAssistant final answer:\n好的,记住了。');
         expect(user!.content).not.toContain('TOOL-OUTPUT-SECRET');
         expect(user!.content).not.toContain('我查一下');

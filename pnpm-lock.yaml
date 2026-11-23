@@ -87,6 +87,9 @@ importers:
       '@fatcat-ai/channels':
         specifier: workspace:*
         version: link:../../packages/channels
+      '@fatcat-ai/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@fatcat-ai/items':
         specifier: workspace:*
         version: link:../../packages/items
@@ -306,6 +309,9 @@ importers:
 
   packages/memory:
     dependencies:
+      '@fatcat-ai/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@fatcat-ai/shared':
         specifier: workspace:*
         version: link:../shared
