@@ -6,6 +6,7 @@
 // 就是 FatCat-AI 自己的额外开销,验收线 < 1 秒。真实端点的延迟由业主侧补测。
 // 内存在测试进程内测量(包含 vitest 自身),按 ADR 0018 第 4 节的思路:连跑 3 轮负载,
 // 每轮后回落到负载前 + 60 MiB 以内,第 3 轮后比第 2 轮后多 ≤ 5 MiB。空闲 RSS 由 CI 的容器门禁测量。
+// 基线在一轮不计入的预热负载(同样 50 次往返)之后测:首轮的懒加载模块与 JIT 编译不算进增量。
 // 负载每轮 50 次往返,不加延迟;会话里的消息随之增加,所以堆会略涨(每轮约 0.3 MiB)。
 import { performance } from 'node:perf_hooks';
 import { setFlagsFromString } from 'node:v8';
@@ -140,6 +141,10 @@ async function settled() {
         gc();
         await wait(200);
     }
+    // 最后一次 gc 后再等一下、再回收一次,让分配器把刚释放的页还回去,再读数
+    gc();
+    await wait(50);
+    gc();
     const { rss, heapUsed } = process.memoryUsage();
     return { rss, heap: heapUsed };
 }
@@ -154,6 +159,8 @@ describe('语音往返', () => {
         const worst = Math.max(...overheads);
 
         delay = 0;
+        // 预热负载:一轮不计入的 50 次往返,之后才量基线
+        for (let i = 0; i < LOAD_TRIPS; i++) await roundTrip();
         const before = await settled();
         const after: { rss: number; heap: number }[] = [];
         for (let round = 0; round < LOAD_ROUNDS; round++) {
