@@ -61,6 +61,9 @@ export interface ChatActivity {
     live: LiveTurn | null;
     profile: ModelProfile | null;
     profiles: ModelProfile[];
+    agents: Agent[];
+    agentId: string;
+    chooseAgent: (id: string) => void;
 }
 
 /** 输入框里待发送的图片;`url`(object URL)只用于发送后消息里的临时预览,输入框缩略图不用它。 */
@@ -238,14 +241,14 @@ export function ChatView({
             () => undefined,
         );
     }, []);
-    const chooseAgent = (id: string) => {
+    const chooseAgent = useCallback((id: string) => {
         setAgentId(id);
         try {
             localStorage.setItem('fatcat.agentId', id);
         } catch {
             // 存不了也不影响使用
         }
-    };
+    }, []);
     const [images, setImages] = useState<PendingImage[]>([]);
     /** 已发送、服务器消息还没刷新前显示的预览。 */
     const [livePreviews, setLivePreviews] = useState<string[]>([]);
@@ -655,8 +658,8 @@ export function ChatView({
     );
 
     useEffect(() => {
-        onActivity?.({ messages, live, profile, profiles });
-    }, [messages, live, profile, profiles, onActivity]);
+        onActivity?.({ messages, live, profile, profiles, agents, agentId, chooseAgent });
+    }, [messages, live, profile, profiles, agents, agentId, chooseAgent, onActivity]);
 
     // 没有依赖数组:submit 用到的输入框状态每轮都变,这里只是把最新的发送函数交给搜索框。
     useEffect(() => {
@@ -668,9 +671,13 @@ export function ChatView({
     });
 
     const indicatorState = localVoice ?? shown.state;
+    // 空对话又空闲时,状态行直接写「开始一段新对话吧。」,不再另起一行
+    const blank = messages.length === 0 && !live;
     const indicatorLabel = localVoice
         ? t(`voice.state.${localVoice}`)
-        : (shown.label ?? t(`voice.state.${shown.state}`));
+        : blank && indicatorState === 'idle' && !shown.label
+          ? t('chat.empty')
+          : (shown.label ?? t(`voice.state.${shown.state}`));
 
     const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -699,7 +706,7 @@ export function ChatView({
     }
 
     return (
-        <div className={workbench ? 'chat chat-stage' : 'chat'}>
+        <div className={workbench ? 'chat chat-stage' : 'chat'} data-blank={blank ? '' : undefined}>
             <div className="chat-head">
                 <VoiceIndicator state={indicatorState} label={indicatorLabel} level={level} />
                 {agents.length > 0 ? (
@@ -726,7 +733,7 @@ export function ChatView({
                 ) : null}
             </div>
             <div className="messages" data-testid="messages">
-                {messages.length === 0 && !live ? <p className="muted empty">{t('chat.empty')}</p> : null}
+                {blank && indicatorState !== 'idle' ? <p className="muted empty">{t('chat.empty')}</p> : null}
                 {messages.map((m) => (
                     <div key={m.id} className={`message ${m.role}`} data-status={m.status} data-message-id={m.id}>
                         {m.role === 'assistant' ? <Avatar /> : null}

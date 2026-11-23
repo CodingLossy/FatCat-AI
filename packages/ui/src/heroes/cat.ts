@@ -9,7 +9,7 @@ import type { OrbState } from '../orb-model.js';
 import type { Hero, HeroMode, HeroOptions } from '../theme.js';
 import { addTick, currentQuality, fitCanvas, prefersReducedMotion } from '../voice-orb.js';
 import { type AnchoredKnowledgePalette, drawAnchoredKnowledge } from './anchored-knowledge.js';
-import { catPose, catStrokes, catWhiskers, flowGlow, outlineAnchors, posePoint } from './cat-model.js';
+import { CAT_FACE, catPose, catStrokes, catWhiskers, flowGlow, outlineAnchors, posePoint } from './cat-model.js';
 
 interface Palette {
     line: string;
@@ -94,7 +94,8 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
         const cy = h / 2;
         const scale = Math.min(1, R / 220);
         const open = knowledge && scene ? expandedId(scene) : null;
-        const dim = open ? 0.45 : 1;
+        // 知识模式里猫退到后面:整体淡一些,展开后更淡,文字压在上面也清楚
+        const dim = knowledge ? (open ? 0.3 : 0.55) : 1;
         const S = (part: Parameters<typeof posePoint>[0], p: readonly [number, number]) => {
             const q = posePoint(part, p, pose);
             return [cx + q[0] * R, cy + q[1] * R] as const;
@@ -192,7 +193,9 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
                     radius: R,
                     tSec: layoutT,
                     explode: reduced ? 1 : (nowMs - explodeAt) / 650,
-                    base: { x: cx, y: cy + 0.15 * R },
+                    // 子项簇背离猫脸,长到身子和尾巴外侧
+                    base: { x: cx + CAT_FACE.cx * R, y: cy + CAT_FACE.cy * R },
+                    avoid: { x: cx + CAT_FACE.cx * R, y: cy + CAT_FACE.cy * R, r: CAT_FACE.r * R },
                     style: 'whisker',
                     rootAt: (i) => {
                         const a = anchors[i];

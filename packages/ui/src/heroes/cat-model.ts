@@ -182,18 +182,31 @@ export function posePoint(part: CatPart, p: Pt, pose: CatPose): Pt {
     return [q[0], 0.8 - (0.8 - q[1]) * (1 + pose.breathe)];
 }
 
-/** 轮廓上(不含脸)按弧长等分的 n 个位置:返回所在笔画和点的下标。知识模式第一层挂在这些位置上。 */
+/** 脸(眼睛、鼻子、嘴和胡须)所在的圆:知识模式的节点和标签都让开这里。 */
+export const CAT_FACE = { cx: 0, cy: -0.38, r: 0.56 } as const;
+
+function inFace(p: Pt): boolean {
+    return Math.hypot(p[0] - CAT_FACE.cx, p[1] - CAT_FACE.cy) < CAT_FACE.r;
+}
+
+/**
+ * 轮廓上(不含脸和腿)按弧长等分的 n 个位置:返回所在笔画和点的下标。知识模式第一层挂在这些位置上:
+ * 只用身子和尾巴,并跳过脸附近的点,免得节点和文字压在猫脸上。
+ */
 export function outlineAnchors(strokes: readonly CatStroke[], n: number): { stroke: number; index: number }[] {
     if (n <= 0) return [];
     const cand: { stroke: number; index: number; s: number }[] = [];
     let total = 0;
     strokes.forEach((st, si) => {
-        if (st.part === 'face' || st.part === 'legs') return;
+        if (st.part !== 'body' && st.part !== 'tail') return;
+        let prev: Pt | null = null;
         st.points.forEach((p, i) => {
-            if (i > 0) {
-                const prev = st.points[i - 1]!;
-                total += Math.hypot(p[0] - prev[0], p[1] - prev[1]);
+            if (inFace(p)) {
+                prev = null;
+                return;
             }
+            if (prev) total += Math.hypot(p[0] - prev[0], p[1] - prev[1]);
+            prev = p;
             cand.push({ stroke: si, index: i, s: total });
         });
     });

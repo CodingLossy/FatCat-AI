@@ -4,7 +4,15 @@
 // 科技主视觉的知识模式:第一层是星球里的一圈亮星(记忆三类 + 知识顶层分类);点亮一颗星,它移到中心并炸开成
 // 带名字的星座网(子项沿黄金角螺旋排开,彼此用细线连成星座);再往下一层同样。颜色全部来自主题 token。
 
-import { expandedId, type KnowledgeNode, type KnowledgeScene, type ScreenNode } from '../knowledge-model.js';
+import {
+    bubbleBox,
+    expandedId,
+    type KnowledgeNode,
+    type KnowledgeScene,
+    type LabelCandidate,
+    placeLabels,
+    type ScreenNode,
+} from '../knowledge-model.js';
 
 export interface KnowledgePalette {
     readonly star: string;
@@ -45,8 +53,51 @@ export function childOffset(i: number, n: number, radius: number, tSec: number) 
     return { x: Math.cos(a) * r, y: Math.sin(a) * r * 0.82 };
 }
 
-function shortLabel(text: string, max = 16): string {
+export function shortLabel(text: string, max = 16): string {
     return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+/** 标签的优先级:悬停 / 焦点总显示,其次是展开的中心、命中、分支,最后是普通子项(靠前的先放)。 */
+export function labelPriority(
+    scene: KnowledgeScene,
+    n: KnowledgeNode,
+    base: number,
+): { priority: number; always: boolean } {
+    const always = n.id === scene.hoverId || n.id === scene.focusId;
+    const priority = always ? 1000 : base + (scene.hits.has(n.id) ? 200 : 0) + (n.kind === 'branch' ? 100 : 0);
+    return { priority, always };
+}
+
+/**
+ * 依次放下标签并画出来。选中的节点只显示气泡,不再画同样的文字;其他标签避开气泡,
+ * 放不下先截短,再放不下就只在悬停时显示。
+ */
+export function drawLabels(
+    g: CanvasRenderingContext2D,
+    scene: KnowledgeScene,
+    cands: readonly (LabelCandidate & { color: string; alpha: number })[],
+    screen: readonly ScreenNode[],
+    extraAvoid: readonly { x: number; y: number; w: number; h: number }[] = [],
+): void {
+    const sel = scene.selectedId ? screen.find((n) => n.id === scene.selectedId) : undefined;
+    const avoid = [...extraAvoid, ...(sel ? [bubbleBox(sel, scene.bubble)] : [])];
+    const byId = new Map(cands.map((c) => [c.id, c]));
+    const placed = placeLabels(
+        cands.filter((c) => c.id !== scene.selectedId),
+        (text) => g.measureText(text).width,
+        avoid,
+        shortLabel,
+    );
+    for (const l of placed) {
+        const c = byId.get(l.id);
+        if (!c) continue;
+        g.textAlign = l.align;
+        g.globalAlpha = c.alpha;
+        g.fillStyle = c.color;
+        g.fillText(l.shown, l.x, l.y);
+    }
+    g.textAlign = 'left';
+    g.globalAlpha = 1;
 }
 
 function ease(x: number): number {
@@ -61,12 +112,13 @@ export function drawTechKnowledge(
     p: KnowledgePalette,
 ): ScreenNode[] {
     const out: ScreenNode[] = [];
+    const labels: (LabelCandidate & { color: string; alpha: number })[] = [];
     const open = expandedId(scene);
     const e = ease(Math.min(1, Math.max(0, frame.explode)));
     g.font = `12px ${p.font}`;
     g.textBaseline = 'middle';
 
-    const node = (n: KnowledgeNode, x: number, y: number, r: number, alpha: number, label: boolean) => {
+    const node = (n: KnowledgeNode, x: number, y: number, r: number, alpha: number, label: boolean, rank = 0) => {
         const hit = scene.hits.has(n.id);
         const color = hit ? p.hit : p.star;
         if (hit) {
@@ -110,10 +162,17 @@ export function drawTechKnowledge(
             g.stroke();
             g.setLineDash([]);
         }
-        if (label) {
-            g.globalAlpha = Math.min(1, alpha + 0.15);
-            g.fillStyle = hit ? p.hit : p.label;
-            g.fillText(shortLabel(n.label), x + r + 6, y);
+        if (label || n.id === scene.hoverId || n.id === scene.focusId) {
+            labels.push({
+                id: n.id,
+                text: shortLabel(n.label),
+                x: x + r + 6,
+                y,
+                align: 'left',
+                ...labelPriority(scene, n, rank),
+                color: hit ? p.hit : p.label,
+                alpha: Math.min(1, alpha + 0.15),
+            });
         }
         g.globalAlpha = 1;
         if (alpha > 0.3) out.push({ id: n.id, x, y, r: Math.max(r + 6, 10) });
@@ -126,9 +185,12 @@ export function drawTechKnowledge(
         const pos = rootPosition(i, roots.length, frame);
         const dim = open ? 1 - 0.85 * e : 1;
         const r = 3.2 + 1.6 * ((pos.depth + 1) / 2);
-        node(n, pos.x, pos.y, r, (0.55 + 0.45 * ((pos.depth + 1) / 2)) * dim, !open || dim > 0.5);
+        node(n, pos.x, pos.y, r, (0.55 + 0.45 * ((pos.depth + 1) / 2)) * dim, !open || dim > 0.5, 50);
     });
-    if (!open) return out;
+    if (!open) {
+        drawLabels(g, scene, labels, out);
+        return out;
+    }
 
     // 展开的节点在中心
     const center: KnowledgeNode = { id: open, label: scene.path[scene.path.length - 1]?.label ?? '', kind: 'branch' };
@@ -179,8 +241,9 @@ export function drawTechKnowledge(
             scene.hits.has(n.id) ||
             n.id === scene.selectedId ||
             n.id === scene.focusId;
-        node(n, q.x, q.y, r, 0.35 + 0.65 * e, named && e > 0.6);
+        node(n, q.x, q.y, r, 0.35 + 0.65 * e, named && e > 0.6, -i / kids.length);
     });
-    node(center, cx, cy, 5.5, 1, true);
+    node(center, cx, cy, 5.5, 1, true, 500);
+    drawLabels(g, scene, labels, out);
     return out;
 }

@@ -894,7 +894,6 @@ export const zh = {
     'wb.sidebar.expand': '展开侧栏',
     'wb.sidebar.collapse': '收起侧栏',
     'wb.sidebar': '侧栏',
-    'wb.runningEmpty': '本轮还没有工具调用',
     'wb.runningMore': '+{n}',
     'wb.searchPlaceholder': '搜索文件、命令,或直接提问…',
     'wb.searchFiles': '文件',

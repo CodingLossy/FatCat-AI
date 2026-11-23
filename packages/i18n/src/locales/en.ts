@@ -960,7 +960,6 @@ export const en: Record<Key, string> = {
     'wb.sidebar.expand': 'Expand sidebar',
     'wb.sidebar.collapse': 'Collapse sidebar',
     'wb.sidebar': 'Sidebar',
-    'wb.runningEmpty': 'No tool calls in this turn',
     'wb.runningMore': '+{n}',
     'wb.searchPlaceholder': 'Search files, commands, or ask…',
     'wb.searchFiles': 'Files',

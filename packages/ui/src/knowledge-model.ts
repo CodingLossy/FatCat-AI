@@ -31,6 +31,10 @@ export interface KnowledgeScene {
     readonly focusId: string | null;
     /** 搜索命中及其祖先:点亮整条路径。 */
     readonly hits: ReadonlySet<string>;
+    /** 鼠标悬停的节点:放不下的标签悬停时才显示。 */
+    readonly hoverId?: string | null;
+    /** 气泡的实际尺寸(CSS 像素);没量到时按默认尺寸让位。 */
+    readonly bubble?: { readonly w: number; readonly h: number } | null;
 }
 
 export const EMPTY_SCENE: KnowledgeScene = {
@@ -93,4 +97,78 @@ export function pickNode(nodes: readonly ScreenNode[], x: number, y: number, slo
         }
     }
     return best;
+}
+
+export interface Box {
+    readonly x: number;
+    readonly y: number;
+    readonly w: number;
+    readonly h: number;
+}
+
+export function boxesOverlap(a: Box, b: Box): boolean {
+    return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+}
+
+/** 气泡在画布上占的区域:气泡底边中点在节点上方 14px(见 .kn-bubble 的 transform),连同节点本身。 */
+export function bubbleBox(at: { x: number; y: number }, size?: { w: number; h: number } | null): Box {
+    const w = size?.w ?? 240;
+    const h = size?.h ?? 48;
+    return { x: at.x - w / 2 - 4, y: at.y - 14 - h - 4, w: w + 8, h: h + 14 + 14 };
+}
+
+export interface LabelCandidate {
+    readonly id: string;
+    readonly text: string;
+    /** 文字起点:align 为 left 时是左端,right 时是右端;y 是竖直中线。 */
+    readonly x: number;
+    readonly y: number;
+    readonly align: 'left' | 'right';
+    /** 越大越先放;悬停和键盘焦点的标签总是显示。 */
+    readonly priority: number;
+    readonly always?: boolean;
+}
+
+export interface PlacedLabel extends LabelCandidate {
+    readonly shown: string;
+}
+
+const LABEL_H = 16;
+
+function labelBox(c: LabelCandidate, width: number): Box {
+    return { x: c.align === 'left' ? c.x : c.x - width, y: c.y - LABEL_H / 2, w: width, h: LABEL_H };
+}
+
+/**
+ * 标签排布:按优先级依次放,和气泡、要避开的区域、已放下的标签都不重叠;放不下先截短,
+ * 还放不下就不画(悬停或键盘聚焦时再显示)。
+ */
+export function placeLabels(
+    cands: readonly LabelCandidate[],
+    measure: (text: string) => number,
+    avoid: readonly Box[],
+    short: (text: string, max: number) => string,
+    minChars = 6,
+): PlacedLabel[] {
+    const order = cands
+        .map((c, i) => ({ c, i }))
+        .sort((a, b) => Number(!!b.c.always) - Number(!!a.c.always) || b.c.priority - a.c.priority || a.i - b.i);
+    const taken: Box[] = [];
+    const out: PlacedLabel[] = [];
+    for (const { c } of order) {
+        if (c.always) {
+            out.push({ ...c, shown: c.text });
+            taken.push(labelBox(c, measure(c.text)));
+            continue;
+        }
+        const tries = [c.text, short(c.text, minChars)].filter((t, k, list) => list.indexOf(t) === k);
+        for (const text of tries) {
+            const box = labelBox(c, measure(text));
+            if (avoid.some((a) => boxesOverlap(a, box)) || taken.some((a) => boxesOverlap(a, box))) continue;
+            out.push({ ...c, shown: text });
+            taken.push(box);
+            break;
+        }
+    }
+    return out;
 }
