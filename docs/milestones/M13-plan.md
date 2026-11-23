@@ -52,6 +52,16 @@
 - Skills 的实现 PR 拆分写进 ADR 0048 第 11 节,并追加到本文件。
 - 开发计划第 18 节追加一条调整记录。
 
+## Skills 实现(ADR 0048 第 11 节)
+
+前段四个 PR 合并之后、后段之前,按下面的顺序实现 Skills(一次只开一个,上一个合并后从最新的 `main` 切下一个;都不写迁移):
+
+1. `feat/skills-manifest`:`PluginSkill` schema、`skills[]`、可选的 `entry`、engines 下限与 `toolSet` 限制,安装时解析 instructions;越权用例(纯指令插件声明 `net` 被拒等)。
+2. `feat/skills-runtime`:`skill.use`(核心组 `skill`)、系统提示的 Skill 目录、与工具集取交集、不可信包装、代理角色的 `skills`、`GET /api/v1/skills`;越权与注入评测。
+3. `feat/builtin-skills`:`mail-assistant`、`web-research`、`local-files` 三个内置 Skill 与每日邮件摘要模板。
+4. `feat/skills-ui`:插件页、设置页、代理页的 Skill 显示与开关(附截图)。
+5. `feat/skills-market`:索引条目的 `skills`、市场页展示、instructions 话术初筛脚本。
+
 ## 后段顺序
 
 前段合并之后,按下面的顺序继续(每项开工前先写或更新 ADR):

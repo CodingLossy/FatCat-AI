@@ -796,3 +796,8 @@ Copyright (C) 2026 尹绪柏 (Theodore Yin). All rights reserved for commercial 
 - 新增 `plugin-data/` 数据目录;迁移 0018 新增 `plugins`、`plugin_events`,`tasks` 加 `disabled_reason`。
 - 内存预算由业主放开(插件不设上限,只测量报告);第 12 节、CI、README 与 Docker 文档中的 2 GB / 250 MiB 表述已由 ADR 0041 的 PR 改掉。
 - 第 16 节已定决策不变。
+
+### 2026-11-21(M13 前段,ADR 0047、0048;业主定稿)
+- M13 原定的「稳定化与 2.0」顺延:前段先做 Agent 循环深化(工具分组与按需开启、步数与 token 预算停止、提示注册表,ADR 0047)与 Skills(指令包,ADR 0048),方案见 `docs/milestones/M13-plan.md`。
+- 后段顺序:channels hub 与 PluginService 下沉、ownerId 覆盖审计、QQ 渠道、多用户 ADR(2.0)。QQ 渠道和多用户排在 Agent 循环与 Skills 之后。
+- 本组不新增数据库迁移;第 16 节已定决策不变。
