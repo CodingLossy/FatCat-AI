@@ -25,6 +25,7 @@ import {
     catStrokes,
     EAR_L_PIVOT,
     flowGlow,
+    CAT_FACE,
     outlineAnchors,
     posePoint,
     TAIL_PIVOT,
@@ -163,11 +164,16 @@ describe('cat hero model', () => {
         expect(posePoint('earL', [-0.34, -0.9], pose)).not.toEqual([-0.34, -0.9]);
     });
 
-    it('第一层节点均匀挂在轮廓上(不在脸上),位置互不相同', () => {
+    it('第一层节点均匀挂在身子和尾巴上,避开脸和胡须,位置互不相同', () => {
         const a = outlineAnchors(strokes, 8);
         expect(a).toHaveLength(8);
         expect(new Set(a.map((x) => `${x.stroke}:${x.index}`)).size).toBe(8);
-        for (const x of a) expect(['face', 'legs']).not.toContain(strokes[x.stroke]!.part);
+        for (const x of a) {
+            const st = strokes[x.stroke]!;
+            expect(['body', 'tail']).toContain(st.part);
+            const p = st.points[x.index]!;
+            expect(Math.hypot(p[0] - CAT_FACE.cx, p[1] - CAT_FACE.cy)).toBeGreaterThanOrEqual(CAT_FACE.r);
+        }
         expect(outlineAnchors(strokes, 0)).toEqual([]);
     });
 });

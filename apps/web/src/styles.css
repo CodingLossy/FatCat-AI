@@ -1349,7 +1349,8 @@ td .badge {
 }
 
 .wb-search-list button.on,
-.wb-search-list button[aria-selected='true'] {
+.wb-search-list button[aria-selected='true'],
+.wb-model-menu button[aria-selected='true'] {
     background: var(--accent-weak);
     color: var(--accent);
 }
@@ -3028,15 +3029,6 @@ input.kn-search {
     overflow-y: auto;
 }
 
-.wb-shell[data-narrow] .wb-running.empty {
-    display: none;
-}
-
-.wb-shell[data-narrow] .chat-stage .agent-picker {
-    top: var(--wb-top);
-    right: var(--space-3);
-}
-
 /* 球约占一半宽度,对话和输入框在下面 */
 .wb-shell[data-narrow] .chat-stage .voice-orb-wrap {
     top: 36%;
@@ -3045,6 +3037,13 @@ input.kn-search {
 
 .wb-shell[data-narrow] .chat-stage .voice-label {
     bottom: 104px;
+}
+
+/* 空对话:状态行放在主视觉正下方,不被输入框挡住 */
+.wb-shell[data-narrow] .chat-stage[data-blank] .voice-label {
+    top: calc(36% + min(56vw, 44vh) * 0.5 + var(--space-2));
+    bottom: auto;
+    white-space: nowrap;
 }
 
 .wb-shell[data-narrow] .chat-stage .messages {
@@ -3111,4 +3110,9 @@ input.kn-search {
     .wb-shell[data-narrow] .wb-side {
         transition: none;
     }
+}
+
+/* 手机上代理选择在模型胶囊的菜单里 */
+.wb-shell[data-narrow] .chat-stage .agent-picker {
+    display: none;
 }

@@ -454,6 +454,11 @@ export function Workbench({
 
     const chatProfiles = (activity?.profiles ?? []).filter((profile) => profile.purpose.includes('chat'));
     const modelLabel = activity?.profile?.label ?? t('wb.noModel');
+    // 手机上代理选择收进模型胶囊的菜单:第一项是「不使用代理」
+    const agentChoices = (activity?.agents ?? []).length
+        ? [{ id: '', name: t('agents.pickerNone') }, ...(activity?.agents ?? [])]
+        : [];
+    const agentName = narrow ? activity?.agents.find((agent) => agent.id === activity.agentId)?.name : undefined;
 
     const chooseModel = async (id: string) => {
         setModelOpen(false);
@@ -694,7 +699,7 @@ export function Workbench({
                             onClick={() => setModelOpen((open) => !open)}
                         >
                             <Icon name="cat" size={16} />
-                            {modelLabel}
+                            {agentName ? `${modelLabel} · ${agentName}` : modelLabel}
                         </button>
                         {modelOpen ? (
                             <ul className="wb-model-menu" role="listbox">
@@ -711,6 +716,26 @@ export function Workbench({
                                         </button>
                                     </li>
                                 ))}
+                                {narrow && agentChoices.length > 1 ? (
+                                    <li className="wb-search-label">{t('agents.picker')}</li>
+                                ) : null}
+                                {narrow && agentChoices.length > 1
+                                    ? agentChoices.map((agent) => (
+                                          <li key={`agent-${agent.id}`}>
+                                              <button
+                                                  type="button"
+                                                  role="option"
+                                                  aria-selected={agent.id === (activity?.agentId ?? '')}
+                                                  onClick={() => {
+                                                      setModelOpen(false);
+                                                      activity?.chooseAgent(agent.id);
+                                                  }}
+                                              >
+                                                  {agent.name}
+                                              </button>
+                                          </li>
+                                      ))
+                                    : null}
                             </ul>
                         ) : null}
                     </div>
@@ -797,34 +822,32 @@ export function Workbench({
                     <main className="wb-page">{pageView}</main>
                 ) : (
                     <section className="wb-stage">
-                        <div
-                            className={`wb-glass wb-running${running.rows.length === 0 ? ' empty' : ''}`}
-                            aria-live="polite"
-                        >
-                            <h4>{t('wb.running')}</h4>
-                            {running.hidden > 0 ? (
-                                <p className="wb-more-count">{t('wb.runningMore', { n: running.hidden })}</p>
-                            ) : null}
-                            {running.rows.length === 0 ? <p className="muted small">{t('wb.runningEmpty')}</p> : null}
-                            {running.rows.map((row) => {
-                                const icon = statusIcon(row.status);
-                                return (
-                                    <div
-                                        key={row.callId}
-                                        className={`wb-tool${row.callId === activeRow?.callId ? ' active' : ''}`}
-                                    >
-                                        <span>{row.summary}</span>
-                                        <span className="state">
-                                            {icon ? (
-                                                <Icon name={icon} size={16} />
-                                            ) : (
-                                                <span className="wb-spin" aria-hidden="true" />
-                                            )}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                        {running.rows.length > 0 ? (
+                            <div className="wb-glass wb-running" aria-live="polite">
+                                <h4>{t('wb.running')}</h4>
+                                {running.hidden > 0 ? (
+                                    <p className="wb-more-count">{t('wb.runningMore', { n: running.hidden })}</p>
+                                ) : null}
+                                {running.rows.map((row) => {
+                                    const icon = statusIcon(row.status);
+                                    return (
+                                        <div
+                                            key={row.callId}
+                                            className={`wb-tool${row.callId === activeRow?.callId ? ' active' : ''}`}
+                                        >
+                                            <span>{row.summary}</span>
+                                            <span className="state">
+                                                {icon ? (
+                                                    <Icon name={icon} size={16} />
+                                                ) : (
+                                                    <span className="wb-spin" aria-hidden="true" />
+                                                )}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : null}
                         <ChatView
                             key={sessionId ?? 'new'}
                             sessionId={sessionId}

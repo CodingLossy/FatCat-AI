@@ -191,7 +191,14 @@ test('agents page and delegation tree', async ({ page }) => {
     await expect(page.getByTestId('agent-card').first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     if (SHOTS) await page.screenshot({ path: join(SHOTS, 'agents-page-mobile.png') });
+    // 手机上代理选择收在顶部胶囊的模型菜单里,不单独漂在标题栏下面
+    await page.goto(base);
+    await expect(page.getByTestId('agent-picker')).toBeHidden();
+    await page.locator('.wb-pill').click();
+    await page.getByRole('option', { name: '组长' }).click();
+    await expect(page.locator('.wb-pill')).toContainText('组长');
     await page.setViewportSize({ width: 1280, height: 720 });
+    await expect(page.getByTestId('agent-picker')).toHaveValue(/.+/);
 
     // 选「不使用代理」后行为和以前一样:没有委派树
     await page.getByRole('link', { name: '新对话' }).click();

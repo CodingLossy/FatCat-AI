@@ -5,7 +5,14 @@
 // 点开一个,它的子项在它外侧长成一簇(背离主视觉中心),用细线连回它(自然是弯的细茎,猫咪是直的胡须);
 // 再往下一层同样在这个位置展开。颜色全部来自主题 token。
 
-import { expandedId, type KnowledgeNode, type KnowledgeScene, type ScreenNode } from '../knowledge-model.js';
+import {
+    expandedId,
+    type KnowledgeNode,
+    type KnowledgeScene,
+    type LabelCandidate,
+    type ScreenNode,
+} from '../knowledge-model.js';
+import { drawLabels, labelPriority } from './tech-knowledge.js';
 
 export interface AnchoredKnowledgePalette {
     /** 第一层和分支子项的颜色(自然:枝干金;猫咪:轮廓橘)。 */
@@ -32,6 +39,8 @@ export interface AnchoredKnowledgeFrame {
     readonly base: { x: number; y: number };
     /** 内容子项的形状和连线:叶子 + 弯茎(自然),或圆点 + 直胡须(猫咪)。 */
     readonly style: 'leaf' | 'whisker';
+    /** 节点和标签都要让开的圆(猫咪是脸和胡须)。 */
+    readonly avoid?: { x: number; y: number; r: number };
 }
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
@@ -67,6 +76,17 @@ export function clusterCenter(
     };
 }
 
+/** 落在要让开的圆里的点,沿半径推到圆外。 */
+export function pushOut(x: number, y: number, avoid?: { x: number; y: number; r: number }) {
+    if (!avoid) return { x, y };
+    const dx = x - avoid.x;
+    const dy = y - avoid.y;
+    const d = Math.hypot(dx, dy);
+    if (d >= avoid.r) return { x, y };
+    if (d < 1e-6) return { x, y: avoid.y + avoid.r };
+    return { x: avoid.x + (dx / d) * avoid.r, y: avoid.y + (dy / d) * avoid.r };
+}
+
 /** 第 i 个子项相对簇中心的位置(未乘展开进度)。 */
 export function leafOffset(i: number, n: number, radius: number, tSec: number) {
     const r = radius * (0.1 + 0.42 * Math.sqrt((i + 0.5) / Math.max(1, n)));
@@ -82,6 +102,7 @@ export function drawAnchoredKnowledge(
     p: AnchoredKnowledgePalette,
 ): ScreenNode[] {
     const out: ScreenNode[] = [];
+    const labels: (LabelCandidate & { color: string; alpha: number })[] = [];
     const open = expandedId(scene);
     const e = ease(Math.min(1, Math.max(0, frame.explode)));
     g.font = `12px ${p.font}`;
@@ -98,6 +119,7 @@ export function drawAnchoredKnowledge(
         label: boolean,
         shape: 'dot' | 'leaf',
         angle = 0,
+        rank = 0,
     ) => {
         const hit = scene.hits.has(n.id);
         const color = hit ? p.hit : shape === 'leaf' ? p.leaf : p.branch;
@@ -143,15 +165,19 @@ export function drawAnchoredKnowledge(
             g.stroke();
             g.setLineDash([]);
         }
-        if (label) {
-            const text = shortLabel(n.label);
+        if (label || n.id === scene.hoverId || n.id === scene.focusId) {
             // 右半边的文字写在点的左边,免得出画布
             const left = x > frame.w * 0.62;
-            g.textAlign = left ? 'right' : 'left';
-            g.globalAlpha = Math.min(1, alpha + 0.15);
-            g.fillStyle = hit ? p.hit : p.label;
-            g.fillText(text, left ? x - r - 6 : x + r + 6, y);
-            g.textAlign = 'left';
+            labels.push({
+                id: n.id,
+                text: shortLabel(n.label),
+                x: left ? x - r - 6 : x + r + 6,
+                y,
+                align: left ? 'right' : 'left',
+                ...labelPriority(scene, n, rank),
+                color: hit ? p.hit : p.label,
+                alpha: Math.min(1, alpha + 0.15),
+            });
         }
         g.globalAlpha = 1;
         if (alpha > 0.3) out.push({ id: n.id, x, y, r: Math.max(r + 6, 10) });
@@ -168,9 +194,22 @@ export function drawAnchoredKnowledge(
             return;
         }
         const dim = open ? 1 - 0.8 * e : 1;
-        node(n, pos.x, pos.y, 3.6, 0.9 * dim, !open || dim > 0.5, 'dot');
+        node(n, pos.x, pos.y, 3.6, 0.9 * dim, !open || dim > 0.5, 'dot', 0, 50);
     });
-    if (!open || !anchor) return out;
+    const avoidBox = frame.avoid
+        ? [
+              {
+                  x: frame.avoid.x - frame.avoid.r,
+                  y: frame.avoid.y - frame.avoid.r,
+                  w: frame.avoid.r * 2,
+                  h: frame.avoid.r * 2,
+              },
+          ]
+        : [];
+    if (!open || !anchor) {
+        drawLabels(g, scene, labels, out, avoidBox);
+        return out;
+    }
     const a: { x: number; y: number } = anchor;
 
     // 子项簇:从展开的节点拉出细线连到每个子项
@@ -178,9 +217,10 @@ export function drawAnchoredKnowledge(
     const kids = scene.children;
     const pts = kids.map((_, i) => {
         const o = leafOffset(i, kids.length, frame.radius, frame.tSec);
+        const q = pushOut(c.x + o.x, c.y + o.y, frame.avoid);
         return {
-            x: clampX(a.x + (c.x + o.x - a.x) * e),
-            y: clampY(a.y + (c.y + o.y - a.y) * e),
+            x: clampX(a.x + (q.x - a.x) * e),
+            y: clampY(a.y + (q.y - a.y) * e),
             angle: o.angle,
         };
     });
@@ -206,11 +246,24 @@ export function drawAnchoredKnowledge(
             scene.hits.has(n.id) ||
             n.id === scene.selectedId ||
             n.id === scene.focusId;
-        if (n.kind === 'branch') node(n, q.x, q.y, 3.2, 0.4 + 0.6 * e, named && e > 0.6, 'dot');
-        else node(n, q.x, q.y, 2.6, 0.4 + 0.6 * e, named && e > 0.6, frame.style === 'leaf' ? 'leaf' : 'dot', q.angle);
+        const rank = -i / kids.length;
+        if (n.kind === 'branch') node(n, q.x, q.y, 3.2, 0.4 + 0.6 * e, named && e > 0.6, 'dot', 0, rank);
+        else
+            node(
+                n,
+                q.x,
+                q.y,
+                2.6,
+                0.4 + 0.6 * e,
+                named && e > 0.6,
+                frame.style === 'leaf' ? 'leaf' : 'dot',
+                q.angle,
+                rank,
+            );
     });
 
     const center: KnowledgeNode = { id: open, label: scene.path[scene.path.length - 1]?.label ?? '', kind: 'branch' };
-    node(center, a.x, a.y, 5.5, 1, true, 'dot');
+    node(center, a.x, a.y, 5.5, 1, true, 'dot', 0, 500);
+    drawLabels(g, scene, labels, out, avoidBox);
     return out;
 }

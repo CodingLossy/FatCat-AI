@@ -83,6 +83,10 @@ test('空闲没有面板;打开后 Esc 与命令都能收起;侧栏 Ctrl+B 两�
     await expect(page.getByTestId('voice-indicator')).toBeVisible();
     await expect(panel).toHaveCount(0);
     await expect(page.getByRole('combobox', { name: /搜索文件/ })).toHaveCount(0);
+    // 没有工具在跑就不显示工具卡片;空对话只有一行状态文字
+    await expect(page.locator('.wb-running')).toHaveCount(0);
+    await expect(page.getByTestId('voice-indicator')).toHaveText('开始一段新对话吧。');
+    await expect(page.getByTestId('messages').locator('.empty')).toHaveCount(0);
     await shot(page, 'workbench-idle');
 
     await page.getByRole('button', { name: '文件', exact: true }).click();

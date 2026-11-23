@@ -69,6 +69,8 @@ export function KnowledgePage({ settings, onSettings }: { settings: Settings; on
     const [cursor, setCursor] = useState<string | null>(null);
     const [selected, setSelected] = useState<string | null>(null);
     const [focus, setFocus] = useState<string | null>(null);
+    const [hover, setHover] = useState<string | null>(null);
+    const [bubbleSize, setBubbleSize] = useState<{ w: number; h: number } | null>(null);
     const [bubble, setBubble] = useState<string | null>(null);
     const [detail, setDetail] = useState<Detail | null>(null);
     const [query, setQuery] = useState('');
@@ -159,10 +161,19 @@ export function KnowledgePage({ settings, onSettings }: { settings: Settings; on
     const visible = levelChildren.slice(0, shown);
     const moreCount = open ? Math.max(0, levelChildren.length - shown) + (cursor ? 1 : 0) : 0;
     const scene: KnowledgeScene = useMemo(
-        () => ({ roots, path, children: visible, selectedId: selected, focusId: focus, hits: activeHits }),
+        () => ({
+            roots,
+            path,
+            children: visible,
+            selectedId: selected,
+            focusId: focus,
+            hits: activeHits,
+            hoverId: hover,
+            bubble: bubbleSize,
+        }),
         // visible 由 children / shown 决定
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [roots, path, levelChildren, shown, selected, focus, activeHits],
+        [roots, path, levelChildren, shown, selected, focus, activeHits, hover, bubbleSize],
     );
 
     // 主视觉:当前主题的知识模式;canvas 不可用时只显示列表
@@ -210,6 +221,16 @@ export function KnowledgePage({ settings, onSettings }: { settings: Settings; on
     }, [bubble]);
 
     const [bubbleText, setBubbleText] = useState('');
+    // 量出气泡的实际大小,主视觉据此让开其他节点的标签
+    useEffect(() => {
+        const el = bubbleRef.current;
+        if (!bubble || !el) return setBubbleSize(null);
+        setBubbleSize((old) =>
+            old && old.w === el.offsetWidth && old.h === el.offsetHeight
+                ? old
+                : { w: el.offsetWidth, h: el.offsetHeight },
+        );
+    }, [bubble, bubbleText]);
     const showBubble = async (node: KnowledgeNode) => {
         setSelected(node.id);
         setBubble(node.id);
@@ -421,9 +442,11 @@ export function KnowledgePage({ settings, onSettings }: { settings: Settings; on
                         onClick={onCanvasClick}
                         onMouseMove={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
-                            const id = hero.current?.pick(e.clientX - rect.left, e.clientY - rect.top);
+                            const id = hero.current?.pick(e.clientX - rect.left, e.clientY - rect.top) ?? null;
                             e.currentTarget.style.cursor = id ? 'pointer' : 'default';
+                            setHover(id);
                         }}
+                        onMouseLeave={() => setHover(null)}
                     />
                     {/* 键盘操作:每个节点一个按钮(视觉上隐藏),方向键移动,回车打开 */}
                     <ul className="kn-nodes visually-hidden" aria-label={t('knowledge.nodes')} onKeyDown={onNodesKey}>
