@@ -26,7 +26,7 @@
 ### PR 2 · `feat/tool-groups-budget`:工具分组、按需开启、预算停止
 
 - 分组:工具名第一个 `.` 之前是组名;MCP 工具是 `mcp.<server>`,插件工具是 `plugin.<id>`;没有 `.` 的工具各自成组。
-- 核心组(始终交给模型):`memory`、`calc`、`time`、`items`、`kb`、`ui`、`delegate`、`tools`(`tools.enable` 本身),以及服务端注册的任务类工具组(核对结果见 ADR 0047 第 2 节)。
+- 核心组(始终交给模型):`memory`、`calc`、`time`、`items`、`kb`、`ui`、`delegate`、`tools`(`tools.enable` 本身),以及服务端注册的任务类工具组(核对结果见 ADR 0047 第 1.2 节:目前没有)。
 - 按需组(默认不交):其余全部,即 `fs`、`mail`、`web`、`browser`、`channel`、`system`、`mcp.*`、`plugin.*`。
 - 新核心工具 `tools.enable({ group })`:`risk: 'read'`、不需要审批;只在本次运行内有效,不写库;开启一个组不改变组内任何工具的风险等级和审批。
 - 任务或代理的 `toolSet` 点名的工具或前缀直接视为已开启,已有定时任务和代理的行为不变。

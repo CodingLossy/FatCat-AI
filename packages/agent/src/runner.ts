@@ -4,6 +4,7 @@
 // 运行管理(ADR 0004、0010、0042):RunManager 的公开方法、运行生命周期和主循环。
 // 上下文组装、单步工具调用、审批闸和委派分别在 run/ 下的模块里。
 import type { AgentEvent, Message, MessagePart, PreauthRemember, Usage } from '@fatcat-ai/shared';
+import { promptText } from '@fatcat-ai/i18n';
 import { ProviderError, type ToolCall } from '@fatcat-ai/providers';
 import type { ToolRegistry } from '@fatcat-ai/tools';
 import { assistantLabel } from './labels.js';
@@ -22,7 +23,7 @@ import {
 } from './run/common.js';
 import { buildContext, memoryFor } from './run/context-builder.js';
 import { Budget, DEFAULT_DELEGATE_PARALLELISM, Limiter } from './run/delegation.js';
-import { isWithheld, runCalls } from './run/tool-step.js';
+import { isWithheld, optionalGroups, runCalls } from './run/tool-step.js';
 import type { ApprovalOutcome } from './tools.js';
 
 export { DEFAULT_APPROVAL_TIMEOUT_MS } from './run/approval-gate.js';
@@ -39,8 +40,11 @@ export type {
 export { currentTimeLine, SYSTEM_PROMPT } from './run/context-builder.js';
 export { DEFAULT_DELEGATE_PARALLELISM } from './run/delegation.js';
 
-/** 一次运行中模型与工具来回的最大轮数,防止循环调用。 */
-export const MAX_TOOL_STEPS = 5;
+/** 普通对话与定时任务中模型与工具来回的最大轮数,防止循环调用(ADR 0047 第 2 节;代理用自己的 maxSteps)。 */
+export const MAX_TOOL_STEPS = 10;
+
+/** 普通对话与定时任务每次运行的 token 预算:累加每一步的用量,用完后不再开始下一步(ADR 0047 第 2 节)。 */
+export const DEFAULT_RUN_TOKEN_BUDGET = 60_000;
 
 /** 同一会话同时只允许一个运行。 */
 export class RunConflictError extends Error {
@@ -273,11 +277,14 @@ export class RunManager {
                 ...(agent ? [{ set: agent.toolSet, label: 'agent' as const }] : []),
             ],
             withheldPrefixes: input.task?.withholdToolPrefixes ?? [],
+            // 有渠道输出的定时任务一开始就开启 channel 组:任务提示要求用 channel.push 发出结果(ADR 0034 第 3 节)
+            activeGroups: new Set(input.task?.channelId ? ['channel'] : []),
             noMemory: agent?.memoryScope === 'none',
             depth: 0,
             maxDepth: agent?.maxDepth ?? 0,
+            // 代理沿用自己的预算(ADR 0042 第 3 节);普通对话与定时任务用每次运行的默认预算(ADR 0047 第 2 节)
             budget: new Budget(
-                agent?.budgetTokens ?? null,
+                agent ? agent.budgetTokens : DEFAULT_RUN_TOKEN_BUDGET,
                 agent?.budgetSeconds ? this.now() + agent.budgetSeconds * 1000 : null,
                 null,
             ),
@@ -327,6 +334,7 @@ export class RunManager {
                 signal,
                 memory.messages,
                 input.agent?.prompt,
+                optionalGroups(this.host, ctx),
             );
             for (let step = 0; ; step++) {
                 if (signal.aborted) return finish('cancelled', undefined);
@@ -366,6 +374,13 @@ export class RunManager {
 
                 messages.push({ role: 'assistant', content: stepText, toolCalls: calls });
                 if (await runCalls(this.host, ctx, calls, messages)) return finish('cancelled', usage);
+                // 普通对话与定时任务用完本次运行的 token 预算后不再开始下一步,附上一句说明后结束(ADR 0047 第 2 节)
+                if (!agent && ctx.budget.exhausted(this.now())) {
+                    const notice = promptText('runBudget', locale);
+                    parts.push({ type: 'text', text: notice });
+                    emit({ type: 'text-delta', runId: run.runId, delta: notice });
+                    return finish('stop', usage);
+                }
                 persist('streaming');
                 emit(stateEvent('thinking'));
             }

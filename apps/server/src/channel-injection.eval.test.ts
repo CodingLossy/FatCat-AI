@@ -20,7 +20,14 @@ import {
     REPLIES,
 } from './channels/hub.js';
 import { createMemoryStack } from './memory-setup.js';
-import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
+import {
+    enableGroupFor,
+    createTestServer,
+    jsonBody,
+    sessionFrom,
+    TEST_PASSWORD,
+    type TestServer,
+} from './test-helpers.js';
 
 let s: TestServer;
 afterEach(async () => {
@@ -31,9 +38,11 @@ type Step = (request: ChatRequest) => AsyncGenerator<ChatChunk>;
 let seq = 0;
 const call = (name: string, input: unknown | ((request: ChatRequest) => unknown)): Step =>
     async function* (request) {
+        const callId = `c${++seq}`;
+        yield* enableGroupFor(name, callId);
         yield {
             type: 'tool-call',
-            callId: `c${++seq}`,
+            callId,
             name,
             input: typeof input === 'function' ? (input as (r: ChatRequest) => unknown)(request) : input,
         };

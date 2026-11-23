@@ -8,7 +8,14 @@ import path from 'node:path';
 import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
 import { AuditEntry, EventEnvelope, FsRoot, pageOf, Preauthorization, Session } from '@fatcat-ai/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
+import {
+    enableGroupFor,
+    createTestServer,
+    jsonBody,
+    sessionFrom,
+    TEST_PASSWORD,
+    type TestServer,
+} from './test-helpers.js';
 
 let s: TestServer;
 let base: string;
@@ -27,6 +34,7 @@ afterEach(async () => {
 type Step = (request: ChatRequest) => AsyncGenerator<ChatChunk>;
 const callTool = (name: string, input: unknown): Step =>
     async function* () {
+        yield* enableGroupFor(name, 'c1');
         yield { type: 'tool-call', callId: 'c1', name, input };
         yield { type: 'finish', reason: 'tool-calls' };
     };

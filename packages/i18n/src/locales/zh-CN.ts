@@ -755,6 +755,7 @@ export const zh = {
     'voice.transcribing': '正在转写…',
     'voice.notHeard': '没有听清,请再说一次。',
     'voice.micDenied': '无法使用麦克风:{msg}',
+    'tools.activity.enable': '正在开启工具…',
     'voice.limit': '录音最长 {n} 秒,已自动结束。',
     'voice.speak': '朗读',
     'voice.stopSpeaking': '停止朗读',

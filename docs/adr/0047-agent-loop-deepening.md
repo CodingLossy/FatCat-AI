@@ -44,13 +44,22 @@
 - 任务或代理的 `toolSet` 里点名的工具或前缀,不论属于哪个组,都直接视为已开启。已有的定时任务和代理行为因此不变。
 - `toolSet` 仍然只缩小(ADR 0042 第 2 节):`tools.enable` 不能开启 `toolSet` 之外的组。
 - 不在核心组、不在本次运行已开启的组、也没被 `toolSet` 点名的工具不交给模型;模型硬调用时返回 `unknown tool: <name> (enable group <g> with tools.enable first)`,按未知工具审计,不执行。
-- 系统提示末尾加一行按需组目录:`Optional tool groups: fs (local files), mail (e-mail), …`,每组说明不超过 8 个词,文字放在 i18n 的提示模板里(第 3 节的 `tools.groupCatalog`)。
+- 系统提示末尾加一行按需组目录:`Optional tool groups (turn one on with tools.enable): fs (local files in folders the user allowed), mail (e-mail), …`,每组说明不超过 8 个词,文字放在 i18n 的提示模板里(第 3 节的 `tools.groupCatalog`)。目录行放在时间行之前,时间行仍是最后一行(ADR 0023 第 4 节);目录只列本次运行能开启的组(在设置里关闭的、被任务前缀扣下的不列)。
+
+### 1.5 实现细节(PR 2)
+
+- **按需组什么时候生效:**注册表里有 `tools.enable`、且本次运行没有任务或代理的 `toolSet` 时。有 `toolSet` 时,能通过它的工具都是被点名的,等于已开启,行为与以前完全相同;注册表里没有 `tools.enable` 时(例如只注册了几个工具的嵌入场景)无法开启,也就不扣下。子运行总有代理的 `toolSet`,所以按需组只影响普通对话和没有 `toolSet` 的定时任务。
+- **输出到渠道的定时任务**一开始就开启 `channel` 组:任务提示要求用 `channel.push` 发出结果(ADR 0034 第 3 节),`channel.push` 每次仍要审批。
+- 同一步里先调 `tools.enable` 再调组内工具也可以:一步里的调用按顺序执行,开启后紧接着的调用已可用。审批与审计不受影响。
+- `tools.enable` 的报错:组不存在时 `unknown tool group: <g>`;组内工具都被工具集排除时 `unknown tool group: <g> (not in this task's tool set)`,括号里的说法与 `unknownToolReason` 相同;组内工具在设置里全部关闭时 `tool group <g> is turned off in settings`。
+- 判断写在 `packages/agent/src/run/tool-step.ts` 的 `isWithheld` 一处:交给模型的 specs 与硬调用的检查用同一条规则,不会不一致。`ToolRegistry` 只提供 `groupOf(name)`。
 
 ## 2. 步数与预算停止
 
 - 普通对话的工具步数上限 `MAX_TOOL_STEPS` 从 5 改为 10。`AgentRole.maxSteps` 的 schema、默认值和上限不变。
 - 普通对话与定时任务新增每次运行的 token 预算 `DEFAULT_RUN_TOKEN_BUDGET = 60_000`:累加所有步骤 usage 的 `totalTokens`(没有时用输入加输出)。超出后不再开始下一步,按现有的 `stopped = 'budget'` 结束,并给出现有的预算用尽提示。
 - 代理运行沿用 ADR 0042 第 3 节已有的预算(`budgetTokens` / `budgetSeconds`,沿委派树共享),不改。
+- 实现(PR 2):根运行原来没有预算停止,`stopped = 'budget'` 只存在于委派结果里。为了不改 WebSocket 协议,普通对话与定时任务用完预算时不新增 `run-finished` 的 reason:在本步工具结果回填之后不再请求模型,把 i18n 模板 `runBudget` 的一句说明作为文字追加到回答末尾,以 `reason: 'stop'` 正常结束。
 
 ## 3. 提示注册表
 

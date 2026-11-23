@@ -28,9 +28,30 @@ import { createLogger } from './log.js';
 import { type AdapterFactory, ChannelHub } from './channels/hub.js';
 import { WechatChannels } from './channels/wechat.js';
 import { PluginService } from './plugin-setup.js';
-import type { ChannelKind } from '@fatcat-ai/shared';
-import { createDelegateTool } from '@fatcat-ai/tools';
+import type { AgentEvent, ChannelKind } from '@fatcat-ai/shared';
+import { createDelegateTool, groupOf, isCoreGroup } from '@fatcat-ai/tools';
+import type { ChatChunk } from '@fatcat-ai/providers';
 import { resolveDelegateAgent } from './routes/agents.js';
+
+/**
+ * 按需工具组(ADR 0047 第 1 节):脚本里调用的工具不在核心组时,在同一步里先调 tools.enable 开启它的组
+ * (同一步的调用按顺序执行,开启后紧接着的调用就可用)。工具结果里多出的 tools.enable 由 isEnableResult 过滤。
+ */
+export function* enableGroupFor(name: string, callId: string): Generator<ChatChunk> {
+    const group = groupOf(name);
+    if (isCoreGroup(group)) return;
+    yield { type: 'tool-call', callId: `${callId}-enable`, name: 'tools.enable', input: { group } };
+}
+
+/** 去掉 tools.enable 的调用结果,只留脚本里目标工具的结果(配合 enableGroupFor)。 */
+export function toolResultsOf(events: readonly AgentEvent[]): Extract<AgentEvent, { type: 'tool-result' }>[] {
+    const enables = new Set(
+        events.flatMap((e) => (e.type === 'tool-call' && e.name === 'tools.enable' ? [e.callId] : [])),
+    );
+    return events.filter(
+        (e): e is Extract<AgentEvent, { type: 'tool-result' }> => e.type === 'tool-result' && !enables.has(e.callId),
+    );
+}
 
 export const TEST_PASSWORD = 'correct horse battery staple';
 export const TEST_SETUP_CODE = 'setup-code-123456';

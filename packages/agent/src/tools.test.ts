@@ -11,7 +11,7 @@ import { createRepositories, type ModelProfileRecord, openStorage, type Reposito
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EventBus } from './bus.js';
 import { estimateTokens, planContext, SUMMARY_PREFIX } from './context.js';
-import { currentTimeLine, RunManager, SYSTEM_PROMPT } from './runner.js';
+import { currentTimeLine, MAX_TOOL_STEPS, RunManager, SYSTEM_PROMPT } from './runner.js';
 import { createFsTools, ToolRegistry, type ToolDefinition } from '@fatcat-ai/tools';
 
 let dir: string;
@@ -240,13 +240,14 @@ describe('工具与审批', () => {
     });
 
     it('超过最大轮数后不再提供工具', async () => {
-        steps = Array.from({ length: 5 }, () => callTool('memory.search', {}));
+        steps = Array.from({ length: MAX_TOOL_STEPS }, () => callTool('memory.search', {}));
         steps.push(answer('结束'));
         const m = manager();
         m.start({ ownerId, sessionId: repos.sessions.create(ownerId).id, profile, text: 'x' });
         await m.idle();
-        expect(requests).toHaveLength(6);
-        expect(requests[5]!.tools).toBeUndefined();
+        expect(MAX_TOOL_STEPS).toBe(10);
+        expect(requests).toHaveLength(MAX_TOOL_STEPS + 1);
+        expect(requests[MAX_TOOL_STEPS]!.tools).toBeUndefined();
     });
 });
 

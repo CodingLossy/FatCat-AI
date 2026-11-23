@@ -21,12 +21,14 @@ export {
     type PolicyOptions,
 } from './policy.js';
 export { ToolRegistry, type ToolSpecLike } from './registry.js';
+export { CORE_TOOL_GROUPS, groupOf, isCoreGroup } from './groups.js';
 export {
     type DelegateRequest,
     type DelegateResult,
     type ToolContext,
     type ToolDefinition,
     ToolDeniedError,
+    type ToolGroupInfo,
 } from './types.js';
 export { type BuiltinToolOptions, createBuiltinTools } from './builtin/index.js';
 export { CalcError, createCalcTool, evaluate } from './builtin/calc.js';
@@ -42,6 +44,7 @@ export {
     type ScreenshotImage,
 } from './builtin/browser.js';
 export { createDelegateTool } from './builtin/delegate.js';
+export { createToolsEnableTool } from './builtin/tools-enable.js';
 export {
     ALLOWED_EXTENSIONS,
     blockedExtension,

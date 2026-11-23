@@ -14,7 +14,15 @@ import { type AgentEvent, EventEnvelope, Session } from '@fatcat-ai/shared';
 import type { MailJob, MailJobRunner, SendOutput } from '@fatcat-ai/mail';
 import type { MailMessageSync } from '@fatcat-ai/storage';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
+import {
+    enableGroupFor,
+    toolResultsOf,
+    createTestServer,
+    jsonBody,
+    sessionFrom,
+    TEST_PASSWORD,
+    type TestServer,
+} from './test-helpers.js';
 
 let s: TestServer;
 afterEach(async () => {
@@ -27,9 +35,11 @@ type Approval = Extract<AgentEvent, { type: 'approval-required' }>;
 let seq = 0;
 const call = (name: string, input: unknown | ((request: ChatRequest) => unknown)): Step =>
     async function* (request) {
+        const callId = `c${++seq}`;
+        yield* enableGroupFor(name, callId);
         yield {
             type: 'tool-call',
-            callId: `c${++seq}`,
+            callId,
             name,
             input: typeof input === 'function' ? (input as (r: ChatRequest) => unknown)(request) : input,
         };
@@ -202,7 +212,7 @@ async function setup() {
                 }
             }
         }
-        const results = events.filter((e) => e.type === 'tool-result');
+        const results = toolResultsOf(events);
         return { approvals, events, results, rememberStatus };
     }
     const sendApproval = (r: { approvals: Approval[] }) => r.approvals.find((a) => a.toolName === 'mail.send');

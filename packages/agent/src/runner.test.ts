@@ -9,7 +9,14 @@ import type { EventEnvelope } from '@fatcat-ai/shared';
 import { createRepositories, type ModelProfileRecord, openStorage, type Repositories } from '@fatcat-ai/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EventBus } from './bus.js';
-import { type MemoryTurnContext, RunConflictError, RunManager } from './runner.js';
+import { createCalcTool, createToolsEnableTool, ToolRegistry, type ToolDefinition } from '@fatcat-ai/tools';
+import {
+    DEFAULT_RUN_TOKEN_BUDGET,
+    type MemoryTurnContext,
+    type RunAgent,
+    RunConflictError,
+    RunManager,
+} from './runner.js';
 
 type Script = (request: ChatRequest) => AsyncGenerator<ChatChunk>;
 
@@ -280,5 +287,177 @@ describe('代理的记忆设置(ADR 0042)', () => {
         await manager.idle();
         expect(finished).toEqual([shared.runId, plain.runId]);
         expect(finished).not.toContain(quiet.runId);
+    });
+});
+
+describe('按需工具组与预算停止(ADR 0047)', () => {
+    const readTool = (name: string): ToolDefinition => ({
+        name,
+        description: `${name} does things. More detail here.`,
+        parameters: { type: 'object' },
+        risk: 'read',
+        summarize: () => name,
+        execute: () => Promise.resolve({ ok: name }),
+    });
+    const registry = () =>
+        new ToolRegistry().register(
+            createToolsEnableTool(),
+            createCalcTool(),
+            readTool('kb.search'),
+            readTool('mail.list'),
+            readTool('fs.read'),
+            readTool('mcp.notes.add'),
+        );
+    type Step = { call?: { name: string; input: unknown }; text?: string; tokens?: number };
+    const scripted = (steps: Step[]) => {
+        const queue = [...steps];
+        script = async function* () {
+            const step = queue.shift() ?? { text: 'done' };
+            if (step.call) yield { type: 'tool-call', callId: 'c1', ...step.call };
+            if (step.text) yield { type: 'text-delta', delta: step.text };
+            yield {
+                type: 'finish',
+                reason: step.call ? 'tool-calls' : 'stop',
+                ...(step.tokens ? { usage: { totalTokens: step.tokens } } : {}),
+            };
+        };
+    };
+    const specNames = (i: number) => (requests[i]!.tools ?? []).map((t) => t.name).sort();
+    const results = (runId: string) =>
+        repos.events
+            .listRunAfter(ownerId, runId, 0, 200)
+            .map((e) => e.event)
+            .filter((e) => e.type === 'tool-result');
+    const start = (extra: { agent?: RunAgent; task?: { id: string; toolSet?: string[]; channelId?: string } } = {}) => {
+        manager = new RunManager({
+            repos,
+            bus,
+            providerFor: () => fakeProvider,
+            persistIntervalMs: 0,
+            tools: registry(),
+        });
+        return manager.start({ ownerId, sessionId: repos.sessions.create(ownerId).id, profile, text: 'x', ...extra });
+    };
+    const kbAgent = (): RunAgent => {
+        const record = repos.agents.create(ownerId, {
+            name: 'kb-only',
+            systemPrompt: '',
+            modelProfileId: null,
+            toolSet: ['kb.'],
+            memoryScope: 'shared',
+            maxDepth: 0,
+            maxSteps: 5,
+            budgetTokens: null,
+            budgetSeconds: null,
+        });
+        return {
+            id: record.id,
+            name: record.name,
+            prompt: '',
+            toolSet: record.toolSet,
+            memoryScope: 'shared',
+            maxSteps: 5,
+            maxDepth: 0,
+            budgetTokens: null,
+            budgetSeconds: null,
+        };
+    };
+
+    it('第一步只交核心组和 tools.enable;开启 mail 组后下一步出现 mail 工具,其他按需组仍不交', async () => {
+        scripted([{ call: { name: 'tools.enable', input: { group: 'mail' } } }, { text: 'ok' }]);
+        const run = start();
+        await manager.idle();
+        expect(specNames(0)).toEqual(['calc', 'kb.search', 'tools.enable']);
+        expect(specNames(1)).toEqual(['calc', 'kb.search', 'mail.list', 'tools.enable']);
+        expect(results(run.runId)[0]).toMatchObject({
+            output: { group: 'mail', tools: [{ name: 'mail.list', description: 'mail.list does things.' }] },
+        });
+        // 系统提示末尾(时间行之前)有按需组目录
+        const system = requests[0]!.messages[0]!.content as string;
+        expect(system).toContain(
+            'Optional tool groups (turn one on with tools.enable): fs (local files in folders the user allowed), ' +
+                'mail (e-mail), mcp.notes (tools from MCP server notes).',
+        );
+        // 开启不跨运行
+        scripted([{ text: 'again' }]);
+        manager.start({ ownerId, sessionId: repos.sessions.create(ownerId).id, profile, text: 'y' });
+        await manager.idle();
+        expect(specNames(2)).toEqual(['calc', 'kb.search', 'tools.enable']);
+    });
+
+    it('没开启就硬调用按需组的工具:按未知工具处理并审计为拒绝,不执行', async () => {
+        scripted([{ call: { name: 'fs.read', input: {} } }, { text: 'ok' }]);
+        const run = start();
+        await manager.idle();
+        expect(results(run.runId)[0]).toMatchObject({
+            error: 'unknown tool: fs.read (enable group fs with tools.enable first)',
+        });
+        expect(repos.audit.list(ownerId, { limit: 10 }).items).toEqual([
+            expect.objectContaining({ toolName: 'fs.read', decision: 'denied', outcome: 'not_run' }),
+        ]);
+    });
+
+    it('不存在的组报错,不改变可用的工具', async () => {
+        scripted([{ call: { name: 'tools.enable', input: { group: 'shell' } } }, { text: 'ok' }]);
+        const run = start();
+        await manager.idle();
+        expect(results(run.runId)[0]).toMatchObject({ error: 'unknown tool group: shell' });
+        expect(specNames(1)).toEqual(['calc', 'kb.search', 'tools.enable']);
+    });
+
+    it('越权:toolSet 只有 kb. 的代理开启不了 fs 组,fs.read 仍然不可用', async () => {
+        scripted([
+            { call: { name: 'tools.enable', input: { group: 'fs' } } },
+            { call: { name: 'fs.read', input: {} } },
+            { text: 'ok' },
+        ]);
+        const run = start({ agent: kbAgent() });
+        await manager.idle();
+        expect(specNames(0)).toEqual(['kb.search']);
+        expect(specNames(1)).toEqual(['kb.search']);
+        expect(results(run.runId).map((r) => r.type === 'tool-result' && r.error)).toEqual([
+            "unknown tool: tools.enable (not in this agent's tool set)",
+            "unknown tool: fs.read (not in this agent's tool set)",
+        ]);
+    });
+
+    it('越权:任务工具集里有 tools.enable 也开启不了集合外的组;集合点名的工具直接可用', async () => {
+        scripted([{ call: { name: 'tools.enable', input: { group: 'fs' } } }, { text: 'ok' }]);
+        const run = start({ task: { id: 't1', toolSet: ['tools.enable', 'mail.'] } });
+        await manager.idle();
+        // 工具集点名的 mail.list 不用开启
+        expect(specNames(0)).toEqual(['mail.list', 'tools.enable']);
+        expect(results(run.runId)[0]).toMatchObject({
+            error: "unknown tool group: fs (not in this task's tool set)",
+        });
+        expect(specNames(1)).toEqual(['mail.list', 'tools.enable']);
+    });
+
+    it('预算:累计 token 超过默认预算后不再开始下一步,附上说明后正常结束', async () => {
+        const per = Math.ceil(DEFAULT_RUN_TOKEN_BUDGET / 2.5); // 第 3 步超过预算
+        scripted(
+            Array.from({ length: 6 }, () => ({ call: { name: 'calc', input: { expression: '1+1' } }, tokens: per })),
+        );
+        const run = start();
+        await manager.idle();
+        expect(requests).toHaveLength(3);
+        const events = repos.events.listRunAfter(ownerId, run.runId, 0, 200).map((e) => e.event);
+        expect(events.find((e) => e.type === 'run-finished')).toMatchObject({ reason: 'stop' });
+        expect(events.some((e) => e.type === 'run-failed')).toBe(false);
+        const message = repos.messages.get(ownerId, run.assistantMessageId)!;
+        expect(message.status).toBe('complete');
+        expect(message.parts.at(-1)).toEqual({ type: 'text', text: expect.stringContaining('token 预算') });
+    });
+
+    it('代理运行不受默认预算限制(沿用自己的预算)', async () => {
+        const per = DEFAULT_RUN_TOKEN_BUDGET;
+        scripted([
+            { call: { name: 'kb.search', input: {} }, tokens: per },
+            { call: { name: 'kb.search', input: {} }, tokens: per },
+            { text: 'done', tokens: per },
+        ]);
+        start({ agent: kbAgent() });
+        await manager.idle();
+        expect(requests).toHaveLength(3);
     });
 });

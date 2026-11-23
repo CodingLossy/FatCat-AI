@@ -36,6 +36,7 @@ export default defineConfig({
                         { slug: 'guides/desktop' },
                         { slug: 'guides/channels' },
                         { slug: 'guides/plugins' },
+                        { slug: 'guides/tool-groups' },
                         { slug: 'security' },
                     ],
                 },

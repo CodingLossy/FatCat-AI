@@ -17,7 +17,14 @@ import {
     Session,
 } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
+import {
+    enableGroupFor,
+    createTestServer,
+    jsonBody,
+    sessionFrom,
+    TEST_PASSWORD,
+    type TestServer,
+} from './test-helpers.js';
 
 const FIXTURES = fileURLToPath(new URL('../../../packages/providers/test/fixtures/', import.meta.url));
 
@@ -46,6 +53,7 @@ function scripted() {
 
 const callTool = (name: string, input: unknown): Step =>
     async function* () {
+        yield* enableGroupFor(name, 'c1');
         yield { type: 'tool-call', callId: 'c1', name, input };
         yield { type: 'finish', reason: 'tool-calls' };
     };
@@ -299,6 +307,7 @@ describe('评测:真实 OpenAI 兼容 provider 回放 memory.save 往返', () =>
         expect(replay.remaining()).toBe(0);
 
         const first = replay.calls[0]!.body as { tools: { function: { name: string } }[] };
+        // 第一步只交核心组和 tools.enable;fs、mail、web、channel 等按需组要先开启(ADR 0047 第 1 节)
         expect(first.tools.map((t) => t.function.name)).toEqual([
             'memory__write',
             'memory__save',
@@ -309,26 +318,14 @@ describe('评测:真实 OpenAI 兼容 provider 回放 memory.save 往返', () =>
             'memory__forget',
             'time',
             'calc',
+            'tools__enable',
             'ui__panel',
-            'web__fetch',
-            'fs__list',
-            'fs__read',
-            'fs__search',
-            'fs__write',
-            'fs__move',
             'items__roots',
             'items__children',
             'items__get',
             'items__search',
             'items__open',
             'kb__search',
-            'mail__list',
-            'mail__search',
-            'mail__read',
-            'mail__summarize',
-            'mail__draft',
-            'mail__send',
-            'channel__push',
         ]);
         const second = replay.calls[1]!.body as { messages: { role: string; content?: string }[] };
         const toolMessage = second.messages.find((m) => m.role === 'tool');
