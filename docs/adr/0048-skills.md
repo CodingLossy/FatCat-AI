@@ -16,14 +16,14 @@ Skill 把「一段说明 + 它要用的工具 + 可选的任务模板」打成�
 
 一个 Skill 由下面几项组成:
 
-| 字段            | 必填 | 说明                                                                                                                                             |
-| --------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `id`            | 是   | `^[a-z][a-z0-9-]{1,31}$`,在所属插件内唯一。全局 id:内置 Skill 就是 `id`;插件的 Skill 是 `plugin.<pluginId>.<id>`(与插件工具名的前缀一致)         |
-| `name`          | 是   | 多语言文案,格式同 ADR 0040 的 `name`(`{ "zh-CN"?, "en"? }`,至少一种语言,每项 ≤ 64 字符),只给界面用                                               |
-| `description`   | 是   | 给模型看的一句话,≤ 200 字符,写清**什么时候用**(例如 "Use when the user asks to sort, summarize or answer e-mail.");出现在系统提示的 Skill 目录里 |
-| `instructions`  | 是   | 包内 markdown 文件的相对路径(`.md`,不能含 `..`,不能是绝对路径),UTF-8,≤ 16 KiB;`skill.use` 时作为工具结果交给模型                                 |
-| `toolSet`       | 是   | 这个 Skill 要用的工具:语法同代理的 `toolSet`(`AgentToolSetEntry`:精确工具名,或以 `.` 结尾的前缀),1–32 项                                         |
-| `taskTemplates` | 否   | 定时任务模板,格式同 ADR 0040 第 2 节的 `taskTemplates`(`PluginTaskTemplate`);只是模板,用户确认后才建任务,仍走任务确认卡,不能带预授权             |
+| 字段            | 必填 | 说明                                                                                                                                                                                                                           |
+| --------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`            | 是   | `^[a-z][a-z0-9-]{1,31}$`,在所属插件内唯一。全局 id:内置 Skill 就是 `id`;插件的 Skill 是 `plugin.<pluginId>.<id>`(与插件工具名的前缀一致)                                                                                       |
+| `name`          | 是   | 多语言文案,格式同 ADR 0040 的 `name`(`{ "zh-CN"?, "en"? }`,至少一种语言,每项 ≤ 64 字符),只给界面用                                                                                                                             |
+| `description`   | 是   | 给模型看的一句话,≤ 200 字符,写清**什么时候用**(例如 "Use when the user asks to sort, summarize or answer e-mail.");出现在系统提示的 Skill 目录里                                                                               |
+| `instructions`  | 是   | 包内 markdown 文件的相对路径(`.md`,不能含 `..`,不能是绝对路径),UTF-8,≤ 16 KiB;`skill.use` 时作为工具结果交给模型                                                                                                               |
+| `toolSet`       | 是   | 这个 Skill 要用的工具:语法同代理的 `toolSet`(`AgentToolSetEntry`:精确工具名,或以 `.` 结尾的前缀),1–32 项                                                                                                                       |
+| `taskTemplates` | 否   | 定时任务模板,格式同 ADR 0040 第 2 节的 `taskTemplates`(`PluginTaskTemplate`);只是模板,用户确认后才建任务,仍走任务确认卡,不能带预授权。模板可带可选的 `toolSet`(写进所建任务的 `policy.toolSet`),必须在 Skill 的 `toolSet` 之内 |
 
 `toolSet` 的限制:
 
@@ -96,6 +96,8 @@ ADR 0040 第 1 节定的是「插件 = 带 `plugin.json` 的包,入口是一个�
 | `web-research`   | `web.fetch`、`browser.` | 无                                                |
 | `local-files`    | `fs.`、`kb.search`      | 无                                                |
 
+每日邮件摘要模板带 `toolSet: ["mail.list", "mail.read", "mail.search", "mail.summarize"]`:由它建出的定时任务连 `mail.draft`、`mail.send` 都调不到,不只靠审批拦下发信。
+
 instructions 用英文写(与系统提示一致),写清步骤、什么时候停下问用户,以及「发信、写文件、访问新网站都会弹审批」。内置 Skill 默认启用,开关存在 settings JSON(第 8 节)。
 
 ## 6. 留在核心、不做成 Skill
@@ -123,7 +125,7 @@ instructions 用英文写(与系统提示一致),写清步骤、什么时候停�
 - **不加表,不写迁移。**
 - 插件 Skill 的启用状态就是所属插件的启用状态(`plugins.status`,ADR 0040 第 7 节):插件启用则它的全部 Skill 可用,停用则全部不可用。单个插件 Skill 不另设开关。
 - 内置 Skill 的开关存在 settings JSON:`skills.builtin: { [id]: boolean }`,缺省为启用。`Settings` schema 增加可选的 `skills`(含 `builtin`;`agents` 只在服务端使用,不出现在 `GET /api/v1/settings` 的响应里),属于 `/api/v1` 的向后兼容增量。
-- 代理角色的 `skills` 也存在 settings JSON:`skills.agents: { [agentId]: string[] }`。agents 表(迁移 0019)没有通用的 JSON 列,为了不写迁移不改它;删除代理时一并删掉它的条目,读取时忽略已不存在的代理 id。`/api/v1/agents` 对外仍按第 7 节返回 `skills` 字段,客户端看不到存储位置。
+- 代理角色的 `skills` 也存在 settings JSON:`skills.agents: { [agentId]: string[] }`。agents 表(迁移 0019)没有通用的 JSON 列,为了不写迁移不改它;删除代理时一并删掉它的条目,读取时忽略已不存在的代理 id。`/api/v1/agents` 对外仍按第 7 节返回 `skills` 字段,客户端看不到存储位置。代理的 `skills` 只能经 `/api/v1/agents` 写入:`PATCH /api/v1/settings` 请求里带 `skills.agents` 时返回 400(`feat/skills-runtime` 加对应测试)。
 
 ## 9. 市场
 
@@ -141,13 +143,13 @@ instructions 用英文写(与系统提示一致),写清步骤、什么时候停�
 
 顺序固定,一次只开一个,上一个合并后从最新的 `main` 切下一个。
 
-| #   | 分支                   | 内容                                                                                                                                                                                 | 测试                                                                                                                                                                                              |
-| --- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `feat/skills-manifest` | shared schema(`PluginSkill`、`skills[]`、可选 `entry`、engines 下限、`toolSet` 限制)与安装时解析(instructions 存在、≤ 16 KiB、UTF-8;纯指令包的文件白名单);纯指令插件安装后不起子进程 | schema 单测;越权用例:纯指令插件声明 `net` / `secrets` / `permissions.tools` 被拒,`toolSet` 引用别的插件或 `mcp.` 被拒,instructions 路径含 `..` 被拒,包里带 `.js` 被拒;engines 下限低于 1.2.0 被拒 |
-| 2   | `feat/skills-runtime`  | `skill.use`(核心组 `skill`)、系统提示目录(`skills.catalog`)、交集规则、不可信包装与会话标记、`system.base` v2、`AgentRole.skills` 的自动使用、`GET /api/v1/skills`                   | 单测;越权用例:`toolSet` 只有 `kb.` 的代理用 `mail` Skill 被拒,用 Skill 后组内写操作照常审批;注入评测:instructions 要求「跳过审批」「读密钥」时,审批照常弹出、会话被标记、条件预授权失效           |
-| 3   | `feat/builtin-skills`  | 三个内置 Skill(`mail-assistant`、`web-research`、`local-files`)的清单与说明、每日邮件摘要模板、settings 开关                                                                         | 清单校验单测;评测:假模型先 `skill.use` 再调组内工具;模板建任务走确认卡                                                                                                                            |
-| 4   | `feat/skills-ui`       | 插件页显示插件带的 Skill;设置页「工具与插件」里的 Skill 列表与内置开关;代理页选择 Skill;界面文案进 i18n                                                                              | 组件测试;浏览器实测并附截图(插件页、设置页、代理页)                                                                                                                                               |
-| 5   | `feat/skills-market`   | 索引条目的 `skills` 字段、市场页展示与「纯指令」标记、索引仓库检查脚本的 instructions 话术初筛                                                                                       | 检查脚本的正反用例(要求跳过审批、读密钥、外发对话的说明被拦下;正常说明通过);签名索引校验不变                                                                                                      |
+| #   | 分支                   | 内容                                                                                                                                                                                                           | 测试                                                                                                                                                                                                                                       |
+| --- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `feat/skills-manifest` | shared schema(`PluginSkill`、`skills[]`、可选 `entry`、engines 下限、`toolSet` 限制、任务模板可选的 `toolSet`)与安装时解析(instructions 存在、≤ 16 KiB、UTF-8;纯指令包的文件白名单);纯指令插件安装后不起子进程 | schema 单测;越权用例:纯指令插件声明 `net` / `secrets` / `permissions.tools` 被拒,`toolSet` 引用别的插件或 `mcp.` 被拒,instructions 路径含 `..` 被拒,包里带 `.js` 被拒;engines 下限低于 1.2.0 被拒;模板 `toolSet` 超出 Skill `toolSet` 被拒 |
+| 2   | `feat/skills-runtime`  | `skill.use`(核心组 `skill`)、系统提示目录(`skills.catalog`)、交集规则、不可信包装与会话标记、`system.base` v2、`AgentRole.skills` 的自动使用、`GET /api/v1/skills`                                             | 单测;越权用例:`toolSet` 只有 `kb.` 的代理用 `mail` Skill 被拒,用 Skill 后组内写操作照常审批;注入评测:instructions 要求「跳过审批」「读密钥」时,审批照常弹出、会话被标记、条件预授权失效                                                    |
+| 3   | `feat/builtin-skills`  | 三个内置 Skill(`mail-assistant`、`web-research`、`local-files`)的清单与说明、每日邮件摘要模板、settings 开关                                                                                                   | 清单校验单测;评测:假模型先 `skill.use` 再调组内工具;模板建任务走确认卡                                                                                                                                                                     |
+| 4   | `feat/skills-ui`       | 插件页显示插件带的 Skill;设置页「工具与插件」里的 Skill 列表与内置开关;代理页选择 Skill;界面文案进 i18n                                                                                                        | 组件测试;浏览器实测并附截图(插件页、设置页、代理页)                                                                                                                                                                                        |
+| 5   | `feat/skills-market`   | 索引条目的 `skills` 字段、市场页展示与「纯指令」标记、索引仓库检查脚本的 instructions 话术初筛                                                                                                                 | 检查脚本的正反用例(要求跳过审批、读密钥、外发对话的说明被拦下;正常说明通过);签名索引校验不变                                                                                                                                               |
 
 每个 PR 的风险与自测要求照 CLAUDE.md:PR 2 涉及审批与不可信内容,按高风险写手工验证步骤。
 
