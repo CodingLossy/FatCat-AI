@@ -165,7 +165,8 @@ test('按住说话 → 转写 → 回复 → 朗读', async ({ page }) => {
     await post('/models', { ...profile, label: 'chat', model: 'deepseek-chat', purpose: ['chat'] });
     await post('/models', { ...profile, label: 'stt', model: 'whisper-1', purpose: ['stt'] });
     await post('/models', { ...profile, label: 'tts', model: 'tts-1', purpose: ['tts'] });
-    await post('/settings', { voice: { autoSpeak: true } }, 'PUT');
+    // 这条用例走文字模式里的「按住说话」;语音优先的主界面在下一条用例里测
+    await post('/settings', { voice: { autoSpeak: true, inputMode: 'text' } }, 'PUT');
 
     chatQueue.push(...loadFixture(join(FIXTURES, 'deepseek-chat-stream.json')).interactions);
     // 重新加载,让聊天页读到新的配置档与设置
@@ -226,4 +227,66 @@ test('按住说话 → 转写 → 回复 → 朗读', async ({ page }) => {
     await page.locator('.message.assistant').getByRole('button', { name: '朗读' }).click();
     await expect(indicator).toHaveAttribute('data-state', 'speaking', { timeout: 10_000 });
     await expect(page.locator('.message.assistant').getByRole('button', { name: '停止朗读' })).toBeVisible();
+});
+
+test('语音优先:点按说话、字幕、文字弹窗发送后收起(ADR 0049 第 1 节)', async ({ page }) => {
+    await page.goto(base);
+    await page.getByLabel('用户名').fill('owner');
+    await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
+    await page.getByRole('button', { name: '登录' }).click();
+    await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
+    const csrf = (await page.context().cookies()).find((c) => c.name === 'aip_csrf')!.value;
+    const res = await page.request.fetch(`${base}/api/v1/settings`, {
+        method: 'PUT',
+        data: { voice: { autoSpeak: false, inputMode: 'voice' } },
+        headers: { 'x-csrf-token': csrf },
+    });
+    expect(res.ok()).toBe(true);
+
+    chatQueue.push(...loadFixture(join(FIXTURES, 'deepseek-chat-stream.json')).interactions);
+    await page.reload();
+    await page.getByRole('link', { name: '新对话' }).click();
+
+    // 主界面只有大的说话按钮与字幕,没有输入框
+    const talk = page.getByTestId('voice-talk');
+    await expect(talk).toHaveText('说话');
+    await expect(page.getByRole('textbox', { name: /^输入消息/ })).toHaveCount(0);
+    await expect(page.getByTestId('voice-button')).toHaveCount(0);
+
+    // 点一下开始,再点一下结束并发送
+    await talk.click();
+    await expect(talk).toHaveText('再点一下结束');
+    await sleep(800);
+    await talk.click();
+    await expect(page.getByTestId('caption-user')).toHaveText(TRANSCRIPT);
+    await expect(page.getByTestId('caption-reply')).toContainText('你好世界', { timeout: 15_000 });
+
+    // 录音中按 Esc 取消,不发送
+    const before = seen.filter((r) => r.path === '/v1/audio/transcriptions').length;
+    await talk.click();
+    await expect(talk).toHaveText('再点一下结束');
+    await page.keyboard.press('Escape');
+    await expect(talk).toHaveText('说话');
+    await expect(page.getByText('已取消这次录音。')).toBeVisible();
+    expect(seen.filter((r) => r.path === '/v1/audio/transcriptions')).toHaveLength(before);
+
+    // 完整对话可以展开
+    await page.getByTestId('voice-history').click();
+    await expect(page.locator('.message.user').first()).toHaveText(TRANSCRIPT);
+    await page.getByTestId('voice-history').click();
+
+    // Ctrl+I 打开文字弹窗,Esc 收起且保留草稿;发送后自动收起
+    chatQueue.push(...loadFixture(join(FIXTURES, 'deepseek-chat-stream.json')).interactions);
+    await page.keyboard.press('Control+i');
+    const popup = page.getByTestId('composer-popup');
+    const box = popup.getByRole('textbox', { name: /^输入消息/ });
+    await expect(box).toBeFocused();
+    await box.fill('打字发一句');
+    await page.keyboard.press('Escape');
+    await expect(popup).toHaveCount(0);
+    await page.getByTestId('voice-keyboard').click();
+    await expect(box).toHaveValue('打字发一句');
+    await popup.getByRole('button', { name: '发送' }).click();
+    await expect(popup).toHaveCount(0);
+    await expect(page.getByTestId('caption-user')).toHaveText('打字发一句');
 });

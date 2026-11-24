@@ -43,12 +43,13 @@ describe('schema', () => {
         expect(SpeechRequest.safeParse({ text: 'hi', format: 'flac' }).success).toBe(false);
     });
 
-    it('默认语音设置:自动发送开、自动朗读关', () => {
+    it('默认语音设置:自动发送开、自动朗读关、默认语音输入', () => {
         expect(VoiceSettings.parse(DEFAULT_VOICE_SETTINGS)).toEqual({
             defaultSttProfileId: null,
             defaultTtsProfileId: null,
             autoSend: true,
             autoSpeak: false,
+            inputMode: 'voice',
         });
     });
 
@@ -75,5 +76,12 @@ describe('schema', () => {
         expect(ModelProfileInput.safeParse({ ...tts, params: { voiceProtocol: 'xiaomi' } }).success).toBe(false);
         expect(DEFAULT_SETTINGS.voice).toEqual(DEFAULT_VOICE_SETTINGS);
         expect(SettingsPatch.parse({ voice: { autoSpeak: true } })).toEqual({ voice: { autoSpeak: true } });
+        // 默认输入方式(ADR 0049):默认语音;旧服务器不带这个字段也能解析;只接受 voice / text
+        expect(DEFAULT_VOICE_SETTINGS.inputMode).toBe('voice');
+        const legacy: Record<string, unknown> = { ...DEFAULT_VOICE_SETTINGS };
+        delete legacy.inputMode;
+        expect(VoiceSettings.safeParse(legacy).success).toBe(true);
+        expect(SettingsPatch.safeParse({ voice: { inputMode: 'text' } }).success).toBe(true);
+        expect(SettingsPatch.safeParse({ voice: { inputMode: 'keyboard' } }).success).toBe(false);
     });
 });

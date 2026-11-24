@@ -1338,6 +1338,16 @@ td .badge {
 }
 
 .wb-search-list button,
+.wb-model-menu ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.wb-model-menu .wb-search-label {
+    display: block;
+}
+
 .wb-model-menu button {
     display: block;
     width: 100%;
@@ -3115,4 +3125,205 @@ input.kn-search {
 /* 手机上代理选择在模型胶囊的菜单里 */
 .wb-shell[data-narrow] .chat-stage .agent-picker {
     display: none;
+}
+
+/* 语音优先(ADR 0049 第 1 节):主界面只有大的说话按钮与字幕,打字在弹窗里 */
+.composer-wrap {
+    display: contents;
+}
+
+.voice-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
+}
+
+.voice-controls > .link {
+    width: 9em;
+    text-align: right;
+}
+
+.voice-button.voice-big {
+    width: 104px;
+    height: 104px;
+    border-radius: 50%;
+    border: var(--border-width) solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-size: var(--text-body);
+    font-weight: 700;
+    box-shadow: var(--shadow-card);
+    transition: transform var(--motion-fast) var(--ease);
+}
+
+.voice-button.voice-big:active {
+    transform: scale(0.96);
+}
+
+.voice-button.voice-big.recording {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--on-danger);
+}
+
+.voice-keyboard {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    width: 9em;
+    justify-content: center;
+}
+
+.voice-stage {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+}
+
+.voice-captions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    text-align: center;
+}
+
+.voice-captions p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.caption-user {
+    color: var(--muted);
+}
+
+.caption-reply {
+    font-size: 18px;
+    line-height: var(--line-body);
+    color: var(--fg);
+}
+
+.voice-fallback {
+    margin: 0;
+    padding: 0 var(--space-4);
+    text-align: center;
+}
+
+.composer-popup {
+    margin: 0 var(--space-4) var(--space-3);
+    border: var(--border-width) solid var(--border-strong);
+    border-radius: var(--radius-card);
+    background: var(--panel);
+    box-shadow: var(--shadow-panel);
+}
+
+.composer-popup-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2) var(--space-3) 0;
+    font-weight: 600;
+}
+
+/* 工作台舞台:字幕在主视觉下方,按钮与弹窗贴底居中 */
+.chat-stage .voice-stage {
+    position: absolute;
+    left: 50%;
+    bottom: 172px;
+    width: min(720px, calc(100% - 2 * var(--space-5)));
+    max-height: 40%;
+    transform: translateX(-50%);
+    padding: 0 var(--space-3);
+    mask-image: linear-gradient(to bottom, transparent 0, black 24px);
+}
+
+.chat-stage .voice-controls {
+    position: absolute;
+    left: 50%;
+    bottom: var(--space-4);
+    transform: translateX(-50%);
+    padding: 0;
+    z-index: 3;
+}
+
+.chat-stage[data-voice-first] .voice-label {
+    bottom: 136px;
+}
+
+.chat-stage[data-voice-first] .messages {
+    bottom: 172px;
+}
+
+/* 退回文字时的提示放在输入框里第一行 */
+.composer:has(> .voice-fallback) {
+    flex-wrap: wrap;
+}
+
+.composer > .voice-fallback {
+    flex-basis: 100%;
+    padding: 0;
+    text-align: left;
+}
+
+.chat-stage .composer-popup {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--space-4) + 120px);
+    width: min(720px, calc(100% - 2 * var(--space-5)));
+    transform: translateX(-50%);
+    margin: 0;
+    z-index: 5;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+}
+
+.chat-stage .composer-popup .composer {
+    position: static;
+    width: auto;
+    transform: none;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    backdrop-filter: none;
+}
+
+.wb-shell[data-narrow] .chat-stage .voice-stage,
+.wb-shell[data-narrow] .chat-stage .composer-popup {
+    width: calc(100% - 2 * var(--space-3));
+}
+
+.wb-shell[data-narrow] .chat-stage .voice-controls {
+    bottom: max(var(--space-2), env(safe-area-inset-bottom));
+    gap: var(--space-3);
+}
+
+.wb-shell[data-narrow] .chat-stage .voice-stage {
+    bottom: 140px;
+}
+
+.wb-shell[data-narrow] .chat-stage .composer-popup {
+    bottom: calc(var(--space-2) + 112px);
+}
+
+.wb-shell[data-narrow] .voice-button.voice-big {
+    width: 88px;
+    height: 88px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .voice-button.voice-big {
+        transition: none;
+    }
+}
+
+.wb-shell[data-narrow] .voice-controls > .link,
+.wb-shell[data-narrow] .voice-keyboard {
+    width: 6.5em;
+    font-size: var(--text-small);
 }

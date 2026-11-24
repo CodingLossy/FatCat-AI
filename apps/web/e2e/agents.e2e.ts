@@ -195,7 +195,15 @@ test('agents page and delegation tree', async ({ page }) => {
     await page.goto(base);
     await expect(page.getByTestId('agent-picker')).toBeHidden();
     await page.locator('.wb-pill').click();
-    await page.getByRole('option', { name: '组长' }).click();
+    // 模型与代理是菜单里的两个分组,「代理」标题不是选项
+    const agentGroup = page.getByRole('group', { name: '代理' });
+    await expect(agentGroup).toBeVisible();
+    await expect(page.getByRole('option', { name: '代理', exact: true })).toHaveCount(0);
+    if (SHOTS) await page.screenshot({ path: join(SHOTS, 'model-menu-agent-group-390.png') });
+    // 默认输入方式是语音,但没有语音识别配置档:输入框照常显示,第一行是一句提示(ADR 0049 第 1.2 节)
+    await expect(page.getByTestId('voice-fallback')).toContainText('还没有语音识别模型');
+    await expect(page.getByTestId('voice-talk')).toHaveCount(0);
+    await agentGroup.getByRole('option', { name: '组长' }).click();
     await expect(page.locator('.wb-pill')).toContainText('组长');
     await page.setViewportSize({ width: 1280, height: 720 });
     await expect(page.getByTestId('agent-picker')).toHaveValue(/.+/);

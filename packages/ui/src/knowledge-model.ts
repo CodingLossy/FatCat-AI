@@ -124,6 +124,8 @@ export interface LabelCandidate {
     readonly x: number;
     readonly y: number;
     readonly align: 'left' | 'right';
+    /** 换到节点另一侧时的文字起点(align 随之左右互换);不给就不换边。 */
+    readonly flipX?: number;
     /** 越大越先放;悬停和键盘焦点的标签总是显示。 */
     readonly priority: number;
     readonly always?: boolean;
@@ -139,9 +141,16 @@ function labelBox(c: LabelCandidate, width: number): Box {
     return { x: c.align === 'left' ? c.x : c.x - width, y: c.y - LABEL_H / 2, w: width, h: LABEL_H };
 }
 
+/** 同一个标签放到节点另一侧:起点换成 flipX,对齐左右互换。 */
+function flipped(c: LabelCandidate): LabelCandidate | null {
+    if (c.flipX === undefined) return null;
+    return { ...c, x: c.flipX, flipX: c.x, align: c.align === 'left' ? 'right' : 'left' };
+}
+
 /**
  * 标签排布:按优先级依次放,和气泡、要避开的区域、已放下的标签都不重叠;放不下先截短,
- * 还放不下就不画(悬停或键盘聚焦时再显示)。
+ * 再换到节点另一侧(原文、截短各试一次),还放不下就不画(悬停或键盘聚焦时再显示)。
+ * 悬停 / 焦点的标签总是画,但先试不压气泡和避让区的一侧。
  */
 export function placeLabels(
     cands: readonly LabelCandidate[],
@@ -156,16 +165,21 @@ export function placeLabels(
     const taken: Box[] = [];
     const out: PlacedLabel[] = [];
     for (const { c } of order) {
+        const other = flipped(c);
         if (c.always) {
-            out.push({ ...c, shown: c.text });
-            taken.push(labelBox(c, measure(c.text)));
+            const width = measure(c.text);
+            const covers = (side: LabelCandidate) => avoid.some((a) => boxesOverlap(a, labelBox(side, width)));
+            const side = other && covers(c) && !covers(other) ? other : c;
+            out.push({ ...side, shown: c.text });
+            taken.push(labelBox(side, width));
             continue;
         }
-        const tries = [c.text, short(c.text, minChars)].filter((t, k, list) => list.indexOf(t) === k);
-        for (const text of tries) {
-            const box = labelBox(c, measure(text));
+        const texts = [c.text, short(c.text, minChars)].filter((t, k, list) => list.indexOf(t) === k);
+        const tries = [c, ...(other ? [other] : [])].flatMap((side) => texts.map((text) => ({ side, text })));
+        for (const { side, text } of tries) {
+            const box = labelBox(side, measure(text));
             if (avoid.some((a) => boxesOverlap(a, box)) || taken.some((a) => boxesOverlap(a, box))) continue;
-            out.push({ ...c, shown: text });
+            out.push({ ...side, shown: text });
             taken.push(box);
             break;
         }

@@ -28,7 +28,7 @@ import { SecretsSection } from './SecretsSection.js';
 import { DevicesSection } from './DevicesSection.js';
 import { TotpSection } from './TotpSection.js';
 import { ThemePicker } from './ThemePicker.js';
-import { SettingsGroup, Switch } from './controls.js';
+import { Segmented, SettingsGroup, Switch } from './controls.js';
 import { TimeZoneSetting } from './TimeZoneSetting.js';
 
 const PURPOSES: ModelPurpose[] = ['chat', 'cheap', 'stt', 'tts'];
@@ -469,6 +469,19 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
             case 'models/voice':
                 return (
                     <SettingsGroup title={t('settings.voice')}>
+                        <div className="field" data-testid="voice-input-mode">
+                            <span>{t('settings.voiceInputMode')}</span>
+                            <Segmented
+                                label={t('settings.voiceInputMode')}
+                                value={settings.voice.inputMode ?? 'text'}
+                                options={[
+                                    { value: 'voice', label: t('settings.voiceInputVoice') },
+                                    { value: 'text', label: t('settings.voiceInputText') },
+                                ]}
+                                onChange={(inputMode) => void update({ voice: { inputMode } })}
+                            />
+                            <span className="small muted">{t('settings.voiceInputHint')}</span>
+                        </div>
                         <label>
                             {t('settings.voiceStt')}
                             {voiceSelect('defaultSttProfileId', 'stt')}

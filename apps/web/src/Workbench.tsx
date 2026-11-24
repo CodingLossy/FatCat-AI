@@ -703,39 +703,52 @@ export function Workbench({
                         </button>
                         {modelOpen ? (
                             <ul className="wb-model-menu" role="listbox">
-                                {chatProfiles.length === 0 ? <li className="muted">{t('wb.noModel')}</li> : null}
-                                {chatProfiles.map((profile) => (
-                                    <li key={profile.id}>
-                                        <button
-                                            type="button"
-                                            role="option"
-                                            aria-selected={profile.id === activity?.profile?.id}
-                                            onClick={() => void chooseModel(profile.id)}
-                                        >
-                                            {profile.label}
-                                        </button>
-                                    </li>
-                                ))}
+                                {/* 模型与代理各是一个 group,标题不是可选项(读屏不会把它当成选项) */}
+                                <li role="group" aria-label={t('models.model')}>
+                                    <ul>
+                                        {chatProfiles.length === 0 ? (
+                                            <li role="presentation" className="muted">
+                                                {t('wb.noModel')}
+                                            </li>
+                                        ) : null}
+                                        {chatProfiles.map((profile) => (
+                                            <li key={profile.id} role="presentation">
+                                                <button
+                                                    type="button"
+                                                    role="option"
+                                                    aria-selected={profile.id === activity?.profile?.id}
+                                                    onClick={() => void chooseModel(profile.id)}
+                                                >
+                                                    {profile.label}
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </li>
                                 {narrow && agentChoices.length > 1 ? (
-                                    <li className="wb-search-label">{t('agents.picker')}</li>
+                                    <li role="group" aria-label={t('agents.picker')}>
+                                        <span className="wb-search-label" aria-hidden="true">
+                                            {t('agents.picker')}
+                                        </span>
+                                        <ul>
+                                            {agentChoices.map((agent) => (
+                                                <li key={`agent-${agent.id}`} role="presentation">
+                                                    <button
+                                                        type="button"
+                                                        role="option"
+                                                        aria-selected={agent.id === (activity?.agentId ?? '')}
+                                                        onClick={() => {
+                                                            setModelOpen(false);
+                                                            activity?.chooseAgent(agent.id);
+                                                        }}
+                                                    >
+                                                        {agent.name}
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </li>
                                 ) : null}
-                                {narrow && agentChoices.length > 1
-                                    ? agentChoices.map((agent) => (
-                                          <li key={`agent-${agent.id}`}>
-                                              <button
-                                                  type="button"
-                                                  role="option"
-                                                  aria-selected={agent.id === (activity?.agentId ?? '')}
-                                                  onClick={() => {
-                                                      setModelOpen(false);
-                                                      activity?.chooseAgent(agent.id);
-                                                  }}
-                                              >
-                                                  {agent.name}
-                                              </button>
-                                          </li>
-                                      ))
-                                    : null}
                             </ul>
                         ) : null}
                     </div>

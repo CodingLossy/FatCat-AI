@@ -167,6 +167,7 @@ export function drawTechKnowledge(
                 id: n.id,
                 text: shortLabel(n.label),
                 x: x + r + 6,
+                flipX: x - r - 6,
                 y,
                 align: 'left',
                 ...labelPriority(scene, n, rank),

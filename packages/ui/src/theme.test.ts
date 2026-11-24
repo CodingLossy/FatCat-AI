@@ -21,11 +21,11 @@ import {
 } from './heroes/nature-model.js';
 import { clusterCenter } from './heroes/anchored-knowledge.js';
 import {
+    CAT_FACE,
     catPose,
     catStrokes,
     EAR_L_PIVOT,
     flowGlow,
-    CAT_FACE,
     outlineAnchors,
     posePoint,
     TAIL_PIVOT,

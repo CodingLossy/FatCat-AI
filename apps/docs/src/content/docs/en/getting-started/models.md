@@ -41,6 +41,8 @@ Take the base URL and model name from your provider's documentation; the table o
 
 DeepSeek and OpenRouter have been used in practice; for voice, SiliconFlow's `Qwen/Qwen3-ASR-1.7B` (transcription) and `FunAudioLLM/CosyVoice2-0.5B` (read aloud). Voice profiles must be OpenAI-compatible with the `stt` or `tts` purpose.
 
+Once an `stt` profile is set up, the main screen starts in **voice mode**: a single large Talk button in the middle (tap to start and tap again to stop, or hold to talk), with the reply shown as captions. To type, click Type or press `Ctrl/Cmd+I`; the text box opens in a popup and closes after sending. Press `Esc` while recording to cancel that recording. To turn voice mode off, set Default input to Text under Settings → Models → Voice. Without an `stt` profile, or when the browser cannot use the microphone, the main screen uses text input automatically. (Translated from the Chinese page; pending review.)
+
 ## Command line
 
 ```bash
