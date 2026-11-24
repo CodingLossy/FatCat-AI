@@ -296,7 +296,8 @@ describe('plugin runtime', { timeout: TEST_TIMEOUT_MS }, () => {
             // 等这次崩溃被记下、进程重新拉起(或已停用),而不是固定睡 800 ms:慢机器上进程退出要更久
             await waitUntil(() => crashes() > before, `crash ${i + 1}`, CRASH_WAIT_MS);
             await waitUntil(
-                () => ['running', 'error'].includes(h.runtime.status('probe').state),
+                // 'running' 在重新注册工具之前就已设置,所以等工具回到注册表
+                () => h.registry.get('plugin.probe.probe') !== undefined || h.runtime.status('probe').state === 'error',
                 `the restart after crash ${i + 1}`,
                 CRASH_WAIT_MS,
             );
