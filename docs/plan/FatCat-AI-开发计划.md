@@ -801,3 +801,9 @@ Copyright (C) 2026 尹绪柏 (Theodore Yin). All rights reserved for commercial 
 - M13 原定的「稳定化与 2.0」顺延:前段先做 Agent 循环深化(工具分组与按需开启、步数与 token 预算停止、提示注册表,ADR 0047)与 Skills(指令包,ADR 0048),方案见 `docs/milestones/M13-plan.md`。
 - 后段顺序:channels hub 与 PluginService 下沉、ownerId 覆盖审计、QQ 渠道、多用户 ADR(2.0)。QQ 渠道和多用户排在 Agent 循环与 Skills 之后。
 - 本组不新增数据库迁移;第 16 节已定决策不变。
+
+### 2026-11-24(M13 插入语音优先与编码代理,ADR 0049;业主 2026-11-23 确认)
+- 在 M13 的 `feat/skills-runtime` 之后、后段之前插入一组:默认语音输入、可选的连续对话、编码项目的只读 git 工具与登记命令、右侧「代码」面板、语音指令端到端用例,共 5 个实现 PR,排期见 `docs/milestones/M13-plan.md`。
+- 编码能力不操控 IDE 等桌面程序,继续遵守 ADR 0046 第 5.4 节「不合成鼠标键盘」;只限用户登记、且在已授权文件夹内的项目;写文件和执行命令每次审批,默认关闭。
+- 唤醒词不做,留给以后另写 ADR。
+- Skills 实现第 3–5 步顺延到本组之后;本组不新增数据库迁移;第 16 节已定决策不变。
