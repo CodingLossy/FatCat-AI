@@ -118,7 +118,12 @@ describe('secrets commands', () => {
         expect(run(['migrate'], {}, alive)).toBe(1);
         expect(err.join('\n')).toMatch(/server seems to be running.*Nothing was changed/s);
         // 容器里残留的锁:报错里告诉用户确认服务器已停止后删除 server.lock
-        expect(err.join('\n')).toContain(`确认服务器已停止后删除 ${SERVER_LOCK_FILE}`);
+        // 报错里写出锁文件的完整路径和「确认服务器已退出后可手动删除」(#128 X 审查)
+        expect(err.join('\n')).toContain(`see ${join(dir, SERVER_LOCK_FILE)})`);
+        expect(err.join('\n')).toContain(
+            `delete ${join(dir, SERVER_LOCK_FILE)} by hand after confirming the server has exited`,
+        );
+        expect(err.join('\n')).toContain(`确认服务器已退出后,可以手动删除 ${join(dir, SERVER_LOCK_FILE)}`);
         writeFileSync(join(dir, 'new.key'), `${'cd'.repeat(32)}\n`);
         const withKey = snapshot();
         expect(run(['rekey', '--new-key-file', join(dir, 'new.key')], {}, alive)).toBe(1);

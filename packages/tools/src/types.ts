@@ -30,6 +30,8 @@ export interface ToolContext {
      * 因为之后的调用可能是被这些内容诱导的(ADR 0010 第 4 节)。
      */
     untrustedContentSeen: boolean;
+    /** 运行被取消时触发(ADR 0049 第 3.4 节:code.run 据此结束整个进程树)。旧调用方不提供。 */
+    signal?: AbortSignal;
     /**
      * 本次运行属于定时任务时:任务 id 与它配置的输出渠道(来自任务配置,不来自模型)。
      * `channel.push` 只能发到这里的渠道(ADR 0034 第 3 节)。

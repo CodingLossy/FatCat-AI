@@ -4,6 +4,8 @@
 import { createRoute } from '@hono/zod-openapi';
 import { migrateSecrets, readSecretsStatus, type SecretStore, SecretsMigrateError } from '@fatcat-ai/providers';
 import {
+    type CodeProject,
+    type CodeProjectInput,
     effectiveTimeZone,
     type EgressTarget,
     EgressTargetList,
@@ -16,7 +18,8 @@ import {
     supportedTimeZones,
     TimeZoneInfo,
 } from '@fatcat-ai/shared';
-import type { Repositories } from '@fatcat-ai/storage';
+import { newId, type Repositories } from '@fatcat-ai/storage';
+import { checkProjectPath } from '@fatcat-ai/tools';
 import { requireOwner } from '../auth/middleware.js';
 import { listEgressTargets, type PluginEgressDomain } from '../egress.js';
 import { ApiError } from '../errors.js';
@@ -83,6 +86,40 @@ const secretsMigrateRoute = createRoute({
     },
 });
 
+const invalid = (path: (string | number)[], message: string) =>
+    new ApiError(400, 'validation_failed', 'Bad Request', 'The request is invalid.', { issues: [{ path, message }] });
+
+/**
+ * 编码项目(ADR 0049 第 3.1 节):名字不区分大小写不能重复,同一项目的命令名不能重复;路径必须在已授权文件夹之内
+ * 且是 git 仓库,保存为真实路径;新项目由服务器生成 id。
+ */
+function checkCodeProjects(projects: readonly CodeProjectInput[], roots: readonly string[]): CodeProject[] {
+    const names = new Set<string>();
+    const ids = new Set<string>();
+    return projects.map((p, i) => {
+        const name = p.name.trim();
+        if (names.has(name.toLowerCase())) throw invalid(['code', 'projects', i, 'name'], 'Duplicate project name');
+        names.add(name.toLowerCase());
+        const commandNames = new Set<string>();
+        p.commands.forEach((c, j) => {
+            if (commandNames.has(c.name)) {
+                throw invalid(['code', 'projects', i, 'commands', j, 'name'], 'Duplicate command name');
+            }
+            commandNames.add(c.name);
+        });
+        let path: string;
+        try {
+            path = checkProjectPath(p.path, roots);
+        } catch (error) {
+            throw invalid(['code', 'projects', i, 'path'], error instanceof Error ? error.message : 'Invalid path');
+        }
+        let id = p.id ?? newId();
+        if (ids.has(id)) id = newId();
+        ids.add(id);
+        return { id, name, path, commands: p.commands };
+    });
+}
+
 export function settingsRoutes(deps: {
     repos: Repositories;
     /** 密钥存储;迁移与状态都经过它(ADR 0026)。 */
@@ -97,6 +134,7 @@ export function settingsRoutes(deps: {
     pluginMarkets?: ((ownerId: string) => EgressTarget[]) | undefined;
 }) {
     const { repos } = deps;
+    const roots = (ownerId: string) => repos.fsRoots.list(ownerId).map((r) => r.path);
     return router()
         .openapi(getRoute, (c) => c.json(repos.settings.get(requireOwner(c)), 200))
         .openapi(timeZonesRoute, (c) => {
@@ -202,6 +240,9 @@ export function settingsRoutes(deps: {
                         issues: [{ path: ['voice', key], message }],
                     });
                 }
+            }
+            if (patch.code?.projects) {
+                patch.code = { ...patch.code, projects: checkCodeProjects(patch.code.projects, roots(ownerId)) };
             }
             const before = effectiveTimeZone(repos.settings.get(ownerId).timeZone);
             const updated = repos.settings.update(ownerId, patch);

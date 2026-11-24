@@ -37,6 +37,7 @@ import { SecretsSection } from './SecretsSection.js';
 import { DevicesSection } from './DevicesSection.js';
 import { TotpSection } from './TotpSection.js';
 import { ThemePicker } from './ThemePicker.js';
+import { CodeProjects } from './CodeProjects.js';
 import { Segmented, SettingsGroup, Switch } from './controls.js';
 import { TimeZoneSetting } from './TimeZoneSetting.js';
 
@@ -570,6 +571,8 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                         />
                     </SettingsGroup>
                 );
+            case 'tools/code':
+                return <CodeProjects settings={settings} onSettings={onSettings} />;
             case 'tools/market':
                 return (
                     <SettingsGroup title={t('plugins.title')}>

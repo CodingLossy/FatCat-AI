@@ -39,7 +39,8 @@ import { resolveDelegateAgent } from './routes/agents.js';
  * (同一步的调用按顺序执行,开启后紧接着的调用就可用)。工具结果里多出的 tools.enable 由 isEnableResult 过滤。
  */
 export function* enableGroupFor(name: string, callId: string): Generator<ChatChunk> {
-    const group = groupOf(name);
+    // git.* 与 code.run 显式归入按需组 code(ADR 0049 第 3.2 节)
+    const group = name.startsWith('git.') ? 'code' : groupOf(name);
     if (isCoreGroup(group)) return;
     yield { type: 'tool-call', callId: `${callId}-enable`, name: 'tools.enable', input: { group } };
 }

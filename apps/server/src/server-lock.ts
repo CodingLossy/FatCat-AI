@@ -71,7 +71,8 @@ export function runningServerPid(
     // 旧版本写的锁没有 image:只能按「进程在」处理
     if (typeof lock.image === 'string') {
         const current = imageOf(pid);
-        if (current !== null && current !== lock.image.toLowerCase()) return null;
+        // Windows 的映像名不区分大小写:锁里的 NODE.EXE 与现在查到的 node.exe 是同一个程序
+        if (current !== null && current.toLowerCase() !== lock.image.toLowerCase()) return null;
     }
     return pid;
 }

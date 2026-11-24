@@ -23,6 +23,7 @@ import {
     type BrowserToolOptions,
     createBuiltinTools,
     createFsTools,
+    createCodeTools,
     createSystemOpenTool,
     type OpenHost,
     type ToolDefinition,
@@ -351,6 +352,12 @@ export function createToolRegistry(
             enabled: (ownerId) => repos.settings.get(ownerId).systemOpen?.enabled === true,
             roots,
             host: builtin.systemOpen?.host,
+        }),
+        // git.* 与 code.run:设置里默认关闭;项目由用户登记,每次调用重新检查授权文件夹(ADR 0049 第 3 节)
+        ...createCodeTools({
+            enabled: (ownerId) => repos.settings.get(ownerId).code?.enabled === true,
+            projects: (ownerId) => repos.settings.get(ownerId).code?.projects ?? [],
+            roots,
         }),
         ...createItemTools(repos, items),
         // 检索前按需同步条目(超过 60 秒才同步),新文件在后台进入知识库
