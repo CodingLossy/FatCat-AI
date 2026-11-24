@@ -590,7 +590,8 @@ describe('审批预览(ADR 0046 第 12 节)', () => {
     });
 });
 
-// Windows 没有 mkfifo(命名管道的语义与 POSIX FIFO 不同),这一组只在 POSIX 上跑
+// Windows 没有 mkfifo(命名管道的语义与 POSIX FIFO 不同),这一组只在 POSIX 上跑;
+// Windows 的命名管道 \\.\pipe\… 在 packages/tools/src/fs/preview.test.ts 里测(CI 的 Windows 任务会跑)
 describe.skipIf(process.platform === 'win32')('🔒 fs.write 指向 FIFO(ADR 0046 第 12 节)', () => {
     it('审批照常出现(没有 preview,也不会卡住);批准后执行被拒绝,运行正常结束', async () => {
         const root = realpathSync(mkdtempSync(join(tmpdir(), 'fc-fifo-')));

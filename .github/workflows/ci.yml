@@ -68,6 +68,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Tools tests (with coverage gate)
         run: pnpm turbo run test --filter=@fatcat-ai/tools
+      # server.lock 在 Windows 上靠 tasklist 认出 pid 被复用;这个文件只依赖 node 内置模块,不用先构建
+      - name: Server lock tests
+        run: pnpm --filter @fatcat-ai/server exec vitest run src/server-lock.test.ts --coverage.enabled=false
 
   desktop:
     name: desktop shell (Linux)

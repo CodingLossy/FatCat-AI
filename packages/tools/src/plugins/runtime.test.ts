@@ -69,7 +69,7 @@ function setup(manifestPatch: (m: Record<string, unknown>) => void = () => undef
         idleMs: 400,
         graceMs: 1000,
         termMs: 500,
-        handshakeTimeoutMs: 15_000,
+        handshakeTimeoutMs: slow(15_000),
         onEvent: (_o, e) => events.push(e),
         onState: (_o, pluginId, state, error) => states.push({ pluginId, state, error }),
     });
@@ -93,6 +93,14 @@ const ctx = (ownerId = 'owner1') => ({ ownerId }) as never;
  * vitest 默认的 10 秒钩子超时曾偶发超时,所以单独放宽(测试本身的超时已经逐个设置)。
  */
 const HOOK_TIMEOUT_MS = process.platform === 'win32' ? 90_000 : 30_000;
+/**
+ * 用例超时:Windows 上每次起 node 子进程(权限模型 + 预加载钩子,加上杀毒软件扫描)比 Linux 慢几倍,
+ * 业主的 Windows 11 真机上逐条写死的 30 / 60 秒曾超时,所以整组用同一个上限,在 win32 上放大三倍。
+ */
+function slow(ms: number): number {
+    return process.platform === 'win32' ? ms * 3 : ms;
+}
+const TEST_TIMEOUT_MS = slow(60_000);
 /** 等「崩溃」事件的上限与整条用例的超时:Windows 上启动、终止 node 子进程都慢,Linux 上保持原值。 */
 const CRASH_WAIT_MS = process.platform === 'win32' ? 60_000 : 20_000;
 const CRASH_TEST_TIMEOUT_MS = process.platform === 'win32' ? 120_000 : 30_000;
@@ -113,7 +121,7 @@ async function run(h: Harness, tool: string, input: unknown, ownerId = 'owner1')
     return out.content;
 }
 
-describe('plugin runtime', () => {
+describe('plugin runtime', { timeout: TEST_TIMEOUT_MS }, () => {
     let h: Harness;
     beforeEach(() => {
         h = setup();
@@ -137,7 +145,7 @@ describe('plugin runtime', () => {
         };
         expect(out).toMatchObject({ untrusted: true, source: { kind: 'plugin' }, content: 'hi' });
         await expect(def.execute({ text: 'hi' }, ctx('someone-else'))).rejects.toThrow(/another account/);
-    }, 30_000);
+    });
 
     it('blocks reads of host secrets, other plugins data and writes outside its data dir', async () => {
         await h.runtime.apply(h.record);
@@ -158,7 +166,7 @@ describe('plugin runtime', () => {
         expect(await run(h, 'probe', { attack: 'write', arg: join(h.dataRoot, 'probe', 'ok.txt') })).toMatch(
             /^ALLOWED/,
         );
-    }, 60_000);
+    });
 
     it('blocks every denied built-in module via import, bare import, require/createRequire, getBuiltinModule, Module._load and data URLs', async () => {
         await h.runtime.apply(h.record);
@@ -169,7 +177,7 @@ describe('plugin runtime', () => {
         for (const attack of ['binding', 'dlopen', 'fetch']) {
             expect(await run(h, 'probe', { attack })).toMatch(/^blocked/);
         }
-    }, 60_000);
+    });
 
     it('cannot re-register module hooks to reach node:http, and cannot signal the parent or create links', async () => {
         await h.runtime.apply(h.record);
@@ -189,7 +197,7 @@ describe('plugin runtime', () => {
         const target = join(h.root, 'master.key');
         expect(await run(h, 'probe', { attack: 'symlink', arg: target })).toMatch(/^blocked/);
         expect(await run(h, 'probe', { attack: 'hardlink', arg: target })).toMatch(/^blocked/);
-    }, 60_000);
+    });
 
     it('cannot reach node:http by rewriting Module._resolveFilename or Module._load', async () => {
         await h.runtime.apply(h.record);
@@ -205,7 +213,7 @@ describe('plugin runtime', () => {
         } finally {
             server.close();
         }
-    }, 60_000);
+    });
 
     it('cannot connect through the stdio sockets that already exist, over TCP or a Unix socket, and JSON-RPC still works', async () => {
         await h.runtime.apply(h.record);
@@ -237,7 +245,7 @@ describe('plugin runtime', () => {
             tcp.close();
             unix.close();
         }
-    }, 60_000);
+    });
 
     it('starts with a minimal environment and no FATCAT_AI_* / AIP_* / NODE_OPTIONS', async () => {
         await h.runtime.apply(h.record);
@@ -250,7 +258,7 @@ describe('plugin runtime', () => {
         }
         expect(keys).not.toContain('NODE_OPTIONS');
         expect(keys).not.toContain('MY_KEY');
-    }, 30_000);
+    });
 
     it('answers unauthorized and unknown fatcat/* methods with permission_denied / method not found and records denied', async () => {
         await h.runtime.apply(h.record);
@@ -262,7 +270,7 @@ describe('plugin runtime', () => {
             'fatcat/net.fetch: net is not granted',
             'fatcat/items.upsert: items is not granted',
         ]);
-    }, 30_000);
+    });
 
     it(
         'never writes the secret value to events or state when the plugin prints it to stderr and crashes',
@@ -279,27 +287,40 @@ describe('plugin runtime', () => {
 
     it('disables the plugin after 3 crashes within 5 minutes', async () => {
         await h.runtime.apply(h.record);
+        const crashes = () => h.events.filter((e) => e.kind === 'crashed').length;
         for (let i = 0; i < 3; i++) {
             const status = h.runtime.status('probe');
             if (status.state === 'error') break;
+            const before = crashes();
             await run(h, 'probe', { attack: 'secret-stderr' }).catch(() => undefined);
-            await new Promise((r) => setTimeout(r, 800));
+            // 等这次崩溃被记下、进程重新拉起(或已停用),而不是固定睡 800 ms:慢机器上进程退出要更久
+            await waitUntil(() => crashes() > before, `crash ${i + 1}`, CRASH_WAIT_MS);
+            await waitUntil(
+                // 'running' 在重新注册工具之前就已设置,所以等工具回到注册表
+                () => h.registry.get('plugin.probe.probe') !== undefined || h.runtime.status('probe').state === 'error',
+                `the restart after crash ${i + 1}`,
+                CRASH_WAIT_MS,
+            );
         }
         expect(h.states.at(-1)).toMatchObject({ pluginId: 'probe', state: 'error' });
         expect(h.runtime.status('probe').state).toBe('error');
         expect(h.registry.get('plugin.probe.echo')).toBeUndefined();
-    }, 60_000);
+    });
 
     it('stops when idle and when asked, and restarts on the next call', async () => {
         await h.runtime.apply(h.record);
-        await new Promise((r) => setTimeout(r, 1500));
+        await waitUntil(
+            () => h.events.some((e) => e.kind === 'stopped') && h.runtime.status('probe').state === 'idle',
+            'the idle stop',
+            slow(10_000),
+        );
         expect(h.events.filter((e) => e.kind === 'stopped').map((e) => e.detail)).toEqual(['idle']);
         expect(h.runtime.status('probe').state).toBe('idle');
         expect(await run(h, 'echo', { text: 'again' })).toBe('again');
         await h.runtime.stop('probe');
         expect(h.events.at(-1)).toMatchObject({ kind: 'stopped', detail: 'manual' });
         expect(await run(h, 'echo', { text: 'third' })).toBe('third');
-    }, 30_000);
+    });
 
     it('refuses to start when the code directory was modified or the data dir holds a symlink', async () => {
         writeFileSync(join(h.codeRoot, 'probe', '0.1.0', 'extra.js'), '//');
@@ -319,10 +340,10 @@ describe('plugin runtime', () => {
             await h2.runtime.closeAll();
             rmSync(h2.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         }
-    }, 30_000);
+    });
 });
 
-describe('risk floor', () => {
+describe('risk floor', { timeout: TEST_TIMEOUT_MS }, () => {
     it('raises read to write when the plugin may use the network and makes sendsData external and not pre-authorizable', async () => {
         const h = setup((m) => {
             const permissions = m.permissions as { tools: Record<string, unknown>[]; net?: string[] };
@@ -344,7 +365,7 @@ describe('risk floor', () => {
             await h.runtime.closeAll();
             rmSync(h.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         }
-    }, 30_000);
+    });
 });
 
 describe('redactSecrets', () => {
@@ -360,7 +381,7 @@ describe('redactSecrets', () => {
     });
 });
 
-describe('fatcat/net.fetch', () => {
+describe('fatcat/net.fetch', { timeout: TEST_TIMEOUT_MS }, () => {
     let h: Harness;
     beforeEach(() => {
         h = setup((m) => {
@@ -384,7 +405,7 @@ describe('fatcat/net.fetch', () => {
             'invalid params',
         );
         expect(denied()).toEqual(['fatcat/net.fetch: domain is not granted']);
-    }, 30_000);
+    });
 
     it('refuses granted domains that resolve to loopback, private or metadata addresses', async () => {
         const resolveTo = (address: string) => async () => [{ address, family: 4 }];
@@ -401,7 +422,7 @@ describe('fatcat/net.fetch', () => {
                 codeRoot: local.codeRoot,
                 dataRoot: local.dataRoot,
                 env: { PATH: process.env.PATH ?? '' },
-                handshakeTimeoutMs: 15_000,
+                handshakeTimeoutMs: slow(15_000),
                 netFetchOverrides: { resolve: resolveTo(address) },
                 onEvent: (_o, e) => local.events.push(e),
                 onState: () => undefined,
@@ -422,7 +443,7 @@ describe('fatcat/net.fetch', () => {
                 rmSync(local.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
             }
         }
-    }, 60_000);
+    });
 
     it('reports a fake-IP resolution as a failed request (a settings matter), not as a denied call', async () => {
         const local = setup((m) => {
@@ -433,7 +454,7 @@ describe('fatcat/net.fetch', () => {
             codeRoot: local.codeRoot,
             dataRoot: local.dataRoot,
             env: { PATH: process.env.PATH ?? '' },
-            handshakeTimeoutMs: 15_000,
+            handshakeTimeoutMs: slow(15_000),
             netFetchOverrides: { resolve: async () => [{ address: '198.18.0.7', family: 4 }] },
             onEvent: (_o, e) => local.events.push(e),
             onState: () => undefined,
@@ -451,7 +472,7 @@ describe('fatcat/net.fetch', () => {
             await runtime.closeAll();
             rmSync(local.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         }
-    }, 30_000);
+    });
 
     it('reports a host that resolves to no address as a failed request (a network matter), not as a denied call', async () => {
         const local = setup((m) => {
@@ -462,7 +483,7 @@ describe('fatcat/net.fetch', () => {
             codeRoot: local.codeRoot,
             dataRoot: local.dataRoot,
             env: { PATH: process.env.PATH ?? '' },
-            handshakeTimeoutMs: 15_000,
+            handshakeTimeoutMs: slow(15_000),
             netFetchOverrides: { resolve: async () => [] },
             onEvent: (_o, e) => local.events.push(e),
             onState: () => undefined,
@@ -480,10 +501,10 @@ describe('fatcat/net.fetch', () => {
             await runtime.closeAll();
             rmSync(local.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         }
-    }, 30_000);
+    });
 });
 
-describe('fatcat/items.upsert', () => {
+describe('fatcat/items.upsert', { timeout: TEST_TIMEOUT_MS }, () => {
     it('writes only inside registered categories, refuses oversized meta and quota overruns, and records denied', async () => {
         const written: { type: string; id: string }[] = [];
         const h = setup((m) => {
@@ -496,7 +517,7 @@ describe('fatcat/items.upsert', () => {
             codeRoot: h.codeRoot,
             dataRoot: h.dataRoot,
             env: { PATH: process.env.PATH ?? '' },
-            handshakeTimeoutMs: 15_000,
+            handshakeTimeoutMs: slow(15_000),
             onEvent: (_o, e) => h.events.push(e),
             onState: () => undefined,
             upsertItems: (_o, _p, items) => {
@@ -525,7 +546,7 @@ describe('fatcat/items.upsert', () => {
             await runtime.closeAll();
             rmSync(h.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         }
-    }, 60_000);
+    });
 });
 
 describe('pluginSettingsValues', () => {
