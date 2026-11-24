@@ -172,6 +172,7 @@ export function drawAnchoredKnowledge(
                 id: n.id,
                 text: shortLabel(n.label),
                 x: left ? x - r - 6 : x + r + 6,
+                flipX: left ? x + r + 6 : x - r - 6,
                 y,
                 align: left ? 'right' : 'left',
                 ...labelPriority(scene, n, rank),

@@ -57,3 +57,12 @@ export function splitForSpeech(text: string, max = MAX_SPEECH_CHARS): string[] {
     flush();
     return out.filter((s) => s.length > 0);
 }
+
+/** 字幕只留最后约 280 个字符,从句子或词的边界截开。 */
+export function captionTail(text: string, max = 280): string {
+    const flat = text.replace(/\s+/g, ' ').trim();
+    if (flat.length <= max) return flat;
+    const tail = flat.slice(-max);
+    const cut = tail.search(/[\u3002\uff01\uff1f\uff1b\uff0c.!?;,\s]/);
+    return '…' + (cut >= 0 && cut < 60 ? tail.slice(cut + 1).trimStart() : tail);
+}

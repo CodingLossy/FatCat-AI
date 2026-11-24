@@ -135,7 +135,7 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
     await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
 
     // 配置档:明文密钥被拒绝,env: 引用可保存并显示 keyStatus
-    await page.getByRole('link', { name: '设置' }).click();
+    await page.getByRole('link', { name: '设置', exact: true }).click();
     await page.getByRole('button', { name: '添加配置档' }).click();
     const form = page.getByRole('form', { name: 'model-profile' });
     await form.getByLabel('名称').fill('DeepSeek');
@@ -239,7 +239,7 @@ test('初始化、配置档、流式中刷新、审批与记忆管理', async ({
     await expect(page.locator('.audit-table')).toContainText('新增预授权');
 
     // 设置页:撤销预授权
-    await page.getByRole('link', { name: '设置' }).click();
+    await page.getByRole('link', { name: '设置', exact: true }).click();
     await page.getByRole('tab', { name: /工具插件/ }).click();
     await page.getByRole('button', { name: '预授权' }).click();
     const preauth = page.locator('[data-preauth="memory.save"]');

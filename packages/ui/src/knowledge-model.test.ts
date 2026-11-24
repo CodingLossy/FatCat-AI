@@ -88,4 +88,23 @@ describe('placeLabels', () => {
         );
         expect(cut.find((l) => l.id === 'b')?.shown).toBe('一二三四五…');
     });
+
+    it('右侧被占、左侧有空时换到节点左边显示(对齐随之互换);不给 flipX 时不换边', () => {
+        // 节点在 x=200;右侧 [206, 306) 被更重要的标签占住
+        const node = { ...cand('n', 206, 0, '一二三四五六七八'), flipX: 194 };
+        const blocker = cand('big', 206, 0, '一二三四五六七八九十', 10);
+        const out = placeLabels([blocker, node], measure, [], short);
+        expect(out.find((l) => l.id === 'n')).toMatchObject({ x: 194, align: 'right', shown: '一二三四五六七八' });
+        const noFlip = placeLabels([blocker, cand('n', 206, 0, '一二三四五六七八')], measure, [], short);
+        expect(noFlip.find((l) => l.id === 'n')).toBeUndefined();
+    });
+
+    it('悬停 / 焦点的标签先试不压气泡的一侧', () => {
+        const avoid = [{ x: 210, y: -20, w: 200, h: 40 }];
+        const hover = { ...cand('h', 206, 0, '悬停', 0, true), flipX: 194 };
+        expect(placeLabels([hover], measure, avoid, short)[0]).toMatchObject({ x: 194, align: 'right' });
+        // 两边都压着时留在原来那侧
+        const both = [{ x: 0, y: -20, w: 400, h: 40 }];
+        expect(placeLabels([hover], measure, both, short)[0]).toMatchObject({ x: 206, align: 'left' });
+    });
 });

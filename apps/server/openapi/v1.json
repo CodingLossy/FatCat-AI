@@ -12072,6 +12072,13 @@
                         },
                         "autoSpeak": {
                           "type": "boolean"
+                        },
+                        "inputMode": {
+                          "type": "string",
+                          "enum": [
+                            "voice",
+                            "text"
+                          ]
                         }
                       },
                       "required": [
@@ -12505,6 +12512,13 @@
                       },
                       "autoSpeak": {
                         "type": "boolean"
+                      },
+                      "inputMode": {
+                        "type": "string",
+                        "enum": [
+                          "voice",
+                          "text"
+                        ]
                       }
                     }
                   },
@@ -12672,6 +12686,13 @@
                         },
                         "autoSpeak": {
                           "type": "boolean"
+                        },
+                        "inputMode": {
+                          "type": "string",
+                          "enum": [
+                            "voice",
+                            "text"
+                          ]
                         }
                       },
                       "required": [

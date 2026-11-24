@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { describe, expect, it } from 'vitest';
-import { markdownToSpeech, splitForSpeech } from './speech-text.js';
+import { captionTail, markdownToSpeech, splitForSpeech } from './speech-text.js';
 
 describe('markdownToSpeech', () => {
     it('代码块换成提示,链接只读文字,去掉 Markdown 标记', () => {
@@ -53,5 +53,18 @@ describe('splitForSpeech', () => {
 
     it('空文本没有段', () => {
         expect(splitForSpeech('  ')).toEqual([]);
+    });
+});
+
+describe('captionTail', () => {
+    it('keeps short text, folds whitespace, and cuts long text at a boundary near the start of the tail', () => {
+        expect(captionTail('  a\n\nb  ')).toBe('a b');
+        const long = `${'x'.repeat(300)}. last sentence here`;
+        const tail = captionTail(long, 40);
+        expect(tail.startsWith('…')).toBe(true);
+        expect(tail.length).toBeLessThanOrEqual(41);
+        expect(tail.endsWith('last sentence here')).toBe(true);
+        // 没有边界时直接截取末尾
+        expect(captionTail('y'.repeat(100), 10)).toBe(`…${'y'.repeat(10)}`);
     });
 });

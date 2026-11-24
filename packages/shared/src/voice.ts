@@ -45,6 +45,9 @@ export const SpeechRequest = z.strictObject({
 });
 export type SpeechRequest = z.infer<typeof SpeechRequest>;
 
+export const VoiceInputMode = z.enum(['voice', 'text']);
+export type VoiceInputMode = z.infer<typeof VoiceInputMode>;
+
 /** Settings.voice(M4 PR 4 起提供)。 */
 export const VoiceSettings = z.object({
     /** 为 null 时取第一个 purpose 含 stt 的配置档。 */
@@ -54,6 +57,11 @@ export const VoiceSettings = z.object({
     autoSend: z.boolean(),
     /** 回复结束后自动朗读。 */
     autoSpeak: z.boolean(),
+    /**
+     * 默认输入方式(ADR 0049 第 1 节):`voice` 时主界面只有说话按钮与字幕,文字输入在弹窗里。
+     * 默认 `voice`;旧服务器不返回这个字段,客户端按 `text` 处理。
+     */
+    inputMode: VoiceInputMode.optional(),
 });
 export type VoiceSettings = z.infer<typeof VoiceSettings>;
 
@@ -62,6 +70,7 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
     defaultTtsProfileId: null,
     autoSend: true,
     autoSpeak: false,
+    inputMode: 'voice',
 };
 
 /** WebSocket 客户端帧 voice-state 的 payload;不带电平(ADR 0021 第 6 节)。 */

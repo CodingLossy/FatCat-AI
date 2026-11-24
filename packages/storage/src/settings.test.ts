@@ -23,4 +23,24 @@ describe('settings', () => {
         expect(t.repos.settings.update(t.ownerId, { locale: 'en' })).toMatchObject({ theme: 'dark', locale: 'en' });
         expect(t.repos.settings.get(t.ownerId).memory.autoExtract).toBe(true);
     });
+
+    it('默认输入方式默认是语音;老用户已存的语音设置不带它时只补上默认值,其他已存的值不变(ADR 0049 第 1.1 节)', () => {
+        expect(t.repos.settings.get(t.ownerId).voice.inputMode).toBe('voice');
+        // 模拟 M13 之前保存的 voice 组:没有 inputMode
+        const old = { defaultSttProfileId: 'p1', defaultTtsProfileId: null, autoSend: false, autoSpeak: true };
+        t.conn.sqlite
+            .prepare(
+                `INSERT INTO settings (owner_id, key, value_json, updated_at) VALUES (?, 'voice', ?, ?)
+                 ON CONFLICT (owner_id, key) DO UPDATE SET value_json = excluded.value_json`,
+            )
+            .run(t.ownerId, JSON.stringify(old), Date.now());
+        t.repos.settings.update(t.ownerId, { theme: 'cat' });
+        const read = t.repos.settings.get(t.ownerId);
+        expect(read.voice).toEqual({ ...old, inputMode: 'voice' });
+        expect(read.theme).toBe('cat');
+        expect(t.repos.settings.update(t.ownerId, { voice: { inputMode: 'text' } }).voice).toEqual({
+            ...old,
+            inputMode: 'text',
+        });
+    });
 });
