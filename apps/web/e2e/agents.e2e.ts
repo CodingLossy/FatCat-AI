@@ -131,7 +131,7 @@ test('agents page and delegation tree', async ({ page }) => {
     await page.getByRole('button', { name: '创建并登录' }).click();
     await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
 
-    await page.getByRole('link', { name: '设置' }).click();
+    await page.getByRole('link', { name: '设置', exact: true }).click();
     await page.getByRole('button', { name: '添加配置档' }).click();
     const profile = page.getByRole('form', { name: 'model-profile' });
     await profile.getByLabel('名称').fill('Fake');
