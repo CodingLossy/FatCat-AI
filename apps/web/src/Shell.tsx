@@ -7,6 +7,8 @@ import { api } from './api.js';
 import { AgentsPage } from './AgentsPage.js';
 import { SessionMapPage } from './SessionMapPage.js';
 import { AuditPage } from './AuditPage.js';
+import { useConversation } from './conversation.js';
+import { useI18n } from './i18n.js';
 import { cachedSessions, clearCache, isOffline, isUnauthorized, refreshCache } from './cache.js';
 import { ItemsPage } from './ItemsPage.js';
 import { KnowledgePage } from './KnowledgePage.js';
@@ -52,9 +54,13 @@ export function Shell({
     const [sessions, setSessions] = useState<Session[]>([]);
     const [approvalCount, setApprovalCount] = useState(0);
     // 页面标题带上待批数量,切到别的标签页也能看到
+    // 连续对话开着时标题带上「麦克风开着」(ADR 0049 第 2.2 节),桌面应用的窗口标题跟着变
+    const micOn = useConversation().active;
+    const { t } = useI18n();
     useEffect(() => {
-        document.title = approvalCount > 0 ? `(${approvalCount}) FatCat-AI` : 'FatCat-AI';
-    }, [approvalCount]);
+        const base = approvalCount > 0 ? `(${approvalCount}) FatCat-AI` : 'FatCat-AI';
+        document.title = micOn ? `${t('voice.micOnTitle')} ${base}` : base;
+    }, [approvalCount, micOn, t]);
     /** 联网时读服务器并在后台追平离线缓存;连不上服务器时给出缓存里的会话;其他错误返回 null(保持现状)。 */
     const loadSessions = useCallback(async (): Promise<Session[] | null> => {
         try {

@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { ModelKind, ModelProfile, ModelPurpose, Settings, SettingsPatch } from '@fatcat-ai/shared';
+import {
+    DEFAULT_SILENCE_END_SECONDS,
+    MAX_SILENCE_END_SECONDS,
+    MIN_SILENCE_END_SECONDS,
+    type ModelKind,
+    type ModelProfile,
+    type ModelPurpose,
+    type Settings,
+    type SettingsPatch,
+} from '@fatcat-ai/shared';
 import { LOCALES, LOCALE_NAMES } from '@fatcat-ai/i18n';
 import { type FormEvent, type KeyboardEvent, useCallback, useEffect, useState } from 'react';
 import { Icon } from './Icon.js';
@@ -503,6 +512,34 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                             checked={settings.voice.autoSpeak}
                             onChange={(autoSpeak) => void update({ voice: { autoSpeak } })}
                         />
+                        <Switch
+                            name="voiceContinuous"
+                            label={t('settings.voiceContinuous')}
+                            hint={t('settings.voiceContinuousHint')}
+                            checked={settings.voice.continuous === true}
+                            onChange={(continuous) => void update({ voice: { continuous } })}
+                        />
+                        <label>
+                            {t('settings.voiceSilenceEnd')}
+                            <input
+                                type="number"
+                                name="voiceSilenceEnd"
+                                min={MIN_SILENCE_END_SECONDS}
+                                max={MAX_SILENCE_END_SECONDS}
+                                step={1}
+                                defaultValue={settings.voice.silenceEndSeconds ?? DEFAULT_SILENCE_END_SECONDS}
+                                onBlur={(e) => {
+                                    const value = Number(e.target.value);
+                                    if (
+                                        Number.isInteger(value) &&
+                                        value >= MIN_SILENCE_END_SECONDS &&
+                                        value <= MAX_SILENCE_END_SECONDS
+                                    ) {
+                                        void update({ voice: { silenceEndSeconds: value } });
+                                    }
+                                }}
+                            />
+                        </label>
                     </SettingsGroup>
                 );
             case 'models/embedding':

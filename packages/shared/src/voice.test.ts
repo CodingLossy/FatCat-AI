@@ -50,6 +50,8 @@ describe('schema', () => {
             autoSend: true,
             autoSpeak: false,
             inputMode: 'voice',
+            continuous: false,
+            silenceEndSeconds: 8,
         });
     });
 
@@ -83,5 +85,14 @@ describe('schema', () => {
         expect(VoiceSettings.safeParse(legacy).success).toBe(true);
         expect(SettingsPatch.safeParse({ voice: { inputMode: 'text' } }).success).toBe(true);
         expect(SettingsPatch.safeParse({ voice: { inputMode: 'keyboard' } }).success).toBe(false);
+        // 连续对话(ADR 0049 第 2.1 节):旧服务器不带这两个字段也能解析;静音结束时长为 3–60 的整数
+        delete legacy.continuous;
+        delete legacy.silenceEndSeconds;
+        expect(VoiceSettings.safeParse(legacy).success).toBe(true);
+        expect(SettingsPatch.safeParse({ voice: { continuous: true, silenceEndSeconds: 3 } }).success).toBe(true);
+        expect(SettingsPatch.safeParse({ voice: { silenceEndSeconds: 60 } }).success).toBe(true);
+        for (const bad of [2, 61, 8.5, '8']) {
+            expect(SettingsPatch.safeParse({ voice: { silenceEndSeconds: bad } }).success).toBe(false);
+        }
     });
 });

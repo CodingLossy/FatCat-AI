@@ -3328,3 +3328,58 @@ input.kn-search {
     width: 6.5em;
     font-size: var(--text-small);
 }
+
+/* 连续对话:麦克风开着的标记(ADR 0049 第 2.2 节),一直显示在聊天区顶部 */
+.mic-on {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    color: var(--danger);
+    font-size: var(--text-small);
+    font-weight: 600;
+}
+
+.mic-on-dot {
+    width: 0.6em;
+    height: 0.6em;
+    border-radius: 50%;
+    background: var(--danger);
+    animation: mic-on-pulse 1.6s var(--ease) infinite;
+}
+
+@keyframes mic-on-pulse {
+    50% {
+        opacity: 0.35;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mic-on-dot {
+        animation: none;
+    }
+}
+
+.voice-big.recording {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--on-danger);
+}
+
+/* 工作台里聊天区铺满窗口:标记做成胶囊,浮在顶栏下方居中(手机上顶栏会盖住紧贴顶部的横条) */
+.chat-stage .mic-on {
+    position: absolute;
+    top: var(--space-3);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--danger) 16%, var(--panel));
+    white-space: nowrap;
+}
+
+.wb-shell[data-narrow] .chat-stage .mic-on {
+    top: var(--wb-top);
+}

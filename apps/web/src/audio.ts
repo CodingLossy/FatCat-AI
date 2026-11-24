@@ -8,7 +8,7 @@ import { MAX_RECORDING_SECONDS } from '@fatcat-ai/shared';
 export type LevelListener = (level: number) => void;
 
 let sharedContext: AudioContext | null = null;
-function audioContext(): AudioContext | null {
+export function audioContext(): AudioContext | null {
     try {
         sharedContext ??= new AudioContext();
         if (sharedContext.state === 'suspended') void sharedContext.resume();
@@ -16,6 +16,13 @@ function audioContext(): AudioContext | null {
     } catch {
         return null;
     }
+}
+
+/** 一帧时域采样(0–255,128 为零点)的电平:RMS 放大 4 倍后截到 0–1。 */
+export function levelOf(data: Uint8Array): number {
+    let sum = 0;
+    for (const v of data) sum += ((v - 128) / 128) ** 2;
+    return Math.min(1, Math.sqrt(sum / data.length) * 4);
 }
 
 /** 按 RMS 估算电平(0–1),每帧回调一次;返回停止函数。 */
@@ -27,9 +34,7 @@ function meter(source: AudioNode, ctx: AudioContext, onLevel: LevelListener): ()
     let frame: number | null = null;
     const tick = () => {
         analyser.getByteTimeDomainData(data);
-        let sum = 0;
-        for (const v of data) sum += ((v - 128) / 128) ** 2;
-        onLevel(Math.min(1, Math.sqrt(sum / data.length) * 4));
+        onLevel(levelOf(data));
         frame = requestAnimationFrame(tick);
     };
     tick();
