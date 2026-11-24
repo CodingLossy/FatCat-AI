@@ -108,7 +108,8 @@ export function launchPlan(
     const resolved = resolveCommand(file, env, platform);
     if (platform === 'win32' && /\.(cmd|bat)$/i.test(resolved)) {
         const line = [`"${resolved}"`, ...args].join(' ');
-        return { file: env.ComSpec ?? 'cmd.exe', args: ['/d', '/s', '/c', `"${line}"`], verbatim: true };
+        // 不读 ComSpec:环境变量可能被改成别的程序;cmd.exe 由系统目录找到
+        return { file: 'cmd.exe', args: ['/d', '/s', '/c', `"${line}"`], verbatim: true };
     }
     return { file: resolved, args: [...args], verbatim: false };
 }
