@@ -73,12 +73,7 @@ export const VoiceSettings = z.object({
      */
     continuous: z.boolean().optional(),
     /** 连续对话里这么多秒没听到说话就自动结束(朗读时间不算);整数 3–60,默认 8。 */
-    silenceEndSeconds: z
-        .number()
-        .int()
-        .min(MIN_SILENCE_END_SECONDS)
-        .max(MAX_SILENCE_END_SECONDS)
-        .optional(),
+    silenceEndSeconds: z.number().int().min(MIN_SILENCE_END_SECONDS).max(MAX_SILENCE_END_SECONDS).optional(),
 });
 export type VoiceSettings = z.infer<typeof VoiceSettings>;
 
