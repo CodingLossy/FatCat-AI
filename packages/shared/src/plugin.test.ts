@@ -195,6 +195,9 @@ describe('plugin.json skills (ADR 0048)', () => {
         ['tools.enable', 'tools.'],
         ['delegate', 'delegate'],
         ['an undeclared own tool', 'plugin.weather.missing'],
+        ['an upper-case run-control tool', 'Skill.use'],
+        ['an upper-case MCP prefix', 'MCP.github.search'],
+        ['an upper-case other plugin', 'Plugin.other.x'],
     ])('越权:a skill toolSet that lists %s is rejected', (_name, entry) => {
         const result = check(manifest({ engines: { fatcat: '>=1.2.0' }, skills: [{ ...SKILL, toolSet: [entry] }] }));
         expect(result).toEqual({ ok: false, paths: ['skills.0.toolSet.0'] });

@@ -47,6 +47,15 @@ export const SystemOpenSettings = z.object({
 });
 export type SystemOpenSettings = z.infer<typeof SystemOpenSettings>;
 
+/**
+ * Skills 设置(ADR 0048 第 8 节)。自 M13 起提供,旧服务器不返回。`builtin`:内置 Skill 的开关,缺省为启用。
+ * 代理的 Skill 列表只经 `/api/v1/agents` 读写,这里不接受(strict:带 `agents` 的请求返回 400)。
+ */
+export const SkillSettings = z.strictObject({
+    builtin: z.record(z.string().regex(/^[a-z][a-z0-9-]{1,31}$/), z.boolean()),
+});
+export type SkillSettings = z.infer<typeof SkillSettings>;
+
 export const Settings = z.object({
     defaultChatProfileId: Id.nullable(),
     /** 上下文压缩等廉价任务用的配置档;为 null 时回退到 chat 配置档(ADR 0006)。 */
@@ -82,6 +91,8 @@ export const Settings = z.object({
     browser: BrowserSettings.optional(),
     /** system.open 开关;旧服务器不返回,按关闭处理。 */
     systemOpen: SystemOpenSettings.optional(),
+    /** Skills 设置;旧服务器不返回,按全部内置 Skill 启用处理。 */
+    skills: SkillSettings.optional(),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -93,6 +104,7 @@ export const SettingsPatch = Settings.partial().extend({
     plugins: PluginSettingsGroup.partial().optional(),
     browser: BrowserSettings.partial().optional(),
     systemOpen: SystemOpenSettings.partial().optional(),
+    skills: SkillSettings.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof SettingsPatch>;
 
@@ -109,4 +121,5 @@ export const DEFAULT_SETTINGS: Settings = {
     plugins: { marketEnabled: true },
     browser: { enabled: false },
     systemOpen: { enabled: false },
+    skills: { builtin: {} },
 };

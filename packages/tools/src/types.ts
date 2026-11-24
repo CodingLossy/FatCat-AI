@@ -7,6 +7,7 @@ import type {
     ApprovalWarning,
     PreauthConstraintKind,
     ToolRisk,
+    UntrustedContent,
 } from '@fatcat-ai/shared';
 
 /**
@@ -46,7 +47,16 @@ export interface ToolContext {
      * 组不存在或被工具集排除时抛错。开启只决定工具说明是否交给模型,不改变任何工具的审批。
      */
     enableGroup?: (group: string) => ToolGroupInfo;
+    /**
+     * 使用一个 Skill(ADR 0048 第 3.2 节):返回说明并对本次运行开启它覆盖的组。只由 core 提供;
+     * Skill 不存在、已停用或与当前工具集没有交集时抛错。
+     */
+    useSkill?: (id: string) => SkillUseResult;
 }
+
+/** skill.use 的结果:第一次使用带说明(已包装成数据),同一次运行里再用只返回 alreadyInUse。 */
+export type SkillUseResult =
+    { id: string; tools: string[]; instructions: UntrustedContent } | { id: string; alreadyInUse: true };
 
 /** tools.enable 的结果:组名与组里每个工具的一句话说明。 */
 export interface ToolGroupInfo {

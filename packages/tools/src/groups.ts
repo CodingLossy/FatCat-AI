@@ -3,8 +3,18 @@
 
 // 工具分组(ADR 0047 第 1 节):组名由工具名推出;核心组始终交给模型,其余组要先用 tools.enable 开启。
 
-/** 始终交给模型的组(ADR 0047 第 1.2 节)。 */
-export const CORE_TOOL_GROUPS: readonly string[] = ['memory', 'calc', 'time', 'items', 'kb', 'ui', 'delegate', 'tools'];
+/** 始终交给模型的组(ADR 0047 第 1.2 节;`skill` 由 ADR 0048 第 3.2 节加入)。 */
+export const CORE_TOOL_GROUPS: readonly string[] = [
+    'memory',
+    'calc',
+    'time',
+    'items',
+    'kb',
+    'ui',
+    'delegate',
+    'tools',
+    'skill',
+];
 
 /**
  * 工具名推出的组名:第一个 `.` 之前的部分(`fs.read` → `fs`);MCP 工具是 `mcp.<server>`,插件工具是

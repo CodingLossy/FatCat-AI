@@ -83,6 +83,10 @@ describe('plugin packages', () => {
 
         it('installs with plugin.json, markdown and license files only', () => {
             const dir = write({ 'skills/notes.md': '# Notes\n', 'README.md': 'x', LICENSE: 'MIT', 'NOTICE.txt': 'n' });
+            expect(prepareLocalPackage(dir, options()).manifest.entry).toBeUndefined();
+            writeFileSync(join(dir, 'LICENSE.js'), '');
+            expect(() => prepareLocalPackage(dir, options())).toThrow(/LICENSE\.js: a plugin without "entry"/);
+            rmSync(join(dir, 'LICENSE.js'));
             const prepared = prepareLocalPackage(dir, options());
             expect(prepared.manifest.entry).toBeUndefined();
             expect(prepared.manifest.skills?.[0]?.id).toBe('notes');
@@ -97,7 +101,10 @@ describe('plugin packages', () => {
                 PluginPackageError,
             );
             expect(isInstructionOnlyFile('skills/notes.md')).toBe(true);
-            expect(isInstructionOnlyFile('LICENSE-APACHE')).toBe(true);
+            expect(isInstructionOnlyFile('LICENSE')).toBe(true);
+            expect(isInstructionOnlyFile('NOTICE.txt')).toBe(true);
+            expect(isInstructionOnlyFile('LICENSE.js')).toBe(false);
+            expect(isInstructionOnlyFile('NOTICE.exe')).toBe(false);
             expect(isInstructionOnlyFile('lib/index.mjs')).toBe(false);
             expect(isInstructionOnlyFile('package.json')).toBe(false);
         });

@@ -4,6 +4,7 @@
 import type { ToolDefinition } from '../types.js';
 import { createBrowserTools, type BrowserToolOptions } from './browser.js';
 import { createCalcTool } from './calc.js';
+import { createSkillUseTool } from './skill-use.js';
 import { createTimeTool } from './time.js';
 import { createToolsEnableTool } from './tools-enable.js';
 import { createUiPanelTool } from './ui.js';
@@ -20,13 +21,14 @@ export interface BuiltinToolOptions {
 
 /**
  * 内置工具:time、calc(read)、ui.panel、web.fetch(read,默认需审批,只能按域名预授权)、browser.*(可选),
- * 以及开启按需工具组的 tools.enable(ADR 0047)。
+ * 以及开启按需工具组的 tools.enable(ADR 0047)与取出 Skill 说明的 skill.use(ADR 0048)。
  */
 export function createBuiltinTools(options: BuiltinToolOptions = {}): ToolDefinition[] {
     return [
         createTimeTool(options.now, options.timeZoneOf),
         createCalcTool(),
         createToolsEnableTool(),
+        createSkillUseTool(),
         createUiPanelTool(),
         createWebFetchTool(options.webFetch),
         ...(options.browser ? createBrowserTools(options.browser) : []),

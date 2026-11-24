@@ -19,6 +19,12 @@ export type AgentMemoryScope = z.infer<typeof AgentMemoryScope>;
 
 const Name = z.string().trim().min(1).max(80);
 
+/** 代理角色自动使用的 Skill(ADR 0048 第 7 节):全局 Skill id,最多 8 个。 */
+export const AgentSkills = z
+    .array(z.string().regex(/^(?:plugin\.[a-z][a-z0-9-]{1,31}\.)?[a-z][a-z0-9-]{1,31}$/, 'invalid skill id'))
+    .max(8)
+    .refine((ids) => new Set(ids).size === ids.length, 'duplicate skill id');
+
 export const AgentInput = z.strictObject({
     name: Name,
     systemPrompt: z.string().max(8000).default(''),
@@ -30,6 +36,8 @@ export const AgentInput = z.strictObject({
     maxSteps: z.number().int().min(1).max(20).default(5),
     budgetTokens: z.number().int().positive().nullable().default(null),
     budgetSeconds: z.number().int().positive().nullable().default(null),
+    /** 运行开始时自动 `skill.use` 的 Skill;自 M13 起提供。 */
+    skills: AgentSkills.optional(),
 });
 export type AgentInput = z.infer<typeof AgentInput>;
 
@@ -43,6 +51,7 @@ export const AgentPatch = z.strictObject({
     maxSteps: z.number().int().min(1).max(20).optional(),
     budgetTokens: z.number().int().positive().nullable().optional(),
     budgetSeconds: z.number().int().positive().nullable().optional(),
+    skills: AgentSkills.optional(),
 });
 export type AgentPatch = z.infer<typeof AgentPatch>;
 
@@ -65,6 +74,8 @@ export const Agent = z.object({
     maxSteps: z.number().int(),
     budgetTokens: z.number().int().nullable(),
     budgetSeconds: z.number().int().nullable(),
+    /** 自动使用的 Skill(全局 id);自 M13 起提供,旧服务器不返回。 */
+    skills: z.array(z.string()).optional(),
     createdAt: IsoDateTime,
     updatedAt: IsoDateTime,
 });

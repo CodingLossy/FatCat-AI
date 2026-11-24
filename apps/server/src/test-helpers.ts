@@ -24,6 +24,7 @@ import type { MailJobRunner } from '@fatcat-ai/mail';
 import { createEmbeddingService, type EmbeddingService } from './embeddings.js';
 import { FailureLimiter } from './auth/rate-limit.js';
 import { dataDirMasterKey } from './data-dir.js';
+import { type BuiltinSkill, SkillService } from './skills.js';
 import { createLogger } from './log.js';
 import { type AdapterFactory, ChannelHub } from './channels/hub.js';
 import { WechatChannels } from './channels/wechat.js';
@@ -82,6 +83,8 @@ export interface TestServer {
  * 真实 SQLite 文件 + 完整应用。请求头 x-test-ip 模拟 TCP 对端地址(默认 127.0.0.1)。
  */
 export interface TestServerOptions {
+    /** 内置 Skill(ADR 0048);默认没有。 */
+    builtinSkills?: BuiltinSkill[];
     /** 模型请求使用的 fetch(回放或桩)。 */
     fetch?: typeof fetch;
     /** SecretStore 读取的环境变量。 */
@@ -168,9 +171,11 @@ export async function createTestServer(
     const bus = new EventBus();
     const pushed: TestServer['pushed'] = [];
     const attachmentFiles = createAttachmentFiles(dir);
+    const skills = new SkillService({ repos, codeRoot: join(dir, 'plugins'), builtin: options.builtinSkills ?? [] });
     const runs = new RunManager({
         repos,
         bus,
+        skills,
         persistIntervalMs: 0,
         providerFor,
         loadImage: createImageLoader(repos, attachmentFiles),
@@ -258,6 +263,7 @@ export async function createTestServer(
         wechat,
         mcp,
         plugins,
+        skills,
         mail,
         kb,
         embeddings,

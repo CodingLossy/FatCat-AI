@@ -62,6 +62,8 @@ export interface RunManagerOptions {
      * 每轮的记忆上下文(digest 与记忆块,ADR 0007 第 5.6 节):返回的系统消息放在系统提示之后,
      * 用到的记忆通过 memory-used 事件发出。失败时这一轮照常进行,只是没有记忆上下文。
      */
+    /** 已安装且启用的 Skill(ADR 0048);没有提供时没有 Skill 目录,skill.use 也不交给模型。 */
+    skills?: SkillSource;
     memoryContext?: (
         input: {
             ownerId: string;
@@ -74,6 +76,21 @@ export interface RunManagerOptions {
         },
         signal: AbortSignal,
     ) => Promise<MemoryTurnContext>;
+}
+
+/** 一个已启用的 Skill(ADR 0048 第 1 节):全局 id、给模型看的一句话、工具集与来源。 */
+export interface RunSkill {
+    id: string;
+    description: string;
+    toolSet: string[];
+    source: 'builtin' | 'plugin';
+}
+
+/** Skill 的来源:列出某个 owner 已启用的 Skill,并按需读取说明(运行时从已安装的包里读,不入库)。 */
+export interface SkillSource {
+    list(ownerId: string): RunSkill[];
+    /** 说明的 markdown 原文;Skill 不存在、已停用或读不到时返回 null。 */
+    instructions(ownerId: string, id: string): string | null;
 }
 
 export interface FinishedTurn {
@@ -97,6 +114,8 @@ export interface RunAgent {
     maxDepth: number;
     budgetTokens: number | null;
     budgetSeconds: number | null;
+    /** 运行开始时自动 skill.use 的 Skill(ADR 0048 第 7 节);全局 id。 */
+    skills?: string[];
 }
 
 /** 委派时按名称或 id 找到的子代理,以及它自己的模型配置档(没有则沿用委派者的)。 */
@@ -173,6 +192,12 @@ export interface LoopCtx {
     withheldPrefixes: string[];
     /** 本次运行用 tools.enable 开启的按需组(ADR 0047 第 1.3 节);不跨运行,不写库。 */
     activeGroups: Set<string>;
+    /** 运行开始时取到的已启用 Skill(ADR 0048);子运行重新取,不继承父运行用过的 Skill。 */
+    skills: RunSkill[];
+    /** 本次运行已经 skill.use 过的 Skill;重复使用不再注入说明。 */
+    usedSkills: Set<string>;
+    /** 本次运行能用的 Skill(与工具集链的交集非空,最多 30 个):系统提示的 Skill 目录。 */
+    catalog: RunSkill[];
     noMemory: boolean;
     /** 子运行里的代理名,出现在审批卡上;根运行为 undefined。 */
     initiator?: string;

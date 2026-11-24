@@ -106,7 +106,7 @@ type Locale = 'zh-CN' | 'en';
 const localeOf = (repos: Repositories, ownerId: string): Locale =>
     repos.settings.get(ownerId).locale === 'en' ? 'en' : 'zh-CN';
 
-export function agentView(agent: AgentRecord, locale: Locale): Agent {
+export function agentView(agent: AgentRecord, locale: Locale, skills: string[] = []): Agent {
     return {
         id: agent.id,
         name: agent.name,
@@ -120,6 +120,7 @@ export function agentView(agent: AgentRecord, locale: Locale): Agent {
         maxSteps: agent.maxSteps,
         budgetTokens: agent.budgetTokens,
         budgetSeconds: agent.budgetSeconds,
+        skills,
         createdAt: agent.createdAt,
         updatedAt: agent.updatedAt,
     };
@@ -138,11 +139,17 @@ export function loadRunAgent(
     if (!record) throw notFound('Agent');
     return {
         record,
-        runAgent: runAgentOf(record, localeOf(repos, ownerId)),
+        runAgent: runAgentOf(repos, record, localeOf(repos, ownerId)),
     };
 }
 
-function runAgentOf(record: AgentRecord, locale: Locale): NonNullable<StartRunInput['agent']> {
+/** 代理的 Skill 列表(ADR 0048 第 8 节,存在 settings 表里;已不存在的代理的条目读取时忽略)。 */
+function skillsOf(repos: Repositories, record: AgentRecord): string[] {
+    return repos.settings.agentSkills(record.ownerId)[record.id] ?? [];
+}
+
+function runAgentOf(repos: Repositories, record: AgentRecord, locale: Locale): NonNullable<StartRunInput['agent']> {
+    const skills = skillsOf(repos, record);
     return {
         id: record.id,
         name: record.name,
@@ -153,6 +160,7 @@ function runAgentOf(record: AgentRecord, locale: Locale): NonNullable<StartRunIn
         maxDepth: record.maxDepth,
         budgetTokens: record.budgetTokens,
         budgetSeconds: record.budgetSeconds,
+        ...(skills.length > 0 ? { skills } : {}),
     };
 }
 
@@ -171,7 +179,7 @@ export function resolveDelegateAgent(
     const record = all.find((a) => a.name === ref) ?? all.find((a) => a.id === ref);
     if (!record) return null;
     return {
-        agent: runAgentOf(record, locale),
+        agent: runAgentOf(repos, record, locale),
         profile: record.modelProfileId ? repos.modelProfiles.get(ownerId, record.modelProfileId) : null,
     };
 }
@@ -210,8 +218,12 @@ export function agentRoutes(deps: { repos: Repositories; runs: Pick<RunManager, 
             const ownerId = requireOwner(c);
             const locale = localeOf(repos, ownerId);
             repos.agents.ensureBuiltins(ownerId, BUILTIN_AGENT_ROLES, locale);
+            const skills = repos.settings.agentSkills(ownerId);
             return c.json(
-                { items: repos.agents.list(ownerId).map((a) => agentView(a, locale)), nextCursor: null },
+                {
+                    items: repos.agents.list(ownerId).map((a) => agentView(a, locale, skills[a.id] ?? [])),
+                    nextCursor: null,
+                },
                 200,
             );
         })
@@ -221,8 +233,10 @@ export function agentRoutes(deps: { repos: Repositories; runs: Pick<RunManager, 
             checkToolSet(body.toolSet);
             checkProfile(ownerId, body.modelProfileId);
             try {
-                const agent = repos.agents.create(ownerId, body);
-                return c.json(agentView(agent, localeOf(repos, ownerId)), 201);
+                const { skills, ...input } = body;
+                const agent = repos.agents.create(ownerId, input);
+                if (skills?.length) repos.settings.setAgentSkills(ownerId, agent.id, skills);
+                return c.json(agentView(agent, localeOf(repos, ownerId), skills ?? []), 201);
             } catch (error) {
                 if (error instanceof AgentNameTakenError) throw taken();
                 throw error;
@@ -230,7 +244,8 @@ export function agentRoutes(deps: { repos: Repositories; runs: Pick<RunManager, 
         })
         .openapi(getRoute, (c) => {
             const ownerId = requireOwner(c);
-            return c.json(agentView(get(ownerId, c.req.valid('param').id), localeOf(repos, ownerId)), 200);
+            const agent = get(ownerId, c.req.valid('param').id);
+            return c.json(agentView(agent, localeOf(repos, ownerId), skillsOf(repos, agent)), 200);
         })
         .openapi(patchRoute, (c) => {
             const ownerId = requireOwner(c);
@@ -240,10 +255,13 @@ export function agentRoutes(deps: { repos: Repositories; runs: Pick<RunManager, 
             checkToolSet(body.toolSet);
             checkProfile(ownerId, body.modelProfileId);
             try {
-                const changes = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
+                const { skills, ...rest } = body;
+                const changes = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined));
+                // 预置角色是只读的:只改 Skill 也一样,先走一次 update 让它报 BuiltinAgentError
                 const agent = repos.agents.update(ownerId, id, changes);
                 if (!agent) throw notFound('Agent');
-                return c.json(agentView(agent, localeOf(repos, ownerId)), 200);
+                if (skills !== undefined) repos.settings.setAgentSkills(ownerId, id, skills);
+                return c.json(agentView(agent, localeOf(repos, ownerId), skillsOf(repos, agent)), 200);
             } catch (error) {
                 if (error instanceof AgentNameTakenError) throw taken();
                 if (error instanceof BuiltinAgentError) throw builtin();
@@ -255,6 +273,7 @@ export function agentRoutes(deps: { repos: Repositories; runs: Pick<RunManager, 
             const { id } = c.req.valid('param');
             try {
                 if (!repos.agents.delete(ownerId, id)) throw notFound('Agent');
+                repos.settings.setAgentSkills(ownerId, id, null);
             } catch (error) {
                 if (error instanceof BuiltinAgentError) throw builtin();
                 throw error;
@@ -278,7 +297,9 @@ export function agentRoutes(deps: { repos: Repositories; runs: Pick<RunManager, 
                     budgetTokens: source.budgetTokens,
                     budgetSeconds: source.budgetSeconds,
                 });
-                return c.json(agentView(copy, locale), 201);
+                const skills = skillsOf(repos, source);
+                if (skills.length > 0) repos.settings.setAgentSkills(ownerId, copy.id, skills);
+                return c.json(agentView(copy, locale, skills), 201);
             } catch (error) {
                 if (error instanceof AgentNameTakenError) throw taken();
                 throw error;

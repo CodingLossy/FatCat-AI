@@ -813,6 +813,7 @@ export const en: Record<Key, string> = {
     'voice.notHeard': "Didn't catch that. Please try again.",
     'voice.micDenied': "Can't use the microphone: {msg}",
     'tools.activity.enable': 'Turning on tools…',
+    'tools.activity.skill': 'Reading skill instructions…',
     'voice.limit': 'Recordings are limited to {n} seconds; this one was stopped.',
     'voice.speak': 'Read aloud',
     'voice.stopSpeaking': 'Stop reading',

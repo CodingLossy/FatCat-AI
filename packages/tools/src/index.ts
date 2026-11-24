@@ -29,6 +29,7 @@ export {
     type ToolDefinition,
     ToolDeniedError,
     type ToolGroupInfo,
+    type SkillUseResult,
 } from './types.js';
 export { type BuiltinToolOptions, createBuiltinTools } from './builtin/index.js';
 export { CalcError, createCalcTool, evaluate } from './builtin/calc.js';

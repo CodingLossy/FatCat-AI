@@ -24,6 +24,7 @@ import {
 import { buildContext, memoryFor } from './run/context-builder.js';
 import { Budget, DEFAULT_DELEGATE_PARALLELISM, Limiter } from './run/delegation.js';
 import { isWithheld, optionalGroups, runCalls } from './run/tool-step.js';
+import { autoUseSkills, enabledSkills, usableSkills } from './run/skills.js';
 import type { ApprovalOutcome } from './tools.js';
 
 export { DEFAULT_APPROVAL_TIMEOUT_MS } from './run/approval-gate.js';
@@ -32,6 +33,8 @@ export type {
     FinishedTurn,
     MemoryTurnContext,
     ResolvedAgent,
+    RunSkill,
+    SkillSource,
     RunAgent,
     RunManagerOptions,
     StartedRun,
@@ -279,6 +282,9 @@ export class RunManager {
             withheldPrefixes: input.task?.withholdToolPrefixes ?? [],
             // 有渠道输出的定时任务一开始就开启 channel 组:任务提示要求用 channel.push 发出结果(ADR 0034 第 3 节)
             activeGroups: new Set(input.task?.channelId ? ['channel'] : []),
+            skills: enabledSkills(this.host, ownerId),
+            usedSkills: new Set(),
+            catalog: [],
             noMemory: agent?.memoryScope === 'none',
             depth: 0,
             maxDepth: agent?.maxDepth ?? 0,
@@ -292,6 +298,7 @@ export class RunManager {
             delegateSlots: new Limiter(this.options.delegateParallelism ?? DEFAULT_DELEGATE_PARALLELISM),
             profile: input.profile,
         };
+        ctx.catalog = usableSkills(this.host, ctx);
         const finish = (reason: 'stop' | 'length' | 'cancelled', usage: Usage | undefined) => {
             persist(reason === 'cancelled' ? 'cancelled' : 'complete', usage ?? null);
             repos.runs.setStatus(run.runId, reason === 'cancelled' ? 'cancelled' : 'succeeded');
@@ -335,7 +342,12 @@ export class RunManager {
                 memory.messages,
                 input.agent?.prompt,
                 optionalGroups(this.host, ctx),
+                ctx.catalog,
             );
+            // 代理角色列出的 Skill:运行开始时自动使用一次(ADR 0048 第 7 节)
+            if (agent?.skills?.length && (await autoUseSkills(this.host, ctx, agent.skills, messages, runCalls))) {
+                return finish('cancelled', undefined);
+            }
             for (let step = 0; ; step++) {
                 if (signal.aborted) return finish('cancelled', undefined);
                 const calls: ToolCall[] = [];
