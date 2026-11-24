@@ -218,6 +218,16 @@ describe('PUT /api/v1/settings 的 code(ADR 0049 第 3.1 节)', { timeout: TIMEO
         expect(await bad({ path: t.outside })).toBe(400);
         expect(await bad({ path: join(t.root, 'plain') })).toBe(400);
         expect(await bad({ path: join(t.root, 'missing') })).toBe(400);
+        // core.worktree 或 .git 文件的 gitdir 指到授权文件夹之外
+        const wt = join(t.root, 'wt-out');
+        mkdirSync(wt);
+        git(wt, 'init', '-q');
+        git(wt, 'config', 'core.worktree', t.outside);
+        expect(await bad({ path: wt })).toBe(400);
+        const gitFile = join(t.root, 'gitfile-out');
+        mkdirSync(gitFile);
+        writeFileSync(join(gitFile, '.git'), `gitdir: ${join(t.outside, '.git')}\n`);
+        expect(await bad({ path: gitFile })).toBe(400);
         expect(await bad({ path: t.repo, commands: [{ name: 'Test', argv: ['node'] }] })).toBe(400);
         expect(await bad({ path: t.repo, commands: [{ name: 'run', argv: ['node', 'a b'] }] })).toBe(400);
         expect(await bad({ path: t.repo, commands: [{ name: 'run', argv: ['node'], timeoutMinutes: 61 }] })).toBe(400);

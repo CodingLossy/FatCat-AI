@@ -111,7 +111,7 @@
 ### 3.3 运行 git
 
 - 用系统的 `git`,`execFile` 不经 shell,参数数组由工具自己拼,模型只提供经过校验的值(`nth`、哈希、项目内的相对路径)。找不到 `git` 时返回 `git_unavailable`。Windows 的 spawn 对裸名会先查当前目录(即不可信的项目文件夹),所以 Windows 上程序一律先按 PATH(只用绝对目录)与 PATHEXT 解析成绝对路径,找不到就报错,不交给 spawn;`.cmd` / `.bat` 经 `%SystemRoot%\System32\cmd.exe` 的绝对路径运行,不读 `ComSpec`。
-- **仓库自己的配置可能执行命令**(`core.fsmonitor`、`diff.external`、textconv 过滤器、`core.pager`、`core.sshCommand` 等),所以每次调用都加:`-c core.fsmonitor=false -c core.hooksPath=<空目录> -c diff.external= -c core.pager=cat -c protocol.allow=never -c log.showSignature=false -c gpg.program= -c gpg.ssh.program= -c gpg.x509.program=`,子命令加 `--no-ext-diff --no-textconv --no-color`(`log` / `show` 再加 `--no-show-signature`);仓库配置的每个过滤器驱动(用 `git config -z --get-regexp` 读出,名字可含任意字符)都用 `-c` 改成空命令且不必成功,名字含换行或 `=` 无法安全覆盖时拒绝这次调用;环境只保留 `PATH`、`SYSTEMROOT`(Windows)、`HOME` / `USERPROFILE`,并设 `GIT_TERMINAL_PROMPT=0`、`GIT_CONFIG_NOSYSTEM=1`、`GIT_OPTIONAL_LOCKS=0`(只读命令不写 index)。不运行 `status` 以外会刷新 index 的命令,`git.diff` 用 `diff`(不用 `status`)。
+- **仓库自己的配置可能执行命令**(`core.fsmonitor`、`diff.external`、textconv 过滤器、`core.pager`、`core.sshCommand` 等),所以每次调用都加:`-c core.fsmonitor=false -c core.hooksPath=<空目录> -c diff.external= -c core.pager=cat -c protocol.allow=never -c log.showSignature=false -c gpg.program= -c gpg.ssh.program= -c gpg.x509.program=`,子命令加 `--no-ext-diff --no-textconv --no-color`(`log` / `show` 再加 `--no-show-signature`);仓库配置的每个过滤器驱动(用 `git config -z --get-regexp` 读出,名字可含任意字符)都用 `-c` 改成空命令且不必成功,名字含换行或 `=` 无法安全覆盖时拒绝这次调用;另加 `-c diff.ignoreSubmodules=all -c submodule.recurse=false`,`diff` 加 `--ignore-submodules=all`(内嵌仓库有自己的配置,外层覆盖管不到),修订参数前加 `--end-of-options`;每次调用固定 `--work-tree=<项目真实路径>`,并在登记时与每次调用时用 `rev-parse --absolute-git-dir --git-common-dir` 确认 git 目录、共用目录、配置的 `core.worktree` 与 `objects/info/alternates` 都在授权文件夹之内(`.git` 文件的 gitdir 可以指到外面);环境只保留 `PATH`、`SYSTEMROOT`(Windows)、`HOME` / `USERPROFILE`,并设 `GIT_TERMINAL_PROMPT=0`、`GIT_CONFIG_NOSYSTEM=1`、`GIT_OPTIONAL_LOCKS=0`(只读命令不写 index)。不运行 `status` 以外会刷新 index 的命令,`git.diff` 用 `diff`(不用 `status`)。
 - 路径参数先过 ADR 0011 的检查,再以 `--` 之后的相对路径传给 git;`from` / `to` / `sha` 只接受上面的格式,拒绝以 `-` 开头的值。
 - 超时 15 秒,输出超过上限时停止读取并结束进程。
 - 备选方案(第 8 节问题 2):改用纯 JS 的 git 读取库,完全不起 git 进程。推荐先用系统 git 加上面的加固:它正确处理 packfile、worktree、换行转换,而且没有新依赖。
@@ -120,7 +120,7 @@
 
 - 只运行登记的命令:`command` 必须等于项目某条 `commands[].name`;实际执行的是登记的 `argv`,后面追加模型给的 `args`。`args` 每项必须匹配 `^[A-Za-z0-9._/\\:=@+,-]{1,200}$`(可以是 `--filter=core`、`src/a.test.ts`、`src\a.test.ts` 这类值);不允许空格、引号、`;`、`|`、`&`、`>`、`<`、`` ` ``、`$`、`%`、`^`、`!`、换行。这样只能加测试文件名、过滤器这类值,不能拼出新的命令。
 - 工作目录固定为项目路径;不经 shell(`execFile`,`shell: false`)。**Windows 的 `.cmd` / `.bat`**(例如 `pnpm.cmd`):Node 不允许不经 shell 直接运行它们,这时用 `cmd.exe /d /s /c` 运行,登记的 `argv` 与 `args` 都已经过上面的字符检查,`%` 和 `^` 不在允许范围内,因此没有可展开的变量或转义。
-- 环境:继承用户环境里的 `PATH` 等,但去掉 `FATCAT_*`、`AIP_*` 与名字里含 `KEY`、`TOKEN`、`SECRET`、`PASSWORD` 的变量;不传主密钥、不传 API Key。
+- 环境:继承用户环境里的 `PATH` 等,但去掉 `FATCAT_*`、`AIP_*` 与名字里含 `KEY`、`TOKEN`、`SECRET`、`PASS`、`AUTH`、`CRED`、`PAT`、`COOKIE`、`PRIVATE` 的变量,以及以 `_URL`、`_URI`、`_DSN` 结尾的连接串;不传主密钥、不传 API Key。
 - 超时默认 10 分钟(登记时可设 1–60 分钟);取消运行或超时时结束整个进程树(Windows 用 `taskkill /T /F`,其他系统按进程组发 `SIGTERM` 再 `SIGKILL`)。
 - 结果:`{ exitCode, durationMs, output, truncated }`。退出码非 0 不算工具出错,原样交给模型。
 - 这是「执行用户自己登记的命令」,不是通用 shell:模型想运行没登记的命令时,工具返回 `unknown command: <name> (ask the user to add it in Settings → Code)`。

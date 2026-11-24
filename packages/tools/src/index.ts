@@ -82,6 +82,7 @@ export {
 } from './fs/paths.js';
 export { createFsTools, type FsToolOptions, MAX_DOCUMENT_CHARS, MAX_READ_BYTES, MAX_WRITE_BYTES } from './fs/tools.js';
 export {
+    checkProject,
     checkProjectPath,
     CODE_GROUP,
     type CodeToolOptions,

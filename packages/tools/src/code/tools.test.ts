@@ -7,10 +7,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CodeProject } from '@fatcat-ai/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { ToolContext, ToolDefinition } from '../types.js';
+import { type ToolContext, type ToolDefinition, ToolDeniedError } from '../types.js';
 import { boundDiff, filterOverridesFrom, MAX_DIFF_LINES } from './git.js';
-import { launchPlan, resolveCommand, systemCmd } from './process.js';
-import { checkRef, checkRepoPath, checkRunArgs, createCodeTools } from './tools.js';
+import { launchPlan, resolveCommand, scrubbedEnv, systemCmd } from './process.js';
+import { checkProject, checkRef, checkRepoPath, checkRunArgs, createCodeTools } from './tools.js';
 
 const ctx = { ownerId: 'o1', sessionId: 's1', runId: 'r1', untrustedContentSeen: false } as ToolContext;
 const win = process.platform === 'win32';
@@ -150,6 +150,10 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
             expect(() => checkRepoPath(bad), bad).toThrow();
         }
         expect(() => checkRepoPath('C:\\Windows', 'win32')).toThrow();
+        for (const drive of ['C:x', 'a:b']) {
+            expect(() => checkRepoPath(drive, 'win32'), drive).toThrow(ToolDeniedError);
+            expect(() => checkRepoPath(drive, 'linux'), drive).toThrow(ToolDeniedError);
+        }
         await expect(tools()('git.log').execute({ project: 'p1', path: '../plain' }, ctx)).rejects.toThrow(/inside/);
     });
 
@@ -198,7 +202,7 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
     });
 
     it('任何名字的过滤器驱动都被覆盖(~ : + 和带点的名字);无法安全覆盖的名字让调用被拒绝', async () => {
-        const names = ['ev~il', 'a:b', 'x+y', 'a.b'];
+        const names = ['ev~il', 'a:b', 'x+y', 'a.b', 'ev!l', 'évil'];
         for (const [i, name] of names.entries()) {
             const dir = join(base, `filter-${i}`);
             mkdirSync(dir);
@@ -228,6 +232,63 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
         await expect(exec(t('git.diff'), { project: 'p1' })).rejects.toThrow(/cannot be overridden/);
         expect(() => filterOverridesFrom('filter.a\rb.clean\ncat\0')).toThrow(/cannot be overridden/);
         expect(filterOverridesFrom('filter.ok.clean\ncat\0')).toContain('filter.ok.required=false');
+    });
+
+    it('内嵌仓库自己的过滤器不运行(不进子仓库看改动)', async () => {
+        const dir = join(base, 'outer');
+        mkdirSync(dir);
+        git(dir, 'init', '-q', '-b', 'main');
+        const inner = join(dir, 'inner');
+        mkdirSync(inner);
+        git(inner, 'init', '-q', '-b', 'main');
+        commit(inner, 'y.txt', 'a\n', 'inner');
+        git(dir, 'add', 'inner');
+        git(dir, 'commit', '-q', '-m', 'outer');
+        const marker = join(base, 'inner.marker');
+        writeFileSync(join(inner, '.gitattributes'), '* filter=sf\n');
+        git(
+            inner,
+            'config',
+            'filter.sf.clean',
+            `node -e "require('fs').writeFileSync(process.argv[1], 'x')" ${marker}`,
+        );
+        git(inner, 'config', 'filter.sf.required', 'true');
+        writeFileSync(join(inner, 'y.txt'), 'a\nb\n');
+        const t = tools({ projects: [project({ path: dir })], roots: [base] });
+        await exec(t('git.diff'), { project: 'p1' });
+        expect(existsSync(marker)).toBe(false);
+    });
+
+    it('越权:core.worktree、.git 文件的 gitdir 指到授权文件夹之外时拒绝', async () => {
+        const outsideBase = realpathSync.native(mkdtempSync(join(tmpdir(), 'fatcat-outside-')));
+        try {
+            const secretRepo = join(outsideBase, 'secret');
+            mkdirSync(secretRepo);
+            git(secretRepo, 'init', '-q', '-b', 'main');
+            commit(secretRepo, 's.txt', 'secret\n', 'secret commit');
+
+            const wt = join(root, 'worktree-out');
+            mkdirSync(wt);
+            git(wt, 'init', '-q', '-b', 'main');
+            commit(wt, 'x.txt', 'a\n', 'init');
+            git(wt, 'config', 'core.worktree', secretRepo);
+            const t1 = tools({ projects: [project({ path: wt })] });
+            await expect(exec(t1('git.diff'), { project: 'p1' })).rejects.toThrow(/outside the authorized/);
+            await expect(checkProject(wt, [root])).rejects.toThrow(ToolDeniedError);
+
+            const gitFile = join(root, 'gitfile-out');
+            mkdirSync(gitFile);
+            writeFileSync(join(gitFile, '.git'), `gitdir: ${join(secretRepo, '.git')}\n`);
+            const t2 = tools({ projects: [project({ path: gitFile })] });
+            await expect(exec(t2('git.log'), { project: 'p1' })).rejects.toThrow(/outside the authorized/);
+            await expect(exec(t2('code.run'), { project: 'p1', command: 'env' })).rejects.toThrow(
+                /outside the authorized/,
+            );
+            // 在授权文件夹之内的项目照常通过
+            await expect(checkProject(repo, [root])).resolves.toBe(repo);
+        } finally {
+            rmSync(outsideBase, { recursive: true, force: true });
+        }
     });
 
     it.skipIf(win)('签名校验的程序不运行:log.showSignature 与 gpg.program 被关掉', async () => {
@@ -267,6 +328,29 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
         expect(bounded.omittedFiles).toEqual(['two.ts', 'three.ts']);
         expect(boundDiff('x'.repeat(70 * 1024)).truncated).toBe(true);
         expect(boundDiff(file('a', 3))).toMatchObject({ truncated: false, omittedFiles: [] });
+    });
+});
+
+describe('scrubbedEnv(ADR 0049 第 3.4 节)', () => {
+    it('去掉 FATCAT_* / AIP_* 与像密钥、连接串的变量,其他原样保留', () => {
+        const out = scrubbedEnv({
+            PATH: '/bin',
+            HOME: '/home/u',
+            PATHEXT: '.EXE',
+            NODE_ENV: 'test',
+            FATCAT_X: '1',
+            AIP_Y: '1',
+            OPENAI_API_KEY: '1',
+            GH_TOKEN: '1',
+            DATABASE_URL: '1',
+            GH_PAT: '1',
+            MAIL163_AUTHCODE: '1',
+            AWS_SESSION_CREDENTIALS: '1',
+            PASSWD: '1',
+            NPM_CONFIG__AUTH: '1',
+            SENTRY_DSN: '1',
+        });
+        expect(Object.keys(out).sort()).toEqual(['HOME', 'NODE_ENV', 'PATH', 'PATHEXT']);
     });
 });
 

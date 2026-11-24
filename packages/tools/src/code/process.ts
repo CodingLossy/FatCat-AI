@@ -227,8 +227,8 @@ export function runProcess(options: RunOptions): Promise<RunResult> {
     });
 }
 
-/** 名字里含这些词的环境变量不传给子进程(不区分大小写)。 */
-const SECRET_NAME = /KEY|TOKEN|SECRET|PASSWORD/i;
+/** 名字里含这些词的环境变量不传给子进程(不区分大小写);连接串(_URL / _URI / _DSN)常带密码,也去掉。 */
+const SECRET_NAME = /KEY|TOKEN|SECRET|PASS|AUTH|CRED|PAT\b|_PAT_|COOKIE|PRIVATE|_URL$|_URI$|_DSN$/i;
 
 /** code.run 的环境:继承用户环境,去掉 FATCAT_* / AIP_* 与名字里像密钥的变量(ADR 0049 第 3.4 节)。 */
 export function scrubbedEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {

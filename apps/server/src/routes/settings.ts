@@ -19,7 +19,7 @@ import {
     TimeZoneInfo,
 } from '@fatcat-ai/shared';
 import { newId, type Repositories } from '@fatcat-ai/storage';
-import { checkProjectPath } from '@fatcat-ai/tools';
+import { checkProject } from '@fatcat-ai/tools';
 import { requireOwner } from '../auth/middleware.js';
 import { listEgressTargets, type PluginEgressDomain } from '../egress.js';
 import { ApiError } from '../errors.js';
@@ -93,10 +93,14 @@ const invalid = (path: (string | number)[], message: string) =>
  * 编码项目(ADR 0049 第 3.1 节):名字不区分大小写不能重复,同一项目的命令名不能重复;路径必须在已授权文件夹之内
  * 且是 git 仓库,保存为真实路径;新项目由服务器生成 id。
  */
-function checkCodeProjects(projects: readonly CodeProjectInput[], roots: readonly string[]): CodeProject[] {
+async function checkCodeProjects(
+    projects: readonly CodeProjectInput[],
+    roots: readonly string[],
+): Promise<CodeProject[]> {
     const names = new Set<string>();
     const ids = new Set<string>();
-    return projects.map((p, i) => {
+    const out: CodeProject[] = [];
+    for (const [i, p] of projects.entries()) {
         const name = p.name.trim();
         if (names.has(name.toLowerCase())) throw invalid(['code', 'projects', i, 'name'], 'Duplicate project name');
         names.add(name.toLowerCase());
@@ -109,15 +113,16 @@ function checkCodeProjects(projects: readonly CodeProjectInput[], roots: readonl
         });
         let path: string;
         try {
-            path = checkProjectPath(p.path, roots);
+            path = await checkProject(p.path, roots);
         } catch (error) {
             throw invalid(['code', 'projects', i, 'path'], error instanceof Error ? error.message : 'Invalid path');
         }
         let id = p.id ?? newId();
         if (ids.has(id)) id = newId();
         ids.add(id);
-        return { id, name, path, commands: p.commands };
-    });
+        out.push({ id, name, path, commands: p.commands });
+    }
+    return out;
 }
 
 export function settingsRoutes(deps: {
@@ -211,7 +216,7 @@ export function settingsRoutes(deps: {
                 deps.secrets.invalidate();
             }
         })
-        .openapi(putRoute, (c) => {
+        .openapi(putRoute, async (c) => {
             const ownerId = requireOwner(c);
             const patch = c.req.valid('json');
             for (const key of ['defaultChatProfileId', 'defaultCheapProfileId'] as const) {
@@ -242,7 +247,7 @@ export function settingsRoutes(deps: {
                 }
             }
             if (patch.code?.projects) {
-                patch.code = { ...patch.code, projects: checkCodeProjects(patch.code.projects, roots(ownerId)) };
+                patch.code = { ...patch.code, projects: await checkCodeProjects(patch.code.projects, roots(ownerId)) };
             }
             const before = effectiveTimeZone(repos.settings.get(ownerId).timeZone);
             const updated = repos.settings.update(ownerId, patch);

@@ -10,7 +10,7 @@ import { CODE_ARG, type CodeCommand, type CodeProject, type UntrustedContent } f
 import { z } from 'zod';
 import { checkLexical, PathError, resolveInRoots } from '../fs/paths.js';
 import { type ToolContext, type ToolDefinition, ToolDeniedError } from '../types.js';
-import { boundDiff, runGit } from './git.js';
+import { boundDiff, GitError, repositoryDirs, runGit } from './git.js';
 import { runProcess, scrubbedEnv } from './process.js';
 
 export const CODE_GROUP = 'code';
@@ -45,6 +45,31 @@ export function checkProjectPath(raw: string, roots: readonly string[], platform
     return real;
 }
 
+/**
+ * checkProjectPath 之外,再确认仓库读取的 git 目录、共用目录与 alternates 都在授权文件夹之内
+ * (`.git` 文件的 gitdir 可以指到外面)。登记时与每次调用时都检查。
+ */
+export async function checkProject(raw: string, roots: readonly string[], platform?: NodeJS.Platform): Promise<string> {
+    const real = checkProjectPath(raw, roots, platform);
+    let dirs: string[];
+    try {
+        dirs = await repositoryDirs(real);
+    } catch (error) {
+        if (error instanceof GitError && error.code === 'git_failed') {
+            throw new ToolDeniedError('the project folder is not a git repository');
+        }
+        throw error;
+    }
+    for (const dir of dirs) {
+        try {
+            resolveInRoots(dir, roots, platform ? { platform } : {});
+        } catch {
+            throw new ToolDeniedError('the repository data is outside the authorized folders');
+        }
+    }
+    return real;
+}
+
 const untrusted = (ref: string, content: string, truncated: boolean): UntrustedContent => ({
     untrusted: true,
     source: { kind: 'code', ref },
@@ -68,6 +93,8 @@ export function checkRepoPath(raw: string, platform: NodeJS.Platform = process.p
     checkLexical(raw, platform);
     const api = platform === 'win32' ? path.win32 : path.posix;
     if (api.isAbsolute(raw) || /^[\\/]/.test(raw)) throw new ToolDeniedError('path must be relative to the project');
+    // Windows 的盘符相对路径(C:x)按那个盘的当前目录解析;posix 上也一并拒绝,行为一致
+    if (/^[a-z]:/i.test(raw)) throw new ToolDeniedError('path must be relative to the project');
     const segments = raw.split(/[\\/]+/);
     if (segments.includes('..')) throw new ToolDeniedError('path must stay inside the project');
     if (raw.startsWith('-')) throw new ToolDeniedError('path cannot start with -');
@@ -117,11 +144,16 @@ export function createCodeTools(options: CodeToolOptions): ToolDefinition[] {
     const platform = options.platform ?? process.platform;
     const enabledFor = (ownerId: string) => options.enabled(ownerId);
     /** 找到项目并确认它仍在授权文件夹里;返回项目与真实路径。 */
-    const open = (ctx: { ownerId: string }, key: string) => {
+    const openSync = (ctx: { ownerId: string }, key: string) => {
         if (!options.enabled(ctx.ownerId)) throw new ToolDeniedError('coding tools are turned off in Settings → Code');
         const project = findProject(options.projects(ctx.ownerId), key);
         const dir = checkProjectPath(project.path, options.roots(ctx.ownerId), platform);
         return { project, dir };
+    };
+    /** 同上,并确认 git 目录等也在授权文件夹里(要运行 git,所以是异步的)。 */
+    const open = async (ctx: { ownerId: string }, key: string) => {
+        const { project } = openSync(ctx, key);
+        return { project, dir: await checkProject(project.path, options.roots(ctx.ownerId), platform) };
     };
     const ref = (project: CodeProject, what: string) => `${project.name}:${what}`;
 
@@ -155,7 +187,7 @@ export function createCodeTools(options: CodeToolOptions): ToolDefinition[] {
                     path: z.string().min(1).max(4096).optional(),
                 })
                 .parse(raw);
-            const { project, dir } = open(ctx, input.project);
+            const { project, dir } = await open(ctx, input.project);
             const spec = input.path === undefined ? [] : ['--', checkRepoPath(input.path, platform)];
             const out = await runGit(dir, [
                 'log',
@@ -209,7 +241,7 @@ export function createCodeTools(options: CodeToolOptions): ToolDefinition[] {
                 })
                 .refine((v) => v.nth === undefined || v.sha === undefined, { message: 'give nth or sha, not both' })
                 .parse(raw);
-            const { project, dir } = open(ctx, input.project);
+            const { project, dir } = await open(ctx, input.project);
             let rev = 'HEAD';
             if (input.sha !== undefined) {
                 if (!SHA.test(input.sha)) throw new ToolDeniedError('sha must be a 7–40 character commit hash');
@@ -225,6 +257,7 @@ export function createCodeTools(options: CodeToolOptions): ToolDefinition[] {
                 '--no-color',
                 '--no-show-signature',
                 '--format=commit %H%nAuthor: %an%nDate:   %aI%n%n%B',
+                '--end-of-options',
                 rev,
                 ...spec,
             ]);
@@ -273,7 +306,7 @@ export function createCodeTools(options: CodeToolOptions): ToolDefinition[] {
                 .refine((v) => v.to === undefined || v.from !== undefined, { message: 'to needs from' })
                 .refine((v) => !(v.staged && v.from !== undefined), { message: 'staged cannot be combined with from' })
                 .parse(raw);
-            const { project, dir } = open(ctx, input.project);
+            const { project, dir } = await open(ctx, input.project);
             const revs =
                 input.from !== undefined
                     ? [checkRef(input.from), ...(input.to !== undefined ? [checkRef(input.to)] : [])]
@@ -281,7 +314,18 @@ export function createCodeTools(options: CodeToolOptions): ToolDefinition[] {
                       ? ['--cached']
                       : ['HEAD'];
             const spec = input.path === undefined ? [] : ['--', checkRepoPath(input.path, platform)];
-            const out = await runGit(dir, ['diff', '--no-ext-diff', '--no-textconv', '--no-color', ...revs, ...spec]);
+            const out = await runGit(dir, [
+                'diff',
+                '--no-ext-diff',
+                '--no-textconv',
+                '--no-color',
+                '--ignore-submodules=all',
+                ...(input.staged ? ['--cached'] : []),
+                // 哈希找不到对应提交时不能被当成路径
+                '--end-of-options',
+                ...revs.filter((r) => r !== '--cached'),
+                ...spec,
+            ]);
             const bounded = boundDiff(out);
             return {
                 ...untrusted(ref(project, revs.join(' ')), bounded.text || '(no changes)', bounded.truncated),
@@ -298,7 +342,7 @@ export function createCodeTools(options: CodeToolOptions): ToolDefinition[] {
     /** 审批前与执行前都做的检查;返回项目、真实路径、登记的命令与完整参数。 */
     const plan = (raw: unknown, ctx: { ownerId: string }) => {
         const input = RunInput.parse(raw);
-        const { project, dir } = open(ctx, input.project);
+        const { project, dir } = openSync(ctx, input.project);
         const command = findCommand(project, input.command);
         const args = checkRunArgs(input.args ?? []);
         return { project, dir, command, argv: [...command.argv, ...args] };
@@ -350,6 +394,7 @@ export function createCodeTools(options: CodeToolOptions): ToolDefinition[] {
         execute: async (raw, ctx: ToolContext) => {
             // 批准之后再检查一次:审批期间项目或授权文件夹可能被改
             const p = plan(raw, ctx);
+            await checkProject(p.project.path, options.roots(ctx.ownerId), platform);
             const [file, ...args] = p.argv;
             const minutes = p.command.timeoutMinutes ?? DEFAULT_RUN_TIMEOUT_MINUTES;
             const result = await runProcess({

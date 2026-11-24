@@ -3,7 +3,7 @@
 
 // 加固过的只读 git(ADR 0049 第 3.3 节)。仓库自己的配置可能执行命令(core.fsmonitor、diff.external、textconv、
 // clean / smudge 过滤器、core.pager 等):每次调用都用 -c 关掉它们,环境只留最少的变量,不经 shell。
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ProcessError, runProcess } from './process.js';
@@ -68,6 +68,11 @@ export function hardeningArgs(): string[] {
         // 签名校验会运行 gpg.program 等程序(log.showSignature、仓库配置的 gpg 路径)
         '-c',
         'log.showSignature=false',
+        // 内嵌仓库 / 子模块有自己的配置(过滤器等),外层的覆盖管不到它,一律不进去看
+        '-c',
+        'diff.ignoreSubmodules=all',
+        '-c',
+        'submodule.recurse=false',
         '-c',
         'gpg.program=',
         '-c',
@@ -132,7 +137,8 @@ async function runRaw(cwd: string, args: readonly string[], withFilters: boolean
     try {
         result = await runProcess({
             file: 'git',
-            args: [...hardeningArgs(), ...extra, ...args],
+            // 固定工作区为项目目录:仓库配置的 core.worktree 可能指到授权文件夹之外
+            args: [...hardeningArgs(), `--work-tree=${cwd}`, ...extra, ...args],
             cwd,
             env: gitEnv(),
             timeoutMs: GIT_TIMEOUT_MS,
@@ -157,6 +163,31 @@ async function runRaw(cwd: string, args: readonly string[], withFilters: boolean
 /** 在项目里运行一条只读 git 命令,返回 stdout。 */
 export function runGit(cwd: string, args: readonly string[]): Promise<string> {
     return runRaw(cwd, args, true);
+}
+
+/**
+ * 仓库真正读取的目录:git 目录、共用目录(worktree 的 commondir)、配置的 core.worktree 与 alternates 里的对象目录。
+ * `.git` 文件的 gitdir、commondir 与 alternates 都可能指到授权文件夹之外,调用方要逐个检查。
+ */
+export async function repositoryDirs(cwd: string): Promise<string[]> {
+    const out = await runRaw(cwd, ['rev-parse', '--absolute-git-dir', '--git-common-dir'], false);
+    const [gitDir, common] = out.split('\n').map((l) => l.trim());
+    if (!gitDir || !common) throw new GitError('git did not report the repository directory', 'git_failed');
+    const commonDir = path.resolve(cwd, common);
+    const dirs = [gitDir, commonDir];
+    // 仓库配置的 core.worktree(相对 git 目录);调用时已用 --work-tree 固定,这里只是拒绝指到外面的仓库
+    const worktree = await runRaw(cwd, ['config', '--get', 'core.worktree'], false).catch(() => '');
+    if (worktree.trim() !== '') dirs.push(path.resolve(gitDir, worktree.trim()));
+    const objects = path.join(commonDir, 'objects');
+    try {
+        for (const line of readFileSync(path.join(objects, 'info', 'alternates'), 'utf8').split(/\r?\n/)) {
+            const entry = line.trim();
+            if (entry !== '' && !entry.startsWith('#')) dirs.push(path.resolve(objects, entry));
+        }
+    } catch {
+        // 没有 alternates
+    }
+    return dirs;
 }
 
 export interface BoundedDiff {
