@@ -43,6 +43,8 @@ DeepSeek and OpenRouter have been used in practice; for voice, SiliconFlow's `Qw
 
 Once an `stt` profile is set up, the main screen starts in **voice mode**: a single large Talk button in the middle (tap to start and tap again to stop, or hold to talk), with the reply shown as captions. To type, click Type or press `Ctrl/Cmd+I`; the text box opens in a popup and closes after sending. Press `Esc` while recording to cancel that recording. To turn voice mode off, set Default input to Text under Settings → Models → Voice. Without an `stt` profile, or when the browser cannot use the microphone, the main screen uses text input automatically. (Translated from the Chinese page; pending review.)
 
+Turn on Continuous conversation under Settings → Models → Voice and the Talk button becomes Start / End conversation: the microphone stays on, each part is sent when you pause for about 0.8 s, replies are read aloud (this needs a `tts` profile), and you can interrupt the reading by speaking. Pauses are detected in the browser only; audio levels are never uploaded. The conversation ends after 8 s without speech by default (3–60 s; reading and waiting for a reply do not count), when the page goes to the background, when the network drops, or with `Esc`. While it is on, the top of the chat and the window title show Microphone on. (Translated from the Chinese page; pending review.)
+
 ## Command line
 
 ```bash

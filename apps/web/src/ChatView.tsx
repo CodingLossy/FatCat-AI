@@ -5,6 +5,7 @@ import { Avatar } from './Avatar.js';
 import { takeAskParam } from './ask-param.js';
 import type { RunStream } from '@fatcat-ai/client';
 import {
+    DEFAULT_SILENCE_END_SECONDS,
     MAX_ATTACHMENTS_PER_MESSAGE,
     MAX_RECORDING_SECONDS,
     type Agent,
@@ -35,6 +36,14 @@ import { Icon } from './Icon.js';
 import { ToolCard } from './ToolCard.js';
 import { UsedMemories } from './UsedMemories.js';
 import { canRecord, type Playback, playSegments, type Recording, startRecording } from './audio.js';
+import {
+    attachConversation,
+    conversationState,
+    endConversation,
+    startConversation,
+    useConversation,
+    type ConversationEnd,
+} from './conversation.js';
 import { captionTail, markdownToSpeech, splitForSpeech } from './speech-text.js';
 import { useAssistantState } from './use-voice.js';
 import { VoiceIndicator } from './VoiceIndicator.js';
@@ -266,7 +275,10 @@ export function ChatView({
     }, [voiceConfig]);
     const { shown, report } = useAssistantState();
     /** 本端正在收音 / 朗读;优先于服务器推来的状态,并带本地电平。 */
-    const [localVoice, setLocalVoice] = useState<'listening' | 'speaking' | null>(null);
+    // 新会话的聊天页接上时连续对话可能仍开着:状态行接着显示「正在听」
+    const [localVoice, setLocalVoice] = useState<'listening' | 'speaking' | null>(() =>
+        conversationState().active ? 'listening' : null,
+    );
     const level = useRef<number | null>(null);
     const [voiceMode, setVoiceModeState] = useState<VoiceMode>('idle');
     const mode = useRef<VoiceMode>('idle');
@@ -284,8 +296,21 @@ export function ChatView({
     const speakRef = useRef<(id: string, markdown: string) => void>(() => undefined);
     // 语音优先(ADR 0049 第 1 节):文字输入弹窗与「查看完整对话」
     const [popupOpen, setPopupOpen] = useState(false);
+    const popupOpenRef = useRef(popupOpen);
+    useEffect(() => {
+        popupOpenRef.current = popupOpen;
+    }, [popupOpen]);
     const [showHistory, setShowHistory] = useState(false);
     const textarea = useRef<HTMLTextAreaElement>(null);
+    // 连续对话(ADR 0049 第 2 节):麦克风由 conversation.ts 管,这里只管转写、排队发送和朗读
+    const conversation = useConversation();
+    const liveRef = useRef<LiveTurn | null>(null);
+    useEffect(() => {
+        liveRef.current = live;
+    }, [live]);
+    /** 运行还没结束时说完的段落,按顺序排队,运行结束后一条条发送。 */
+    const spokenQueueRef = useRef<string[]>([]);
+    const transcribing = useRef(0);
 
     // 当前会话实际会用的配置档:决定能不能发图片(服务器的 model_no_vision 是最后一道检查)
     useEffect(() => {
@@ -356,7 +381,9 @@ export function ChatView({
             }
             setLive(null);
             const voice = voiceConfigRef.current;
-            if (voice?.tts && voice.settings.autoSpeak && current.text && !current.error) {
+            // 连续对话里回复总是朗读(有朗读配置档时);已经有排队的下一句时不读这条旧回复
+            const wantSpeak = voice?.settings.autoSpeak || conversationState().active;
+            if (voice?.tts && wantSpeak && spokenQueueRef.current.length === 0 && current.text && !current.error) {
                 speakRef.current(current.runId ?? 'live', current.text);
             }
             void onSessionsChanged();
@@ -539,9 +566,11 @@ export function ChatView({
             if (playback.current !== current) return;
             playback.current = null;
             setSpeakingId(null);
-            setLocalVoice(null);
             level.current = null;
-            report({ state: 'idle', sessionId });
+            // 连续对话里读完(或被打断)后回到「正在听」
+            const listening = conversationState().active;
+            setLocalVoice(listening ? 'listening' : null);
+            report({ state: listening ? 'listening' : 'idle', sessionId });
         });
     };
 
@@ -619,6 +648,8 @@ export function ChatView({
     };
 
     const pressVoice = () => {
+        // 连续对话开着时麦克风已经在听,不再另外录音
+        if (conversationState().active) return;
         if (mode.current === 'tap') return void finishRecording();
         if (mode.current !== 'idle' || live) return;
         pressedAt.current = performance.now();
@@ -649,6 +680,90 @@ export function ChatView({
         return true;
     };
 
+    // 运行结束后发送排队的下一句
+    const flushQueue = () => {
+        const [next, ...rest] = spokenQueueRef.current;
+        if (next === undefined) return;
+        spokenQueueRef.current = rest;
+        void submit(next);
+    };
+    const flushRef = useRef(flushQueue);
+    /** 连续对话录完一段:转写后发送;运行还没结束时排队。 */
+    const handleSegment = async (blob: Blob) => {
+        transcribing.current++;
+        try {
+            const text = (await api.voice.transcribe(blob)).text;
+            if (!text || !conversationState().active) return;
+            setVoiceNotice(null);
+            if (liveRef.current || spokenQueueRef.current.length > 0) {
+                spokenQueueRef.current = [...spokenQueueRef.current, text];
+                // 运行在转写期间已经结束:这里直接发出队首
+                if (!liveRef.current) flushQueue();
+            } else {
+                await submit(text);
+            }
+        } catch (e) {
+            setError(t('voice.failed', { msg: errorText(e) }));
+        } finally {
+            transcribing.current--;
+        }
+    };
+
+    const conversationEnded = (reason: ConversationEnd) => {
+        setLocalVoice((v) => (v === 'listening' ? null : v));
+        level.current = null;
+        report({ state: 'idle', sessionId });
+        if (reason !== 'user' && reason !== 'left') setVoiceNotice(t(`voice.ended.${reason}`));
+    };
+
+    const beginConversation = async () => {
+        stopSpeaking();
+        setVoiceNotice(null);
+        setError(null);
+        const seconds = voiceConfigRef.current?.settings.silenceEndSeconds ?? DEFAULT_SILENCE_END_SECONDS;
+        try {
+            await startConversation(seconds * 1000);
+            setLocalVoice('listening');
+            report({ state: 'listening', sessionId });
+        } catch (e) {
+            setError(t('voice.micDenied', { msg: errorText(e) }));
+        }
+    };
+
+    const segmentRef = useRef(handleSegment);
+    const endedRef = useRef(conversationEnded);
+    useEffect(() => {
+        segmentRef.current = handleSegment;
+        endedRef.current = conversationEnded;
+    });
+    useEffect(
+        () =>
+            attachConversation({
+                onLevel: (l) => {
+                    if (!playback.current) level.current = l;
+                },
+                // 打断:只停朗读、丢掉还没播的分段,正在进行的运行不取消
+                onSpeechStart: () => {
+                    if (playback.current) stopSpeaking();
+                    setLocalVoice('listening');
+                },
+                onSegment: (blob) => void segmentRef.current(blob),
+                isPaused: () =>
+                    playback.current !== null ||
+                    transcribing.current > 0 ||
+                    liveRef.current !== null ||
+                    spokenQueueRef.current.length > 0,
+                onEnded: (reason) => endedRef.current(reason),
+            }),
+        [],
+    );
+    useEffect(() => {
+        flushRef.current = flushQueue;
+    });
+    useEffect(() => {
+        if (!live && !uploading) flushRef.current();
+    }, [live, uploading]);
+
     const pressRef = useRef(pressVoice);
     const releaseRef = useRef(releaseVoice);
     // 事件监听与 consume 通过 ref 调用最新的函数
@@ -662,6 +777,7 @@ export function ChatView({
     const wantsVoice = voiceConfig?.settings.inputMode === 'voice';
     const voiceFirst = wantsVoice && voiceEnabled;
     const voiceFallback = wantsVoice && !voiceEnabled ? (canRecord() ? 'noStt' : 'noMic') : null;
+    const continuous = voiceFirst && voiceConfig?.settings.continuous === true;
     const cancelRef = useRef(cancelRecording);
     useEffect(() => {
         cancelRef.current = cancelRecording;
@@ -678,7 +794,10 @@ export function ChatView({
                 setPopupOpen((open) => !open);
             } else if (e.key === 'Escape') {
                 if (cancelRef.current()) e.preventDefault();
-                else setPopupOpen(false);
+                else if (conversationState().active && !popupOpenRef.current) {
+                    e.preventDefault();
+                    endConversation('user');
+                } else setPopupOpen(false);
             }
         };
         window.addEventListener('keydown', onKey);
@@ -842,6 +961,18 @@ export function ChatView({
                 {live?.tools.map((tool) => (
                     <ToolCard key={tool.callId} tool={tool} live />
                 ))}
+                {continuous && live ? (
+                    // 连续对话里说话按钮是「结束对话」,停止这次回复的按钮放在字幕下面
+                    <button
+                        type="button"
+                        className="link small"
+                        onClick={() => void stop()}
+                        disabled={!live.runId}
+                        data-testid="voice-stop"
+                    >
+                        {t('chat.stop')}
+                    </button>
+                ) : null}
                 {error ? <p className="error">{t('chat.failed', { msg: error })}</p> : null}
                 {voiceNotice ? (
                     <p className="small warning" role="status">
@@ -858,6 +989,15 @@ export function ChatView({
             data-blank={blank ? '' : undefined}
             data-voice-first={voiceFirst ? '' : undefined}
         >
+            {conversation.active ? (
+                <div className="mic-on" role="status" data-testid="mic-on">
+                    <span className="mic-on-dot" aria-hidden="true" />
+                    <span>{t('voice.micOn')}</span>
+                    <button type="button" className="link small" onClick={() => endConversation('user')}>
+                        {t('voice.endConversation')}
+                    </button>
+                </div>
+            ) : null}
             <div className="chat-head">
                 <VoiceIndicator state={indicatorState} label={indicatorLabel} level={level} />
                 {agents.length > 0 ? (
@@ -971,7 +1111,22 @@ export function ChatView({
                     >
                         {showHistory ? t('voice.hideHistory') : t('voice.history')}
                     </button>
-                    {live ? (
+                    {continuous ? (
+                        <button
+                            type="button"
+                            className={`voice-big${conversation.active ? ' recording' : ''}`}
+                            aria-pressed={conversation.active}
+                            title={t(conversation.active ? 'voice.endConversationHint' : 'voice.startConversationHint')}
+                            onClick={() => (conversation.active ? endConversation('user') : void beginConversation())}
+                            data-testid="voice-conversation"
+                        >
+                            {conversation.active
+                                ? conversation.speech
+                                    ? t('voice.recording')
+                                    : t('voice.endConversation')
+                                : t('voice.startConversation')}
+                        </button>
+                    ) : live ? (
                         <button
                             type="button"
                             className="voice-big voice-stop"

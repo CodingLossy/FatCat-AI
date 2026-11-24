@@ -36,11 +36,13 @@ describe('settings', () => {
             .run(t.ownerId, JSON.stringify(old), Date.now());
         t.repos.settings.update(t.ownerId, { theme: 'cat' });
         const read = t.repos.settings.get(t.ownerId);
-        expect(read.voice).toEqual({ ...old, inputMode: 'voice' });
+        expect(read.voice).toEqual({ ...old, inputMode: 'voice', continuous: false, silenceEndSeconds: 8 });
         expect(read.theme).toBe('cat');
         expect(t.repos.settings.update(t.ownerId, { voice: { inputMode: 'text' } }).voice).toEqual({
             ...old,
             inputMode: 'text',
+            continuous: false,
+            silenceEndSeconds: 8,
         });
     });
 });

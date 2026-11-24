@@ -295,6 +295,8 @@ describe('voice settings and profiles', () => {
             autoSend: false,
             autoSpeak: false,
             inputMode: 'voice',
+            continuous: false,
+            silenceEndSeconds: 8,
         });
         const wrong = await t.sendJson('/api/v1/settings', { voice: { defaultTtsProfileId: t.sttId } }, 'PUT');
         expect(wrong.status).toBe(400);

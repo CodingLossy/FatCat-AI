@@ -45,6 +45,11 @@ export const SpeechRequest = z.strictObject({
 });
 export type SpeechRequest = z.infer<typeof SpeechRequest>;
 
+/** 连续对话自动结束时长的范围与默认值(ADR 0049 第 2.1 节)。 */
+export const MIN_SILENCE_END_SECONDS = 3;
+export const MAX_SILENCE_END_SECONDS = 60;
+export const DEFAULT_SILENCE_END_SECONDS = 8;
+
 export const VoiceInputMode = z.enum(['voice', 'text']);
 export type VoiceInputMode = z.infer<typeof VoiceInputMode>;
 
@@ -62,6 +67,18 @@ export const VoiceSettings = z.object({
      * 默认 `voice`;旧服务器不返回这个字段,客户端按 `text` 处理。
      */
     inputMode: VoiceInputMode.optional(),
+    /**
+     * 连续对话(ADR 0049 第 2 节):说话按钮变成「开始对话 / 结束对话」,麦克风一直开着,由浏览器本地的 VAD 断句。
+     * 默认 false;旧服务器不返回这个字段,客户端按 false 处理。
+     */
+    continuous: z.boolean().optional(),
+    /** 连续对话里这么多秒没听到说话就自动结束(朗读时间不算);整数 3–60,默认 8。 */
+    silenceEndSeconds: z
+        .number()
+        .int()
+        .min(MIN_SILENCE_END_SECONDS)
+        .max(MAX_SILENCE_END_SECONDS)
+        .optional(),
 });
 export type VoiceSettings = z.infer<typeof VoiceSettings>;
 
@@ -71,6 +88,8 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
     autoSend: true,
     autoSpeak: false,
     inputMode: 'voice',
+    continuous: false,
+    silenceEndSeconds: DEFAULT_SILENCE_END_SECONDS,
 };
 
 /** WebSocket 客户端帧 voice-state 的 payload;不带电平(ADR 0021 第 6 节)。 */

@@ -103,6 +103,10 @@ test('switching to English leaves no Chinese text on any page', async ({ page })
             })
         ).replace('中文', '');
         expect(visible, `Chinese text left on ${path}`).not.toMatch(cjk);
+        if (path === '/') {
+            // 没有转写配置档时默认的语音模式退回输入框并给出提示(#130 X 审查):提示的英文也在检查范围内
+            await expect(page.getByText('No speech recognition model yet')).toBeVisible();
+        }
         if (SHOTS && (path === '/items' || path === '/settings')) {
             await page.screenshot({ path: join(SHOTS, `en${path.replace('/', '-')}.png`), fullPage: true });
         }

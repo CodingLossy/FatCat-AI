@@ -12079,6 +12079,14 @@
                             "voice",
                             "text"
                           ]
+                        },
+                        "continuous": {
+                          "type": "boolean"
+                        },
+                        "silenceEndSeconds": {
+                          "type": "integer",
+                          "minimum": 3,
+                          "maximum": 60
                         }
                       },
                       "required": [
@@ -12519,6 +12527,14 @@
                           "voice",
                           "text"
                         ]
+                      },
+                      "continuous": {
+                        "type": "boolean"
+                      },
+                      "silenceEndSeconds": {
+                        "type": "integer",
+                        "minimum": 3,
+                        "maximum": 60
                       }
                     }
                   },
@@ -12693,6 +12709,14 @@
                             "voice",
                             "text"
                           ]
+                        },
+                        "continuous": {
+                          "type": "boolean"
+                        },
+                        "silenceEndSeconds": {
+                          "type": "integer",
+                          "minimum": 3,
+                          "maximum": 60
                         }
                       },
                       "required": [

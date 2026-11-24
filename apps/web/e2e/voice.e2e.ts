@@ -30,13 +30,17 @@ const chatQueue: Interaction[] = [];
 let holdChat = false;
 let releaseChat: () => void = () => undefined;
 const seen: { path: string; contentType: string; body: string }[] = [];
+/** 依次作为转写结果返回;用完后返回 TRANSCRIPT。 */
+const transcripts: string[] = [];
+/** 朗读返回的音频时长(秒);测「朗读时打断」时调长。 */
+let speechSeconds = 0.6;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** 0.6 秒 440 Hz 的 16 位单声道 WAV(合成)。 */
-function toneWav(): Buffer {
+/** 440 Hz 的 16 位单声道 WAV(合成),默认 0.6 秒。 */
+function toneWav(seconds = speechSeconds): Buffer {
     const rate = 8000;
-    const samples = Math.round(rate * 0.6);
+    const samples = Math.round(rate * seconds);
     const buf = Buffer.alloc(44 + samples * 2);
     buf.write('RIFF', 0);
     buf.writeUInt32LE(36 + samples * 2, 4);
@@ -65,7 +69,7 @@ function startMock(): Promise<Server> {
             seen.push({ path: req.url ?? '', contentType: req.headers['content-type'] ?? '', body });
             if (req.url === '/v1/audio/transcriptions') {
                 res.writeHead(200, { 'content-type': 'application/json' });
-                res.end(JSON.stringify({ text: TRANSCRIPT }));
+                res.end(JSON.stringify({ text: transcripts.shift() ?? TRANSCRIPT }));
                 return;
             }
             if (req.url === '/v1/audio/speech') {
@@ -337,4 +341,141 @@ test('语音优先:点按说话、字幕、文字弹窗发送后收起(ADR 0049 
     await expect(page.getByTestId('voice-talk')).toHaveText('说话', { timeout: 10_000 });
     await expect(stop).toHaveCount(0);
     releaseChat();
+});
+
+test('连续对话:本地断句、朗读时打断、静音与后台自动结束(ADR 0049 第 2 节)', async ({ page }) => {
+    await page.goto(base);
+    await page.getByLabel('用户名').fill('owner');
+    await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
+    await page.getByRole('button', { name: '登录' }).click();
+    await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
+    const csrf = (await page.context().cookies()).find((c) => c.name === 'aip_csrf')!.value;
+    const res = await page.request.fetch(`${base}/api/v1/settings`, {
+        method: 'PUT',
+        data: { voice: { autoSpeak: false, inputMode: 'voice', continuous: true, silenceEndSeconds: 3 } },
+        headers: { 'x-csrf-token': csrf },
+    });
+    expect(res.ok()).toBe(true);
+    const cancels: string[] = [];
+    page.on('request', (r) => {
+        if (/\/runs\/[^/]+\/cancel/.test(r.url())) cancels.push(r.url());
+    });
+
+    // 可控的假麦克风:一个振荡器,增益 0 是安静,打开增益就是「在说话」。每次打开麦克风给一条新的流
+    await page.addInitScript(() => {
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        osc.frequency.value = 300;
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        osc.connect(gain);
+        osc.start();
+        const constraints: unknown[] = [];
+        // 记下朗读用的每个 <audio>,用来确认打断时真的停了
+        const played: HTMLMediaElement[] = [];
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+            played.push(this);
+            return play.call(this);
+        };
+        Object.assign(window, {
+            fakeMic: {
+                constraints,
+                played: () => played.map((a) => ({ paused: a.paused, ended: a.ended, at: a.currentTime })),
+                on: () => (gain.gain.value = 0.8),
+                off: () => (gain.gain.value = 0),
+            },
+        });
+        navigator.mediaDevices.getUserMedia = async (c) => {
+            constraints.push(c);
+            await ctx.resume();
+            const dest = ctx.createMediaStreamDestination();
+            gain.connect(dest);
+            return dest.stream;
+        };
+    });
+    const say = async (ms: number) => {
+        await page.evaluate(() => (window as unknown as { fakeMic: { on(): void } }).fakeMic.on());
+        await sleep(ms);
+        await page.evaluate(() => (window as unknown as { fakeMic: { off(): void } }).fakeMic.off());
+    };
+    await page.reload();
+    await page.getByRole('link', { name: '新对话' }).click();
+
+    const conversation = page.getByTestId('voice-conversation');
+    await expect(conversation).toHaveText('开始对话');
+    await expect(page.getByTestId('voice-talk')).toHaveCount(0);
+    const indicator = page.getByTestId('voice-indicator');
+    const transcriptions = () => seen.filter((r) => r.path === '/v1/audio/transcriptions').length;
+    const sttBefore = transcriptions();
+
+    // 开始:顶部和页面标题都标出「麦克风开着」;打开麦克风时要求回声消除与降噪
+    transcripts.push('第一句', '第二句');
+    chatQueue.push(...loadFixture(join(FIXTURES, 'deepseek-chat-stream.json')).interactions);
+    chatQueue.push(...loadFixture(join(FIXTURES, 'deepseek-chat-stream.json')).interactions);
+    speechSeconds = 6;
+    await conversation.click();
+    await expect(page.getByTestId('mic-on')).toContainText('麦克风开着');
+    await expect(conversation).toHaveText('结束对话');
+    await expect(page).toHaveTitle(/^\[麦克风开着\]/);
+    expect(
+        await page.evaluate(() => (window as unknown as { fakeMic: { constraints: unknown[] } }).fakeMic.constraints),
+    ).toEqual([{ audio: { echoCancellation: true, noiseSuppression: true } }]);
+
+    // 很短的声音(咳嗽)不算说话,不转写
+    await sleep(500);
+    await say(100);
+    await sleep(1200);
+    expect(transcriptions()).toBe(sttBefore);
+
+    // 第一段:说完停顿后自动结束并发送;回复读出来
+    await say(700);
+    await expect(page.getByTestId('caption-user')).toHaveText('第一句', { timeout: 10_000 });
+    await expect(page.getByTestId('caption-reply')).toContainText('你好世界', { timeout: 15_000 });
+    await expect(indicator).toHaveAttribute('data-state', 'speaking', { timeout: 10_000 });
+
+    // 朗读时开口:立即停止朗读(6 秒的音频没读完),不取消运行,这一段作为下一条消息发送
+    speechSeconds = 0.6;
+    await page.evaluate(() => (window as unknown as { fakeMic: { on(): void } }).fakeMic.on());
+    await expect(indicator).toHaveAttribute('data-state', 'listening', { timeout: 1500 });
+    const played = await page.evaluate(() =>
+        (
+            window as unknown as { fakeMic: { played(): { paused: boolean; ended: boolean; at: number }[] } }
+        ).fakeMic.played(),
+    );
+    expect(played).toHaveLength(1);
+    expect(played[0]).toMatchObject({ paused: true, ended: false });
+    expect(played[0]!.at).toBeLessThan(5);
+    await sleep(500);
+    await page.evaluate(() => (window as unknown as { fakeMic: { off(): void } }).fakeMic.off());
+    await expect(page.getByTestId('caption-user')).toHaveText('第二句', { timeout: 10_000 });
+    await expect(page.getByTestId('caption-reply')).toContainText('你好世界', { timeout: 15_000 });
+    expect(transcriptions()).toBe(sttBefore + 2);
+    expect(cancels).toEqual([]);
+
+    // 之后 3 秒没人说话(朗读与等回复的时间不算):自动结束,麦克风关闭
+    await expect(page.getByTestId('mic-on')).toHaveCount(0, { timeout: 15_000 });
+    await expect(page.getByText('一直没听到说话,对话已结束。')).toBeVisible();
+    await expect(conversation).toHaveText('开始对话');
+    await expect(page).toHaveTitle(/^FatCat-AI/);
+
+    // 页面进入后台:立即结束
+    await conversation.click();
+    await expect(page.getByTestId('mic-on')).toBeVisible();
+    await page.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+        document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await expect(page.getByTestId('mic-on')).toHaveCount(0);
+    await expect(page.getByText('页面切到了后台,对话已结束,麦克风已关闭。')).toBeVisible();
+    await page.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+    });
+
+    // Esc 结束对话
+    await conversation.click();
+    await expect(page.getByTestId('mic-on')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('mic-on')).toHaveCount(0);
+    expect(transcriptions()).toBe(sttBefore + 2);
 });
