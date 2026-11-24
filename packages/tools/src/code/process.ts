@@ -46,7 +46,9 @@ export class ProcessError extends Error {
 /** 结束整个进程树。 */
 export function killTree(pid: number, platform: NodeJS.Platform = process.platform): void {
     if (platform === 'win32') {
-        execFile('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true }, () => undefined);
+        // 绝对路径:裸名会先在 cwd(项目文件夹)里找
+        const taskkill = path.win32.join(path.win32.dirname(systemCmd()), 'taskkill.exe');
+        execFile(taskkill, ['/pid', String(pid), '/T', '/F'], { windowsHide: true }, () => undefined);
         return;
     }
     try {

@@ -150,7 +150,7 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
             expect(() => checkRepoPath(bad), bad).toThrow();
         }
         expect(() => checkRepoPath('C:\\Windows', 'win32')).toThrow();
-        for (const drive of ['C:x', 'a:b']) {
+        for (const drive of ['C:x', 'C:', 'a:b']) {
             expect(() => checkRepoPath(drive, 'win32'), drive).toThrow(ToolDeniedError);
             expect(() => checkRepoPath(drive, 'linux'), drive).toThrow(ToolDeniedError);
         }
@@ -253,7 +253,8 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
             `node -e "require('fs').writeFileSync(process.argv[1], 'x')" ${marker}`,
         );
         git(inner, 'config', 'filter.sf.required', 'true');
-        writeFileSync(join(inner, 'y.txt'), 'a\nb\n');
+        // 大小相同、内容不同:大小一变 git 只比大小,不会运行过滤器
+        writeFileSync(join(inner, 'y.txt'), 'b\n');
         const t = tools({ projects: [project({ path: dir })], roots: [base] });
         await exec(t('git.diff'), { project: 'p1' });
         expect(existsSync(marker)).toBe(false);
