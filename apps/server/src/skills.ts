@@ -3,7 +3,7 @@
 
 // 已安装的 Skill(ADR 0048 第 2、5、8 节):内置 Skill 与已安装插件声明的 Skill。插件 Skill 的启用状态就是所属插件的
 // 启用状态;内置 Skill 的开关在 settings 的 `skills.builtin`(缺省启用)。说明运行时从已安装的包目录读取,不入库。
-import { lstatSync, readFileSync } from 'node:fs';
+import { closeSync, constants, fstatSync, openSync, readFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import type { RunSkill, SkillSource } from '@fatcat-ai/agent';
 import {
@@ -122,11 +122,18 @@ function readInstructions(dir: string, rel: string): string | null {
     const path = resolve(dir, rel);
     const inside = relative(dir, path);
     if (inside === '' || inside.startsWith('..') || inside.includes(`..${sep}`)) return null;
+    let fd: number | null = null;
     try {
-        const stat = lstatSync(path);
+        // 先打开再对同一个句柄检查和读取,避免检查之后文件被换掉;POSIX 上不跟随符号链接
+        fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+        const stat = fstatSync(fd);
         if (!stat.isFile() || stat.size > PLUGIN_SKILL_INSTRUCTIONS_MAX_BYTES) return null;
-        return new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(path));
+        const bytes = readFileSync(fd);
+        if (bytes.byteLength > PLUGIN_SKILL_INSTRUCTIONS_MAX_BYTES) return null;
+        return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     } catch {
         return null;
+    } finally {
+        if (fd !== null) closeSync(fd);
     }
 }
