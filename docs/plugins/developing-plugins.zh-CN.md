@@ -59,6 +59,29 @@ await plugin.run();
 
 插件提供了但没声明的工具不会被注册。工具实际的级别是声明的级别加两条下限:只要插件声明了任何 `net` 域名,`read` 工具就被提到 `write`;带 `sendsData: true` 的工具一律是 `external`,不能预授权。单有 `net` 权限不会让工具变成 `external`。
 
+### Skills:指令包(ADR 0048)
+
+插件还可以带 **Skill**:一段给模型看的 markdown 说明,加上它要用的工具。Skill 不运行代码,也不改变任何审批,只告诉模型做某类事时该怎么做。每个插件最多 10 个 Skill;带 `skills`(或省略 `entry`)的插件,`engines.fatcat` 下限至少是 `>=1.2.0`。
+
+```json
+"skills": [
+  {
+    "id": "trip-notes",
+    "name": { "zh-CN": "旅行笔记" },
+    "description": "Use when the user asks to plan a trip or keep travel notes.",
+    "instructions": "skills/trip-notes.md",
+    "toolSet": ["web.fetch", "kb.search"]
+  }
+]
+```
+
+- `instructions` 是包内的 `.md` 文件(不能含 `..`、不能是绝对路径),UTF-8,不超过 16 KiB,安装时检查。
+- `toolSet` 只能写核心工具(`fs.`、`mail.`、`web.fetch`、`browser.`、`kb.search` 等)和自己的工具(`plugin.<自己的 id>.`);别的插件的工具、MCP 工具、`skill.`、`tools.`、`delegate` 会被拒绝。
+- Skill 可以带 `taskTemplates`,模板可选的 `toolSet` 必须在 Skill 的 `toolSet` 之内;插件级与 Skill 的模板合计最多 10 个。
+- **纯指令插件**省略 `entry`:不起进程,必须至少有一个 Skill,不能声明 `tools`、`net`、`secrets`、`items` 或 `settings`(`"permissions": {}` 即可),包里只能有 `plugin.json`、markdown 文件和 `LICENSE*` / `NOTICE*`。
+
+助手通过 `skill.use` 使用已安装的 Skill,这部分在 M13 的下一个 PR 实现(待完成)。
+
 ## 3. SDK 提供什么
 
 - `registerTool({ name, description, inputSchema, handler })`:`handler(args, ctx)` 返回字符串或 `ToolResult`,可以是异步的。

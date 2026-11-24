@@ -125,14 +125,131 @@ describe('plugin.json', () => {
 
     it('rejects a missing required field and reports the path', () => {
         const value = manifest();
-        delete value.entry;
-        expect(check(value)).toEqual({ ok: false, paths: ['entry'] });
+        delete value.permissions;
+        expect(check(value)).toEqual({ ok: false, paths: ['permissions'] });
     });
 
     it('enforces the 64 KiB limit and reports invalid JSON', () => {
         const big = JSON.stringify(manifest({ 'x-pad': 'a'.repeat(70 * 1024) }));
         expect(parsePluginManifest(big)).toMatchObject({ ok: false, error: 'too_large' });
         expect(parsePluginManifest('{oops')).toMatchObject({ ok: false, error: 'invalid_json' });
+    });
+});
+
+const SKILL = {
+    id: 'forecast-helper',
+    name: { en: 'Forecast helper' },
+    description: 'Use when the user asks about the weather.',
+    instructions: 'skills/forecast.md',
+    toolSet: ['web.fetch', 'plugin.weather.forecast'],
+};
+
+/** 纯指令插件:没有 entry、只有 Skill,权限写成 {}。 */
+function instructionOnly(patch: Record<string, unknown> = {}): Record<string, unknown> {
+    const value = manifest({
+        engines: { fatcat: '>=1.2.0' },
+        permissions: {},
+        skills: [{ ...SKILL, toolSet: ['web.fetch', 'kb.search'] }],
+    });
+    delete value.entry;
+    delete value.settings;
+    return { ...value, ...patch };
+}
+
+describe('plugin.json skills (ADR 0048)', () => {
+    it('accepts skills next to a process, and an instruction-only plugin', () => {
+        expect(check(manifest({ engines: { fatcat: '>=1.2.0' }, skills: [SKILL] })).ok).toBe(true);
+        expect(check(instructionOnly()).ok).toBe(true);
+        const template = {
+            title: { en: 'Daily' },
+            prompt: 'Summarize',
+            trigger: { kind: 'cron', expression: '0 8 * * *' },
+            toolSet: ['mail.list', 'mail.read'],
+        };
+        expect(
+            check(instructionOnly({ skills: [{ ...SKILL, toolSet: ['mail.'], taskTemplates: [template] }] })).ok,
+        ).toBe(true);
+    });
+
+    it.each([
+        ['net access', { permissions: { net: ['api.example.org'] } }, 'permissions.net'],
+        ['secrets', { permissions: { secrets: [{ name: 'TOKEN' }] } }, 'permissions.secrets'],
+        ['tools', { permissions: { tools: [{ name: 'x', risk: 'read' }] } }, 'permissions.tools'],
+        ['items', { permissions: { items: { categories: [] } } }, 'permissions.items'],
+        ['settings', { settings: { type: 'object', properties: {} } }, 'settings'],
+        ['no skills', { skills: undefined }, 'skills'],
+        ['an engines floor below 1.2.0', { engines: { fatcat: '>=1.1.0' } }, 'engines.fatcat'],
+    ])('越权:an instruction-only plugin with %s is rejected', (_name, patch, path) => {
+        const result = check(instructionOnly(patch));
+        expect(result.ok).toBe(false);
+        expect(result.paths).toContain(path);
+    });
+
+    it.each([
+        ['another plugin', 'plugin.other.tool'],
+        ['another plugin prefix', 'plugin.other.'],
+        ['every plugin', 'plugin.'],
+        ['an MCP server', 'mcp.github.'],
+        ['an MCP tool', 'mcp.github.search'],
+        ['skill.use', 'skill.use'],
+        ['tools.enable', 'tools.'],
+        ['delegate', 'delegate'],
+        ['an undeclared own tool', 'plugin.weather.missing'],
+    ])('越权:a skill toolSet that lists %s is rejected', (_name, entry) => {
+        const result = check(manifest({ engines: { fatcat: '>=1.2.0' }, skills: [{ ...SKILL, toolSet: [entry] }] }));
+        expect(result).toEqual({ ok: false, paths: ['skills.0.toolSet.0'] });
+    });
+
+    it('an instruction-only plugin cannot list its own tools (it has none)', () => {
+        const result = check(instructionOnly({ skills: [{ ...SKILL, toolSet: ['plugin.weather.'] }] }));
+        expect(result).toEqual({ ok: false, paths: ['skills.0.toolSet.0'] });
+    });
+
+    it.each([
+        ['".."', '../outside.md'],
+        ['an absolute path', '/etc/skill.md'],
+        ['a drive letter', 'C:/skill.md'],
+        ['a backslash', 'skills\\a.md'],
+        ['a non-markdown file', 'skills/run.js'],
+    ])('rejects instructions with %s', (_name, instructions) => {
+        expect(check(instructionOnly({ skills: [{ ...SKILL, toolSet: ['kb.search'], instructions }] })).ok).toBe(false);
+    });
+
+    it('rejects skills with an engines floor below 1.2.0, even with a process', () => {
+        expect(check(manifest({ skills: [SKILL] })).paths).toEqual(['engines.fatcat']);
+    });
+
+    it('rejects a template toolSet that goes beyond the skill toolSet', () => {
+        const template = {
+            title: { en: 'Daily' },
+            prompt: 'Summarize',
+            trigger: { kind: 'cron', expression: '0 8 * * *' },
+            toolSet: ['mail.list', 'mail.send', 'fs.'],
+        };
+        const result = check(
+            instructionOnly({ skills: [{ ...SKILL, toolSet: ['mail.list', 'mail.send'], taskTemplates: [template] }] }),
+        );
+        expect(result).toEqual({ ok: false, paths: ['skills.0.taskTemplates.0.toolSet'] });
+    });
+
+    it('limits skills to 10 with unique ids, and task templates to 10 in total', () => {
+        const many = Array.from({ length: 11 }, (_, i) => ({ ...SKILL, id: `skill-${i}`, toolSet: ['kb.search'] }));
+        expect(check(instructionOnly({ skills: many })).ok).toBe(false);
+        const twice = [SKILL, SKILL].map((s) => ({ ...s, toolSet: ['kb.search'] }));
+        expect(check(instructionOnly({ skills: twice })).ok).toBe(false);
+        const template = { title: { en: 'x' }, prompt: 'p', trigger: { kind: 'cron', expression: '0 8 * * *' } };
+        const withTemplates = (n: number) => ({
+            ...SKILL,
+            toolSet: ['kb.search'],
+            taskTemplates: Array(n).fill(template),
+        });
+        expect(check(instructionOnly({ taskTemplates: Array(5).fill(template), skills: [withTemplates(5)] })).ok).toBe(
+            true,
+        );
+        expect(check(instructionOnly({ taskTemplates: Array(5).fill(template), skills: [withTemplates(6)] }))).toEqual({
+            ok: false,
+            paths: ['taskTemplates'],
+        });
     });
 });
 

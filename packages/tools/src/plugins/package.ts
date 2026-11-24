@@ -17,7 +17,12 @@ import {
     rmSync,
 } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
-import { type PluginManifest, parsePluginManifest, satisfiesEngine } from '@fatcat-ai/shared';
+import {
+    PLUGIN_SKILL_INSTRUCTIONS_MAX_BYTES,
+    type PluginManifest,
+    parsePluginManifest,
+    satisfiesEngine,
+} from '@fatcat-ai/shared';
 
 export const PACKAGE_LIMITS = {
     totalBytes: 200 * 1024 * 1024,
@@ -174,10 +179,18 @@ export function validateStagedPackage(
         );
     }
     const { manifest } = result;
-    const mainPath = join(stagingDir, manifest.entry.main);
-    if (!existsSync(mainPath) || !fstatOk(mainPath)) {
-        throw new PluginPackageError('plugin_package_invalid', `entry.main "${manifest.entry.main}" does not exist`);
+    if (manifest.entry) {
+        const mainPath = join(stagingDir, manifest.entry.main);
+        if (!existsSync(mainPath) || !fstatOk(mainPath)) {
+            throw new PluginPackageError(
+                'plugin_package_invalid',
+                `entry.main "${manifest.entry.main}" does not exist`,
+            );
+        }
+    } else {
+        checkInstructionOnlyFiles(stagingDir);
     }
+    for (const skill of manifest.skills ?? []) checkInstructions(stagingDir, skill.id, skill.instructions);
     if (!satisfiesEngine(coreVersion, manifest.engines.fatcat)) {
         throw new PluginPackageError(
             'plugin_incompatible',
@@ -185,6 +198,39 @@ export function validateStagedPackage(
         );
     }
     return { manifest, contentSha256: hashPluginDir(stagingDir) };
+}
+
+/** 纯指令插件包里允许的文件(ADR 0048 第 2 节):`plugin.json`、markdown 和许可证文本。 */
+export function isInstructionOnlyFile(rel: string): boolean {
+    const base = rel.split('/').pop() ?? rel;
+    return rel === 'plugin.json' || /\.md$/i.test(base) || /^(LICENSE|NOTICE)/i.test(base);
+}
+
+function checkInstructionOnlyFiles(stagingDir: string): void {
+    const { files } = scanPackageDir(stagingDir);
+    const extra = files.find((file) => !isInstructionOnlyFile(file.rel));
+    if (extra) {
+        throw new PluginPackageError(
+            'plugin_package_invalid',
+            `${extra.rel}: a plugin without "entry" may only contain plugin.json, markdown and license files`,
+        );
+    }
+}
+
+/** Skill 的 instructions:文件存在、是普通文件、不超过 16 KiB、是合法的 UTF-8(ADR 0048 第 1 节)。 */
+function checkInstructions(stagingDir: string, skillId: string, rel: string): void {
+    const path = join(stagingDir, rel);
+    const fail = (problem: string): never => {
+        throw new PluginPackageError('plugin_package_invalid', `skill "${skillId}": instructions "${rel}" ${problem}`);
+    };
+    if (!existsSync(path) || !fstatOk(path)) fail('does not exist');
+    const bytes = readFileSync(path);
+    if (bytes.byteLength > PLUGIN_SKILL_INSTRUCTIONS_MAX_BYTES) fail('is larger than 16 KiB');
+    try {
+        new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+        fail('is not valid UTF-8');
+    }
 }
 
 function fstatOk(path: string): boolean {

@@ -66,6 +66,37 @@ with two floors: if the plugin declares any `net` domain, a `read` tool is raise
 `sendsData: true` is always `external` and cannot be pre-authorized. A `net` permission alone does not make a tool
 `external`.
 
+### Skills: instruction packs (ADR 0048)
+
+A plugin can also ship **skills**: a short markdown guide for the model plus the tools it needs. Skills never run code
+and never change approvals; they only tell the model how to do a kind of job. A plugin may have up to 10 skills, and
+any plugin with `skills` (or without `entry`) needs `engines.fatcat` of at least `>=1.2.0`.
+
+```json
+"skills": [
+  {
+    "id": "trip-notes",
+    "name": { "en": "Trip notes" },
+    "description": "Use when the user asks to plan a trip or keep travel notes.",
+    "instructions": "skills/trip-notes.md",
+    "toolSet": ["web.fetch", "kb.search"]
+  }
+]
+```
+
+- `instructions` is a `.md` file inside the package (no `..`, no absolute path), UTF-8, at most 16 KiB. It is checked
+  when the plugin is installed.
+- `toolSet` lists core tools (`fs.`, `mail.`, `web.fetch`, `browser.`, `kb.search`, ...) and your own tools
+  (`plugin.<your id>.`). Other plugins' tools, MCP tools, `skill.`, `tools.` and `delegate` are rejected.
+- A skill may carry `taskTemplates`; a template's optional `toolSet` must stay inside the skill's `toolSet`. Plugin and
+  skill templates together are limited to 10.
+- **Instruction-only plugins** leave out `entry`. They start no process, must declare at least one skill, cannot
+  declare `tools`, `net`, `secrets`, `items` or `settings` (`"permissions": {}` is fine), and the package may only
+  contain `plugin.json`, markdown files and `LICENSE*` / `NOTICE*` files.
+
+The assistant starts using installed skills with the `skill.use` tool in the next pull request of M13 (feature
+pending).
+
 ## 3. What the SDK gives you
 
 - `registerTool({ name, description, inputSchema, handler })`: `handler(args, ctx)` returns a string or a `ToolResult`, and may be async.

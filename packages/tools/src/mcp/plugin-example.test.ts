@@ -15,9 +15,10 @@ describe('example plugin "hello"', () => {
         const result = parsePluginManifest(readFileSync(`${dir}plugin.json`));
         expect(result).toMatchObject({ ok: true });
         if (!result.ok) return;
+        expect(result.manifest.entry).toBeDefined();
 
         const client = new StdioMcpClient(
-            { command: process.execPath, args: [`${dir}${result.manifest.entry.main}`], cwd: dir, envPassthrough: [] },
+            { command: process.execPath, args: [`${dir}${result.manifest.entry?.main}`], cwd: dir, envPassthrough: [] },
             { timeoutMs: 15_000 },
         );
         try {
