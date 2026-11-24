@@ -182,8 +182,8 @@ export type AuditQuery = z.infer<typeof AuditQuery>;
 export const UntrustedContent = z.object({
     untrusted: z.literal(true),
     source: z.object({
-        kind: z.enum(['web', 'file', 'mcp', 'plugin', 'email', 'item']),
-        /** URL、文件路径、mcp.<server>.<tool> 或条目 id。 */
+        kind: z.enum(['web', 'file', 'mcp', 'plugin', 'email', 'item', 'skill']),
+        /** URL、文件路径、mcp.<server>.<tool>、条目 id 或 Skill 的全局 id。 */
         ref: z.string(),
     }),
     content: z.string(),

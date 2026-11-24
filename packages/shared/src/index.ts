@@ -29,6 +29,7 @@ export * from './agents.js';
 export * from './sessions.js';
 export * from './secrets.js';
 export * from './settings.js';
+export * from './skills.js';
 export * from './time-zone.js';
 export * from './tasks.js';
 export * from './tools.js';

@@ -32,6 +32,8 @@ import { json } from './routes/common.js';
 import { memoryRoutes } from './routes/memory.js';
 import { modelRoutes } from './routes/models.js';
 import { agentRoutes } from './routes/agents.js';
+import { skillRoutes } from './routes/skills.js';
+import { SkillService } from './skills.js';
 import { runRoutes } from './routes/runs.js';
 import { settingsRoutes } from './routes/settings.js';
 import type { ItemService, KnowledgeBase } from '@fatcat-ai/items';
@@ -76,6 +78,8 @@ export interface AppDeps {
     mcp?: McpControl;
     /** 插件管理(ADR 0040);不给时按需创建(只适合测试与导出 OpenAPI 文档,数据目录取 config.dataDir)。 */
     plugins?: PluginService;
+    /** 已安装的 Skill(ADR 0048);不给时按 dataDir 下的插件目录创建(没有内置 Skill)。 */
+    skills?: SkillService;
     /** 邮件同步(ADR 0016);不给时按需创建(不会自动开始定时同步)。 */
     mail?: MailService;
     /** 知识库(ADR 0015):邮件附件入库、删除账户后的清理。 */
@@ -162,6 +166,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             dataDir: deps.config.dataDir ?? join(tmpdir(), 'fatcat-ai-plugins-unconfigured'),
             redact: deps.redact ?? ((text) => text),
         });
+    const skills = deps.skills ?? new SkillService({ repos, codeRoot: plugins.codeRoot });
     const runDeps = { repos, bus: deps.bus, runs: deps.runs, secrets: deps.secrets, files };
     const embeddings =
         deps.embeddings ??
@@ -384,6 +389,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         )
         .route('/', runRoutes(runDeps))
         .route('/', agentRoutes({ repos, runs: deps.runs }))
+        .route('/', skillRoutes({ skills }))
         .route('/', channelRoutes({ repos, hub: channels, wechat }))
         .route(
             '/',

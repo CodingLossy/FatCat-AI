@@ -12,6 +12,8 @@ export {
     MAX_TOOL_STEPS,
     type MemoryTurnContext,
     type ResolvedAgent,
+    type RunSkill,
+    type SkillSource,
     type RunAgent,
     RunConflictError,
     RunManager,

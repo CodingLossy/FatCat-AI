@@ -8,6 +8,7 @@ import { type DelegateRequest, type DelegateResult, ToolDeniedError } from '@fat
 import { type LoopCtx, problem, type ResolvedAgent, type RunHost, tokensOf } from './common.js';
 import { systemMessage } from './context-builder.js';
 import { isWithheld, runCalls } from './tool-step.js';
+import { autoUseSkills, enabledSkills, usableSkills } from './skills.js';
 
 /** 每个运行内同时进行的委派数上限(ADR 0042 第 3 节)。 */
 export const DEFAULT_DELEGATE_PARALLELISM = 3;
@@ -144,6 +145,10 @@ async function runChild(
         withheldPrefixes: parent.withheldPrefixes,
         // 子运行总有代理的工具集,按需组不生效;开启状态也不从父运行继承
         activeGroups: new Set(),
+        // 子运行不继承父运行用过的 Skill;子代理的 Skill 只来自它自己的角色(ADR 0048 第 4 节)
+        skills: enabledSkills(host, ownerId),
+        usedSkills: new Set(),
+        catalog: [],
         noMemory: parent.noMemory || agent.memoryScope === 'none',
         initiator: agent.name,
         depth: parent.depth + 1,
@@ -154,8 +159,9 @@ async function runChild(
         profile: ownProfile ?? parent.profile,
     };
 
+    ctx.catalog = usableSkills(host, ctx);
     const messages: ChatMessage[] = [];
-    if (tools?.size) messages.push(systemMessage(host, ownerId));
+    if (tools?.size) messages.push(systemMessage(host, ownerId, [], ctx.catalog));
     messages.push({ role: 'system', content: DELEGATED_NOTE });
     if (agent.prompt.trim()) messages.push({ role: 'system', content: agent.prompt.trim() });
     messages.push({
@@ -168,7 +174,10 @@ async function runChild(
     let stopped: DelegateResult['stopped'];
     try {
         const provider = options.providerFor(ctx.profile);
-        for (let step = 0; ; step++) {
+        const autoCancelled =
+            Boolean(agent.skills?.length) && (await autoUseSkills(host, ctx, agent.skills ?? [], messages, runCalls));
+        if (autoCancelled) stopped = timedOut ? 'budget' : 'cancelled';
+        for (let step = 0; !autoCancelled; step++) {
             if (ctx.signal.aborted) {
                 stopped = timedOut ? 'budget' : 'cancelled';
                 break;

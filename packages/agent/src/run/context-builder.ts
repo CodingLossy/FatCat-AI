@@ -8,7 +8,8 @@ import type { ChatMessage } from '@fatcat-ai/providers';
 import type { ModelProfileRecord } from '@fatcat-ai/storage';
 import { promptText, toolGroupLabel } from '@fatcat-ai/i18n';
 import { DEFAULT_CONTEXT_WINDOW, planContext, SUMMARY_PREFIX, textOf, toChatMessages, transcript } from '../context.js';
-import type { MemoryTurnContext, RunHost, StartedRun, StartRunInput } from './common.js';
+import type { MemoryTurnContext, RunHost, RunSkill, StartedRun, StartRunInput } from './common.js';
+import { skillCatalogLine } from './skills.js';
 
 /** 通用系统提示;文字在提示注册表里(`system.base`,ADR 0047 第 3 节),这里保留原导出名作别名。 */
 export const SYSTEM_PROMPT = promptText('system.base');
@@ -26,11 +27,19 @@ export function groupCatalogLine(groups: readonly string[]): string {
 
 /**
  * 通用系统提示加当前时间;根运行和子运行共用(只有注册了工具时才加)。
- * groups 是能用 tools.enable 开启的按需组,非空时在时间行之前加一行目录(时间行保持在最后,ADR 0023 第 4 节)。
+ * groups 是能用 tools.enable 开启的按需组,非空时在时间行之前加一行目录(时间行保持在最后,ADR 0023 第 4 节);
+ * skills 是本次运行能用的 Skill,非空时在按需组目录之后、时间行之前加一行 Skill 目录(ADR 0048 第 3.1 节)。
  */
-export function systemMessage(host: RunHost, ownerId: string, groups: readonly string[] = []): ChatMessage {
+export function systemMessage(
+    host: RunHost,
+    ownerId: string,
+    groups: readonly string[] = [],
+    skills: readonly RunSkill[] = [],
+): ChatMessage {
     const lines = [SYSTEM_PROMPT];
     if (groups.length > 0) lines.push(groupCatalogLine(groups));
+    const catalog = skillCatalogLine(skills);
+    if (catalog) lines.push(catalog);
     lines.push(currentTimeLine(host.options.repos.settings.get(ownerId), host.now()));
     return { role: 'system', content: lines.join('\n') };
 }
@@ -83,6 +92,7 @@ export async function buildContext(
     memory: readonly string[] = [],
     persona = '',
     groups: readonly string[] = [],
+    skills: readonly RunSkill[] = [],
 ): Promise<ChatMessage[]> {
     const { options } = host;
     const { repos } = options;
@@ -111,7 +121,7 @@ export async function buildContext(
         }
     }
     const out: ChatMessage[] = [];
-    if (options.tools?.size) out.push(systemMessage(host, ownerId, groups));
+    if (options.tools?.size) out.push(systemMessage(host, ownerId, groups, skills));
     // 代理的人格提示词放在通用系统提示之后;它只能补充角色,工具集与审批不由提示词决定
     if (persona.trim()) out.push({ role: 'system', content: persona.trim() });
     // digest 与记忆块是数据:放在系统提示之后、对话之前(补充设计第 4.4–4.5 节)

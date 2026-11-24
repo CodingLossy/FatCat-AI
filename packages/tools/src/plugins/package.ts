@@ -200,10 +200,10 @@ export function validateStagedPackage(
     return { manifest, contentSha256: hashPluginDir(stagingDir) };
 }
 
-/** 纯指令插件包里允许的文件(ADR 0048 第 2 节):`plugin.json`、markdown 和许可证文本。 */
+/** 纯指令插件包里允许的文件(ADR 0048 第 2 节):`plugin.json`、markdown 和 `LICENSE` / `NOTICE`(可带 .md / .txt)。 */
 export function isInstructionOnlyFile(rel: string): boolean {
     const base = rel.split('/').pop() ?? rel;
-    return rel === 'plugin.json' || /\.md$/i.test(base) || /^(LICENSE|NOTICE)/i.test(base);
+    return rel === 'plugin.json' || /\.md$/i.test(base) || /^(LICENSE|NOTICE)(\.(md|txt))?$/i.test(base);
 }
 
 function checkInstructionOnlyFiles(stagingDir: string): void {

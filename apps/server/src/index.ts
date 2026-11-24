@@ -25,6 +25,7 @@ import { runInWorker } from '@fatcat-ai/mail';
 import { createApp } from './app.js';
 import { createMcpControl } from './mcp-setup.js';
 import { PluginService } from './plugin-setup.js';
+import { SkillService } from './skills.js';
 import { createMailService } from './mail-setup.js';
 import { promptRef } from '@fatcat-ai/i18n';
 import { createSleeper } from '@fatcat-ai/memory';
@@ -198,9 +199,12 @@ const bus = new EventBus();
 // 客户端执行的调用:桌面壳通过 WebSocket 声明能力,浏览器截图交给它(ADR 0046 第 14 节)
 const clientCalls = new ClientCalls();
 const attachmentFiles = createAttachmentFiles(config.dataDir);
+// 已安装的 Skill(ADR 0048):插件包在 <dataDir>/plugins 下;内置 Skill 由 feat/builtin-skills 加入
+const skills = new SkillService({ repos, codeRoot: join(config.dataDir, 'plugins') });
 const runs = new RunManager({
     repos,
     bus,
+    skills,
     providerFor,
     loadImage: createImageLoader(repos, attachmentFiles),
     tools: createToolRegistry(
@@ -334,6 +338,7 @@ const app = createApp({
     scheduler,
     taskComplete: createMailComplete(repos, providerFor),
     embeddings,
+    skills,
     config: { ...config, setupCode },
     repos,
     logger,

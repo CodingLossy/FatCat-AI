@@ -420,6 +420,8 @@ function headOf(entry: string): string {
  * 纯指令插件没有自己的工具,也不能列 `plugin.<自己>.`。没有问题时返回 null。
  */
 export function skillToolSetProblem(entry: string, pluginId: string, hasEntry: boolean): string | null {
+    // 工具名都是小写:大小写变体(`Skill.use`、`MCP.x`)匹配不到任何工具,只会是死条目,一律拒绝
+    if (entry !== entry.toLowerCase()) return `"${entry}": skill tool sets must be lower case`;
     const head = headOf(entry);
     if (RUN_CONTROL.includes(head)) return `"${entry}" is a run-control tool and cannot be listed by a skill`;
     if (head === 'mcp')
