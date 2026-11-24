@@ -65,23 +65,42 @@ export function hardeningArgs(): string[] {
         'protocol.allow=never',
         '-c',
         'core.untrackedCache=false',
+        // 签名校验会运行 gpg.program 等程序(log.showSignature、仓库配置的 gpg 路径)
+        '-c',
+        'log.showSignature=false',
+        '-c',
+        'gpg.program=',
+        '-c',
+        'gpg.ssh.program=',
+        '-c',
+        'gpg.x509.program=',
     ];
 }
 
-/** 名字合法的过滤器驱动(配置里读出来的,仍然只拼进 -c 的键里)。 */
-const DRIVER = /^[A-Za-z0-9._-]{1,100}$/;
+/** 能安全拼进 -c 键里的驱动名:没有换行、NUL 与 =(-c 按第一个 = 分开键和值)。 */
+const SAFE_DRIVER = /^[^\n\r\0=]{1,200}$/;
 
 /**
  * 配置里定义的 clean / smudge / process 过滤器:对比工作区时 git 会运行 clean 过滤器,
  * 所以把每个驱动都改成空命令且不要求必须成功。读配置本身不执行任何命令。
+ * 用 -z 按 NUL 分隔读取,子节名可以含任意字符(git 按最后一个点切分键);名字无法安全覆盖时拒绝这次调用。
  */
-async function filterOverrides(cwd: string): Promise<string[]> {
-    const result = await runRaw(cwd, ['config', '--get-regexp', '^filter\\.'], false).catch(() => null);
-    if (!result) return [];
+export function filterOverridesFrom(raw: string): string[] {
     const drivers = new Set<string>();
-    for (const line of result.split('\n')) {
-        const match = /^filter\.(.+)\.(clean|smudge|process|required)\s/i.exec(line);
-        if (match && DRIVER.test(match[1]!)) drivers.add(match[1]!);
+    for (const entry of raw.split('\0')) {
+        if (entry === '') continue;
+        const key = entry.split('\n', 1)[0]!;
+        if (!/^filter\./i.test(key)) continue;
+        const dot = key.lastIndexOf('.');
+        const driver = dot > 'filter.'.length ? key.slice('filter.'.length, dot) : '';
+        if (driver === '') continue;
+        if (!SAFE_DRIVER.test(driver)) {
+            throw new GitError(
+                'the repository defines a filter driver whose name cannot be overridden safely',
+                'git_failed',
+            );
+        }
+        drivers.add(driver);
     }
     return [...drivers].flatMap((d) => [
         '-c',
@@ -93,6 +112,18 @@ async function filterOverrides(cwd: string): Promise<string[]> {
         '-c',
         `filter.${d}.required=false`,
     ]);
+}
+
+async function filterOverrides(cwd: string): Promise<string[]> {
+    let raw: string;
+    try {
+        raw = await runRaw(cwd, ['config', '-z', '--get-regexp', '^filter\\.'], false);
+    } catch (error) {
+        // 没有任何 filter 配置时 git config 以 1 退出
+        if (error instanceof GitError && error.code === 'git_failed') return [];
+        throw error;
+    }
+    return filterOverridesFrom(raw);
 }
 
 async function runRaw(cwd: string, args: readonly string[], withFilters: boolean): Promise<string> {

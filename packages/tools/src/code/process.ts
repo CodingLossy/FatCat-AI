@@ -65,34 +65,39 @@ export function killTree(pid: number, platform: NodeJS.Platform = process.platfo
 }
 
 /**
- * Windows 上按 PATH 与 PATHEXT 找到命令的完整路径(`pnpm` → `...\pnpm.cmd`);其他系统原样返回,由 spawn 查 PATH。
- * 找不到时返回原名,spawn 会报 ENOENT。
+ * Windows 上按 PATH 与 PATHEXT 找到命令的完整路径(`pnpm` → `...\pnpm.cmd`);其他系统原样返回,由 spawn 查 PATH
+ * (posix 的 execvp 不查当前目录)。Windows 的 spawn 对裸名会先查 cwd,而 cwd 是项目文件夹、内容不可信,
+ * 所以找不到时抛 not_found,绝不把裸名交给 spawn。带路径分隔符的相对路径按项目目录解析(是用户登记的)。
  */
-export function resolveCommand(file: string, env: NodeJS.ProcessEnv, platform: NodeJS.Platform): string {
+export function resolveCommand(file: string, env: NodeJS.ProcessEnv, platform: NodeJS.Platform, cwd: string): string {
     if (platform !== 'win32') return file;
     const api = path.win32;
     const exts = (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean);
-    const hasExt = api.extname(file) !== '';
-    const candidates = (dir: string) =>
-        hasExt ? [api.join(dir, file)] : exts.map((ext) => api.join(dir, file + ext.toLowerCase()));
-    const dirs =
-        api.isAbsolute(file) || file.includes('\\') || file.includes('/')
-            ? ['']
-            : (env.PATH ?? env.Path ?? '').split(';');
-    for (const dir of dirs) {
-        for (const candidate of dir === ''
-            ? hasExt
-                ? [file]
-                : exts.map((e) => file + e.toLowerCase())
-            : candidates(dir)) {
-            try {
-                if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
-            } catch {
-                // 读不到的目录跳过
-            }
+    const withExts = (base: string) => (api.extname(base) !== '' ? [base] : exts.map((e) => base + e.toLowerCase()));
+    const explicit = api.isAbsolute(file) || file.includes('\\') || file.includes('/');
+    const candidates = explicit
+        ? withExts(api.resolve(cwd, file))
+        : (env.PATH ?? env.Path ?? '')
+              .split(';')
+              // 空项和相对目录会按当前目录解析,跳过
+              .filter((dir) => dir !== '' && api.isAbsolute(dir))
+              .flatMap((dir) => withExts(api.join(dir, file)));
+    for (const candidate of candidates) {
+        try {
+            if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
+        } catch {
+            // 读不到的目录跳过
         }
     }
-    return file;
+    throw new ProcessError(`${file} was not found`, 'not_found');
+}
+
+/** Windows 系统目录里的 cmd.exe 的绝对路径;不读 ComSpec(可能被改成别的程序),也不用裸名(会先查 cwd)。 */
+export function systemCmd(env: NodeJS.ProcessEnv = process.env): string {
+    const root = env.SystemRoot ?? env.SYSTEMROOT ?? env.windir ?? 'C:\\Windows';
+    const cmd = path.win32.join(root, 'System32', 'cmd.exe');
+    if (!path.win32.isAbsolute(cmd)) throw new ProcessError('cmd.exe was not found', 'not_found');
+    return cmd;
 }
 
 /**
@@ -104,21 +109,31 @@ export function launchPlan(
     args: readonly string[],
     env: NodeJS.ProcessEnv,
     platform: NodeJS.Platform,
+    cwd: string,
 ): { file: string; args: string[]; verbatim: boolean } {
-    const resolved = resolveCommand(file, env, platform);
+    const resolved = resolveCommand(file, env, platform, cwd);
     if (platform === 'win32' && /\.(cmd|bat)$/i.test(resolved)) {
+        const cmd = systemCmd();
+        if (process.platform === 'win32' && !existsSync(cmd)) {
+            throw new ProcessError('cmd.exe was not found', 'not_found');
+        }
         const line = [`"${resolved}"`, ...args].join(' ');
-        // 不读 ComSpec:环境变量可能被改成别的程序;cmd.exe 由系统目录找到
-        return { file: 'cmd.exe', args: ['/d', '/s', '/c', `"${line}"`], verbatim: true };
+        return { file: cmd, args: ['/d', '/s', '/c', `"${line}"`], verbatim: true };
     }
     return { file: resolved, args: [...args], verbatim: false };
 }
 
 export function runProcess(options: RunOptions): Promise<RunResult> {
     const platform = options.platform ?? process.platform;
-    const plan = launchPlan(options.file, options.args, options.env, platform);
     const started = performance.now();
     return new Promise((resolve, reject) => {
+        let plan: ReturnType<typeof launchPlan>;
+        try {
+            plan = launchPlan(options.file, options.args, options.env, platform, options.cwd);
+        } catch (error) {
+            reject(error instanceof ProcessError ? error : new ProcessError(String(error), 'spawn_failed'));
+            return;
+        }
         if (options.signal?.aborted) {
             reject(new ProcessError('the run was cancelled', 'cancelled'));
             return;

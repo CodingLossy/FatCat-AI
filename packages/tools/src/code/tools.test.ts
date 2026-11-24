@@ -2,13 +2,14 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CodeProject } from '@fatcat-ai/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ToolContext, ToolDefinition } from '../types.js';
-import { boundDiff, MAX_DIFF_LINES } from './git.js';
+import { boundDiff, filterOverridesFrom, MAX_DIFF_LINES } from './git.js';
+import { launchPlan, resolveCommand, systemCmd } from './process.js';
 import { checkRef, checkRepoPath, checkRunArgs, createCodeTools } from './tools.js';
 
 const ctx = { ownerId: 'o1', sessionId: 's1', runId: 'r1', untrustedContentSeen: false } as ToolContext;
@@ -196,6 +197,66 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
         }
     });
 
+    it('任何名字的过滤器驱动都被覆盖(~ : + 和带点的名字);无法安全覆盖的名字让调用被拒绝', async () => {
+        const names = ['ev~il', 'a:b', 'x+y', 'a.b'];
+        for (const [i, name] of names.entries()) {
+            const dir = join(base, `filter-${i}`);
+            mkdirSync(dir);
+            git(dir, 'init', '-q', '-b', 'main');
+            commit(dir, 'x.txt', 'a\n', 'init');
+            const marker = join(base, `filter-${i}.marker`);
+            writeFileSync(join(dir, '.gitattributes'), `* filter=${name}\n`);
+            git(
+                dir,
+                'config',
+                `filter.${name}.clean`,
+                `node -e "require('fs').writeFileSync(process.argv[1], 'x')" ${marker}`,
+            );
+            git(dir, 'config', `filter.${name}.required`, 'true');
+            writeFileSync(join(dir, 'x.txt'), 'a\nb\n');
+            const t = tools({ projects: [project({ path: dir })], roots: [base] });
+            expect((await exec(t('git.diff'), { project: 'p1' })).content).toContain('+b');
+            expect(existsSync(marker), name).toBe(false);
+        }
+        // 子节名里的 = 无法拼进 -c 的键
+        const eq = join(base, 'filter-eq');
+        mkdirSync(eq);
+        git(eq, 'init', '-q', '-b', 'main');
+        commit(eq, 'x.txt', 'a\n', 'init');
+        writeFileSync(join(eq, '.git', 'config'), '[filter "a=b"]\n\tclean = cat\n', { flag: 'a' });
+        const t = tools({ projects: [project({ path: eq })], roots: [base] });
+        await expect(exec(t('git.diff'), { project: 'p1' })).rejects.toThrow(/cannot be overridden/);
+        expect(() => filterOverridesFrom('filter.a\rb.clean\ncat\0')).toThrow(/cannot be overridden/);
+        expect(filterOverridesFrom('filter.ok.clean\ncat\0')).toContain('filter.ok.required=false');
+    });
+
+    it.skipIf(win)('签名校验的程序不运行:log.showSignature 与 gpg.program 被关掉', async () => {
+        const dir = join(base, 'signed');
+        mkdirSync(dir);
+        git(dir, 'init', '-q', '-b', 'main');
+        commit(dir, 'x.txt', 'a\n', 'init');
+        const marker = join(base, 'gpg.marker');
+        const script = join(base, 'fake-gpg.sh');
+        writeFileSync(script, `#!/bin/sh\ntouch '${marker}'\nexit 1\n`);
+        chmodSync(script, 0o755);
+        const tree = git(dir, 'rev-parse', 'HEAD^{tree}').trim();
+        const parent = git(dir, 'rev-parse', 'HEAD').trim();
+        const object =
+            `tree ${tree}\nparent ${parent}\nauthor T <t@example.com> 1700000000 +0000\n` +
+            `committer T <t@example.com> 1700000000 +0000\n` +
+            'gpgsig -----BEGIN PGP SIGNATURE-----\n \n iQEzBAABCAAdFiEE\n -----END PGP SIGNATURE-----\n\nsigned change\n';
+        const objectFile = join(base, 'signed-commit.txt');
+        writeFileSync(objectFile, object);
+        const sha = git(dir, 'hash-object', '-t', 'commit', '-w', objectFile).trim();
+        git(dir, 'update-ref', 'HEAD', sha);
+        git(dir, 'config', 'log.showSignature', 'true');
+        git(dir, 'config', 'gpg.program', script);
+        const t = tools({ projects: [project({ path: dir })], roots: [base] });
+        expect((await exec(t('git.log'), { project: 'p1' })).content).toContain('signed change');
+        expect((await exec(t('git.show'), { project: 'p1' })).content).toContain('signed change');
+        expect(existsSync(marker)).toBe(false);
+    });
+
     it('差异超过 500 行或 64 KiB 时截断,并列出看不到的文件', () => {
         const file = (name: string, n: number) =>
             [`diff --git a/${name} b/${name}`, ...Array.from({ length: n }, (_, i) => `+${i}`)].join('\n');
@@ -206,6 +267,26 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
         expect(bounded.omittedFiles).toEqual(['two.ts', 'three.ts']);
         expect(boundDiff('x'.repeat(70 * 1024)).truncated).toBe(true);
         expect(boundDiff(file('a', 3))).toMatchObject({ truncated: false, omittedFiles: [] });
+    });
+});
+
+describe('Windows 上的程序查找(ADR 0049 第 3.4 节)', () => {
+    const env = { PATH: '', PATHEXT: '.EXE;.CMD' };
+    it('PATH 里找不到时抛 not_found,不把裸名交给 spawn(spawn 会先查项目目录)', () => {
+        expect(() => resolveCommand('git', env, 'win32', 'C:\\repo')).toThrow(/not found/);
+        expect(() => launchPlan('git', [], env, 'win32', 'C:\\repo')).toThrow(/not found/);
+    });
+    it('PATH 里的空项和相对目录被跳过;其他系统原样交给 spawn(execvp 不查当前目录)', () => {
+        expect(() => resolveCommand('git', { PATH: ';.;bin', PATHEXT: '.EXE' }, 'win32', 'C:\\repo')).toThrow();
+        expect(resolveCommand('git', {}, 'linux', '/repo')).toBe('git');
+    });
+    it('cmd.exe 用系统目录下的绝对路径,不读 ComSpec;目录不是绝对路径时报错', () => {
+        expect(systemCmd({ SystemRoot: 'D:\\Win', ComSpec: 'C:\\evil.exe' })).toBe('D:\\Win\\System32\\cmd.exe');
+        expect(() => systemCmd({ SystemRoot: 'Win' })).toThrow(/not found/);
+    });
+    it.runIf(win)('.cmd 经系统目录里的 cmd.exe(绝对路径)运行', () => {
+        const plan = launchPlan('npm', ['-v'], process.env, 'win32', process.cwd());
+        expect(plan.file.toLowerCase()).toMatch(/^[a-z]:\\.+\\system32\\cmd\.exe$/);
     });
 });
 
