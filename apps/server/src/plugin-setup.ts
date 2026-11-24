@@ -74,11 +74,11 @@ interface PreviousMeta {
 const STAGING_TTL_MS = 24 * 3600_000;
 
 /**
- * 判断插件 engines 范围用的核心版本。开发树的版本号还是 0.0.0,此时按第一个支持插件的版本 1.1.0 判断
- * (ADR 0040 的示例清单写 `>=1.1.0`);正式版本号写进 package.json 后直接用它。
+ * 判断插件 engines 范围用的核心版本。开发树的版本号还是 0.0.0,此时按当前开发中的版本 1.2.0 判断
+ * (插件自 1.1.0 起支持,Skills 随 1.2.0 发布,ADR 0048 第 2 节);正式版本号写进 package.json 后直接用它。
  */
 export function pluginCoreVersion(version: string = SERVER_VERSION): string {
-    return version === '0.0.0' ? '1.1.0' : version;
+    return version === '0.0.0' ? '1.2.0' : version;
 }
 
 export interface PluginServiceOptions {

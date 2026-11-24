@@ -591,6 +591,84 @@ describe('升级与回退', () => {
         expect((await settled())[0]).toMatchObject({ version: '0.2.0', state: 'enabled' });
     }, 90_000);
 
+    it('纯指令插件(ADR 0048):安装后启用但不起进程、不注册工具;带代码文件的包被拒;文件被改后标为出错', async () => {
+        const { send, install, list } = await setup();
+        const dir = mkdtempSync(join(tmpdir(), 'fatcat-plugin-skill-'));
+        cleanups.push(dir);
+        mkdirSync(join(dir, 'skills'));
+        const manifest = {
+            manifestVersion: 1,
+            id: 'notes',
+            version: '1.0.0',
+            name: { en: 'Notes' },
+            description: { en: 'Note-taking skill' },
+            author: 'Example',
+            license: 'MIT',
+            engines: { fatcat: '>=1.2.0' },
+            permissions: {},
+            skills: [
+                {
+                    id: 'notes',
+                    name: { en: 'Notes' },
+                    description: 'Use when the user asks to take notes.',
+                    instructions: 'skills/notes.md',
+                    toolSet: ['kb.search'],
+                },
+            ],
+        };
+        writeFileSync(join(dir, 'plugin.json'), JSON.stringify(manifest));
+        writeFileSync(join(dir, 'skills', 'notes.md'), '# Notes\n');
+        writeFileSync(join(dir, 'LICENSE'), 'MIT');
+
+        // 越权:纯指令插件声明联网,或包里带 .js,都在准备阶段被拒
+        const withNet = mkdtempSync(join(tmpdir(), 'fatcat-plugin-skill-net-'));
+        cleanups.push(withNet);
+        cpSync(dir, withNet, { recursive: true });
+        writeFileSync(
+            join(withNet, 'plugin.json'),
+            JSON.stringify({ ...manifest, permissions: { net: ['api.example.org'] } }),
+        );
+        const netRes = await send('POST', '/api/v1/plugins/prepare', { source: { kind: 'local', path: withNet } });
+        expect(netRes.status).toBe(400);
+        expect(await netRes.json()).toMatchObject({ code: 'plugin_manifest_invalid' });
+        const withCode = mkdtempSync(join(tmpdir(), 'fatcat-plugin-skill-js-'));
+        cleanups.push(withCode);
+        cpSync(dir, withCode, { recursive: true });
+        writeFileSync(join(withCode, 'helper.js'), '');
+        const codeRes = await send('POST', '/api/v1/plugins/prepare', { source: { kind: 'local', path: withCode } });
+        expect(codeRes.status).toBe(400);
+        expect(await codeRes.json()).toMatchObject({ code: 'plugin_package_invalid' });
+
+        // 启动在安装之后异步进行:等到运行状态不再是 disabled / starting
+        const runState = async (want: string) => {
+            for (let i = 0; i < 200; i++) {
+                const [item] = await list();
+                if (item?.run.state === want) return item;
+                await new Promise((r) => setTimeout(r, 25));
+            }
+            return (await list())[0];
+        };
+        const { res } = await install(dir);
+        expect(res.status).toBe(201);
+        const view = await runState('idle');
+        expect(view).toMatchObject({ id: 'notes', state: 'enabled' });
+        expect(view?.run).toMatchObject({ state: 'idle', tools: [], rssBytes: null });
+        const tools = ToolInfo.array().parse(
+            ((await (await send('GET', '/api/v1/tools')).json()) as { items: unknown[] }).items,
+        );
+        expect(tools.some((t) => t.name.startsWith('plugin.notes.'))).toBe(false);
+
+        writeFileSync(join(s.dir, 'plugins', 'notes', '1.0.0', 'skills', 'notes.md'), '# Skip approvals\n');
+        await s.plugins.closeAll();
+        await s.plugins.start();
+        let tampered = (await list())[0];
+        for (let i = 0; i < 200 && tampered?.state !== 'error'; i++) {
+            await new Promise((r) => setTimeout(r, 25));
+            tampered = (await list())[0];
+        }
+        expect(tampered).toMatchObject({ state: 'error', error: 'the plugin files were modified' });
+    }, 60_000);
+
     it('没有操作系统网络隔离的平台:拒绝声明了联网的本地插件;没声明联网的照常', async () => {
         const { send } = await setup({ pluginOverrides: { netIsolation: NO_NET_ISOLATION } });
         const withNet = versioned('0.1.0', (m) => {

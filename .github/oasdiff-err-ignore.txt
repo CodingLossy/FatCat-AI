@@ -1,2 +1,3 @@
 # 业主逐条批准的一次性 oasdiff 例外,每行写明方法、路径与变更说明;例外所在的 PR 合并后应清空。
-# 目前没有例外。
+# One-off (PR feat/skills-manifest): ADR 0048 section 10 makes PluginManifest.entry optional for instruction-only plugins. Remove after this PR merges.
+POST /api/v1/plugins/prepare the response property `manifest/entry` became optional for the status `200`

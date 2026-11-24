@@ -179,6 +179,11 @@ export function pluginSettingsValues(
     return out;
 }
 
+function entryMain(manifest: PluginManifest): string {
+    if (!manifest.entry) throw new PluginStartError('this plugin has no process (it only provides skills)');
+    return manifest.entry.main;
+}
+
 /** 实际风险级别 = max(清单声明, 下限)(第 3.2 节)。 */
 export function effectiveRisk(
     tool: Pick<PluginToolPermission, 'risk' | 'sendsData'>,
@@ -226,6 +231,11 @@ export class PluginRuntime {
             secretValues: [],
         };
         this.entries.set(record.pluginId, entry);
+        if (!record.manifest.entry) {
+            // 纯指令插件(ADR 0048 第 2 节):不起进程、不注册工具;只核对包没被改过,Skill 说明运行时从包里读
+            this.checkInstructionOnly(entry);
+            return this.status(record.pluginId);
+        }
         try {
             const client = await this.ensureRunning(entry);
             const listed = await client.listTools();
@@ -236,6 +246,32 @@ export class PluginRuntime {
             await this.fail(entry, error);
         }
         return this.status(record.pluginId);
+    }
+
+    private checkInstructionOnly(entry: Entry): void {
+        const { record } = entry;
+        const codeDir = join(this.options.codeRoot, record.pluginId, record.version);
+        let actual: string | null;
+        try {
+            actual = hashPluginDir(codeDir);
+        } catch {
+            actual = null;
+        }
+        if (actual === record.contentSha256) {
+            entry.state = 'idle';
+            return;
+        }
+        if (actual !== null) {
+            this.options.onEvent(record.ownerId, {
+                pluginId: record.pluginId,
+                version: record.version,
+                kind: 'checksum-mismatch',
+                detail: 'start',
+            });
+        }
+        entry.state = 'error';
+        entry.error = actual === null ? 'the plugin files cannot be checked' : 'the plugin files were modified';
+        this.options.onState(record.ownerId, record.pluginId, 'error', entry.error);
     }
 
     status(pluginId: string): PluginRuntimeStatus {
@@ -344,7 +380,7 @@ export class PluginRuntime {
         const args = pluginNodeArgs({
             codeDir,
             dataDir,
-            main: record.manifest.entry.main,
+            main: entryMain(record.manifest),
             maxOldSpaceMiB: runtime.maxOldSpaceMiB,
             maxSemiSpaceMiB: runtime.maxSemiSpaceMiB,
         });

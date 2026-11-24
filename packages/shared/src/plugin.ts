@@ -4,6 +4,7 @@
 // 插件清单 plugin.json、市场索引与 fatcat/* 扩展消息的公开契约(ADR 0040 第 2、3.3、5.2 节)。
 // 宿主、SDK 的校验命令与索引仓库 CI 共用这一份;本文件只定义形状与纯函数校验,不含任何运行时行为。
 import { z } from 'zod';
+import { AgentToolSetEntry, toolSetWithin } from './agents.js';
 import { IsoDateTime } from './common.js';
 import { parseDomainScope } from './domain-scope.js';
 import { isOwnEnvName } from './rename.js';
@@ -266,18 +267,23 @@ export function diffPermissions(granted: PluginPermissions, next: PluginPermissi
 
 // ───────────────────────── 入口、设置、任务模板、变现 ─────────────────────────
 
+/** 包内相对路径:不含反斜杠、盘符或冒号,不以 `/` 开头,没有空段、`.`、`..`。 */
+function isPackagePath(path: string): boolean {
+    return (
+        !path.includes('\\') &&
+        !path.includes(':') &&
+        !path.startsWith('/') &&
+        path.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..')
+    );
+}
+
 /** 包内相对路径:不能是绝对路径、含 `..` 或盘符,只能是 `.js` / `.mjs`。 */
 export const PluginEntryMain = z
     .string()
     .min(1)
     .max(200)
     .refine(
-        (path) =>
-            !path.includes('\\') &&
-            !path.includes(':') &&
-            !path.startsWith('/') &&
-            path.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..') &&
-            /\.m?js$/.test(path),
+        (path) => isPackagePath(path) && /\.m?js$/.test(path),
         'must be a relative path inside the package ending in .js or .mjs',
     );
 
@@ -379,6 +385,91 @@ export const PluginTaskTemplate = z.strictObject({
 });
 export type PluginTaskTemplate = z.infer<typeof PluginTaskTemplate>;
 
+// ───────────────────────── Skills(ADR 0048 第 1、2 节) ─────────────────────────
+
+/** Skill 的 instructions 上限:16 KiB(UTF-8 字节数),安装时检查。 */
+export const PLUGIN_SKILL_INSTRUCTIONS_MAX_BYTES = 16 * 1024;
+/** 声明了 `skills` 或省略了 `entry` 的清单,`engines.fatcat` 下限至少是这个版本(Skills 随核心 1.2.0 发布)。 */
+export const PLUGIN_SKILLS_MIN_CORE = '1.2.0';
+/** 每个插件最多 10 个 Skill;插件级与各 Skill 的任务模板合计最多 10 个。 */
+export const PLUGIN_MAX_SKILLS = 10;
+export const PLUGIN_MAX_TASK_TEMPLATES = 10;
+
+export const PluginSkillId = z.string().regex(/^[a-z][a-z0-9-]{1,31}$/, 'lowercase letters, digits or "-" (2 to 32)');
+
+/** instructions:包内 markdown 文件的相对路径。 */
+export const PluginSkillInstructions = z
+    .string()
+    .min(1)
+    .max(200)
+    .refine(
+        (path) => isPackagePath(path) && /\.md$/.test(path),
+        'must be a relative path inside the package ending in .md',
+    );
+
+/** 运行控制工具:不由 Skill 决定,`toolSet` 不能列出(ADR 0048 第 1、6 节)。 */
+const RUN_CONTROL = ['skill', 'tools', 'delegate'];
+
+/** 工具集条目的第一段(组名);`plugin.x.y` / `mcp.x.y` 这类返回前两段。 */
+function headOf(entry: string): string {
+    return entry.split('.')[0] ?? entry;
+}
+
+/**
+ * Skill `toolSet` 一项的问题(ADR 0048 第 1 节):不能列运行控制工具、MCP 工具或别的插件的工具;
+ * 纯指令插件没有自己的工具,也不能列 `plugin.<自己>.`。没有问题时返回 null。
+ */
+export function skillToolSetProblem(entry: string, pluginId: string, hasEntry: boolean): string | null {
+    const head = headOf(entry);
+    if (RUN_CONTROL.includes(head)) return `"${entry}" is a run-control tool and cannot be listed by a skill`;
+    if (head === 'mcp')
+        return `"${entry}" is an MCP tool; skills can only list core tools and their own plugin's tools`;
+    if (head === 'plugin') {
+        const owner = entry.split('.')[1];
+        if (owner !== pluginId) return `"${entry}" belongs to another plugin`;
+        if (!hasEntry) return `"${entry}": a plugin without "entry" has no tools of its own`;
+    }
+    return null;
+}
+
+/** Skill 的任务模板:插件模板加可选的 `toolSet`(写进所建任务的 `policy.toolSet`,必须在 Skill 的 `toolSet` 之内)。 */
+export const PluginSkillTaskTemplate = PluginTaskTemplate.extend({
+    toolSet: z
+        .array(AgentToolSetEntry)
+        .min(1)
+        .max(30)
+        .refine((set) => unique(set, (e) => e), 'duplicate tool')
+        .optional(),
+});
+export type PluginSkillTaskTemplate = z.infer<typeof PluginSkillTaskTemplate>;
+
+export const PluginSkill = z
+    .strictObject({
+        id: PluginSkillId,
+        name: pluginText(64),
+        /** 给模型看的一句话,写清什么时候用;出现在系统提示的 Skill 目录里。 */
+        description: z.string().trim().min(1).max(200),
+        instructions: PluginSkillInstructions,
+        toolSet: z
+            .array(AgentToolSetEntry)
+            .min(1)
+            .max(32)
+            .refine((set) => unique(set, (e) => e), 'duplicate tool'),
+        taskTemplates: z.array(PluginSkillTaskTemplate).max(PLUGIN_MAX_TASK_TEMPLATES).optional(),
+    })
+    .superRefine((skill, ctx) => {
+        (skill.taskTemplates ?? []).forEach((template, i) => {
+            if (template.toolSet && !toolSetWithin(template.toolSet, skill.toolSet)) {
+                ctx.addIssue({
+                    code: 'custom',
+                    message: "the template's toolSet must stay within the skill's toolSet",
+                    path: ['taskTemplates', i, 'toolSet'],
+                });
+            }
+        });
+    });
+export type PluginSkill = z.infer<typeof PluginSkill>;
+
 /** 变现预留(ADR 0040 第 10 节):M7 只接受免费插件。 */
 export const PluginLicensing = z.strictObject({ model: z.literal('free') });
 
@@ -425,22 +516,74 @@ const Homepage = z
 
 // ───────────────────────── plugin.json ─────────────────────────
 
-export const PluginManifest = z.strictObject({
-    manifestVersion: z.literal(1),
-    id: PluginId,
-    version: PluginVersion,
-    name: pluginText(64),
-    description: pluginText(500),
-    author: z.string().min(1).max(128),
-    license: License,
-    homepage: Homepage.optional(),
-    engines: z.strictObject({ fatcat: PluginEngineRange }),
-    entry: PluginEntry,
-    permissions: PluginPermissions,
-    settings: PluginSettings.optional(),
-    taskTemplates: z.array(PluginTaskTemplate).max(10).optional(),
-    licensing: PluginLicensing.optional(),
-});
+export const PluginManifest = z
+    .strictObject({
+        manifestVersion: z.literal(1),
+        id: PluginId,
+        version: PluginVersion,
+        name: pluginText(64),
+        description: pluginText(500),
+        author: z.string().min(1).max(128),
+        license: License,
+        homepage: Homepage.optional(),
+        engines: z.strictObject({ fatcat: PluginEngineRange }),
+        /** 省略时是纯指令插件(ADR 0048 第 2 节):不起进程,只提供 Skill。 */
+        entry: PluginEntry.optional(),
+        permissions: PluginPermissions,
+        settings: PluginSettings.optional(),
+        taskTemplates: z.array(PluginTaskTemplate).max(PLUGIN_MAX_TASK_TEMPLATES).optional(),
+        skills: z
+            .array(PluginSkill)
+            .min(1)
+            .max(PLUGIN_MAX_SKILLS)
+            .refine((skills) => unique(skills, (s) => s.id), 'duplicate skill id')
+            .optional(),
+        licensing: PluginLicensing.optional(),
+    })
+    .superRefine((manifest, ctx) => {
+        const issue = (message: string, path: (string | number)[]): void => {
+            ctx.addIssue({ code: 'custom', message, path });
+        };
+        const hasEntry = manifest.entry !== undefined;
+        const skills = manifest.skills ?? [];
+        if (!hasEntry) {
+            if (skills.length === 0) issue('a plugin without "entry" must declare at least one skill', ['skills']);
+            const { tools, net, secrets, items } = manifest.permissions;
+            if (tools.length > 0) issue('a plugin without "entry" cannot declare tools', ['permissions', 'tools']);
+            if (net.length > 0) issue('a plugin without "entry" cannot declare network access', ['permissions', 'net']);
+            if (secrets.length > 0)
+                issue('a plugin without "entry" cannot declare secrets', ['permissions', 'secrets']);
+            if (items !== undefined) issue('a plugin without "entry" cannot declare items', ['permissions', 'items']);
+            if (manifest.settings !== undefined)
+                issue('a plugin without "entry" cannot declare settings', ['settings']);
+        }
+        if (!hasEntry || manifest.skills !== undefined) {
+            const range = parseEngineRange(manifest.engines.fatcat);
+            const floor = parseSemver(PLUGIN_SKILLS_MIN_CORE);
+            if (range && floor && compareSemver(range.min, floor) < 0) {
+                issue(`plugins with skills need engines.fatcat >=${PLUGIN_SKILLS_MIN_CORE}`, ['engines', 'fatcat']);
+            }
+        }
+        const ownTools = new Set(manifest.permissions.tools.map((t) => t.name));
+        let templates = manifest.taskTemplates?.length ?? 0;
+        skills.forEach((skill, s) => {
+            templates += skill.taskTemplates?.length ?? 0;
+            skill.toolSet.forEach((entry, e) => {
+                const problem = skillToolSetProblem(entry, manifest.id, hasEntry);
+                if (problem) return issue(problem, ['skills', s, 'toolSet', e]);
+                // 精确引用自己的工具时,工具必须在 permissions.tools 里声明过
+                const parts = entry.split('.');
+                if (parts[0] === 'plugin' && parts.length === 3 && parts[2] !== '' && !ownTools.has(parts[2]!)) {
+                    issue(`"${entry}" is not declared in permissions.tools`, ['skills', s, 'toolSet', e]);
+                }
+            });
+        });
+        if (templates > PLUGIN_MAX_TASK_TEMPLATES) {
+            issue(`at most ${PLUGIN_MAX_TASK_TEMPLATES} task templates in total (plugin and skills)`, [
+                'taskTemplates',
+            ]);
+        }
+    });
 export type PluginManifest = z.infer<typeof PluginManifest>;
 
 export interface PluginManifestIssue {

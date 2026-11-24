@@ -74405,6 +74405,202 @@
                           },
                           "maxItems": 10
                         },
+                        "skills": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9-]{1,31}$"
+                              },
+                              "name": {
+                                "type": "object",
+                                "properties": {
+                                  "zh-CN": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64
+                                  },
+                                  "en": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "instructions": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "toolSet": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)*\\.?$"
+                                },
+                                "minItems": 1,
+                                "maxItems": 32
+                              },
+                              "taskTemplates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "title": {
+                                      "type": "object",
+                                      "properties": {
+                                        "zh-CN": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 80
+                                        },
+                                        "en": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 80
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    },
+                                    "prompt": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 2000
+                                    },
+                                    "trigger": {
+                                      "oneOf": [
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "cron"
+                                              ]
+                                            },
+                                            "expression": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 100
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "expression"
+                                          ]
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "once"
+                                              ]
+                                            },
+                                            "at": {
+                                              "type": "string",
+                                              "format": "date-time"
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "at"
+                                          ]
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "mail_received"
+                                              ]
+                                            },
+                                            "accountId": {
+                                              "type": "string",
+                                              "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                            }
+                                          },
+                                          "required": [
+                                            "kind"
+                                          ]
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "file_changed"
+                                              ]
+                                            },
+                                            "rootId": {
+                                              "type": "string",
+                                              "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "rootId"
+                                          ]
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "webhook"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "kind"
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    "toolSet": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)*\\.?$"
+                                      },
+                                      "minItems": 1,
+                                      "maxItems": 30
+                                    }
+                                  },
+                                  "required": [
+                                    "title",
+                                    "prompt",
+                                    "trigger"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "maxItems": 10
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "description",
+                              "instructions",
+                              "toolSet"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 1,
+                          "maxItems": 10
+                        },
                         "licensing": {
                           "type": "object",
                           "properties": {
@@ -74430,7 +74626,6 @@
                         "author",
                         "license",
                         "engines",
-                        "entry",
                         "permissions"
                       ],
                       "additionalProperties": false

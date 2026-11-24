@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { hashPluginDir, PluginPackageError, prepareLocalPackage } from './package.js';
+import { hashPluginDir, isInstructionOnlyFile, PluginPackageError, prepareLocalPackage } from './package.js';
 
 const example = fileURLToPath(new URL('../../../../examples/plugins/hello', import.meta.url));
 
@@ -48,5 +48,91 @@ describe('plugin packages', () => {
         expect(() => prepareLocalPackage(dir, { stagingRoot: join(root, 'staging'), coreVersion: '0.9.0' })).toThrow(
             PluginPackageError,
         );
+    });
+
+    describe('instruction-only plugins (ADR 0048)', () => {
+        const manifest = (patch: Record<string, unknown> = {}) => ({
+            manifestVersion: 1,
+            id: 'notes',
+            version: '1.0.0',
+            name: { en: 'Notes' },
+            description: { en: 'Note-taking skill' },
+            author: 'Example',
+            license: 'MIT',
+            engines: { fatcat: '>=1.2.0' },
+            permissions: {},
+            skills: [
+                {
+                    id: 'notes',
+                    name: { en: 'Notes' },
+                    description: 'Use when the user asks to take notes.',
+                    instructions: 'skills/notes.md',
+                    toolSet: ['kb.search', 'fs.'],
+                },
+            ],
+            ...patch,
+        });
+        const options = () => ({ stagingRoot: join(root, 'staging'), coreVersion: '1.2.0' });
+        const write = (files: Record<string, string | Buffer>, patch?: Record<string, unknown>): string => {
+            const dir = join(root, 'src');
+            mkdirSync(join(dir, 'skills'), { recursive: true });
+            writeFileSync(join(dir, 'plugin.json'), JSON.stringify(manifest(patch)));
+            for (const [rel, body] of Object.entries(files)) writeFileSync(join(dir, rel), body);
+            return dir;
+        };
+
+        it('installs with plugin.json, markdown and license files only', () => {
+            const dir = write({ 'skills/notes.md': '# Notes\n', 'README.md': 'x', LICENSE: 'MIT', 'NOTICE.txt': 'n' });
+            const prepared = prepareLocalPackage(dir, options());
+            expect(prepared.manifest.entry).toBeUndefined();
+            expect(prepared.manifest.skills?.[0]?.id).toBe('notes');
+        });
+
+        it('越权:rejects a package that carries code or other files', () => {
+            expect(() => prepareLocalPackage(write({ 'skills/notes.md': 'x', 'run.js': '' }), options())).toThrow(
+                /run\.js: a plugin without "entry" may only contain/,
+            );
+            rmSync(join(root, 'src'), { recursive: true });
+            expect(() => prepareLocalPackage(write({ 'skills/notes.md': 'x', 'data.bin': 'x' }), options())).toThrow(
+                PluginPackageError,
+            );
+            expect(isInstructionOnlyFile('skills/notes.md')).toBe(true);
+            expect(isInstructionOnlyFile('LICENSE-APACHE')).toBe(true);
+            expect(isInstructionOnlyFile('lib/index.mjs')).toBe(false);
+            expect(isInstructionOnlyFile('package.json')).toBe(false);
+        });
+
+        it('checks instructions: present, at most 16 KiB, valid UTF-8', () => {
+            expect(() => prepareLocalPackage(write({}), options())).toThrow(
+                /instructions "skills\/notes\.md" does not exist/,
+            );
+            rmSync(join(root, 'src'), { recursive: true });
+            expect(() =>
+                prepareLocalPackage(write({ 'skills/notes.md': 'a'.repeat(16 * 1024 + 1) }), options()),
+            ).toThrow(/larger than 16 KiB/);
+            rmSync(join(root, 'src'), { recursive: true });
+            expect(() =>
+                prepareLocalPackage(write({ 'skills/notes.md': Buffer.from([0x23, 0xff, 0xfe]) }), options()),
+            ).toThrow(/not valid UTF-8/);
+            rmSync(join(root, 'src'), { recursive: true });
+            expect(prepareLocalPackage(write({ 'skills/notes.md': '说明'.repeat(100) }), options()).manifest.id).toBe(
+                'notes',
+            );
+        });
+
+        it('rejects a core older than the engines floor, and instructions outside the package', () => {
+            const dir = write({ 'skills/notes.md': 'x' });
+            expect(() => prepareLocalPackage(dir, { ...options(), coreVersion: '1.1.0' })).toThrow(
+                /requires FatCat-AI/,
+            );
+            rmSync(dir, { recursive: true });
+            const outside = write(
+                { 'skills/notes.md': 'x' },
+                {
+                    skills: [{ ...manifest().skills[0], instructions: '../notes.md' }],
+                },
+            );
+            expect(() => prepareLocalPackage(outside, options())).toThrow(/plugin\.json|instructions/);
+        });
     });
 });
