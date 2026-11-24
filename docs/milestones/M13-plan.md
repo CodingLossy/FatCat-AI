@@ -62,6 +62,21 @@
 4. `feat/skills-ui`:插件页、设置页、代理页的 Skill 显示与开关(附截图)。
 5. `feat/skills-market`:索引条目的 `skills`、市场页展示、instructions 话术初筛脚本。
 
+## 语音优先与编码代理(ADR 0049)
+
+业主 2026-11-23 确认新增,插在 Skills 实现第 2 步(`feat/skills-runtime`)之后、后段之前;业主 2026-11-24 定的顺序是 `feat/skills-manifest` → `feat/skills-runtime` → `fix/windows-tests` → 本组。设计见 [ADR 0049](../adr/0049-voice-first-and-code-agent.md)。
+
+0. `docs/adr-0049-voice-code`:ADR 0049、本节、开发计划第 18 节(只写文档)。
+1. `feat/voice-first`:默认输入方式(默认语音)、语音模式主界面(说话按钮、点按 / 按住、字幕)、文字输入弹窗、手机。顺带做 X 在 #125 留下的界面项:手机模型菜单的「模型 / 代理」改成两个 `role="group"` 并加 e2e 断言、`placeLabels` 放不下时先换边再放弃(含单测,悬停 / 焦点标签也先试不压气泡的一侧)、`theme.test.ts` 的 import 顺序、390px 下模型胶囊菜单「代理」分组的截图。
+2. `feat/voice-continuous`:连续对话(本地 VAD、朗读时打断、静音自动结束);唤醒词不做。
+3. `feat/code-agent-tools`:`Settings.code` 登记项目与命令,`git.log` / `git.show` / `git.diff` 只读工具,`code.run` 只运行登记的命令,每次审批,默认关闭,归入按需组 `code`。顺带做 X 在 #128 留下的两项:`server.lock` 被当作运行中时,`secrets migrate` 的报错写出锁文件完整路径与「确认服务器已退出后可手动删除」并加测试;锁里程序名大小写不同(`NODE.EXE` 与 `node.exe`)仍判为同一程序的用例。
+4. `feat/code-agent-panel`:右侧「代码」面板(项目、提交列表与差异、正在改的文件差异、测试输出),跟随规则同浏览器面板。
+5. `test/voice-command-e2e`:「打开浏览器搜 xxx」与「打开 FatCat-AI 项目、看最近第 3 次改动、修一下 bug」两条假麦克风端到端用例。
+
+界面 PR(1、2、4)的前后对比截图放 `docs/pr-screenshots` 分支 `voice-first/` 与 `code-panel/` 下(桌面三套主题 + 手机),业主确认后再合并;界面文案只在配置和有风险的项旁留一句短提示。
+
+本组之后回到 Skills 实现第 3–5 步(`feat/builtin-skills`、`feat/skills-ui`、`feat/skills-market`),再进入后段。X 在 #127 留下的项随 `feat/builtin-skills` 一起做:`readInstructions` 在 Windows 上没有 `O_NOFOLLOW` 的注释与「说明文件换成包外符号链接时 `skill.use` 返回 unknown skill」的评测用例;`skill.use` 不受任务 `withholdToolPrefixes` 约束这一点在 ADR 0048 第 6 节写明或改走 `isWithheld`(都要补测试);子运行只自动使用自己代理的 Skill、不继承父运行的用例;以及仍未做的 `secrets.yaml.migrated` 收紧 ACL(#44)和 M10 自检文档里 updater 私钥说法与工作流私钥引用检查(#92)。
+
 ## 后段顺序
 
 前段合并之后,按下面的顺序继续(每项开工前先写或更新 ADR):
