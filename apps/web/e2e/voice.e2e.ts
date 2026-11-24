@@ -26,6 +26,9 @@ let mock: Server | undefined;
 let base = '';
 let mockBase = '';
 const chatQueue: Interaction[] = [];
+/** 为 true 时,对话请求先挂着不回,直到 releaseChat() 被调用(测「停止」按钮)。 */
+let holdChat = false;
+let releaseChat: () => void = () => undefined;
 const seen: { path: string; contentType: string; body: string }[] = [];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -68,6 +71,15 @@ function startMock(): Promise<Server> {
             if (req.url === '/v1/audio/speech') {
                 res.writeHead(200, { 'content-type': 'audio/wav' });
                 res.end(toneWav());
+                return;
+            }
+            if (holdChat) {
+                holdChat = false;
+                req.socket.once('close', () => releaseChat());
+                releaseChat = () => {
+                    releaseChat = () => undefined;
+                    if (!res.writableEnded) res.destroy();
+                };
                 return;
             }
             const next = chatQueue.shift();
@@ -244,6 +256,14 @@ test('语音优先:点按说话、字幕、文字弹窗发送后收起(ADR 0049 
     expect(res.ok()).toBe(true);
 
     chatQueue.push(...loadFixture(join(FIXTURES, 'deepseek-chat-stream.json')).interactions);
+    // 麦克风启动推迟 500 ms,用来测「启动期间按 Esc」
+    await page.addInitScript(() => {
+        const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+        navigator.mediaDevices.getUserMedia = async (constraints) => {
+            await new Promise((r) => setTimeout(r, 500));
+            return original(constraints);
+        };
+    });
     await page.reload();
     await page.getByRole('link', { name: '新对话' }).click();
 
@@ -270,6 +290,21 @@ test('语音优先:点按说话、字幕、文字弹窗发送后收起(ADR 0049 
     await expect(page.getByText('已取消这次录音。')).toBeVisible();
     expect(seen.filter((r) => r.path === '/v1/audio/transcriptions')).toHaveLength(before);
 
+    // 麦克风还在启动时按 Esc(按住中、以及点按松开后两种情况):启动完成后也不转写、不发送
+    const chats = () => seen.filter((r) => r.path === '/v1/chat/completions').length;
+    const chatsBefore = chats();
+    await talk.hover();
+    await page.mouse.down();
+    await page.keyboard.press('Escape');
+    await page.mouse.up();
+    await talk.click();
+    await page.keyboard.press('Escape');
+    await sleep(1500);
+    await expect(talk).toHaveText('说话');
+    expect(seen.filter((r) => r.path === '/v1/audio/transcriptions')).toHaveLength(before);
+    expect(chats()).toBe(chatsBefore);
+    await expect(page.getByTestId('caption-user')).toHaveText(TRANSCRIPT);
+
     // 完整对话可以展开
     await page.getByTestId('voice-history').click();
     await expect(page.locator('.message.user').first()).toHaveText(TRANSCRIPT);
@@ -289,4 +324,17 @@ test('语音优先:点按说话、字幕、文字弹窗发送后收起(ADR 0049 
     await popup.getByRole('button', { name: '发送' }).click();
     await expect(popup).toHaveCount(0);
     await expect(page.getByTestId('caption-user')).toHaveText('打字发一句');
+
+    // 回复进行中,说话按钮换成「停止」,不用打开弹窗
+    holdChat = true;
+    await page.keyboard.press('Control+i');
+    await box.fill('这一句会被停止');
+    await box.press('Enter');
+    const stop = page.getByTestId('voice-stop');
+    await expect(stop).toBeEnabled();
+    await expect(page.getByTestId('voice-talk')).toHaveCount(0);
+    await stop.click();
+    await expect(page.getByTestId('voice-talk')).toHaveText('说话', { timeout: 10_000 });
+    await expect(stop).toHaveCount(0);
+    releaseChat();
 });

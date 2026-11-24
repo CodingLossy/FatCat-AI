@@ -275,6 +275,8 @@ export function ChatView({
         setVoiceModeState(next);
     };
     const recording = useRef<Recording | null>(null);
+    /** 每次开始录音加一;取消时也加一,麦克风启动完成时代号不符就丢掉这次录音。 */
+    const recordingGeneration = useRef(0);
     const pressedAt = useRef(0);
     const playback = useRef<Playback | null>(null);
     const [speakingId, setSpeakingId] = useState<string | null>(null);
@@ -579,6 +581,7 @@ export function ChatView({
         setVoiceNotice(null);
         setError(null);
         setVoiceMode('starting');
+        const generation = ++recordingGeneration.current;
         let rec: Recording;
         try {
             rec = await startRecording(
@@ -591,8 +594,14 @@ export function ChatView({
                 },
             );
         } catch (e) {
+            if (generation !== recordingGeneration.current) return;
             setVoiceMode('idle');
             setError(t('voice.micDenied', { msg: errorText(e) }));
+            return;
+        }
+        if (generation !== recordingGeneration.current) {
+            // 麦克风启动期间按了 Esc:丢掉这次录音,不转写也不发送
+            rec.cancel();
             return;
         }
         recording.current = rec;
@@ -629,6 +638,7 @@ export function ChatView({
     /** 录音中按 Esc:丢掉这次录音,不转写也不发送。 */
     const cancelRecording = () => {
         if (mode.current !== 'hold' && mode.current !== 'tap' && mode.current !== 'starting') return false;
+        recordingGeneration.current++;
         recording.current?.cancel();
         recording.current = null;
         setVoiceMode('idle');
@@ -661,6 +671,8 @@ export function ChatView({
     useEffect(() => {
         if (!voiceFirst) return;
         const onKey = (e: globalThis.KeyboardEvent) => {
+            // 输入法正在组字、或别处已经处理过的按键不再处理
+            if (e.defaultPrevented || e.isComposing) return;
             if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'i') {
                 e.preventDefault();
                 setPopupOpen((open) => !open);
@@ -959,7 +971,19 @@ export function ChatView({
                     >
                         {showHistory ? t('voice.hideHistory') : t('voice.history')}
                     </button>
-                    {talkButton(true)}
+                    {live ? (
+                        <button
+                            type="button"
+                            className="voice-big voice-stop"
+                            onClick={() => void stop()}
+                            disabled={!live.runId}
+                            data-testid="voice-stop"
+                        >
+                            {t('chat.stop')}
+                        </button>
+                    ) : (
+                        talkButton(true)
+                    )}
                     <button
                         type="button"
                         className="voice-keyboard"

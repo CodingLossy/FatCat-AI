@@ -3145,7 +3145,7 @@ input.kn-search {
     text-align: right;
 }
 
-.voice-button.voice-big {
+.voice-big {
     width: 104px;
     height: 104px;
     border-radius: 50%;
@@ -3158,11 +3158,12 @@ input.kn-search {
     transition: transform var(--motion-fast) var(--ease);
 }
 
-.voice-button.voice-big:active {
+.voice-big:active {
     transform: scale(0.96);
 }
 
-.voice-button.voice-big.recording {
+.voice-button.voice-big.recording,
+.voice-big.voice-stop {
     background: var(--danger);
     border-color: var(--danger);
     color: var(--on-danger);
@@ -3311,13 +3312,13 @@ input.kn-search {
     bottom: calc(var(--space-2) + 112px);
 }
 
-.wb-shell[data-narrow] .voice-button.voice-big {
+.wb-shell[data-narrow] .voice-big {
     width: 88px;
     height: 88px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .voice-button.voice-big {
+    .voice-big {
         transition: none;
     }
 }
