@@ -17,6 +17,10 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 - Prompt registry (ADR 0047 section 3): every model-facing prompt (system prompt, conversation summary, memory extraction and merging, the tool group list) now lives in `packages/i18n/src/prompts.ts` with a fixed id and an integer version; the text is unchanged word for word. The memory generation log records `memory.extract@1` / `memory.sleep@1` as the prompt version instead of a hash of the text (older rows keep their hash). `pnpm check:i18n` now fails on a new `*_PROMPT = [` constant outside the registry. Chinese summary: 提示注册表:所有给模型的提示集中到 `packages/i18n` 并带固定 id 与版本号,文字逐字不变;记忆生成日志的提示版本改记 `memory.extract@1` 这样的引用;`check:i18n` 禁止在注册表外新定义 `_PROMPT = [` 常量。
 - Each answer in a normal conversation or scheduled task can now take up to 10 tool steps (was 5) and has a token budget of 60,000 summed over all steps; when it is used up no further step starts and the answer ends with a short note. Agents keep their own step limit and budgets. Chinese summary: 普通对话与定时任务每次回答的工具步数上限从 5 改为 10,并新增 60,000 token 的预算,用完后不再开始下一步并在回答末尾说明;代理沿用自己的设置。
 
+#### Fixed
+
+- Windows: a `server.lock` left behind when the server was killed (for example by `node --watch`, which uses `TerminateProcess`) no longer blocks `secrets migrate` / `rekey` once Windows has given its process id to another program. The lock now records the server's program name and the check compares it with `tasklist`; an older lock without the name, or a failed lookup, is still treated as a running server.
+
 ### M12 · UI redesign (in progress)
 
 #### Added

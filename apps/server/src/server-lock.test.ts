@@ -10,7 +10,9 @@ import {
     acquireServerLock,
     installLockRelease,
     installShutdownHandlers,
+    processImage,
     runningServerPid,
+    selfImage,
     SERVER_LOCK_FILE,
     shutdownSignals,
 } from './server-lock.js';
@@ -89,5 +91,68 @@ describe('shutdown handlers', () => {
         expect(existsSync(join(dir, SERVER_LOCK_FILE))).toBe(true);
         acquireServerLock(dir, 4242)();
         expect(existsSync(join(dir, SERVER_LOCK_FILE))).toBe(false);
+    });
+
+    it('a leftover lock whose pid now belongs to another program is stale (Windows reuses pids quickly)', () => {
+        const dir = tmp();
+        acquireServerLock(dir, 4242, undefined, 'node.exe');
+        expect(
+            runningServerPid(
+                dir,
+                () => true,
+                1,
+                () => 'node.exe',
+            ),
+        ).toBe(4242);
+        expect(
+            runningServerPid(
+                dir,
+                () => true,
+                1,
+                () => 'Explorer.EXE',
+            ),
+        ).toBeNull();
+        // 查不到映像名时宁可当它还在运行
+        expect(
+            runningServerPid(
+                dir,
+                () => true,
+                1,
+                () => null,
+            ),
+        ).toBe(4242);
+        // 旧版本写的锁没有 image:只看进程在不在
+        writeFileSync(join(dir, SERVER_LOCK_FILE), JSON.stringify({ pid: 4242 }));
+        expect(
+            runningServerPid(
+                dir,
+                () => true,
+                1,
+                () => 'explorer.exe',
+            ),
+        ).toBe(4242);
+    });
+
+    it('reads the image name from tasklist on Windows only, and gives up on anything unexpected', () => {
+        const tasklist = (out: string) => () => out;
+        expect(processImage(4242, 'win32', tasklist('"Node.exe","4242","Console","1","45,000 K"\r\n'))).toBe(
+            'node.exe',
+        );
+        expect(
+            processImage(4242, 'win32', tasklist('INFO: No tasks are running which match the criteria.')),
+        ).toBeNull();
+        expect(processImage(4242, 'win32', tasklist('"node.exe","42","Console","1","45,000 K"'))).toBeNull();
+        expect(
+            processImage(4242, 'win32', () => {
+                throw new Error('tasklist missing');
+            }),
+        ).toBeNull();
+        const run = vi.fn(() => '');
+        expect(processImage(4242, 'linux', run)).toBeNull();
+        expect(run).not.toHaveBeenCalled();
+    });
+
+    it.runIf(process.platform === 'win32')('finds this test process by its real image name on Windows', () => {
+        expect(processImage(process.pid)).toBe(selfImage());
     });
 });

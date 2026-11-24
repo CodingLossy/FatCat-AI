@@ -3,8 +3,9 @@
 
 // 数据目录里的服务器锁文件:服务器启动时写入自己的 pid,退出时删除。离线命令(secrets migrate / rekey)
 // 发现锁有效就拒绝执行,避免命令行读入 secrets.yaml 之后服务器又写入新的令牌而被静默丢掉(ADR 0026)。
+import { execFileSync } from 'node:child_process';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 export const SERVER_LOCK_FILE = 'server.lock';
 
@@ -18,26 +19,72 @@ export function processAlive(pid: number): boolean {
     }
 }
 
-/** 读锁文件;返回仍在运行的服务器 pid,没有锁、锁已过期(进程不在了)或内容无法解析时返回 null。 */
+/** 本进程的映像名(node.exe、fatcat-server.exe 等),小写;写进锁文件,用来认出 pid 被别的程序复用。 */
+export function selfImage(execPath: string = process.execPath): string {
+    return basename(execPath).toLowerCase();
+}
+
+/**
+ * 查某个 pid 当前的映像名,查不到时返回 null(调用方按「仍在运行」处理,宁可误拦也不放过)。
+ * 只在 Windows 上查:被 TerminateProcess 杀掉的服务器来不及删锁,Windows 又很快复用 pid,
+ * 只看「进程在不在」会把别的程序当成服务器(HANDOFF 的 server.lock 残留)。POSIX 上沿用 kill 0。
+ */
+export function processImage(
+    pid: number,
+    platform: NodeJS.Platform = process.platform,
+    run: (file: string, args: string[]) => string = (file, args) =>
+        execFileSync(file, args, { encoding: 'utf8', timeout: 5000, windowsHide: true }),
+): string | null {
+    if (platform !== 'win32') return null;
+    try {
+        // 输出形如 "node.exe","1234","Console","1","45,000 K";没有这个进程时是一行提示,不以引号开头
+        const line =
+            run('tasklist', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'])
+                .trim()
+                .split(/\r?\n/)[0] ?? '';
+        const match = /^"([^"]+)","(\d+)"/.exec(line);
+        return match && Number(match[2]) === pid ? match[1]!.toLowerCase() : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * 读锁文件;返回仍在运行的服务器 pid,没有锁、锁已过期(进程不在了,或 pid 已被别的程序复用)
+ * 或内容无法解析时返回 null。
+ */
 export function runningServerPid(
     dataDir: string,
     alive: (pid: number) => boolean = processAlive,
     self: number = process.pid,
+    imageOf: (pid: number) => string | null = processImage,
 ): number | null {
-    let pid: unknown;
+    let lock: { pid?: unknown; image?: unknown };
     try {
-        pid = (JSON.parse(readFileSync(join(dataDir, SERVER_LOCK_FILE), 'utf8')) as { pid?: unknown }).pid;
+        lock = JSON.parse(readFileSync(join(dataDir, SERVER_LOCK_FILE), 'utf8')) as typeof lock;
     } catch {
         return null;
     }
+    const pid = lock.pid;
     if (typeof pid !== 'number' || !Number.isInteger(pid) || pid <= 0 || pid === self) return null;
-    return alive(pid) ? pid : null;
+    if (!alive(pid)) return null;
+    // 旧版本写的锁没有 image:只能按「进程在」处理
+    if (typeof lock.image === 'string') {
+        const current = imageOf(pid);
+        if (current !== null && current !== lock.image.toLowerCase()) return null;
+    }
+    return pid;
 }
 
 /** 写入本进程的锁;返回释放函数(只删自己写的那份)。写失败时抛错由调用方决定是否忽略。 */
-export function acquireServerLock(dataDir: string, pid: number = process.pid, now: () => Date = () => new Date()) {
+export function acquireServerLock(
+    dataDir: string,
+    pid: number = process.pid,
+    now: () => Date = () => new Date(),
+    image: string = selfImage(),
+) {
     const path = join(dataDir, SERVER_LOCK_FILE);
-    writeFileSync(path, `${JSON.stringify({ pid, startedAt: now().toISOString() })}\n`, { mode: 0o600 });
+    writeFileSync(path, `${JSON.stringify({ pid, image, startedAt: now().toISOString() })}\n`, { mode: 0o600 });
     return (): void => {
         try {
             const current = (JSON.parse(readFileSync(path, 'utf8')) as { pid?: unknown }).pid;

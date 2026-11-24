@@ -67,7 +67,7 @@ FatCat-AI:可自托管的开源个人 AI 助手框架(AGPL-3.0-only + 商业许�
 - **CodeQL `js/xss-through-dom`**:任何由拖入文件 `createObjectURL` 喂给 `<img src>` 的都会被标记;X 接受的做法是用 `<canvas>` + `createImageBitmap` 画缩略图。别再新增这类 `img src`。
 - **浏览器工具审批**:同主机免审批曾跳过了 `url_carries_data` 警告(X 拦下);现在长查询串 / 片段总是询问,即使有预授权。任何新的「跳过审批」捷径都要对照会泄露数据的 URL 检查。
 - **runner 单轮最多 5 个工具步(`MAX_TOOL_STEPS`)**:服务端测试里工具调用多的要拆到多条用户消息。
-- **Windows**:`runtime.test.ts` 钩子 / 崩溃等待曾超时(PR #111 已放宽);FIFO 测试在 win32 跳过;Tauri 资源路径带 `\\?\` 前缀 Node 不认(已剥);`node --watch` 在 Windows 上杀子进程用 `TerminateProcess`,`server.lock` 可能残留(已加 `SIGBREAK` 与强退超时,仍待真机复测)。
+- **Windows**:`runtime.test.ts` 钩子 / 崩溃等待曾超时(PR #111 放宽钩子;`fix/windows-tests` 把整组用例超时在 win32 上放大三倍,固定睡眠改成等事件);FIFO 测试在 win32 跳过,对应的命名管道 `\\.\pipe\…` 由 `packages/tools/src/fs/preview.test.ts` 的 win32 用例覆盖(词法检查直接拒绝、不打开、不挂住,CI Windows 任务会跑);Tauri 资源路径带 `\\?\` 前缀 Node 不认(已剥);`node --watch` 在 Windows 上杀子进程用 `TerminateProcess`,`server.lock` 可能残留且 pid 很快被复用:锁里现在记映像名(`node.exe` 等),Windows 上用 `tasklist` 核对,对不上就认作过期(已加 `SIGBREAK` 与强退超时;仍待真机复测)。
 - **Linux 沙箱**:`unshare` 不拦路径形式的 Unix 套接字,所以插件直连网络在各处显示 `layered`;业主规则:**不再打单点补丁**,要做就走挂载命名空间或 Landlock。
 - **Clash fake-IP**(198.18.0.0/15)会让市场索引下载被 net-guard 拒;已有开关与 `index_fake_ip_blocked` 错误码和设置页跳转。
 - **PWA service worker**:先 clone 再写缓存并 await;直接打开离线页 / 图标不能覆盖应用壳;manifest 与图标网络优先;缓存名带构建哈希。
@@ -99,7 +99,7 @@ M12 计划内的 PR 都已开出。等业主给下一个计划再动手(做完�
    - #112 空闲布局(Windows 与 macOS):浮动面板盖在原生浏览器 webview 上时的遮挡与隐藏、Ctrl+B / Ctrl+K、运行结束 8 秒自动收起。
    - #118 `system.open`:三平台的打开动作;Windows `explorer.exe` 对 mailto 和带空格路径的行为;macOS Gatekeeper 对下载文件的提示。
    - #119 手机单栏(真实 iPhone / Android):刘海和底部横条的安全区留白、屏幕键盘弹出时输入框的位置、安装成 PWA 后状态栏颜色随主题变化;窄的桌面窗口里原生浏览器面板与底部标签栏的叠放。
-   - #108 遗留:真实模型下 fs.write 审批的差异预览;Windows 上反斜杠根目录和路径显示;Windows 命名管道路径不会挂住(FIFO 测试在 win32 跳过)。
+   - #108 遗留:真实模型下 fs.write 审批的差异预览;Windows 上反斜杠根目录和路径显示;Windows 命名管道路径不会挂住(已有 win32 用例,CI Windows 任务跑;真机上仍要点一次)。
 6. M8 遗留决定:整棵树取消是否够用、中断后重试还是做续跑(推荐先重试);越界路径目前是先审批后由工具拒绝,可改为审批前校验。
 7. 发布:v1.0 说明仍是草稿,无 tag / Release / GHCR 镜像;首发用 `1.0.0` 由发布流程设置;自动更新要业主先生成密钥;桌面通知、文件拖拽、远程模式需要页面到壳的桥接设计。
 8. 企业微信推迟、QQ 以后做(1.x 优先 / M13);1.0 仅单用户,多用户在 M13。

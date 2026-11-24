@@ -3,6 +3,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -85,6 +86,35 @@ describe.skipIf(process.platform === 'win32')('🔒 a FIFO never blocks the prev
             /not a regular file/,
         );
         expect(Date.now() - started).toBeLessThan(2000);
+    });
+});
+
+// Windows 没有 mkfifo;对应的是命名管道 \\.\pipe\…:向它写会一直等对端读取。
+// 这类路径在词法检查里就被拒绝(ADR 0011),预览和执行都不打开它,也不会挂住。
+describe.runIf(process.platform === 'win32')('🔒 a Windows named pipe never blocks the preview or the write', () => {
+    it('is refused before it is opened, quickly, and the pipe server never sees a connection', async () => {
+        const name = `\\\\.\\pipe\\fatcat-test-${process.pid}-${Date.now()}`;
+        let connections = 0;
+        const server = createServer(() => connections++);
+        await new Promise<void>((resolve) => server.listen(name, resolve));
+        try {
+            const tool = createFsTools({ roots: () => [root] }).find((t) => t.name === 'fs.write')!;
+            const context = { ownerId: 'o', sessionId: 's' } as ToolContext;
+            const started = Date.now();
+            // 正斜杠写法 //./pipe/… 指向同一个管道
+            for (const target of [name, name.replaceAll('\\', '/')]) {
+                expect(tool.preview!({ path: target, content: 'x', overwrite: true }, context)).toBeUndefined();
+                for (const overwrite of [true, false]) {
+                    await expect(tool.execute({ path: target, content: 'x', overwrite }, context)).rejects.toThrow(
+                        /paths are not allowed/,
+                    );
+                }
+            }
+            expect(Date.now() - started).toBeLessThan(2000);
+            expect(connections).toBe(0);
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
     });
 });
 
