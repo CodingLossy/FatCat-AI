@@ -85,5 +85,5 @@
 
 1. channels hub 与 PluginService 下沉:把渠道中枢和插件服务从 `apps/server` 下沉到对应的包,`apps/server` 只做装配和路由。设计见 [ADR 0050](../adr/0050-server-split.md),分两个 PR:`refactor/channels-hub`(`ServiceError` 与渠道中枢下沉到 `@fatcat-ai/channels/hub`)、`refactor/plugin-service`(新包 `@fatcat-ai/plugins`)。
 2. ownerId 覆盖审计:逐个仓储和路由核对 `ownerId` 过滤,补越权用例,为多用户做准备。设计与盘点见 [ADR 0051](../adr/0051-owner-scope-audit.md),PR `test/owner-scope-audit`:`pnpm check:owner-scope` 静态检查与 `apps/server/src/owner-scope.test.ts` 越权扫描。
-3. QQ 渠道。
+3. QQ 渠道:QQ 官方机器人(WebSocket 网关、只处理单聊、沿用 ADR 0022 的绑定与审批)。设计见 [ADR 0052](../adr/0052-qq-channel.md),分三个 PR:`docs/qq-channel-adr`、`test/channel-hub-unit`(包级中枢单测)、`feat/channel-qq`。
 4. 多用户 ADR(2.0)。
