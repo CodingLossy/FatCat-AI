@@ -2,7 +2,17 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { execFileSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+    chmodSync,
+    existsSync,
+    mkdirSync,
+    renameSync,
+    symlinkSync,
+    mkdtempSync,
+    realpathSync,
+    rmSync,
+    writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CodeProject } from '@fatcat-ai/shared';
@@ -301,6 +311,100 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
         } finally {
             rmSync(outsideBase, { recursive: true, force: true });
         }
+    });
+
+    describe('对象库里的链接与看不准的 alternates 条目', () => {
+        let outsideBase = '';
+        let secret = '';
+        let secretSha = '';
+        let n = 0;
+        beforeAll(() => {
+            outsideBase = realpathSync.native(mkdtempSync(join(tmpdir(), 'fatcat-links-')));
+            secret = join(outsideBase, 'secret');
+            mkdirSync(secret);
+            git(secret, 'init', '-q', '-b', 'main');
+            commit(secret, 's.txt', 'CHAIN_SECRET_PAYLOAD\n', 'secret commit');
+            secretSha = git(secret, 'rev-parse', 'HEAD').trim();
+        });
+        afterAll(() => rmSync(outsideBase, { recursive: true, force: true }));
+        // Windows 上目录链接用 junction(不需要管理员权限)
+        const linkDir = (target: string, at: string) => symlinkSync(target, at, win ? 'junction' : 'dir');
+        const fresh = () => {
+            const dir = join(root, `links-${++n}`);
+            mkdirSync(dir);
+            git(dir, 'init', '-q', '-b', 'main');
+            commit(dir, 'x.txt', 'a\n', 'init');
+            return dir;
+        };
+        const denied = /repository data is outside the authorized folders/;
+        const allDenied = async (dir: string) => {
+            const t = tools({ projects: [project({ path: dir })] });
+            for (const [name, input] of [
+                ['git.show', { project: 'p1', sha: secretSha }],
+                ['git.log', { project: 'p1' }],
+                ['git.diff', { project: 'p1' }],
+                ['code.run', { project: 'p1', command: 'env' }],
+            ] as const) {
+                await expect(exec(t(name), input), name).rejects.toThrow(denied);
+            }
+            await expect(checkProject(dir, [root])).rejects.toThrow(denied);
+        };
+
+        it.skipIf(win)('alternates 条目首尾有空格或结尾有 \\r 时拒绝(git 原样读整行,不去空白)', async () => {
+            for (const variant of ['trailing', 'cr', 'leading']) {
+                const mid = fresh();
+                const a = fresh();
+                const name = variant === 'cr' ? 'objects\r' : 'objects ';
+                linkDir(join(secret, '.git', 'objects'), join(mid, '.git', name));
+                const entry = variant === 'leading' ? ` ${join(mid, '.git', 'objects')}` : join(mid, '.git', name);
+                writeFileSync(join(a, '.git', 'objects', 'info', 'alternates'), `${entry}\n`);
+                await expect(checkProject(a, [root]), variant).rejects.toThrow(denied);
+                const t = tools({ projects: [project({ path: a })] });
+                await expect(exec(t('git.show'), { project: 'p1', sha: secretSha }), variant).rejects.toThrow(denied);
+            }
+        });
+
+        it('.git/objects 整个是指到外面的链接:四个工具都拒绝', async () => {
+            const dir = fresh();
+            renameSync(join(dir, '.git', 'objects'), join(dir, '.git', 'objects-old'));
+            linkDir(join(secret, '.git', 'objects'), join(dir, '.git', 'objects'));
+            await allDenied(dir);
+        });
+
+        it('.git/objects 是指到授权文件夹内另一个目录的链接:同样拒绝(对象库里不允许任何链接)', async () => {
+            const dir = fresh();
+            const elsewhere = join(root, `objects-copy-${n}`);
+            renameSync(join(dir, '.git', 'objects'), elsewhere);
+            linkDir(elsewhere, join(dir, '.git', 'objects'));
+            await expect(checkProject(dir, [root])).rejects.toThrow(denied);
+        });
+
+        it('objects/pack 或两位十六进制目录是指到外面的链接:拒绝', async () => {
+            git(secret, 'repack', '-adq');
+            const packed = fresh();
+            rmSync(join(packed, '.git', 'objects', 'pack'), { recursive: true, force: true });
+            linkDir(join(secret, '.git', 'objects', 'pack'), join(packed, '.git', 'objects', 'pack'));
+            await allDenied(packed);
+
+            const loose = fresh();
+            linkDir(join(secret, '.git', 'objects', 'info'), join(loose, '.git', 'objects', secretSha.slice(0, 2)));
+            await expect(checkProject(loose, [root])).rejects.toThrow(denied);
+        });
+
+        it.skipIf(win)('单个松散对象文件是指到外面的链接:拒绝', async () => {
+            const dir = fresh();
+            const target = join(outsideBase, 'object-file');
+            writeFileSync(target, 'x');
+            const sub = join(dir, '.git', 'objects', 'ab');
+            mkdirSync(sub, { recursive: true });
+            symlinkSync(target, join(sub, 'cdef'));
+            await expect(checkProject(dir, [root])).rejects.toThrow(denied);
+        });
+
+        it('普通仓库照常通过', async () => {
+            const dir = fresh();
+            await expect(checkProject(dir, [root])).resolves.toBe(dir);
+        });
     });
 
     it('越权:core.worktree、.git 文件的 gitdir 指到授权文件夹之外时拒绝', async () => {

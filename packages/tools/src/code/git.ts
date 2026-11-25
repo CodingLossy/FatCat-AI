@@ -3,7 +3,7 @@
 
 // 加固过的只读 git(ADR 0049 第 3.3 节)。仓库自己的配置可能执行命令(core.fsmonitor、diff.external、textconv、
 // clean / smudge 过滤器、core.pager 等):每次调用都用 -c 关掉它们,环境只留最少的变量,不经 shell。
-import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ProcessError, runProcess } from './process.js';
@@ -171,31 +171,83 @@ export function runGit(cwd: string, args: readonly string[]): Promise<string> {
 }
 
 /**
- * 仓库真正读取的目录:git 目录、共用目录(worktree 的 commondir)、配置的 core.worktree 与 alternates 里的对象目录。
- * `.git` 文件的 gitdir、commondir 与 alternates 都可能指到授权文件夹之外,调用方要逐个检查。
+ * 仓库真正读取的目录(都是真实路径):git 目录、共用目录(worktree 的 commondir)、配置的 core.worktree、
+ * 根对象目录与 alternates 整条链上的对象目录。调用方逐个检查它们都在授权文件夹之内。
+ *
+ * 另外两条规则(ADR 0049 第 3.3 节),不再逐个列举 git 会跟随的指针:
+ * - git 目录、共用目录和链上每个对象目录里不允许任何符号链接(Windows 上 junction 也算);git 自己从不建链接。
+ * - alternates 条目按 git 的规则读(只按 \n 分行,整行原样当路径),含 \r、首尾空白或以 " 开头的条目一律拒绝。
  */
 export async function repositoryDirs(cwd: string): Promise<string[]> {
     const out = await runRaw(cwd, ['rev-parse', '--absolute-git-dir', '--git-common-dir'], false);
-    const [gitDir, common] = out.split('\n').map((l) => l.trim());
-    if (!gitDir || !common) throw new GitError('git did not report the repository directory', 'git_failed');
-    const commonDir = path.resolve(cwd, common);
+    const [gitDirRaw, common] = out.split('\n').map((l) => l.trim());
+    if (!gitDirRaw || !common) throw new GitError('git did not report the repository directory', 'git_failed');
+    const gitDir = realDir(gitDirRaw);
+    const commonDir = realDir(path.resolve(cwd, common));
     const dirs = [gitDir, commonDir];
     // 仓库配置的 core.worktree(相对 git 目录);调用时已用 --work-tree 固定,这里只是拒绝指到外面的仓库
     const worktree = await runRaw(cwd, ['config', '--get', 'core.worktree'], false).catch(() => '');
     if (worktree.trim() !== '') dirs.push(path.resolve(gitDir, worktree.trim()));
-    dirs.push(...alternateChain(path.join(commonDir, 'objects')));
+    const objects = realDir(path.join(commonDir, 'objects'));
+    const chain = [objects, ...alternateChain(objects)];
+    dirs.push(...chain);
+    const budget = { left: MAX_SCANNED_ENTRIES };
+    const scanned = new Set<string>();
+    for (const dir of [gitDir, commonDir, ...chain]) {
+        if (!scanned.has(dir)) rejectLinks(dir, budget, scanned);
+    }
     return dirs;
+}
+
+function realDir(dir: string): string {
+    try {
+        return realpathSync.native(dir);
+    } catch {
+        throw new GitError(`git did not report a readable repository directory`, 'git_failed');
+    }
+}
+
+/** 扫描链接时最多看这么多项;更大的仓库直接拒绝,不无限扫。 */
+export const MAX_SCANNED_ENTRIES = 200_000;
+
+/** 递归扫一个目录,出现任何符号链接(含 junction)就拒绝。已扫过的目录(含子目录)记在 scanned 里。 */
+function rejectLinks(root: string, budget: { left: number }, scanned: Set<string>): void {
+    const stack = [root];
+    while (stack.length > 0) {
+        const dir = stack.pop()!;
+        if (scanned.has(dir)) continue;
+        scanned.add(dir);
+        let entries;
+        try {
+            entries = readdirSync(dir, { withFileTypes: true });
+        } catch {
+            throw new GitError('a repository directory cannot be read', 'unsafe_repository');
+        }
+        for (const entry of entries) {
+            if (--budget.left < 0) {
+                throw new GitError(
+                    `the repository has more than ${MAX_SCANNED_ENTRIES} files under .git; run git gc first`,
+                    'unsafe_repository',
+                );
+            }
+            const full = path.join(dir, entry.name);
+            if (entry.isSymbolicLink()) {
+                throw new GitError(`the repository contains a link: ${full}`, 'unsafe_repository');
+            }
+            if (entry.isDirectory()) stack.push(full);
+        }
+    }
 }
 
 /** git 自己最多跟 5 层;这里放宽到 16 层,超过就拒绝。 */
 const MAX_ALTERNATE_DEPTH = 16;
 
 /**
- * 顺着 objects/info/alternates 链找出所有对象目录(git 查对象时会跟随整条链)。
- * 每个条目取真实路径再往下读;有环时停止;带引号的条目(git 会做 C 风格反转义)和过深的链直接拒绝。
+ * 顺着 objects/info/alternates 链找出所有对象目录(真实路径;git 查对象时会跟随整条链)。
+ * 按 git 的规则读条目;看不准的条目(\r、首尾空白、引号)和过深的链直接拒绝;有环时停止。
  */
 export function alternateChain(objects: string): string[] {
-    const seen = new Set<string>();
+    const seen = new Set<string>([objects]);
     const found: string[] = [];
     const walk = (dir: string, depth: number) => {
         let text: string;
@@ -204,11 +256,14 @@ export function alternateChain(objects: string): string[] {
         } catch {
             return;
         }
-        for (const line of text.split(/\r?\n/)) {
-            const entry = line.trim();
+        for (const entry of text.split('\n')) {
             if (entry === '' || entry.startsWith('#')) continue;
-            if (entry.startsWith('"'))
-                throw new GitError('the repository uses a quoted alternates entry', 'unsafe_repository');
+            if (entry.includes('\r') || entry !== entry.trim() || entry.startsWith('"')) {
+                throw new GitError(
+                    'the repository has an alternates entry that cannot be checked',
+                    'unsafe_repository',
+                );
+            }
             if (depth >= MAX_ALTERNATE_DEPTH)
                 throw new GitError('the alternates chain is too deep', 'unsafe_repository');
             const resolved = path.resolve(dir, entry);
