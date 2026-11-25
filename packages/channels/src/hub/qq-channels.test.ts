@@ -89,4 +89,28 @@ describe('QqChannels', () => {
         make().forget(channel.id);
         expect(readFileSync(join(dir, 'secrets.yaml'), 'utf8')).toBe(broken);
     });
+
+    it('保存配置失败时删掉刚写的密钥行,文件回到原样', async () => {
+        const original = '# 注释\nOTHER_KEY: keep-me\n';
+        writeFileSync(join(dir, 'secrets.yaml'), original, { mode: 0o600 });
+        const channel = repos.channels.create(ownerId, { kind: 'qq', label: 'QQ' });
+        const failing = {
+            ...repos,
+            channels: Object.assign(Object.create(repos.channels) as Repositories['channels'], {
+                setConfig: () => {
+                    throw new Error('disk full');
+                },
+            }),
+        };
+        const qq = new QqChannels({
+            repos: failing,
+            secrets,
+            logger: { info: () => undefined, warn: () => undefined },
+        });
+        await expect(qq.saveCredentials(channel, { appId: '1', appSecret: 'the-app-secret' })).rejects.toThrow(
+            'disk full',
+        );
+        expect(readFileSync(join(dir, 'secrets.yaml'), 'utf8')).toBe(original);
+        expect(repos.channels.byId(channel.id)!.config).toEqual({});
+    });
 });

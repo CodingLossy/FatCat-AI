@@ -5,7 +5,7 @@ description: Connect the assistant to a QQ official bot with its credentials, pa
 
 > English version translated by a model; pending review.
 
-The QQ channel uses an official bot on the QQ open platform and handles direct (one-to-one) chats only; messages that @ the bot in a group are ignored. Binding, commands and approvals work exactly as in the [WeChat channel](../channels/), and each channel accepts exactly one owner account.
+The QQ channel uses an official bot on the QQ open platform and handles direct (one-to-one) chats only. The bot receives messages that @ it in a group, but, as with the WeChat channel, it does not answer them or pass them to the assistant, even when the bound owner sends them; talk to the assistant in a direct chat with the bot. Binding, commands and approvals work exactly as in the [WeChat channel](/FatCat-AI/en/guides/channels/), and each channel accepts exactly one owner account.
 
 ## Prepare the bot
 

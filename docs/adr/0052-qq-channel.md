@@ -140,4 +140,6 @@
 - **任务推送失败**:中枢的 `push()` 以前和普通回复一样只记错误,现在把发送错误抛给 `channel.push`,任务运行里能看到平台错误码(微信同样受益)。
 - **脱敏**:`ChannelSecrets` 增加 `protect(value)`,QQ 的 access_token 换到后立即登记到脱敏器;`SecretStore` 增加同名方法。
 - **假平台**:`packages/channels/src/qq-fake.ts`(经 `@fatcat-ai/channels/testing` 导出)用 `node:http` 实现令牌接口、网关地址、发消息和一个最小的 WebSocket 网关(握手 + 不分片的文本帧 + 关闭帧),不引入依赖;`apps/server` 的 `qq-credentials.test.ts` 也用它。
+- **群 @ 消息**:订阅 `GROUP_AND_C2C_EVENT` 后网关也会推群 @ 消息,适配器把它标成 `chat: 'group'`,中枢和微信一样一律忽略(连主人在群里 @ 也忽略,只计入 ignoredCount);群聊仍在「不做」里。中枢单测按两种渠道都覆盖这一条。
+- **凭据保存回滚**:secrets.yaml 写入成功但保存配置失败时,删掉刚写的那一行再报错,不留孤立的 `QQBOT_SECRET_<id>`。
 - **外连清单**:QQ 渠道列两项,`https://api.bot.qq.com`(令牌、网关地址、发消息)与 `wss://api.bot.qq.com`(网关)。

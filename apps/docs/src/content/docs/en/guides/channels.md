@@ -3,7 +3,7 @@ title: Connect WeChat
 description: Connect the assistant to WeChat with QR login, pairing and approvals from WeChat.
 ---
 
-1.0 includes only the WeChat channel; for the QQ official bot see [Connect QQ](../qq/); WeCom is postponed with no date set. Each channel accepts exactly one owner account.
+1.0 includes only the WeChat channel; for the QQ official bot see [Connect QQ](/FatCat-AI/en/guides/qq/); WeCom is postponed with no date set. Each channel accepts exactly one owner account.
 
 ## Steps
 

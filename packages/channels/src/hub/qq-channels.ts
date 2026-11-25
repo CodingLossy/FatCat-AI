@@ -56,11 +56,17 @@ export class QqChannels {
                 'The AppSecret could not be saved to secrets.yaml; the file was not changed.',
             );
         }
-        this.options.repos.channels.setConfig(channel.id, {
-            ...channel.config,
-            appId: credentials.appId,
-            secretRef: `file:${qqSecretKey(channel.id)}`,
-        });
+        try {
+            this.options.repos.channels.setConfig(channel.id, {
+                ...channel.config,
+                appId: credentials.appId,
+                secretRef: `file:${qqSecretKey(channel.id)}`,
+            });
+        } catch (error) {
+            // 配置没存上:删掉刚写的那一行,不留孤立的密钥
+            this.forget(channel.id);
+            throw error;
+        }
         this.options.logger.info({ channelId: channel.id }, 'qq credentials saved');
         const updated = this.options.repos.channels.byId(channel.id);
         if (updated && this.hub) await this.hub.restart(updated);
