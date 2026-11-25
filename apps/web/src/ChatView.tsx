@@ -1073,20 +1073,25 @@ export function ChatView({
     if (minimal) {
         const name = agents.find((a) => a.id === agentId)?.name ?? t('voice.stage.defaultName');
         const recordingNow = voiceMode === 'hold' || voiceMode === 'tap';
-        const phase: 'idle' | 'listening' | 'heard' | 'thinking' | 'speaking' =
-            recordingNow || (conversation.active && conversation.speech)
-                ? conversation.active
-                    ? 'heard'
-                    : 'listening'
-                : voiceMode === 'transcribing'
+        const phase: 'idle' | 'listening' | 'heard' | 'thinking' | 'speaking' = conversation.active
+            ? conversation.speech
+                ? 'heard'
+                : live || voiceMode === 'transcribing'
                   ? 'thinking'
                   : localVoice === 'speaking' || shown.state === 'speaking'
                     ? 'speaking'
-                    : live || shown.state === 'thinking' || shown.state === 'executing'
-                      ? 'thinking'
-                      : conversation.active || localVoice === 'listening' || shown.state === 'listening'
-                        ? 'listening'
-                        : 'idle';
+                    : 'listening'
+            : recordingNow
+              ? 'listening'
+              : voiceMode === 'transcribing'
+                ? 'thinking'
+                : localVoice === 'speaking' || shown.state === 'speaking'
+                  ? 'speaking'
+                  : live || shown.state === 'thinking' || shown.state === 'executing'
+                    ? 'thinking'
+                    : conversation.active || localVoice === 'listening' || shown.state === 'listening'
+                      ? 'listening'
+                      : 'idle';
         const lastOf = (role: Message['role']) => [...messages].reverse().find((m) => m.role === role);
         const reply = live ? live.text : lastOf('assistant') ? textOf(lastOf('assistant')!) : '';
         const userLine = live?.userText ?? '';
@@ -1099,16 +1104,20 @@ export function ChatView({
                   : phase === 'thinking'
                     ? 'thinking'
                     : phase;
-        const action = continuous
-            ? conversation.active
-                ? t('voice.endConversation')
-                : t('voice.startConversation')
-            : live && !recordingNow
-              ? t('chat.stop')
-              : recordingNow
-                ? t('voice.tapRecording')
-                : t('voice.talk');
-        const orbMode = continuous ? 'conversation' : live && !recordingNow ? 'stop' : 'talk';
+        const action =
+            live?.runId && !recordingNow
+                ? t('chat.stop')
+                : continuous
+                  ? conversation.active
+                      ? t('voice.endConversation')
+                      : t('voice.startConversation')
+                  : live
+                    ? t('chat.stop')
+                    : recordingNow
+                      ? t('voice.tapRecording')
+                      : t('voice.talk');
+        // 回复进行中点球只停止这次回复(连续对话也一样,对话继续);结束对话用 Esc 或回复结束后再点
+        const orbMode = live?.runId && !recordingNow ? 'stop' : continuous ? 'conversation' : live ? 'stop' : 'talk';
         return (
             <div
                 className={workbench ? 'chat chat-stage voice-min' : 'chat voice-min'}

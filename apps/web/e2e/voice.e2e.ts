@@ -425,6 +425,8 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
     await expect(page.getByTestId('mic-on')).toContainText('麦克风开着');
     await expect(conversation).toHaveAttribute('aria-label', '结束对话');
     await expect(page).toHaveTitle(/^\[麦克风开着\]/);
+    // 对话开着、没检测到说话:状态是「正在聆听」
+    await expect(page.getByTestId('voice-status')).toHaveText('FatCat 正在聆听');
     expect(
         await page.evaluate(() => (window as unknown as { fakeMic: { constraints: unknown[] } }).fakeMic.constraints),
     ).toEqual([{ audio: { echoCancellation: true, noiseSuppression: true } }]);
@@ -477,12 +479,23 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
         Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
     });
 
-    // Esc 结束对话
+    // 回复进行中点球只停止这次回复,对话继续;之后 Esc 结束对话
     await conversation.click();
     await expect(page.getByTestId('mic-on')).toBeVisible();
+    transcripts.push('第三句');
+    holdChat = true;
+    await say(700);
+    const stopOrb = page.getByTestId('voice-stop');
+    await expect(stopOrb).toHaveAttribute('aria-label', '停止', { timeout: 10_000 });
+    await expect(stopOrb).toBeEnabled();
+    await stopOrb.click();
+    await expect.poll(() => cancels.length, { timeout: 10_000 }).toBe(1);
+    await expect(page.getByTestId('mic-on')).toBeVisible();
+    releaseChat();
+    await expect(conversation).toHaveAttribute('aria-label', '结束对话', { timeout: 10_000 });
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('mic-on')).toHaveCount(0);
-    expect(transcriptions()).toBe(sttBefore + 2);
+    expect(transcriptions()).toBe(sttBefore + 3);
 });
 
 test('极简主界面:三套主题的空闲 / 聆听 / 思考,手机不横向溢出(ADR 0049 第 10 节)', async ({ page }) => {

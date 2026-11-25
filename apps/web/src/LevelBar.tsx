@@ -8,6 +8,7 @@ export function LevelBar({ level }: { level: { readonly current: number | null }
     const bar = useRef<HTMLSpanElement>(null);
     useEffect(() => {
         const timer = window.setInterval(() => {
+            if (document.hidden) return; // 页面在后台时不用刷新
             bar.current?.style.setProperty('--level', String(Math.min(1, Math.max(0, level.current ?? 0))));
         }, 80);
         return () => window.clearInterval(timer);
