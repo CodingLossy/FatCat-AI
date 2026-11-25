@@ -22,7 +22,8 @@ const skills = readdirSync(dir)
     });
 
 const body = [
-    '// SPDX-License-Identifier: AGPL-3.0-only',
+    // 拆开写,免得 REUSE 把这一行当成本脚本自己的许可证声明
+    `// SPDX${'-'}License-Identifier: AGPL-3.0-only`,
     '// Copyright (C) 2026 尹绪柏 (Theodore Yin)',
     '',
     '// 由 scripts/gen-builtin-skills.mjs 从 skills/<id>/skill.json 与 instructions.md 生成,不要手改。',
