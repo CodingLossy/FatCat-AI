@@ -124,10 +124,10 @@ describe('isAllowedQqGatewayUrl', () => {
 });
 
 describe('heartbeatDelay', () => {
-    it('非数字或低于下限时用 45 秒,超过 2 分钟按 2 分钟', () => {
+    it('只采用 [下限, 2 分钟] 内的间隔,其他值(非数字、过小、过大)用 45 秒', () => {
         expect(heartbeatDelay(41_250, 1_000)).toBe(41_250);
-        for (const bad of [NaN, -1, 0, 999, Infinity]) expect(heartbeatDelay(bad, 1_000)).toBe(45_000);
-        for (const big of [120_001, 1e12]) expect(heartbeatDelay(big, 1_000)).toBe(120_000);
+        expect(heartbeatDelay(120_000, 1_000)).toBe(120_000);
+        for (const bad of [NaN, -1, 0, 999, 120_001, 1e12, Infinity]) expect(heartbeatDelay(bad, 1_000)).toBe(45_000);
     });
 });
 

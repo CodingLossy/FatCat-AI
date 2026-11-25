@@ -19,6 +19,9 @@ import type {
 /** 2026-08-10 起所有接口统一为这个域名(官方更新日志)。 */
 export const QQ_API_BASE_URL = 'https://api.bot.qq.com';
 export const QQ_TOKEN_URL = 'https://api.bot.qq.com/app/getAppAccessToken';
+const MAX_HEARTBEAT_MS = 120_000;
+const DEFAULT_HEARTBEAT_MS = 45_000;
+
 /** 单聊与群 @ 消息(`GROUP_AND_C2C_EVENT`);不请求频道事件。 */
 export const QQ_INTENTS = 1 << 25;
 /** 单聊被动回复:收到消息后 60 分钟内、每条最多 4 次(消息收发概述)。 */
@@ -176,9 +179,11 @@ const CLOSE_MESSAGES: Record<number, ChannelErrorReport> = {
     4915: { code: 'qq_bot_unavailable', message: 'The QQ bot is banned.' },
 };
 
-/** 网关给的心跳间隔:非数字或低于下限时用 45 秒,超过 2 分钟按 2 分钟,避免异常值造成心跳风暴或长时间不检测断线。 */
-export const heartbeatDelay = (interval: number, min: number): number =>
-    Number.isFinite(interval) && interval >= min ? Math.min(interval, 120_000) : 45_000;
+/** 网关给的心跳间隔只在 [下限, 2 分钟] 内采用,其他值(非数字、过小、过大)用 45 秒,避免心跳风暴或长时间不检测断线。 */
+export function heartbeatDelay(interval: number, min: number): number {
+    if (Number.isFinite(interval) && interval >= min && interval <= MAX_HEARTBEAT_MS) return interval;
+    return DEFAULT_HEARTBEAT_MS;
+}
 
 export class QqAdapter implements ChannelAdapter {
     readonly kind = 'qq' as const;
