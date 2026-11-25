@@ -5,7 +5,7 @@ description: Connect the assistant to a QQ official bot with its credentials, pa
 
 > English version translated by a model; pending review.
 
-The QQ channel uses an official bot on the QQ open platform and handles direct (one-to-one) chats only; messages that @ the bot in a group are ignored. Binding, commands and approvals work exactly as in the [WeChat channel](/en/guides/channels/), and each channel accepts exactly one owner account.
+The QQ channel uses an official bot on the QQ open platform and handles direct (one-to-one) chats only; messages that @ the bot in a group are ignored. Binding, commands and approvals work exactly as in the [WeChat channel](../channels/), and each channel accepts exactly one owner account.
 
 ## Prepare the bot
 
