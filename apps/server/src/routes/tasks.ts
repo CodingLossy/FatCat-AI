@@ -7,6 +7,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { createRoute, z } from '@hono/zod-openapi';
 import {
+    type PluginSkillTaskTemplate,
     type PluginTaskTemplate,
     effectiveTimeZone,
     Id,
@@ -17,6 +18,7 @@ import {
     TaskCreate,
     TaskDraftResult,
     TaskFromPluginTemplate,
+    TaskFromSkillTemplate,
     TaskPropose,
     TaskPage,
     TaskPatch,
@@ -85,6 +87,15 @@ const fromPluginRoute = createRoute({
     summary:
         'Create a task draft from a task template of an enabled plugin. A draft never runs until it is confirmed in the Web UI',
     request: { body: { content: { 'application/json': { schema: TaskFromPluginTemplate } }, required: true } },
+    responses: { 201: json(TaskDraftResult, 'Draft'), 404: problem('No such template'), ...authErrors },
+});
+const fromSkillRoute = createRoute({
+    method: 'post',
+    path: '/tasks/from-skill-template',
+    tags,
+    summary:
+        "Create a task draft from a task template of an enabled skill (built-in or from a plugin). The template's tool set becomes the task's tool set. A draft never runs until it is confirmed in the Web UI",
+    request: { body: { content: { 'application/json': { schema: TaskFromSkillTemplate } }, required: true } },
     responses: { 201: json(TaskDraftResult, 'Draft'), 404: problem('No such template'), ...authErrors },
 });
 const confirmRoute = createRoute({
@@ -231,6 +242,12 @@ export function taskRoutes(deps: {
         pluginId: string,
         index: number,
     ) => { name: string; template: PluginTaskTemplate };
+    /** 已启用 Skill 的任务模板;找不到时抛 404。插件 Skill 带上所属插件,任务因此跟着插件停用。 */
+    skillTemplate?: (
+        ownerId: string,
+        skillId: string,
+        index: number,
+    ) => { name: string; template: PluginSkillTaskTemplate; pluginId: string | null };
 }) {
     const { repos, scheduler } = deps;
     const timeZoneOf = (ownerId: string) => effectiveTimeZone(repos.settings.get(ownerId).timeZone);
@@ -382,6 +399,42 @@ export function taskRoutes(deps: {
             }
         }
     };
+    /** 从插件或 Skill 的任务模板建草稿:标题按界面语言取,不带预授权;确认前不会运行。 */
+    const draftFromTemplate = (
+        ownerId: string,
+        template: PluginTaskTemplate,
+        fallbackTitle: string,
+        extra: { fromPlugin?: string; toolSet?: string[]; warning: string },
+    ) => {
+        const timeZone = timeZoneOf(ownerId);
+        const locale = repos.settings.get(ownerId).locale;
+        const title =
+            (locale === 'en' ? template.title.en : template.title['zh-CN']) ??
+            template.title.en ??
+            template.title['zh-CN'] ??
+            fallbackTitle;
+        checkTrigger(ownerId, template.trigger);
+        repos.tasks.pruneDrafts(new Date(Date.now() - DRAFT_TTL_MS).toISOString());
+        const draft = repos.tasks.createUser(
+            ownerId,
+            {
+                name: title.slice(0, 80),
+                trigger: template.trigger,
+                action: { kind: 'agent_prompt', prompt: template.prompt },
+                outputs: [{ kind: 'conversation' }],
+                policy: {
+                    maxAttempts: 3,
+                    misfire: 'skip',
+                    quietHours: null,
+                    maxRuntimeMinutes: 10,
+                    ...(extra.toolSet ? { toolSet: extra.toolSet } : {}),
+                    ...(extra.fromPlugin ? { fromPlugin: extra.fromPlugin } : {}),
+                },
+            },
+            true,
+        );
+        return { task: toTask(draft), warnings: [extra.warning], timeZone };
+    };
     const runOr404 = (ownerId: string, id: string) => {
         const run = repos.tasks.getRun(id);
         if (!run || !repos.tasks.get(ownerId, run.taskId)) throw notFound('Task run');
@@ -511,42 +564,23 @@ export function taskRoutes(deps: {
             const { pluginId, index } = c.req.valid('json');
             if (!deps.pluginTemplate) throw notFound('Task template');
             const { name, template } = deps.pluginTemplate(ownerId, pluginId, index);
-            const timeZone = timeZoneOf(ownerId);
-            const locale = repos.settings.get(ownerId).locale;
-            const title =
-                (locale === 'en' ? template.title.en : template.title['zh-CN']) ??
-                template.title.en ??
-                template.title['zh-CN'] ??
-                pluginId;
-            checkTrigger(ownerId, template.trigger);
-            repos.tasks.pruneDrafts(new Date(Date.now() - DRAFT_TTL_MS).toISOString());
-            const draft = repos.tasks.createUser(
-                ownerId,
-                {
-                    name: title.slice(0, 80),
-                    trigger: template.trigger,
-                    action: { kind: 'agent_prompt', prompt: template.prompt },
-                    outputs: [{ kind: 'conversation' }],
-                    policy: {
-                        maxAttempts: 3,
-                        misfire: 'skip',
-                        quietHours: null,
-                        maxRuntimeMinutes: 10,
-                        fromPlugin: pluginId,
-                    },
-                },
-                true,
-            );
-            return c.json(
-                {
-                    task: toTask(draft),
-                    warnings: [
-                        `This draft comes from the task template of the plugin "${name}". Nothing runs until you confirm it.`,
-                    ],
-                    timeZone,
-                },
-                201,
-            );
+            const result = draftFromTemplate(ownerId, template, pluginId, {
+                fromPlugin: pluginId,
+                warning: `This draft comes from the task template of the plugin "${name}". Nothing runs until you confirm it.`,
+            });
+            return c.json(result, 201);
+        })
+        .openapi(fromSkillRoute, (c) => {
+            const ownerId = requireOwner(c);
+            const { skillId, index } = c.req.valid('json');
+            if (!deps.skillTemplate) throw notFound('Task template');
+            const { name, template, pluginId } = deps.skillTemplate(ownerId, skillId, index);
+            const result = draftFromTemplate(ownerId, template, skillId, {
+                ...(pluginId ? { fromPlugin: pluginId } : {}),
+                ...(template.toolSet ? { toolSet: template.toolSet } : {}),
+                warning: `This draft comes from the task template of the skill "${name}". Nothing runs until you confirm it.`,
+            });
+            return c.json(result, 201);
         })
         .openapi(confirmRoute, (c) => {
             const auth = c.get('auth');

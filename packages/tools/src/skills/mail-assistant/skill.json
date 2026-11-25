@@ -1,0 +1,15 @@
+{
+  "id": "mail-assistant",
+  "name": { "en": "Mail assistant", "zh-CN": "邮件助手" },
+  "description": "Use when the user asks about their e-mail: what came in, finding a message, summarizing a thread, or drafting a reply",
+  "instructions": "instructions.md",
+  "toolSet": ["mail."],
+  "taskTemplates": [
+    {
+      "title": { "en": "Daily mail summary", "zh-CN": "每日邮件摘要" },
+      "prompt": "Use the mail-assistant skill. Summarize the e-mail received in the last 24 hours (use mail.list and check the dates): group it by what needs a reply, what needs action, and what is only for information. Mention the sender and subject of each item. Do not draft or send anything.",
+      "trigger": { "kind": "cron", "expression": "0 8 * * *" },
+      "toolSet": ["mail.list", "mail.read", "mail.search", "mail.summarize"]
+    }
+  ]
+}

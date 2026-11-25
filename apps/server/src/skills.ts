@@ -10,22 +10,15 @@ import {
     PLUGIN_SKILL_INSTRUCTIONS_MAX_BYTES,
     type PluginManifest,
     type PluginSkillTaskTemplate,
-    type PluginText,
     pluginSkillId,
     type SkillInfo,
 } from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
+import type { BuiltinSkill } from '@fatcat-ai/tools';
 import { hashPluginDir } from '@fatcat-ai/tools/market';
+import { notFound } from './errors.js';
 
-/** 内置 Skill(随核心发布,`feat/builtin-skills` 起提供):清单字段与说明原文。 */
-export interface BuiltinSkill {
-    id: string;
-    name: PluginText;
-    description: string;
-    toolSet: string[];
-    taskTemplates?: PluginSkillTaskTemplate[];
-    instructions: string;
-}
+export type { BuiltinSkill };
 
 export interface SkillServiceOptions {
     repos: Repositories;
@@ -99,6 +92,18 @@ export class SkillService implements SkillSource {
             }));
     }
 
+    /** 已启用 Skill 的第 index 个任务模板(建草稿用);Skill 不存在、已停用或没有这个模板时 404。 */
+    taskTemplate(
+        ownerId: string,
+        id: string,
+        index: number,
+    ): { name: string; template: PluginSkillTaskTemplate; pluginId: string | null } {
+        const info = this.entries(ownerId).find((e) => e.info.id === id && e.info.enabled)?.info;
+        const template = info?.taskTemplates[index];
+        if (!info || !template) throw notFound('Task template');
+        return { name: info.name.en ?? info.name['zh-CN'] ?? info.id, template, pluginId: info.pluginId };
+    }
+
     instructions(ownerId: string, id: string): string | null {
         const entry = this.entries(ownerId).find((e) => e.info.id === id && e.info.enabled);
         return entry ? entry.read() : null;
@@ -124,7 +129,9 @@ function readInstructions(dir: string, rel: string): string | null {
     if (inside === '' || inside.startsWith('..') || inside.includes(`..${sep}`)) return null;
     let fd: number | null = null;
     try {
-        // 先打开再对同一个句柄检查和读取,避免检查之后文件被换掉;POSIX 上不跟随符号链接
+        // 先打开再对同一个句柄检查和读取,避免检查之后文件被换掉;POSIX 上不跟随符号链接。
+        // Windows 没有 O_NOFOLLOW(取 0),open 会跟随链接:那边靠调用方先做的 packageIntact →
+        // hashPluginDir → scanPackageDir,它遇到包里的符号链接或 junction 就拒绝,走不到这里(评测见 skills.eval.test.ts)。
         fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
         const stat = fstatSync(fd);
         if (!stat.isFile() || stat.size > PLUGIN_SKILL_INSTRUCTIONS_MAX_BYTES) return null;

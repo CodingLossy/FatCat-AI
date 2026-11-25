@@ -22,8 +22,12 @@ import { useSkill } from './skills.js';
 /** 工具被任务 / 代理的设置排除的原因(括号里的部分);没被排除时为 undefined,只被前缀扣下时为 ''。 */
 export function exclusion(host: RunHost, ctx: LoopCtx, name: string): string | undefined {
     // skill.use 属于运行控制(ADR 0048 第 6 节):不受工具集限制(Skill 自己与工具集取交集,只缩小,
-    // 交集为空时由 skill.use 报出原因),但没有任何已启用的 Skill 时不交给模型
-    if (name === 'skill.use') return ctx.skills.length > 0 ? undefined : 'no skills are available here';
+    // 交集为空时由 skill.use 报出原因),但没有任何已启用的 Skill 时不交给模型。任务的 withholdToolPrefixes
+    // 照样能扣下它(与其他工具一样按前缀);Skill 覆盖的工具被扣下时也不算进它的有效工具集。
+    if (name === 'skill.use') {
+        if (ctx.withheldPrefixes.some((prefix) => name.startsWith(prefix))) return '';
+        return ctx.skills.length > 0 ? undefined : 'no skills are available here';
+    }
     for (const { set, label } of ctx.toolSets) {
         if (!toolInSet(name, set)) return `not in this ${label}'s tool set`;
     }

@@ -9,7 +9,13 @@ import type { EventEnvelope } from '@fatcat-ai/shared';
 import { createRepositories, type ModelProfileRecord, openStorage, type Repositories } from '@fatcat-ai/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EventBus } from './bus.js';
-import { createCalcTool, createToolsEnableTool, ToolRegistry, type ToolDefinition } from '@fatcat-ai/tools';
+import {
+    createCalcTool,
+    createSkillUseTool,
+    createToolsEnableTool,
+    ToolRegistry,
+    type ToolDefinition,
+} from '@fatcat-ai/tools';
 import {
     DEFAULT_RUN_TOKEN_BUDGET,
     type MemoryTurnContext,
@@ -17,6 +23,7 @@ import {
     RunConflictError,
     RunManager,
 } from './runner.js';
+import type { SkillSource } from './run/common.js';
 
 type Script = (request: ChatRequest) => AsyncGenerator<ChatChunk>;
 
@@ -328,15 +335,24 @@ describe('按需工具组与预算停止(ADR 0047)', () => {
             .listRunAfter(ownerId, runId, 0, 200)
             .map((e) => e.event)
             .filter((e) => e.type === 'tool-result');
-    const start = (extra: { agent?: RunAgent; task?: { id: string; toolSet?: string[]; channelId?: string } } = {}) => {
+    type TaskInput = { id: string; toolSet?: string[]; channelId?: string; withholdToolPrefixes?: string[] };
+    const start = (extra: { agent?: RunAgent; task?: TaskInput } = {}, skills?: SkillSource) => {
+        const tools = registry();
+        if (skills) tools.register(createSkillUseTool());
         manager = new RunManager({
             repos,
             bus,
             providerFor: () => fakeProvider,
             persistIntervalMs: 0,
-            tools: registry(),
+            tools,
+            ...(skills ? { skills } : {}),
         });
         return manager.start({ ownerId, sessionId: repos.sessions.create(ownerId).id, profile, text: 'x', ...extra });
+    };
+    /** 一个覆盖 fs 与 kb.search 的内置 Skill(同 local-files)。 */
+    const fileSkill: SkillSource = {
+        list: () => [{ id: 'local-files', description: 'files', toolSet: ['fs.', 'kb.search'], source: 'builtin' }],
+        instructions: () => '# Local files',
     };
     const kbAgent = (): RunAgent => {
         const record = repos.agents.create(ownerId, {
@@ -431,6 +447,30 @@ describe('按需工具组与预算停止(ADR 0047)', () => {
             error: "unknown tool group: fs (not in this task's tool set)",
         });
         expect(specNames(1)).toEqual(['mail.list', 'tools.enable']);
+    });
+
+    it('Skill 与任务的 withholdToolPrefixes(ADR 0048 第 6 节):被扣下的工具不算进 Skill 的有效工具集', async () => {
+        scripted([
+            { call: { name: 'skill.use', input: { id: 'local-files' } } },
+            { call: { name: 'fs.read', input: {} } },
+            { text: 'ok' },
+        ]);
+        const run = start({ task: { id: 't1', withholdToolPrefixes: ['fs.'] } }, fileSkill);
+        await manager.idle();
+        expect(specNames(0)).toContain('skill.use');
+        const [used, read] = results(run.runId);
+        // 没有授权文件夹的任务:Skill 只开出 kb.search,fs.read 仍按未知工具处理
+        expect(used).toMatchObject({ output: { id: 'local-files', tools: ['kb.search'] } });
+        expect(specNames(1).filter((n) => n.startsWith('fs.'))).toEqual([]);
+        expect(read).toMatchObject({ error: 'unknown tool: fs.read' });
+    });
+
+    it('任务的 withholdToolPrefixes 也能扣下 skill.use 本身', async () => {
+        scripted([{ call: { name: 'skill.use', input: { id: 'local-files' } } }, { text: 'ok' }]);
+        const run = start({ task: { id: 't1', withholdToolPrefixes: ['skill.'] } }, fileSkill);
+        await manager.idle();
+        expect(specNames(0)).not.toContain('skill.use');
+        expect(results(run.runId)[0]).toMatchObject({ error: 'unknown tool: skill.use' });
     });
 
     it('预算:累计 token 超过默认预算后不再开始下一步,附上说明后正常结束', async () => {

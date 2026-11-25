@@ -619,6 +619,9 @@ export function createClient(options: ClientOptions) {
             /** 从已启用插件的任务模板建草稿;确认前不会运行(ADR 0040)。 */
             fromPluginTemplate: (pluginId: string, index: number) =>
                 t.json<TaskDraftResult>('/tasks/from-plugin-template', { method: 'POST', body: { pluginId, index } }),
+            /** 从已启用 Skill 的任务模板建草稿;模板的工具集写进任务;确认前不会运行(ADR 0048)。 */
+            fromSkillTemplate: (skillId: string, index: number) =>
+                t.json<TaskDraftResult>('/tasks/from-skill-template', { method: 'POST', body: { skillId, index } }),
             get: (id: string) => t.json<Task>(`/tasks/${enc(id)}`),
             update: (id: string, body: TaskPatch) => t.json<Task>(`/tasks/${enc(id)}`, { method: 'PATCH', body }),
             remove: (id: string) => t.json<void>(`/tasks/${enc(id)}`, { method: 'DELETE' }),

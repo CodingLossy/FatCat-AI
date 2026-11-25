@@ -1,0 +1,7 @@
+{
+  "id": "local-files",
+  "name": { "en": "Local files", "zh-CN": "本地文件" },
+  "description": "Use when the user asks about files in their authorized folders: finding, reading, summarizing, organizing or writing them",
+  "instructions": "instructions.md",
+  "toolSet": ["fs.", "kb.search"]
+}
