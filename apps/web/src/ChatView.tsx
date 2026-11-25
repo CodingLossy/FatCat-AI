@@ -38,6 +38,7 @@ import { UsedMemories } from './UsedMemories.js';
 import { canRecord, type Playback, playSegments, type Recording, startRecording } from './audio.js';
 import {
     attachConversation,
+    canAutoListen,
     conversationState,
     endConversation,
     startConversation,
@@ -51,6 +52,10 @@ import { LevelBar } from './LevelBar.js';
 
 /** 按下不到这么久就松开,视为「点按开始、再点结束」的语音消息。 */
 const TAP_MS = 300;
+/** 手机上按住球这么久(不移动)算长按,打开文字弹窗。 */
+const LONG_PRESS_MS = 500;
+/** 在主界面上往上滑超过这么多像素,打开完整对话。 */
+const SWIPE_PX = 60;
 
 type VoiceMode = 'idle' | 'starting' | 'hold' | 'tap' | 'transcribing';
 
@@ -304,6 +309,10 @@ export function ChatView({
         popupOpenRef.current = popupOpen;
     }, [popupOpen]);
     const [showHistory, setShowHistory] = useState(false);
+    /** 手机上的手势(ADR 0049 第 10.3 节):长按球打开文字弹窗,上滑打开完整对话。 */
+    const touch = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> | null } | null>(null);
+    /** 长按已经打开了弹窗:接下来那次 click 不再当成点球。 */
+    const swallowClick = useRef(false);
     const textarea = useRef<HTMLTextAreaElement>(null);
     // 连续对话(ADR 0049 第 2 节):麦克风由 conversation.ts 管,这里只管转写、排队发送和朗读
     const conversation = useConversation();
@@ -783,8 +792,10 @@ export function ChatView({
     const continuous = voiceFirst && voiceConfig?.settings.continuous === true;
     const cancelRef = useRef(cancelRecording);
     const stopRef = useRef(async () => undefined as void);
+    const beginRef = useRef(beginConversation);
     useEffect(() => {
         cancelRef.current = cancelRecording;
+        beginRef.current = beginConversation;
     });
 
     // 语音界面的快捷键:Ctrl/Cmd+I 打开 / 收起文字弹窗;Esc 先取消录音,再收起弹窗(草稿保留)
@@ -855,6 +866,24 @@ export function ChatView({
     );
 
     const minimal = voiceFirst && !showHistory;
+
+    // 连续语音默认开着(ADR 0049 第 10.3 节):主界面打开、或从后台回来时自动开始聆听;
+    // 麦克风没授权过、用户点球暂停过、或静音超时之后不自动打开,等用户点球
+    useEffect(() => {
+        if (!continuous || !minimal) return;
+        let alive = true;
+        const tryListen = () => {
+            void canAutoListen().then((ok) => {
+                if (ok && alive && !conversationState().active) void beginRef.current();
+            });
+        };
+        tryListen();
+        document.addEventListener('visibilitychange', tryListen);
+        return () => {
+            alive = false;
+            document.removeEventListener('visibilitychange', tryListen);
+        };
+    }, [continuous, minimal]);
     useEffect(() => {
         onActivity?.({ messages, live, profile, profiles, agents, agentId, chooseAgent, minimal });
     }, [messages, live, profile, profiles, agents, agentId, chooseAgent, onActivity, minimal]);
@@ -1109,8 +1138,8 @@ export function ChatView({
                 ? t('chat.stop')
                 : continuous
                   ? conversation.active
-                      ? t('voice.endConversation')
-                      : t('voice.startConversation')
+                      ? t('voice.pauseListening')
+                      : t('voice.resumeListening')
                   : live
                     ? t('chat.stop')
                     : recordingNow
@@ -1123,6 +1152,46 @@ export function ChatView({
                 className={workbench ? 'chat chat-stage voice-min' : 'chat voice-min'}
                 data-voice-first=""
                 data-phase={phase}
+                onTouchStart={(e) => {
+                    swallowClick.current = false;
+                    const point = e.touches[0];
+                    if (!point || e.touches.length > 1) return;
+                    const onOrb = (e.target as Element).closest('.voice-min-orb') !== null;
+                    // 长按球打字;只说话模式(非连续)下按住球是按住说话,不当长按
+                    const timer =
+                        onOrb && orbMode !== 'talk'
+                            ? setTimeout(() => {
+                                  if (touch.current) touch.current.timer = null;
+                                  swallowClick.current = true;
+                                  setPopupOpen(true);
+                              }, LONG_PRESS_MS)
+                            : null;
+                    touch.current = { x: point.clientX, y: point.clientY, timer };
+                }}
+                onTouchMove={(e) => {
+                    const start = touch.current;
+                    const point = e.touches[0];
+                    if (!start?.timer || !point) return;
+                    if (Math.hypot(point.clientX - start.x, point.clientY - start.y) > 10) {
+                        clearTimeout(start.timer);
+                        start.timer = null;
+                    }
+                }}
+                onTouchEnd={(e) => {
+                    const start = touch.current;
+                    touch.current = null;
+                    const point = e.changedTouches[0];
+                    if (!start || !point) return;
+                    if (start.timer) clearTimeout(start.timer);
+                    const dx = point.clientX - start.x;
+                    const dy = point.clientY - start.y;
+                    // 上滑打开完整对话;弹窗开着时不处理(弹窗里可能在选文字)
+                    if (!popupOpen && dy < -SWIPE_PX && Math.abs(dx) < -dy) setShowHistory(true);
+                }}
+                onTouchCancel={() => {
+                    if (touch.current?.timer) clearTimeout(touch.current.timer);
+                    touch.current = null;
+                }}
             >
                 {conversation.active ? (
                     <div className="mic-on" role="status" data-testid="mic-on">
@@ -1138,7 +1207,12 @@ export function ChatView({
                         data-testid={`voice-${orbMode}`}
                         aria-pressed={orbMode === 'conversation' ? conversation.active : recordingNow}
                         disabled={orbMode === 'stop' ? !live?.runId : voiceMode === 'transcribing'}
+                        onContextMenu={(e) => e.preventDefault()}
                         onClick={() => {
+                            if (swallowClick.current) {
+                                swallowClick.current = false;
+                                return;
+                            }
                             if (orbMode === 'conversation') {
                                 if (conversation.active) endConversation('user');
                                 else void beginConversation();
@@ -1211,7 +1285,7 @@ export function ChatView({
                     <span className="mic-on-dot" aria-hidden="true" />
                     <span>{t('voice.micOn')}</span>
                     <button type="button" className="link small" onClick={() => endConversation('user')}>
-                        {t('voice.endConversation')}
+                        {t('voice.pauseListening')}
                     </button>
                 </div>
             ) : null}

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// 连续对话(ADR 0049 第 2 节):麦克风一直开着,本地 VAD 断句,每段录完交给聊天页转写并发送。
+// 连续对话(ADR 0049 第 2、10 节):麦克风一直开着,本地 VAD 断句,每段录完交给聊天页转写并发送。
 // 对话放在模块里而不是组件里:空白页发出第一句后会新建会话、换一个聊天页组件,对话要接着进行。
 // 离开聊天页(组件卸载后一秒内没有新的聊天页接上)就结束对话、关闭麦克风。
 import { MAX_RECORDING_SECONDS } from '@fatcat-ai/shared';
@@ -44,6 +44,11 @@ let detachTimer: ReturnType<typeof setTimeout> | null = null;
 /** 没有聊天页接着时录完的段落,接上后补交。 */
 let pendingSegments: Blob[] = [];
 let state: ConversationState = { active: false, speech: false };
+/**
+ * 主界面打开时自动开始聆听(ADR 0049 第 10.3 节)。用户暂停、静音超时、断网等结束之后不再自动打开,
+ * 直到刷新页面;切到后台或离开聊天页造成的结束,回来时自动恢复。
+ */
+let autoListen = true;
 const listeners = new Set<() => void>();
 
 function setState(next: ConversationState) {
@@ -85,6 +90,25 @@ export function attachConversation(next: ConversationHandlers): () => void {
             if (!handlers) endConversation('left');
         }, DETACH_GRACE_MS);
     };
+}
+
+/** 现在是否应该自动开始聆听:没被用户暂停过、页面在前台、麦克风已经授权、音频能直接运行。 */
+export async function canAutoListen(): Promise<boolean> {
+    if (!autoListen || current || starting || document.visibilityState !== 'visible') return false;
+    try {
+        // 没授权过就不自动打开:第一次要由用户点球,浏览器才弹出授权
+        const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        if (permission.state !== 'granted') return false;
+    } catch {
+        return false;
+    }
+    const ctx = audioContext();
+    if (!ctx) return false;
+    // 浏览器的自动播放策略可能让没有用户操作的音频上下文停着,那样听不到声音,不如等用户点球
+    if (ctx.state !== 'running') {
+        await Promise.race([ctx.resume().catch(() => undefined), new Promise((r) => setTimeout(r, 300))]);
+    }
+    return ctx.state === 'running' && autoListen && !current;
 }
 
 export function endConversation(reason: ConversationEnd = 'user') {
@@ -214,6 +238,7 @@ export async function startConversation(silenceEndMs: number, vadOptions: Partia
         }
         current = null;
         pendingSegments = [];
+        autoListen = reason === 'hidden' || reason === 'left';
         setState({ active: false, speech: false });
         handlers?.onEnded(reason);
     }

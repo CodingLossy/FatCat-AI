@@ -254,7 +254,8 @@ test('语音优先:点按说话、字幕、文字弹窗发送后收起(ADR 0049 
     const csrf = (await page.context().cookies()).find((c) => c.name === 'aip_csrf')!.value;
     const res = await page.request.fetch(`${base}/api/v1/settings`, {
         method: 'PUT',
-        data: { voice: { autoSpeak: false, inputMode: 'voice' } },
+        // 这条用例测点按说话;连续语音(默认开着)在下一条用例里测
+        data: { voice: { autoSpeak: false, inputMode: 'voice', continuous: false } },
         headers: { 'x-csrf-token': csrf },
     });
     expect(res.ok()).toBe(true);
@@ -410,26 +411,34 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
     await page.goto(base); // 新对话;语音优先时侧栏收在 logo 里
 
     const conversation = page.getByTestId('voice-conversation');
-    await expect(conversation).toHaveAttribute('aria-label', '开始对话');
     await expect(page.getByTestId('voice-talk')).toHaveCount(0);
     const indicator = page.getByTestId('voice-indicator');
     const transcriptions = () => seen.filter((r) => r.path === '/v1/audio/transcriptions').length;
     const sttBefore = transcriptions();
-
-    // 开始:顶部和页面标题都标出「麦克风开着」;打开麦克风时要求回声消除与降噪
     transcripts.push('第一句', '第二句');
     chatQueue.push(...loadFixture(join(FIXTURES, 'deepseek-chat-stream.json')).interactions);
     chatQueue.push(...loadFixture(join(FIXTURES, 'deepseek-chat-stream.json')).interactions);
     speechSeconds = 6;
-    await conversation.click();
+
+    // 连续语音默认开着、麦克风已授权:主界面一打开就开始聆听,不用点球(ADR 0049 第 10.3 节)
+    // 顶部和页面标题都标出「麦克风开着」;打开麦克风时要求回声消除与降噪
     await expect(page.getByTestId('mic-on')).toContainText('麦克风开着');
-    await expect(conversation).toHaveAttribute('aria-label', '结束对话');
+    await expect(conversation).toHaveAttribute('aria-label', '暂停聆听');
+    // 点球暂停,再点继续
+    await conversation.click();
+    await expect(page.getByTestId('mic-on')).toHaveCount(0);
+    await expect(conversation).toHaveAttribute('aria-label', '继续聆听');
+    await conversation.click();
+    await expect(page.getByTestId('mic-on')).toBeVisible();
     await expect(page).toHaveTitle(/^\[麦克风开着\]/);
     // 对话开着、没检测到说话:状态是「正在聆听」
     await expect(page.getByTestId('voice-status')).toHaveText('FatCat 正在聆听');
     expect(
         await page.evaluate(() => (window as unknown as { fakeMic: { constraints: unknown[] } }).fakeMic.constraints),
-    ).toEqual([{ audio: { echoCancellation: true, noiseSuppression: true } }]);
+    ).toEqual([
+        { audio: { echoCancellation: true, noiseSuppression: true } },
+        { audio: { echoCancellation: true, noiseSuppression: true } },
+    ]);
 
     // 很短的声音(咳嗽)不算说话,不转写
     await sleep(500);
@@ -462,8 +471,8 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
 
     // 之后 3 秒没人说话(朗读与等回复的时间不算):自动结束,麦克风关闭
     await expect(page.getByTestId('mic-on')).toHaveCount(0, { timeout: 15_000 });
-    await expect(page.getByText('一直没听到说话,对话已结束。')).toBeVisible();
-    await expect(conversation).toHaveAttribute('aria-label', '开始对话');
+    await expect(page.getByText('一直没听到说话,已暂停聆听。')).toBeVisible();
+    await expect(conversation).toHaveAttribute('aria-label', '继续聆听');
     await expect(page).toHaveTitle(/^FatCat-AI/);
 
     // 页面进入后台:立即结束
@@ -474,14 +483,15 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
         document.dispatchEvent(new Event('visibilitychange'));
     });
     await expect(page.getByTestId('mic-on')).toHaveCount(0);
-    await expect(page.getByText('页面切到了后台,对话已结束,麦克风已关闭。')).toBeVisible();
+    await expect(page.getByText('页面切到了后台,已暂停聆听,麦克风已关闭。')).toBeVisible();
+    // 回到前台:因为切后台而暂停的,自动恢复聆听
     await page.evaluate(() => {
         Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+        document.dispatchEvent(new Event('visibilitychange'));
     });
-
-    // 回复进行中点球只停止这次回复,对话继续;之后 Esc 结束对话
-    await conversation.click();
     await expect(page.getByTestId('mic-on')).toBeVisible();
+
+    // 回复进行中点球只停止这次回复,对话继续;之后 Esc 暂停聆听
     transcripts.push('第三句');
     holdChat = true;
     await say(700);
@@ -492,8 +502,12 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
     await expect.poll(() => cancels.length, { timeout: 10_000 }).toBe(1);
     await expect(page.getByTestId('mic-on')).toBeVisible();
     releaseChat();
-    await expect(conversation).toHaveAttribute('aria-label', '结束对话', { timeout: 10_000 });
+    await expect(conversation).toHaveAttribute('aria-label', '暂停聆听', { timeout: 10_000 });
     await page.keyboard.press('Escape');
+    await expect(page.getByTestId('mic-on')).toHaveCount(0);
+    // 用户暂停过:刷新之前不再自动打开
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await sleep(500);
     await expect(page.getByTestId('mic-on')).toHaveCount(0);
     expect(transcriptions()).toBe(sttBefore + 3);
 });
@@ -574,4 +588,116 @@ test('极简主界面:三套主题的空闲 / 聆听 / 思考,手机不横向溢
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.waitForTimeout(400);
     if (shots) await page.screenshot({ path: join(shots, 'phone-idle.png') });
+});
+
+test('连续语音默认开着:三套主题自动聆听;手机长按球打字、上滑看完整对话(ADR 0049 第 10.3 节)', async ({ browser }) => {
+    const shots = process.env.FATCAT_SHOTS_DIR;
+    const context = await browser.newContext({ permissions: ['microphone'], viewport: { width: 1280, height: 800 } });
+    const page = await context.newPage();
+    // 安静的假麦克风:增益 0,VAD 听不到说话,不会发去转写
+    await page.addInitScript(() => {
+        navigator.mediaDevices.getUserMedia = async () => {
+            const ctx = new AudioContext();
+            await ctx.resume();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            gain.gain.value = 0;
+            osc.connect(gain);
+            osc.start();
+            const dest = ctx.createMediaStreamDestination();
+            gain.connect(dest);
+            return dest.stream;
+        };
+    });
+    await page.goto(base);
+    await page.getByLabel('用户名').fill('owner');
+    await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
+    await page.getByRole('button', { name: '登录' }).click();
+    await expect(page.locator('.wb-shell')).toBeVisible();
+    const csrf = (await context.cookies()).find((c) => c.name === 'aip_csrf')!.value;
+    const put = async (data: unknown) =>
+        expect(
+            (
+                await page.request.fetch(`${base}/api/v1/settings`, {
+                    method: 'PUT',
+                    data,
+                    headers: { 'x-csrf-token': csrf },
+                })
+            ).ok(),
+        ).toBe(true);
+    // 前面的用例关掉过连续语音;默认值(开着)由 packages/shared 的单测覆盖
+    await put({ voice: { autoSpeak: false, inputMode: 'voice', continuous: true, silenceEndSeconds: 60 } });
+
+    for (const theme of ['tech', 'nature', 'cat']) {
+        await put({ theme });
+        await page.goto(base);
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+        // 一打开就在听:顶部有「麦克风开着」,球的动作是暂停
+        await expect(page.getByTestId('mic-on')).toBeVisible();
+        await expect(page.getByTestId('voice-conversation')).toHaveAttribute('aria-label', '暂停聆听');
+        await expect(page.getByTestId('voice-status')).toHaveText('FatCat 正在聆听');
+        await page.waitForTimeout(400);
+        if (shots) await page.screenshot({ path: join(shots, `${theme}-auto-listening.png`) });
+    }
+    await put({ theme: 'tech' });
+    const cookies = await context.cookies();
+    await context.close();
+
+    // 手机:长按球打开文字弹窗(不暂停聆听),上滑打开完整对话
+    const phone = await browser.newContext({
+        permissions: ['microphone'],
+        viewport: { width: 390, height: 844 },
+        hasTouch: true,
+        isMobile: true,
+        deviceScaleFactor: 2,
+    });
+    await phone.addCookies(cookies);
+    const mobile = await phone.newPage();
+    await mobile.addInitScript(() => {
+        navigator.mediaDevices.getUserMedia = async () => {
+            const ctx = new AudioContext();
+            await ctx.resume();
+            const dest = ctx.createMediaStreamDestination();
+            return dest.stream;
+        };
+    });
+    await mobile.goto(base);
+    const orb = mobile.getByTestId('voice-conversation');
+    await expect(mobile.getByTestId('mic-on')).toBeVisible();
+    const box = (await orb.boundingBox())!;
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    const cdp = await phone.newCDPSession(mobile);
+    const touchAt = (type: 'touchStart' | 'touchMove' | 'touchEnd', x: number, y: number) =>
+        cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+
+    // 长按约 0.7 秒:弹出文字输入框,聆听不受影响
+    await touchAt('touchStart', cx, cy);
+    await mobile.waitForTimeout(700);
+    await touchAt('touchEnd', cx, cy);
+    await expect(mobile.getByTestId('composer-popup')).toBeVisible();
+    await expect(mobile.getByTestId('mic-on')).toBeVisible();
+    await expect(orb).toHaveAttribute('aria-label', '暂停聆听');
+    await mobile.waitForTimeout(300);
+    if (shots) await mobile.screenshot({ path: join(shots, 'phone-long-press.png') });
+    await mobile.getByTestId('composer-popup').getByRole('button', { name: '收起' }).click();
+    await expect(mobile.getByTestId('composer-popup')).toHaveCount(0);
+
+    // 轻点一下仍是暂停 / 继续
+    await mobile.touchscreen.tap(cx, cy);
+    await expect(mobile.getByTestId('mic-on')).toHaveCount(0);
+    await mobile.touchscreen.tap(cx, cy);
+    await expect(mobile.getByTestId('mic-on')).toBeVisible();
+
+    // 从球下方往上滑:打开完整对话,里面有「收起」
+    await touchAt('touchStart', cx, cy + box.height / 2 + 80);
+    for (let i = 1; i <= 5; i++) await touchAt('touchMove', cx, cy + box.height / 2 + 80 - i * 40);
+    await touchAt('touchEnd', cx, cy + box.height / 2 - 120);
+    await expect(mobile.getByTestId('voice-history')).toBeVisible();
+    expect(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await mobile.waitForTimeout(300);
+    if (shots) await mobile.screenshot({ path: join(shots, 'phone-history.png') });
+    await mobile.getByTestId('voice-history').click();
+    await expect(mobile.getByTestId('voice-conversation')).toBeVisible();
+    await phone.close();
 });

@@ -251,7 +251,7 @@ test('说「打开浏览器搜猫粮」:转写 → 开启 browser 组 → browse
     await api(page, 'POST', '/models', { ...profile, label: 'chat', model: 'fake-chat', purpose: ['chat'] });
     await api(page, 'POST', '/models', { ...profile, label: 'stt', model: 'whisper-1', purpose: ['stt'] });
     await api(page, 'PUT', '/settings', {
-        voice: { inputMode: 'voice', autoSpeak: false },
+        voice: { inputMode: 'voice', autoSpeak: false, continuous: false },
         browser: { enabled: true },
     });
     await page.reload();
