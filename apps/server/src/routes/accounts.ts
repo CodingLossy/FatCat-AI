@@ -17,20 +17,15 @@ import type { AccountChange, AccountRecord, Repositories } from '@fatcat-ai/stor
 import type { Context } from 'hono';
 import type { AccountLifecycle } from '../account-lifecycle.js';
 import { newPairingCode, normalizePairingCode, sha256 } from '../auth/crypto.js';
-import { requireAdmin } from '../auth/middleware.js';
+import { requireAdminSession as requireAdminSessionOf } from '../auth/middleware.js';
 import type { AppEnv } from '../env.js';
-import { ApiError, notFound, unauthorized } from '../errors.js';
-import { authErrors, json, problem, router } from './common.js';
+import { ApiError, notFound } from '../errors.js';
+import { ADMIN, adminErrors, json, problem, router } from './common.js';
 
 /** 邀请码与重置码的有效期。 */
 export const ACCOUNT_CODE_TTL_MS = 24 * 60 * 60 * 1000;
 
-const ADMIN = { 'x-fatcat-admin': true } as const;
 const idParam = z.object({ id: Id });
-const adminErrors = {
-    ...authErrors,
-    403: problem('Not an admin (admin_required), not a browser session, or CSRF token missing'),
-};
 
 const listRoute = createRoute({
     method: 'get',
@@ -132,24 +127,7 @@ const conflict = (detail: string) => new ApiError(409, 'conflict', 'Conflict', d
 export function accountRoutes(deps: AccountRouteDeps) {
     const { repos, now, lifecycle } = deps;
 
-    /** 管理员 + 完整的浏览器会话(启用 TOTP 时要求通过第二因素)。 */
-    function requireAdminSession(c: Context<AppEnv>): string {
-        const auth = c.get('auth');
-        if (!auth) throw unauthorized();
-        const ownerId = requireAdmin(c, repos);
-        if (auth.kind !== 'session') {
-            throw new ApiError(403, 'forbidden', 'Forbidden', 'Managing accounts needs a signed-in browser session.');
-        }
-        if (repos.totp.get(ownerId)?.enabled && !repos.authSessions.getValid(auth.sessionHash)?.secondFactorAt) {
-            throw new ApiError(
-                403,
-                'forbidden',
-                'Forbidden',
-                'Managing accounts needs a session that passed the second factor.',
-            );
-        }
-        return ownerId;
-    }
+    const requireAdminSession = (c: Context<AppEnv>) => requireAdminSessionOf(c, repos);
 
     function account(id: string): AccountRecord {
         const found = repos.accounts.get(id);
@@ -212,7 +190,10 @@ export function accountRoutes(deps: AccountRouteDeps) {
             if (target.id === adminId && (body.role !== undefined || body.disabled !== undefined)) {
                 throw conflict('You cannot change your own role or disable your own account.');
             }
-            if (body.role !== undefined && body.role !== target.role) changed(repos.accounts.setRole(id, body.role));
+            if (body.role !== undefined && body.role !== target.role) {
+                changed(repos.accounts.setRole(id, body.role));
+                await lifecycle.roleChanged(id);
+            }
             if (body.disabled !== undefined && body.disabled !== (target.disabledAt !== null)) {
                 changed(repos.accounts.setDisabled(id, body.disabled));
                 if (body.disabled) await lifecycle.disabled(id);

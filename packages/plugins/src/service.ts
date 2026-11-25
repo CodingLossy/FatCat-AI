@@ -266,6 +266,11 @@ export class PluginService {
             const runtime = new Runtime({
                 netIsolation: isolation,
                 allowFakeIp: (ownerId) => this.options.repos.settings.get(ownerId).network?.allowFakeIp === true,
+                // 2.0 里插件只为管理员运行;开放给成员是单独的一步(ADR 0053 第 4.2 节)
+                ownerAllowed: (ownerId) => {
+                    const owner = this.options.repos.owners.get(ownerId);
+                    return owner?.role === 'admin' && owner.disabledAt === null;
+                },
                 upsertItems: (ownerId, pluginId, items) => {
                     const record = this.options.repos.plugins.get(ownerId, pluginId);
                     if (!record) throw new Error('unknown plugin');

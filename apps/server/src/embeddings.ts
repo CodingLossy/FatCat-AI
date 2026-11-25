@@ -44,7 +44,14 @@ export function createEmbeddingService(options: EmbeddingServiceOptions) {
     /** 每日上限的日期键按用户时区(ADR 0023 第 4 节)。 */
     const timeZoneOf = (ownerId: string) => effectiveTimeZone(repos.settings.get(ownerId).timeZone);
     const day = (ownerId: string, at: Date) => localDate(at, timeZoneOf(ownerId));
-    const profileFor = (ownerId: string) => selectEmbedProfile(repos.modelProfiles.list(ownerId));
+    /**
+     * 嵌入模型整个安装共用(ADR 0053 第 8 节):向量表只有一种维度,所以所有账户都用主管理员(最早的未停用管理员)
+     * 的 embed 配置档;成员不能建 embed 配置档。
+     */
+    const profileFor = () => {
+        const admin = repos.owners.primaryAdmin();
+        return admin ? selectEmbedProfile(repos.modelProfiles.list(admin)) : null;
+    };
 
     /** 配置档的模型与现有向量表不一致(维度要等第一次嵌入才知道,在 drain 中检查)。 */
     function mismatch(profile: ModelProfileRecord): boolean {
@@ -67,7 +74,7 @@ export function createEmbeddingService(options: EmbeddingServiceOptions) {
             if (jobs.length === 0) return schedule(store.nextAttemptAt());
             const ownerId = jobs[0]!.ownerId;
             const batch = jobs.filter((j) => j.ownerId === ownerId);
-            const profile = profileFor(ownerId);
+            const profile = profileFor();
             if (!profile || mismatch(profile)) return;
             const used = store.usage(ownerId, day(ownerId, now()));
             if (used >= dailyLimit) {
@@ -99,8 +106,8 @@ export function createEmbeddingService(options: EmbeddingServiceOptions) {
 
     const service = {
         /** 启动时:有 embed 配置档或已有向量表时加载扩展,并开始处理积压的队列。 */
-        start(ownerIds: readonly string[]): void {
-            if (store.vectorTableExists() || ownerIds.some((id) => profileFor(id))) store.loadExtension();
+        start(): void {
+            if (store.vectorTableExists() || profileFor()) store.loadExtension();
             service.kick();
         },
 
@@ -139,12 +146,13 @@ export function createEmbeddingService(options: EmbeddingServiceOptions) {
         },
 
         status(ownerId: string): EmbeddingStatus {
-            const profile = profileFor(ownerId);
+            const profile = profileFor();
             const state = store.vectorTableExists() ? store.state() : null;
             const counts = store.counts(ownerId);
             return {
                 state: !profile ? 'disabled' : mismatch(profile) ? 'rebuild-required' : 'ready',
-                profileId: profile?.id ?? null,
+                // 配置档属于管理员:别的账户只看到模型名,不拿到配置档 id
+                profileId: profile && repos.owners.primaryAdmin() === ownerId ? profile.id : null,
                 model: profile?.model ?? null,
                 indexModel: state?.model ?? null,
                 dimensions: state?.dimensions ?? null,
@@ -165,7 +173,7 @@ export function createEmbeddingService(options: EmbeddingServiceOptions) {
 
         /** 语义检索(知识库与记忆检索用,PR 9 / 12);向量不可用时返回 null,调用方退回 FTS。 */
         async search(ownerId: string, query: string, k: number, signal?: AbortSignal): Promise<VectorMatch[] | null> {
-            const profile = profileFor(ownerId);
+            const profile = profileFor();
             const state = store.state();
             if (!profile || !state || !store.vectorTableExists() || mismatch(profile)) return null;
             const provider = options.providerFor(profile);

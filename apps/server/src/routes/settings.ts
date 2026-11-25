@@ -20,10 +20,10 @@ import {
 } from '@fatcat-ai/shared';
 import { newId, type Repositories } from '@fatcat-ai/storage';
 import { checkProject } from '@fatcat-ai/tools';
-import { requireOwner } from '../auth/middleware.js';
+import { requireAdmin, requireOwner } from '../auth/middleware.js';
 import { listEgressTargets, type PluginEgressDomain } from '../egress.js';
 import { ApiError } from '../errors.js';
-import { authErrors, json, problem, router } from './common.js';
+import { ADMIN, adminErrors, authErrors, json, problem, router } from './common.js';
 
 const getRoute = createRoute({
     method: 'get',
@@ -37,9 +37,15 @@ const putRoute = createRoute({
     method: 'put',
     path: '/settings',
     tags: ['settings'],
-    summary: 'Update settings; only the given keys change and memory is merged',
+    summary:
+        'Update settings; only the given keys change and memory is merged. Coding projects (code) are admin only: a member sending code gets 403 admin_required',
     request: { body: { content: { 'application/json': { schema: SettingsPatch } }, required: true } },
-    responses: { 200: json(Settings, 'Updated settings'), 400: problem('Invalid request'), ...authErrors },
+    responses: {
+        200: json(Settings, 'Updated settings'),
+        400: problem('Invalid request'),
+        ...authErrors,
+        403: problem('CSRF token missing or invalid, or a member changing admin-only settings (admin_required)'),
+    },
 });
 
 const timeZonesRoute = createRoute({
@@ -63,11 +69,13 @@ const secretsStatusRoute = createRoute({
     method: 'get',
     path: '/settings/secrets',
     tags: ['settings'],
-    summary: 'Secrets storage status: file state, master key source and fingerprint (never any secret value)',
+    summary:
+        'Secrets storage status (admin only): file state, master key source and fingerprint (never any secret value)',
+    ...ADMIN,
     responses: {
         200: json(SecretsStatus, 'Secrets status'),
         409: problem('secrets.yaml and secrets.yaml.enc both exist; the message says what to do'),
-        ...authErrors,
+        ...adminErrors,
     },
 });
 
@@ -76,13 +84,14 @@ const secretsMigrateRoute = createRoute({
     path: '/settings/secrets/migrate',
     tags: ['settings'],
     summary:
-        'Encrypt secrets.yaml (explicit; requires confirm: true). The plaintext file is kept as secrets.yaml.migrated',
+        'Encrypt secrets.yaml (admin only; explicit, requires confirm: true). The plaintext file is kept as secrets.yaml.migrated',
+    ...ADMIN,
     request: { body: { content: { 'application/json': { schema: SecretsMigrateRequest } }, required: true } },
     responses: {
         200: json(SecretsMigrateResponse, 'Migrated'),
         400: problem('Invalid request or unreadable secrets.yaml'),
         409: problem('Nothing to migrate, already encrypted, or the master key is unavailable'),
-        ...authErrors,
+        ...adminErrors,
     },
 });
 
@@ -165,7 +174,7 @@ export function settingsRoutes(deps: {
             );
         })
         .openapi(secretsStatusRoute, (c) => {
-            requireOwner(c);
+            requireAdmin(c, repos); // secrets.yaml 整个安装只有一份(ADR 0053 第 5 节)
             try {
                 return c.json(readSecretsStatus(deps.secrets.dataDir, deps.secrets.masterKey), 200);
             } catch (error) {
@@ -182,7 +191,7 @@ export function settingsRoutes(deps: {
             }
         })
         .openapi(secretsMigrateRoute, (c) => {
-            requireOwner(c);
+            requireAdmin(c, repos);
             const body = c.req.valid('json');
             const keys = deps.secrets.masterKey;
             if (!keys) throw new ApiError(409, 'conflict', 'Conflict', 'The master key is unavailable.');
@@ -219,6 +228,8 @@ export function settingsRoutes(deps: {
         .openapi(putRoute, async (c) => {
             const ownerId = requireOwner(c);
             const patch = c.req.valid('json');
+            // 编码项目与 code.run 会在服务器上运行命令,2.0 只有管理员能配置(ADR 0053 第 4 节)
+            if (patch.code !== undefined) requireAdmin(c, repos);
             for (const key of ['defaultChatProfileId', 'defaultCheapProfileId'] as const) {
                 const id = patch[key];
                 if (id && !repos.modelProfiles.get(ownerId, id)) {

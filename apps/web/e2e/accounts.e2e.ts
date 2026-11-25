@@ -155,3 +155,68 @@ test('邀请成员、停用与启用、重置密码、删除', async ({ page, br
     expect((await other.request.get(`${base}/api/v1/auth/me`)).status()).toBe(401);
     await other.close();
 });
+
+test('管理员给成员分配文件夹;成员只看到分给自己的,看不到添加入口和只有管理员能开的设置(ADR 0053 第 4 节)', async ({
+    page,
+    browser,
+}) => {
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await page.goto(base);
+    await signIn(page, 'owner');
+    await openAccounts(page);
+    const section = page.getByRole('region', { name: '账户', exact: true });
+    const invite = await oneTimeCode(page, '生成邀请码');
+    await page.getByRole('button', { name: '关闭' }).click();
+
+    const other = await browser.newContext({ viewport: { width: 1100, height: 900 } });
+    const kim = await other.newPage();
+    await kim.goto(base);
+    await kim.getByRole('button', { name: '有邀请码' }).click();
+    await kim.getByLabel('邀请码').fill(invite);
+    await kim.getByLabel('用户名').fill('kim');
+    await kim.getByLabel('密码', { exact: true }).fill(PASSWORD);
+    await kim.getByRole('button', { name: '创建账户并登录' }).click();
+    await expect(kim.getByRole('link', { name: '设置', exact: true })).toBeVisible();
+
+    // 管理员在账户列表里给 kim 分配一个文件夹
+    await page.reload();
+    const row = section.locator('[data-account="kim"]');
+    await row.getByRole('button', { name: '分配文件夹' }).click();
+    const folders = page.getByTestId('account-folders-kim');
+    await expect(folders).toContainText('还没有分给这个账户的文件夹');
+    await folders.getByLabel('文件夹路径').fill(dir);
+    await folders.getByRole('button', { name: '分配', exact: true }).click();
+    await expect(folders.locator('[data-fs-root]')).toHaveCount(1);
+    await shot(section, 'accounts-assign-folder');
+
+    // 成员:看到分给自己的文件夹,没有「授权」输入框和「撤销」按钮
+    await kim.getByRole('link', { name: '设置', exact: true }).click();
+    await kim.getByRole('tab', { name: /工作台/ }).click();
+    await kim.getByRole('button', { name: '文件夹', exact: true }).click();
+    await expect(kim.locator('[data-fs-root]')).toHaveCount(1);
+    await expect(kim.getByText('这些文件夹由管理员分配给你')).toBeVisible();
+    await expect(kim.getByRole('button', { name: '授权', exact: true })).toHaveCount(0);
+    await expect(kim.getByRole('button', { name: '撤销', exact: true })).toHaveCount(0);
+    await shot(kim, 'member-folders');
+
+    // 成员:MCP 和代码只显示一句说明
+    await kim.getByRole('tab', { name: /工具插件/ }).click();
+    await kim.getByRole('button', { name: 'MCP 服务器', exact: true }).click();
+    const mcp = kim.locator('#settings-tools-mcp');
+    await expect(mcp.getByTestId('admin-only')).toBeVisible();
+    await expect(mcp.getByRole('button', { name: '添加', exact: true })).toHaveCount(0);
+    await kim.getByRole('button', { name: '代码', exact: true }).click();
+    const code = kim.getByRole('region', { name: '编码项目' });
+    await expect(code.getByTestId('admin-only')).toBeVisible();
+    await expect(code.getByRole('checkbox')).toHaveCount(0);
+    await shot(kim, 'member-code');
+
+    // 收回之后成员就看不到了
+    page.once('dialog', (d) => void d.accept());
+    await folders.locator('[data-fs-root]').getByRole('button', { name: '撤销' }).click();
+    await expect(folders).toContainText('还没有分给这个账户的文件夹');
+    expect(((await (await other.request.get(`${base}/api/v1/fs/roots`)).json()) as { items: unknown[] }).items).toEqual(
+        [],
+    );
+    await other.close();
+});

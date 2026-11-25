@@ -107,6 +107,10 @@ export interface PluginRuntimeOptions {
     netIsolation?: NetIsolation;
     /** 该 owner 是否允许 fake-IP 段(ADR 0038);fatcat/net.fetch 与 web.fetch 一致。 */
     allowFakeIp?: (ownerId: string) => boolean;
+    /**
+     * 这个账户现在能不能用插件(ADR 0053 第 4 节:2.0 里插件只为管理员运行,降为成员后不能再调用);不给时都能用。
+     */
+    ownerAllowed?: (ownerId: string) => boolean;
     /** 测试用:替换 DNS 解析与地址判断。 */
     netFetchOverrides?: Pick<PluginNetFetchOptions, 'resolve' | 'isBlocked' | 'timeoutMs' | 'maxBytes'>;
     /**
@@ -473,6 +477,9 @@ export class PluginRuntime {
 
     private async call(entry: Entry, tool: string, name: string, input: unknown, ownerId: string): Promise<unknown> {
         if (ownerId !== entry.record.ownerId) throw new ToolDeniedError('This plugin belongs to another account.');
+        if (this.options.ownerAllowed?.(ownerId) === false) {
+            throw new ToolDeniedError('Plugins are only available to admin accounts.');
+        }
         if (this.entries.get(entry.record.pluginId) !== entry)
             throw new ToolDeniedError('This plugin is not available.');
         if (entry.state === 'error' || entry.state === 'disabled') {
@@ -516,6 +523,9 @@ export class PluginRuntime {
     ): Promise<T> {
         const entry = this.entries.get(pluginId);
         if (!entry || entry.record.ownerId !== ownerId) throw new ToolDeniedError('This plugin is not available.');
+        if (this.options.ownerAllowed?.(ownerId) === false) {
+            throw new ToolDeniedError('Plugins are only available to admin accounts.');
+        }
         if (entry.state === 'error' || entry.state === 'disabled') {
             throw new ToolDeniedError(`This plugin is not running: ${entry.error ?? entry.state}`);
         }

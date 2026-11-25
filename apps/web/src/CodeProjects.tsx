@@ -8,6 +8,7 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { SettingsGroup, Switch } from './controls.js';
 import { useI18n } from './i18n.js';
+import { useIsAdmin } from './role.js';
 
 /** 路径是否在某个授权文件夹里(只按字符串判断,用来在页面上标红;真正的检查在服务器)。 */
 export function insideRoots(path: string, roots: readonly string[]): boolean {
@@ -21,6 +22,7 @@ export function insideRoots(path: string, roots: readonly string[]): boolean {
 
 export function CodeProjects({ settings, onSettings }: { settings: Settings; onSettings: (s: Settings) => void }) {
     const { t } = useI18n();
+    const isAdmin = useIsAdmin();
     const code = settings.code ?? { enabled: false, projects: [] };
     const [roots, setRoots] = useState<FsRoot[] | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -67,6 +69,16 @@ export function CodeProjects({ settings, onSettings }: { settings: Settings; onS
     const setCommands = (id: string, commands: CodeProjectInput['commands']) =>
         save({ projects: code.projects.map((p) => (p.id === id ? { ...p, commands } : p)) });
 
+    // 编码项目与 code.run 会在服务器上运行命令,2.0 只有管理员能配置(ADR 0053 第 4 节)
+    if (isAdmin === false) {
+        return (
+            <SettingsGroup title={t('code.title')}>
+                <p className="muted small" data-testid="admin-only">
+                    {t('admin.onlyNote')}
+                </p>
+            </SettingsGroup>
+        );
+    }
     return (
         <SettingsGroup title={t('code.title')}>
             <Switch

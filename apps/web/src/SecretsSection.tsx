@@ -7,9 +7,11 @@ import type { PlaintextBackupAction, SecretsMigrateResponse, SecretsStatus } fro
 import { useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { useIsAdmin } from './role.js';
 
 export function SecretsSection() {
     const { t } = useI18n();
+    const isAdmin = useIsAdmin();
     const [status, setStatus] = useState<SecretsStatus | null>(null);
     const [available, setAvailable] = useState(true); // 老服务器没有这个接口(404):整节不显示
     const [confirming, setConfirming] = useState(false);
@@ -30,6 +32,17 @@ export function SecretsSection() {
         };
     }, []);
 
+    // secrets.yaml 整个安装只有一份,只有管理员能看状态和迁移(ADR 0053 第 5 节)
+    if (isAdmin === false) {
+        return (
+            <section className="card form" aria-label={t('secrets.title')}>
+                <h2>{t('secrets.title')}</h2>
+                <p className="muted small" data-testid="admin-only">
+                    {t('admin.onlyNote')}
+                </p>
+            </section>
+        );
+    }
     if (!available || !status) return null;
 
     const migrate = async () => {

@@ -72,6 +72,7 @@ function setup(manifestPatch: (m: Record<string, unknown>) => void = () => undef
         handshakeTimeoutMs: slow(15_000),
         onEvent: (_o, e) => events.push(e),
         onState: (_o, pluginId, state, error) => states.push({ pluginId, state, error }),
+        ownerAllowed: () => ownerAllowed,
     });
     const record: PluginRuntimeRecord = {
         ownerId: 'owner1',
@@ -87,6 +88,8 @@ function setup(manifestPatch: (m: Record<string, unknown>) => void = () => undef
 }
 
 const ctx = (ownerId = 'owner1') => ({ ownerId }) as never;
+/** ADR 0053 第 4 节:插件只为管理员运行;测试里切换这个值模拟「降为成员」。 */
+let ownerAllowed = true;
 
 /**
  * afterEach 要停掉子进程并删除临时目录。Windows 上释放进程与文件句柄比 Linux 慢得多,
@@ -145,6 +148,13 @@ describe('plugin runtime', { timeout: TEST_TIMEOUT_MS }, () => {
         };
         expect(out).toMatchObject({ untrusted: true, source: { kind: 'plugin' }, content: 'hi' });
         await expect(def.execute({ text: 'hi' }, ctx('someone-else'))).rejects.toThrow(/another account/);
+        // 安装插件的账户降为成员后不能再调用
+        ownerAllowed = false;
+        try {
+            await expect(def.execute({ text: 'hi' }, ctx())).rejects.toThrow(/only available to admin/);
+        } finally {
+            ownerAllowed = true;
+        }
     });
 
     it('blocks reads of host secrets, other plugins data and writes outside its data dir', async () => {

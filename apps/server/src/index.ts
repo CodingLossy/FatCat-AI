@@ -42,7 +42,7 @@ import { createEmbeddingService } from './embeddings.js';
 import { randomToken } from './auth/crypto.js';
 import { loadConfig, SERVER_ENV_NAMES } from './config.js';
 import { dataDirMasterKey, LEGACY_DATA_DIR_NAME, LegacyDataDirBusyError, migrateLegacyDataDir } from './data-dir.js';
-import { runAuthCommand } from './auth-cli.js';
+import { readNewPassword, runAuthCommand } from './auth-cli.js';
 import { runSecretsCommand } from './secrets-cli.js';
 import { createLogger } from './log.js';
 import { acquireServerLock, installLockRelease, installShutdownHandlers, runningServerPid } from './server-lock.js';
@@ -63,14 +63,16 @@ if (process.argv[2] === 'secrets') {
     );
 }
 
-// 离线子命令:`node dist/index.js auth reset-totp`(ADR 0027 第 7 节);不启动服务器
+// 离线子命令:`node dist/index.js auth reset-totp` / `auth reset-password <username>`(ADR 0027 第 7 节、
+// ADR 0053 第 14 节);不启动服务器
 if (process.argv[2] === 'auth') {
     applyLegacyEnv(process.env, SERVER_ENV_NAMES);
     process.exit(
-        runAuthCommand(process.argv.slice(3), {
+        await runAuthCommand(process.argv.slice(3), {
             dataDir: loadConfig().dataDir,
             out: (line) => console.log(line),
             err: (line) => console.error(line),
+            readPassword: readNewPassword,
         }),
     );
 }
@@ -321,7 +323,7 @@ const plugins = new PluginService({
 });
 void plugins.start().catch((err: unknown) => logger.warn({ err }, 'plugin start-up failed'));
 
-embeddings.start(repos.owners.ids());
+embeddings.start();
 channels.startAll();
 
 // 邮件:每分钟检查到期的账户;同步在 worker 中进行,没有账户时不加载任何邮件库(ADR 0016 第 2 节)

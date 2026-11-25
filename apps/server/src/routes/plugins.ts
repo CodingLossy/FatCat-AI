@@ -15,9 +15,12 @@ import {
     PluginView,
     pageOf,
 } from '@fatcat-ai/shared';
-import { requireOwner } from '../auth/middleware.js';
+import { requireAdmin, requireOwner } from '../auth/middleware.js';
 import type { PluginService } from '@fatcat-ai/plugins';
-import { authErrors, json, problem, router } from './common.js';
+import type { Repositories } from '@fatcat-ai/storage';
+import type { Context } from 'hono';
+import type { AppEnv } from '../env.js';
+import { ADMIN, adminErrors, authErrors, json, problem, router } from './common.js';
 
 const tags = ['plugins'];
 const idParam = z.object({ id: PluginId });
@@ -36,13 +39,14 @@ const marketRoute = createRoute({
 const refreshRoute = createRoute({
     method: 'post',
     path: '/plugins/market/refresh',
+    ...ADMIN,
     tags,
     summary:
         'Download and verify the signed index again; a failed or rejected update keeps the cached index and is reported in the market status',
     responses: {
         200: json(PluginMarketListing, 'Markets after the refresh'),
         409: problem('The plugin market is turned off'),
-        ...authErrors,
+        ...adminErrors,
     },
 });
 const listRoute = createRoute({
@@ -63,6 +67,7 @@ const getRoute = createRoute({
 const prepareRoute = createRoute({
     method: 'post',
     path: '/plugins/prepare',
+    ...ADMIN,
     tags,
     summary:
         'Copy a local directory or download a market version, check it without running it, and return the permissions to confirm',
@@ -76,12 +81,13 @@ const prepareRoute = createRoute({
         422: problem('Checksum or manifest does not match the signed index'),
         502: problem('The download failed'),
         503: problem('There is no valid index for this market'),
-        ...authErrors,
+        ...adminErrors,
     },
 });
 const installRoute = createRoute({
     method: 'post',
     path: '/plugins/install',
+    ...ADMIN,
     tags,
     summary:
         'Install a prepared package after the user accepted all of its permissions. If the plugin is already installed and the package is newer, this is an upgrade (data backup, health check, automatic rollback on failure)',
@@ -93,12 +99,13 @@ const installRoute = createRoute({
             'Not newer than the installed version, or the data is too large to back up without skipDataBackup',
         ),
         422: problem('The upgrade failed its health check and was rolled back'),
-        ...authErrors,
+        ...adminErrors,
     },
 });
 const rollbackRoute = createRoute({
     method: 'post',
     path: '/plugins/{id}/rollback',
+    ...ADMIN,
     tags,
     summary: 'Go back to the previous version (restores its data backup when there is one)',
     request: { params: idParam },
@@ -107,12 +114,13 @@ const rollbackRoute = createRoute({
         404: problem('Not found'),
         409: problem('There is no previous version to go back to'),
         422: problem('The previous version failed its health check; the current version was restored'),
-        ...authErrors,
+        ...adminErrors,
     },
 });
 const patchRoute = createRoute({
     method: 'patch',
     path: '/plugins/{id}',
+    ...ADMIN,
     tags,
     summary: 'Enable or disable a plugin, bind secrets to env: references, change settings or runtime limits',
     request: { params: idParam, body: { content: { 'application/json': { schema: PluginPatch } }, required: true } },
@@ -121,7 +129,7 @@ const patchRoute = createRoute({
         400: problem('Invalid request'),
         404: problem('Not found'),
         409: problem('Required secrets are not bound'),
-        ...authErrors,
+        ...adminErrors,
     },
 });
 const stopRoute = createRoute({
@@ -155,36 +163,41 @@ const eventsRoute = createRoute({
     responses: { 200: json(pageOf(PluginEventView), 'Events'), 404: problem('Not found'), ...authErrors },
 });
 
-export function pluginRoutes(deps: { plugins: PluginService }) {
+export function pluginRoutes(deps: { plugins: PluginService; repos: Pick<Repositories, 'owners'> }) {
     const { plugins } = deps;
+    /**
+     * 安装、升级、回退、启用和改设置只有管理员能做(ADR 0053 第 4 节:有 entry 的插件会在服务器上起进程);
+     * 停止和卸载谁都能做(只会收回能力)。
+     */
+    const admin = (c: Context<AppEnv>) => requireAdmin(c, deps.repos);
     return (
         router()
             // /plugins/market 必须排在 /plugins/{id} 之前
             .openapi(marketRoute, (c) => {
                 return c.json(plugins.marketListing(requireOwner(c)), 200);
             })
-            .openapi(refreshRoute, async (c) => c.json(await plugins.refreshMarket(requireOwner(c)), 200))
+            .openapi(refreshRoute, async (c) => c.json(await plugins.refreshMarket(admin(c)), 200))
             .openapi(listRoute, (c) => c.json({ items: plugins.list(requireOwner(c)), nextCursor: null }, 200))
             .openapi(getRoute, (c) => c.json(plugins.detail(requireOwner(c), c.req.valid('param').id), 200))
             .openapi(prepareRoute, async (c) => {
                 const body = c.req.valid('json');
-                return c.json(await plugins.prepare(requireOwner(c), body.source), 200);
+                return c.json(await plugins.prepare(admin(c), body.source), 200);
             })
             .openapi(installRoute, async (c) => {
                 const { stagingId, skipDataBackup } = c.req.valid('json');
-                const view = await plugins.install(requireOwner(c), stagingId, {
+                const view = await plugins.install(admin(c), stagingId, {
                     skipDataBackup: skipDataBackup === true,
                 });
                 c.get('logger').info({ plugin: view.id, version: view.version }, 'plugin installed');
                 return c.json(view, 201);
             })
             .openapi(rollbackRoute, async (c) => {
-                const view = await plugins.rollback(requireOwner(c), c.req.valid('param').id);
+                const view = await plugins.rollback(admin(c), c.req.valid('param').id);
                 c.get('logger').info({ plugin: view.id, version: view.version }, 'plugin rolled back');
                 return c.json(view, 200);
             })
             .openapi(patchRoute, async (c) =>
-                c.json(await plugins.patch(requireOwner(c), c.req.valid('param').id, c.req.valid('json')), 200),
+                c.json(await plugins.patch(admin(c), c.req.valid('param').id, c.req.valid('json')), 200),
             )
             .openapi(stopRoute, async (c) => {
                 await plugins.stop(requireOwner(c), c.req.valid('param').id);

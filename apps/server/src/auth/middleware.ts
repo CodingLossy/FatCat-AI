@@ -110,12 +110,43 @@ export function requireOwner(c: Context<AppEnv>): string {
  * 只有管理员能做的操作(ADR 0053 第 4、6 节):不是管理员或账户已停用时回 403 `admin_required`。
  * 每次从库里读角色,不信客户端,也不缓存在会话里(降级立即生效)。
  */
+/** 账户存在、是管理员且没有停用。运行时的能力判断(编码工具、嵌入)也用它,每次读库。 */
+export function isActiveAdmin(repos: Pick<Repositories, 'owners'>, ownerId: string): boolean {
+    const owner = repos.owners.get(ownerId);
+    return owner?.role === 'admin' && owner.disabledAt === null;
+}
+
 export function requireAdmin(c: Context<AppEnv>, repos: Pick<Repositories, 'owners'>): string {
     const ownerId = requireOwner(c);
     const owner = repos.owners.get(ownerId);
     if (!owner) throw unauthorized();
     if (owner.role !== 'admin' || owner.disabledAt !== null) {
         throw new ApiError(403, 'admin_required', 'Forbidden', 'This needs an admin account.');
+    }
+    return ownerId;
+}
+
+/**
+ * 管理员 + 完整的浏览器会话(启用 TOTP 时要求通过第二因素);个人访问令牌与设备令牌都不行。
+ * 用于 /admin/ 下管理别的账户的路由(ADR 0053 第 6 节)。
+ */
+export function requireAdminSession(
+    c: Context<AppEnv>,
+    repos: Pick<Repositories, 'owners' | 'totp' | 'authSessions'>,
+): string {
+    const auth = c.get('auth');
+    if (!auth) throw unauthorized();
+    const ownerId = requireAdmin(c, repos);
+    if (auth.kind !== 'session') {
+        throw new ApiError(403, 'forbidden', 'Forbidden', 'Managing accounts needs a signed-in browser session.');
+    }
+    if (repos.totp.get(ownerId)?.enabled && !repos.authSessions.getValid(auth.sessionHash)?.secondFactorAt) {
+        throw new ApiError(
+            403,
+            'forbidden',
+            'Forbidden',
+            'Managing accounts needs a session that passed the second factor.',
+        );
     }
     return ownerId;
 }

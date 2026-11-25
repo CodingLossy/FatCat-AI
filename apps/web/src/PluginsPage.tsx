@@ -15,6 +15,7 @@ import type {
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { useIsAdmin } from './role.js';
 import { navigate } from './router.js';
 import { PluginMarket } from './PluginMarket.js';
 import {
@@ -32,6 +33,9 @@ import {
  */
 export function PluginsPage() {
     const { t, locale } = useI18n();
+    // 安装、升级和市场只有管理员能用(ADR 0053 第 4 节:有 entry 的插件会在服务器上起进程)
+    const isAdmin = useIsAdmin();
+    const manage = isAdmin === true;
     const [plugins, setPlugins] = useState<PluginView[] | null>(null);
     const [skills, setSkills] = useState<SkillInfo[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -115,7 +119,12 @@ export function PluginsPage() {
     return (
         <div className="page" data-page="plugins">
             <h1>{t('plugins.title')}</h1>
-            <div className="row" role="tablist">
+            {isAdmin === false ? (
+                <p className="muted small" data-testid="admin-only">
+                    {t('admin.onlyNote')}
+                </p>
+            ) : null}
+            <div className="row" role="tablist" hidden={!manage}>
                 {(['installed', 'market'] as const).map((name) => (
                     <button
                         key={name}
@@ -148,8 +157,8 @@ export function PluginsPage() {
                 ))}
             </ul>
 
-            {tab === 'installed' ? <h2>{t('plugins.installTitle')}</h2> : null}
-            <form className="card form" onSubmit={prepare} hidden={tab !== 'installed'}>
+            {tab === 'installed' && manage ? <h2>{t('plugins.installTitle')}</h2> : null}
+            <form className="card form" onSubmit={prepare} hidden={tab !== 'installed' || !manage}>
                 <label>
                     {t('plugins.localPath')}
                     <input
