@@ -213,7 +213,9 @@ window.__TAURI_INTERNALS__ = {
 `;
 
 async function shot(page: Page, name: string) {
-    if (SHOTS) await page.screenshot({ path: join(SHOTS, `${name}.png`) });
+    if (!SHOTS) return;
+    await page.waitForTimeout(450); // 等工作态的过渡(0.35 秒)结束
+    await page.screenshot({ path: join(SHOTS, `${name}.png`) });
 }
 
 /** 语音优先主界面:点一下开始、再点一下结束;假 STT 返回 said。 */
@@ -293,6 +295,9 @@ test('说「打开 FatCat-AI 项目,看最近第 3 次改动,修一下 bug」:�
 
     // 1. git.show nth 3:代码面板显示那次提交的说明和差异(减法就是 bug)
     await expect(panel).toBeVisible({ timeout: 20_000 });
+    // 工作态(ADR 0049 第 10.5 节):球缩到左侧,面板在右侧,中间竖排本轮工具的小胶囊
+    await expect(page.locator('.wb-shell[data-working]')).toBeVisible();
+    await expect(page.getByTestId('wb-pills')).toContainText('git.show');
     const commit = panel.getByTestId('code-diff');
     await expect(commit).toContainText('refactor: simplify sum');
     await expect(commit.locator('.diff-ln.add')).toContainText('return a - b;');
@@ -305,6 +310,8 @@ test('说「打开 FatCat-AI 项目,看最近第 3 次改动,修一下 bug」:�
     await expect(writeCard).toBeVisible({ timeout: 20_000 });
     await expect(panel).toContainText('等待你在审批卡上批准');
     await expect(panel.getByTestId('diff-view')).toContainText('return a + b;');
+    // 右上角临时显示正在执行(这里是等审批)的工具名
+    await expect(page.getByTestId('wb-now')).toContainText('fs.write');
     expect(readFileSync(join(repo, 'sum.js'), 'utf8')).toBe(BUGGY);
     await shot(page, 'voice-code-write-approval');
     await writeCard.getByRole('button', { name: '批准' }).click();
@@ -325,4 +332,26 @@ test('说「打开 FatCat-AI 项目,看最近第 3 次改动,修一下 bug」:�
     expect(chatBodies.join('\n')).toContain('refactor: simplify sum');
     await expect(panel).toContainText('正在修改');
     await shot(page, 'voice-code-done');
+    // 运行结束:没有正在执行的工具,右上角的工具名收起
+    await expect(page.getByTestId('wb-now')).toHaveCount(0);
+
+    // 三套主题的工作态截图(只换 <html data-theme>,面板内容不变)
+    for (const theme of ['tech', 'nature', 'cat']) {
+        await page.evaluate((id) => (document.documentElement.dataset.theme = id), theme);
+        await page.waitForTimeout(600);
+        await shot(page, `working-${theme}`);
+    }
+    await page.evaluate(() => (document.documentElement.dataset.theme = 'tech'));
+
+    // 收起面板:球回到中央并放大
+    const orb = page.locator('.voice-min-orb');
+    const small = (await orb.boundingBox())!;
+    await page.getByRole('button', { name: '收起面板' }).click();
+    await expect(page.locator('.wb-shell[data-working]')).toHaveCount(0);
+    await page.waitForTimeout(500);
+    const big = (await orb.boundingBox())!;
+    expect(big.width).toBeGreaterThan(small.width);
+    const viewport = page.viewportSize()!;
+    expect(Math.abs(big.x + big.width / 2 - viewport.width / 2)).toBeLessThan(40);
+    expect(small.x + small.width / 2).toBeLessThan(viewport.width * 0.34);
 });

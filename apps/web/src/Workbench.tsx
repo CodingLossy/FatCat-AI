@@ -190,6 +190,7 @@ export function Workbench({
     const [drawerAt, setDrawerAt] = useState<string | null>(null);
     // 语音优先的极简主界面:侧栏收进左上角的小圆 logo,和手机一样当抽屉打开(ADR 0049 第 10 节)
     const minimal = !pageView && activity?.minimal === true;
+    /** 极简主界面的工作态(ADR 0049 第 10.5 节):面板打开时球缩小移到左侧,面板占右侧约 2/3;手机在 PR 5。 */
     const drawer = (narrow || minimal) && drawerAt === routeKey;
     const menuRef = useRef<HTMLButtonElement>(null);
     const sideRef = useRef<HTMLElement>(null);
@@ -585,6 +586,7 @@ export function Workbench({
             data-panel={panel.open ? 'open' : 'closed'}
             data-narrow={narrow ? '' : undefined}
             data-minimal={minimal ? '' : undefined}
+            data-working={minimal && panel.open && !narrow ? '' : undefined}
         >
             <div className="wb-glow" aria-hidden="true" />
             {drawer ? <div className="wb-backdrop" aria-hidden="true" onClick={() => closeDrawer(true)} /> : null}
@@ -893,7 +895,39 @@ export function Workbench({
                     <main className="wb-page">{pageView}</main>
                 ) : (
                     <section className="wb-stage">
-                        {running.rows.length > 0 ? (
+                        {minimal && running.rows.length > 0 ? (
+                            // 工作态:球和面板之间竖排本轮工具的小胶囊,完成后淡出(ADR 0049 第 10.5 节)
+                            <ol className="wb-pills" aria-label={t('wb.running')} data-testid="wb-pills">
+                                {running.hidden > 0 ? (
+                                    // 超出上限的更早几条:和旧卡片的「还有 N 个」一样
+                                    <li
+                                        className="wb-pill-tool wb-pill-more"
+                                        title={t('wb.runningMore', { n: running.hidden })}
+                                    >
+                                        <span>+{running.hidden}</span>
+                                    </li>
+                                ) : null}
+                                {running.rows.map((row) => {
+                                    const icon = statusIcon(row.status);
+                                    return (
+                                        <li
+                                            key={row.callId}
+                                            className="wb-pill-tool"
+                                            data-status={row.status}
+                                            title={row.summary}
+                                        >
+                                            {icon ? (
+                                                <Icon name={icon} size={16} />
+                                            ) : (
+                                                <span className="wb-spin" aria-hidden="true" />
+                                            )}
+                                            <span>{row.name}</span>
+                                        </li>
+                                    );
+                                })}
+                            </ol>
+                        ) : null}
+                        {!minimal && running.rows.length > 0 ? (
                             <div className="wb-glass wb-running" aria-live="polite">
                                 <h4>{t('wb.running')}</h4>
                                 {running.hidden > 0 ? (
@@ -930,6 +964,13 @@ export function Workbench({
                         />
                     </section>
                 )}
+                {minimal && activeRow ? (
+                    // 右上角临时显示正在执行的工具名(ADR 0049 第 10.5 节)
+                    <div className="wb-now wb-glass" role="status" data-testid="wb-now">
+                        <span className="wb-spin" aria-hidden="true" />
+                        <span>{activeRow.name}</span>
+                    </div>
+                ) : null}
                 {panel.open ? (
                     <aside className="wb-float wb-glass" aria-label={panelTitle(panel.panel)}>
                         <header className="wb-float-head">

@@ -3782,3 +3782,175 @@ input.code-timeout {
 .layout:has(> .wb-shell[data-minimal]) > .footer {
     display: none;
 }
+
+/*
+ * 极简主界面的工作态(ADR 0049 第 10.5 节):面板打开时球缩小移到左侧约 1/3,右侧浮出约占 2/3 宽的圆角面板;
+ * 球和面板之间竖排本轮工具的小胶囊,完成后淡出;右上角临时显示正在执行的工具名。关闭面板后球回到中央并放大。
+ */
+.wb-shell[data-minimal] .wb-world {
+    position: relative;
+}
+
+.wb-shell[data-minimal] .wb-stage {
+    flex: none;
+    width: 100%;
+    transition: width 0.35s ease;
+}
+
+.wb-shell[data-working] .wb-stage {
+    width: 34%;
+}
+
+.wb-shell[data-minimal] .voice-min-orb {
+    transition: width 0.35s ease;
+}
+
+.wb-shell[data-working] .voice-min-orb {
+    width: min(24vh, 24vw);
+}
+
+.wb-shell[data-working] .voice-min-status {
+    font-size: 1.25rem;
+}
+
+.wb-shell[data-working] .voice-min-caption {
+    font-size: 1rem;
+}
+
+.wb-shell[data-working] .wb-float {
+    top: 64px;
+    left: calc(34% + var(--space-4));
+    width: auto;
+    border-radius: 20px;
+    animation: wb-float-in 0.35s ease;
+}
+
+@keyframes wb-float-in {
+    from {
+        opacity: 0;
+        transform: translateX(24px);
+    }
+}
+
+/* 和面板顶端对齐,贴着舞台右边(球的右侧),不压到字幕和审批卡 */
+.wb-pills {
+    position: absolute;
+    z-index: 4;
+    top: 64px;
+    right: var(--space-2);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-2);
+    max-height: 70%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    pointer-events: none;
+}
+
+.wb-pill-tool {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 8.5rem;
+    padding: 3px 10px;
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    color: var(--fg);
+    font-size: 12px;
+    white-space: nowrap;
+    animation: wb-pill-in 0.25s ease;
+}
+
+.wb-pill-tool > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wb-pill-tool .wb-spin {
+    width: 10px;
+    height: 10px;
+}
+
+.wb-pill-tool[data-status='running'] {
+    border-color: var(--accent-line);
+}
+
+.wb-pill-tool[data-status='done'] {
+    color: var(--muted);
+    animation: wb-pill-out 0.6s ease 1.6s forwards;
+}
+
+.wb-pill-tool[data-status='failed'] {
+    color: var(--danger);
+}
+
+@keyframes wb-pill-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}
+
+@keyframes wb-pill-out {
+    to {
+        opacity: 0;
+        transform: translateX(8px);
+    }
+}
+
+.wb-now {
+    position: absolute;
+    z-index: 6;
+    top: 56px;
+    right: var(--space-3);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 36px;
+    padding: 0 var(--space-4);
+    border: var(--border-width) solid var(--accent-line);
+    border-radius: var(--radius-pill);
+    font-size: 13px;
+    color: var(--fg);
+    animation: wb-pill-in 0.25s ease;
+}
+
+.wb-shell[data-working] .wb-now {
+    top: var(--space-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wb-shell[data-minimal] .wb-stage,
+    .wb-shell[data-minimal] .voice-min-orb {
+        transition: none;
+    }
+
+    .wb-shell[data-working] .wb-float,
+    .wb-pill-tool,
+    .wb-now {
+        animation: none;
+    }
+
+    /* 减少动态:完成的胶囊不做淡出动画,稍后直接隐去 */
+    .wb-pill-tool[data-status='done'] {
+        animation: wb-pill-out 0.01s linear 1.6s forwards;
+    }
+}
+
+/* 工作态里舞台本身变窄,不再用旧布局给面板让位的偏移 */
+.wb-shell[data-minimal] .wb-world:has(.wb-float) .chat-stage {
+    right: auto;
+}
+
+.wb-pill-tool svg {
+    width: 12px;
+    height: 12px;
+}
+
+.wb-pill-more {
+    color: var(--muted);
+}
