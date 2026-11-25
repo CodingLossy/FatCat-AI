@@ -27,7 +27,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "openapi:export": "node scripts/export-openapi.mjs",
-    "eval": "vitest run src/mail-injection.eval.test.ts src/channel-injection.eval.test.ts src/agent-delegation.eval.test.ts src/open-injection.eval.test.ts --reporter=verbose --coverage.enabled=false"
+    "eval": "vitest run src/mail-injection.eval.test.ts src/channel-injection.eval.test.ts src/agent-delegation.eval.test.ts src/open-injection.eval.test.ts src/code-injection.eval.test.ts --reporter=verbose --coverage.enabled=false"
   },
   "dependencies": {
     "@fatcat-ai/agent": "workspace:*",

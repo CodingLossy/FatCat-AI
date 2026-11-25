@@ -75,6 +75,8 @@
 
 界面 PR(1、2、4)的前后对比截图放 `docs/pr-screenshots` 分支 `voice-first/` 与 `code-panel/` 下(桌面三套主题 + 手机),业主确认后再合并;界面文案只在配置和有风险的项旁留一句短提示。
 
+本组待业主真机测试(X 在 #132 列出,不阻断合并):Windows 上 `pnpm test` 经 `pnpm.cmd` → `cmd.exe` 运行(含 `C:\Program Files\nodejs\pnpm.cmd` 这类带空格的路径);取消与超时用 `taskkill /T /F` 结束整个进程树(如 vitest worker);授权文件夹经 junction / 8.3 短路径到达的项目;PATH 里没有 git 时报 `git_unavailable`;项目根目录放一个假的 `cmd.exe` / `git.exe` 不会被运行;真实 Git LFS 仓库的差异里显示指针文本。X 在 #132 留下的非阻断项随 `feat/code-agent-panel` 做:审批卡片把模型追加的 `args` 单独高亮,tool-groups 文档提醒只登记固定用途的命令(`git`、`npx` 这类命令可以被追加 `-c`、`--config=` 等选项);`apps/docs` 构建产物加进 `.prettierignore`。
+
 本组之后回到 Skills 实现第 3–5 步(`feat/builtin-skills`、`feat/skills-ui`、`feat/skills-market`),再进入后段。X 在 #127 留下的项随 `feat/builtin-skills` 一起做:`readInstructions` 在 Windows 上没有 `O_NOFOLLOW` 的注释与「说明文件换成包外符号链接时 `skill.use` 返回 unknown skill」的评测用例;`skill.use` 不受任务 `withholdToolPrefixes` 约束这一点在 ADR 0048 第 6 节写明或改走 `isWithheld`(都要补测试);子运行只自动使用自己代理的 Skill、不继承父运行的用例;以及仍未做的 `secrets.yaml.migrated` 收紧 ACL(#44)和 M10 自检文档里 updater 私钥说法与工作流私钥引用检查(#92)。
 
 ## 后段顺序

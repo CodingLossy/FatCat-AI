@@ -17,6 +17,7 @@ const NESTED: readonly Key[] = [
     'browser',
     'systemOpen',
     'skills',
+    'code',
 ];
 /**
  * 代理的 Skill 列表(ADR 0048 第 8 节):存在同一张 settings 表的这个键下,`{ [agentId]: string[] }`。

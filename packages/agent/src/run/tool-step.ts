@@ -110,6 +110,7 @@ export function toolContextFor(host: RunHost, ctx: LoopCtx): ToolContext {
         userMessageId: ctx.userMessageId,
         assistantMessageId: ctx.assistantMessageId,
         untrustedContentSeen: ctx.untrusted.seen,
+        signal: ctx.signal,
         ...(ctx.task ? { task: ctx.task } : {}),
         ...(mayDelegate(host, ctx) ? { delegate: (request: DelegateRequest) => delegate(host, ctx, request) } : {}),
         enableGroup: (group: string) => enableGroup(host, ctx, group),

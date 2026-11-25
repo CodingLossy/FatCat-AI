@@ -49,6 +49,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
             { id: 'mcp', icon: 'plug', label: 'settings.item.mcp' },
             { id: 'preauth', icon: 'check', label: 'settings.item.preauth' },
             { id: 'browser', icon: 'globe', label: 'settings.item.browser' },
+            { id: 'code', icon: 'terminal', label: 'settings.item.code' },
             { id: 'market', icon: 'cloud', label: 'settings.item.market' },
         ],
     },

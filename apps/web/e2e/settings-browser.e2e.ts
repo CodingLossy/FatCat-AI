@@ -2,8 +2,8 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 设置页(M12 PR 6):浏览器开关默认关闭并可打开;分区标签是 tablist / tabpanel,方向键切换;语音页有自动发送 / 自动朗读开关。
-import { type ChildProcess, spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -138,4 +138,67 @@ test('设置:浏览器开关、分区标签的键盘操作、语音页开关', a
     await expect(enabled).toBeChecked();
     await expect.poll(toolInfo).toBe('required');
     await shot(page, 'settings-browser-on');
+});
+
+test('设置:代码分区登记项目与命令,授权文件夹之外的路径给出原因(ADR 0049 第 3.1 节)', async ({ page }) => {
+    await page.setViewportSize({ width: 1100, height: 820 });
+    await page.goto(base);
+    await page.getByLabel('用户名').fill('owner');
+    await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
+    await page.getByRole('button', { name: '登录' }).click();
+    await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
+    const work = realpathSync.native(dir);
+    const root = join(work, 'projects');
+    const repo = join(root, 'app');
+    const outside = join(work, 'outside');
+    mkdirSync(repo, { recursive: true });
+    mkdirSync(outside, { recursive: true });
+    execFileSync('git', ['init', '-q'], { cwd: repo });
+    execFileSync('git', ['init', '-q'], { cwd: outside });
+    const csrf = (await page.context().cookies()).find((c) => c.name === 'aip_csrf')!.value;
+    const res = await page.request.post(`${base}/api/v1/fs/roots`, {
+        data: { path: root },
+        headers: { 'x-csrf-token': csrf },
+    });
+    expect(res.status()).toBe(201);
+
+    await page.getByRole('link', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: /工具插件/ }).click();
+    await page.getByRole('navigation', { name: '工具插件' }).getByRole('button', { name: '代码' }).click();
+    const enabled = page.locator('input[name="codeEnabled"]');
+    await expect(enabled).not.toBeChecked();
+    await expect(page.getByText('还没有登记项目。')).toBeVisible();
+
+    // 授权文件夹之外:服务器拒绝,原因显示出来,列表里没有新项目
+    const form = page.getByTestId('code-add-project');
+    await form.getByLabel('项目名').fill('Outside');
+    await form.getByLabel('项目路径').fill(outside);
+    await form.getByRole('button', { name: '登记项目' }).click();
+    await expect(page.getByRole('alert')).toContainText('not inside an authorized folder');
+    await expect(page.locator('[data-code-project]')).toHaveCount(0);
+
+    await form.getByLabel('项目名').fill('FatCat-AI');
+    await form.getByLabel('项目路径').fill(repo);
+    await form.getByRole('button', { name: '登记项目' }).click();
+    const card = page.locator('[data-code-project="FatCat-AI"]');
+    await expect(card).toContainText(repo);
+    await card.getByLabel('命令名').fill('test');
+    await card.getByLabel('命令', { exact: true }).fill('pnpm test');
+    await card.getByRole('button', { name: '添加命令' }).click();
+    await expect(card).toContainText('test: pnpm test');
+    await enabled.click();
+    await expect(enabled).toBeChecked();
+    const tools = async () =>
+        (
+            (await (await page.request.get(`${base}/api/v1/tools`)).json()) as {
+                items: { name: string; approval: string; preauthorizable: boolean }[];
+            }
+        ).items.filter((t) => t.name === 'code.run' || t.name === 'git.log');
+    await expect
+        .poll(tools)
+        .toEqual([
+            expect.objectContaining({ name: 'code.run', approval: 'required', preauthorizable: false }),
+            expect.objectContaining({ name: 'git.log', approval: 'auto' }),
+        ]);
+    await shot(page, 'settings-code');
 });

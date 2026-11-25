@@ -66,11 +66,13 @@ export function runSecretsCommand(argv: readonly string[], io: SecretsCommandIo)
             // 服务器在读入与改名之间写入新的令牌会被静默丢掉:有运行中的服务器就什么都不改
             const pid = runningServerPid(io.dataDir, io.processAlive);
             if (pid !== null) {
+                const lockPath = join(io.dataDir, SERVER_LOCK_FILE);
                 io.err(
-                    `Error: the server seems to be running (process ${pid}, see ${SERVER_LOCK_FILE} in the data directory). ` +
+                    `Error: the server seems to be running (process ${pid}, see ${lockPath}). ` +
                         `Stop it first, then run "secrets ${command}" again. Nothing was changed. ` +
                         `If the server is already stopped (for example a stale ${SERVER_LOCK_FILE} left in a Docker volume), ` +
-                        `confirm the server has stopped and then delete ${SERVER_LOCK_FILE} / 确认服务器已停止后删除 ${SERVER_LOCK_FILE}。`,
+                        `delete ${lockPath} by hand after confirming the server has exited / ` +
+                        `确认服务器已退出后,可以手动删除 ${lockPath}。`,
                 );
                 return 1;
             }

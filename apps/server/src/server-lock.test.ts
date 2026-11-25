@@ -121,6 +121,25 @@ describe('shutdown handlers', () => {
                 () => null,
             ),
         ).toBe(4242);
+        // 映像名大小写不同(NODE.EXE 与 node.exe)仍是同一个程序(#128 X 审查)
+        writeFileSync(join(dir, SERVER_LOCK_FILE), JSON.stringify({ pid: 4242, image: 'NODE.EXE' }));
+        expect(
+            runningServerPid(
+                dir,
+                () => true,
+                1,
+                () => 'node.exe',
+            ),
+        ).toBe(4242);
+        writeFileSync(join(dir, SERVER_LOCK_FILE), JSON.stringify({ pid: 4242, image: 'node.exe' }));
+        expect(
+            runningServerPid(
+                dir,
+                () => true,
+                1,
+                () => 'NODE.EXE',
+            ),
+        ).toBe(4242);
         // 旧版本写的锁没有 image:只看进程在不在
         writeFileSync(join(dir, SERVER_LOCK_FILE), JSON.stringify({ pid: 4242 }));
         expect(

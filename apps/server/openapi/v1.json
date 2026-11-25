@@ -12161,6 +12161,80 @@
                         "builtin"
                       ],
                       "additionalProperties": false
+                    },
+                    "code": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "projects": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 60
+                              },
+                              "path": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4096
+                              },
+                              "commands": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9-]{1,32}$"
+                                    },
+                                    "argv": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "pattern": "^[A-Za-z0-9._/\\\\:=@+,-]{1,200}$"
+                                      },
+                                      "minItems": 1,
+                                      "maxItems": 16
+                                    },
+                                    "timeoutMinutes": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 60
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "argv"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "maxItems": 20
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "path",
+                              "commands"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 20
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "projects"
+                      ]
                     }
                   },
                   "required": [
@@ -12588,6 +12662,75 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "code": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "projects": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 60
+                            },
+                            "path": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 4096
+                            },
+                            "commands": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9-]{1,32}$"
+                                  },
+                                  "argv": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9._/\\\\:=@+,-]{1,200}$"
+                                    },
+                                    "minItems": 1,
+                                    "maxItems": 16
+                                  },
+                                  "timeoutMinutes": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 60
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "argv"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 20
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "path",
+                            "commands"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "maxItems": 20
+                      }
+                    }
                   }
                 }
               }
@@ -12791,6 +12934,80 @@
                         "builtin"
                       ],
                       "additionalProperties": false
+                    },
+                    "code": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "projects": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 60
+                              },
+                              "path": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4096
+                              },
+                              "commands": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9-]{1,32}$"
+                                    },
+                                    "argv": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "pattern": "^[A-Za-z0-9._/\\\\:=@+,-]{1,200}$"
+                                      },
+                                      "minItems": 1,
+                                      "maxItems": 16
+                                    },
+                                    "timeoutMinutes": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 60
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "argv"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "maxItems": 20
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "path",
+                              "commands"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 20
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "projects"
+                      ]
                     }
                   },
                   "required": [

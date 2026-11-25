@@ -3383,3 +3383,16 @@ input.kn-search {
 .wb-shell[data-narrow] .chat-stage .mic-on {
     top: var(--wb-top);
 }
+
+/* 设置 → 代码(ADR 0049 第 3.1 节) */
+.code-commands {
+    margin-top: var(--space-2);
+}
+
+.code-commands code {
+    overflow-wrap: anywhere;
+}
+
+input.code-timeout {
+    width: 9em;
+}

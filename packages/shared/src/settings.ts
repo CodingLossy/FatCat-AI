@@ -56,6 +56,41 @@ export const SkillSettings = z.strictObject({
 });
 export type SkillSettings = z.infer<typeof SkillSettings>;
 
+/** code.run 能运行的一条登记命令(ADR 0049 第 3.1、3.4 节)。 */
+export const CODE_COMMAND_NAME = /^[a-z0-9-]{1,32}$/;
+/** argv 每项与 code.run 的 args 每项都只能用这些字符:不能拼出新的命令,也没有可展开的变量。 */
+export const CODE_ARG = /^[A-Za-z0-9._/\\:=@+,-]{1,200}$/;
+export const MAX_CODE_PROJECTS = 20;
+export const MAX_CODE_COMMANDS = 20;
+export const CodeCommand = z.strictObject({
+    name: z.string().regex(CODE_COMMAND_NAME),
+    argv: z.array(z.string().regex(CODE_ARG)).min(1).max(16),
+    /** 超时(分钟),1–60,默认 10。 */
+    timeoutMinutes: z.number().int().min(1).max(60).optional(),
+});
+export type CodeCommand = z.infer<typeof CodeCommand>;
+
+/** 登记的编码项目;路径必须在已授权文件夹之内且是 git 仓库,由服务器在保存时检查并换成真实路径。 */
+export const CodeProject = z.strictObject({
+    id: Id,
+    name: z.string().trim().min(1).max(60),
+    path: z.string().min(1).max(4096),
+    commands: z.array(CodeCommand).max(MAX_CODE_COMMANDS),
+});
+export type CodeProject = z.infer<typeof CodeProject>;
+
+/** 编码项目与 git / code.run 工具(ADR 0049 第 3 节)。自 M13 起提供,旧服务器不返回,按关闭处理。 */
+export const CodeSettings = z.object({
+    /** 默认关闭;关闭时 git.* 与 code.run 不注册,按需组 code 不出现。 */
+    enabled: z.boolean(),
+    projects: z.array(CodeProject).max(MAX_CODE_PROJECTS),
+});
+export type CodeSettings = z.infer<typeof CodeSettings>;
+
+/** PUT /settings 里的项目:新项目不带 id,由服务器生成;projects 整体替换。 */
+export const CodeProjectInput = CodeProject.extend({ id: Id.optional() });
+export type CodeProjectInput = z.infer<typeof CodeProjectInput>;
+
 export const Settings = z.object({
     defaultChatProfileId: Id.nullable(),
     /** 上下文压缩等廉价任务用的配置档;为 null 时回退到 chat 配置档(ADR 0006)。 */
@@ -93,6 +128,8 @@ export const Settings = z.object({
     systemOpen: SystemOpenSettings.optional(),
     /** Skills 设置;旧服务器不返回,按全部内置 Skill 启用处理。 */
     skills: SkillSettings.optional(),
+    /** 编码项目;旧服务器不返回,按关闭处理。 */
+    code: CodeSettings.optional(),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -105,6 +142,10 @@ export const SettingsPatch = Settings.partial().extend({
     browser: BrowserSettings.partial().optional(),
     systemOpen: SystemOpenSettings.partial().optional(),
     skills: SkillSettings.partial().optional(),
+    code: z
+        .object({ enabled: z.boolean(), projects: z.array(CodeProjectInput).max(MAX_CODE_PROJECTS) })
+        .partial()
+        .optional(),
 });
 export type SettingsPatch = z.infer<typeof SettingsPatch>;
 
@@ -122,4 +163,5 @@ export const DEFAULT_SETTINGS: Settings = {
     browser: { enabled: false },
     systemOpen: { enabled: false },
     skills: { builtin: {} },
+    code: { enabled: false, projects: [] },
 };
