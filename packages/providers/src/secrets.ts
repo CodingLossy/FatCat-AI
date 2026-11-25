@@ -432,6 +432,11 @@ export class SecretStore {
         return value;
     }
 
+    /** 运行时从平台换来、不写盘的凭证(例如 QQ 的 access_token,ADR 0052 第 3.1 节):只登记到脱敏器。 */
+    protect(value: string): void {
+        this.options.redactor.add(value);
+    }
+
     /** 写入运行时令牌(新增或更新 file: 引用的键);值登记到脱敏器。规则见 writeSecretsKey。 */
     write(name: string, value: string, now?: Date): void {
         this.options.redactor.add(value);

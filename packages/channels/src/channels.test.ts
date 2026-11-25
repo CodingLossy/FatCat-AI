@@ -158,7 +158,7 @@ describe('FakeChannelAdapter', () => {
                 return Promise.resolve();
             },
             report: () => undefined,
-            secrets: { resolve: () => null },
+            secrets: { resolve: () => null, protect: () => undefined },
             log: { info: () => undefined, warn: () => undefined },
             signal: new AbortController().signal,
         };

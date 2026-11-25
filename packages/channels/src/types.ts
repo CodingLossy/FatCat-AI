@@ -33,6 +33,8 @@ export interface ChannelLogger {
 export interface ChannelSecrets {
     /** 读取密钥引用(env: / file:);未设置时为 null。写入运行时令牌随 PR 7(ADR 0022 第 9 节)。 */
     resolve(ref: string): string | null;
+    /** 运行时换来、不写盘的凭证(QQ 的 access_token)登记到脱敏器,日志与错误里不会出现原文。 */
+    protect(value: string): void;
 }
 
 /** 适配器向框架报告的错误;message 是不含令牌与正文的英文短句。 */

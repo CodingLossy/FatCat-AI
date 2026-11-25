@@ -47,7 +47,7 @@ import { runSecretsCommand } from './secrets-cli.js';
 import { createLogger } from './log.js';
 import { acquireServerLock, installLockRelease, installShutdownHandlers, runningServerPid } from './server-lock.js';
 import { attachWebSocket } from './ws.js';
-import { ChannelHub, WechatChannels } from '@fatcat-ai/channels/hub';
+import { ChannelHub, QqChannels, WechatChannels } from '@fatcat-ai/channels/hub';
 import { channelHubServerDeps } from './channel-setup.js';
 
 // 离线子命令:`node dist/index.js secrets migrate|rekey|cleanup`(ADR 0026);不启动服务器
@@ -277,8 +277,9 @@ const sweepJob = scheduleDaily(() => {
         })
         .catch((err: unknown) => logger.warn({ err }, 'attachment cleanup failed'));
 }, ownerTimeZone());
-// IM 渠道(ADR 0022):1.0 只有微信 iLink(ADR 0024);每天清理 3 天前的去重记录
+// IM 渠道(ADR 0022):微信 iLink(ADR 0024)与 QQ 官方机器人(ADR 0052);每天清理 3 天前的去重记录
 const wechat = new WechatChannels({ repos, secrets, logger });
+const qq = new QqChannels({ repos, secrets, logger });
 const channels: ChannelHub = new ChannelHub({
     repos,
     runs,
@@ -287,7 +288,7 @@ const channels: ChannelHub = new ChannelHub({
     ...channelHubServerDeps({ repos, runs, secrets, files: attachmentFiles }),
     logger,
     sourceUrl: config.sourceUrl,
-    adapters: { wechat: wechat.factory },
+    adapters: { wechat: wechat.factory, qq: qq.factory },
 });
 const inboxJob = scheduleDaily(() => {
     const removed = channels.pruneInbox();

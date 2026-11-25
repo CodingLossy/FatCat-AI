@@ -129,7 +129,7 @@ export async function createHubHarness(options: HarnessOptions = {}): Promise<Hu
         runs,
         bus,
         // 中枢只经 ChannelContext.secrets.resolve 用到它;假渠道不读密钥
-        secrets: { resolve: () => null } as unknown as SecretStore,
+        secrets: { resolve: () => null, protect: () => undefined } as unknown as SecretStore,
         resolveProfile: () => {
             if (options.noModel) throw new Error('no usable model profile');
             return profile;
@@ -196,7 +196,8 @@ export async function createHubHarness(options: HarnessOptions = {}): Promise<Hu
             await hub.stopAll();
             await runs.idle();
             conn.close();
-            rmSync(dir, { recursive: true, force: true });
+            // Windows 上 SQLite 句柄可能稍晚才释放:先关连接,删除时重试几次
+            rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
         },
     };
 }

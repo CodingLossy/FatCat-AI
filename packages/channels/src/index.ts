@@ -9,3 +9,4 @@ export * from './format.js';
 export * from './limits.js';
 export * from './ilink.js';
 export * from './wechat.js';
+export * from './qq.js';

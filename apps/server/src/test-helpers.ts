@@ -26,7 +26,7 @@ import { FailureLimiter } from './auth/rate-limit.js';
 import { dataDirMasterKey } from './data-dir.js';
 import { type BuiltinSkill, SkillService } from './skills.js';
 import { createLogger } from './log.js';
-import { type AdapterFactory, ChannelHub, WechatChannels } from '@fatcat-ai/channels/hub';
+import { type AdapterFactory, ChannelHub, QqChannels, WechatChannels } from '@fatcat-ai/channels/hub';
 import { channelHubServerDeps } from './channel-setup.js';
 import { PluginService } from '@fatcat-ai/plugins';
 import { SERVER_VERSION } from './version.js';
@@ -113,6 +113,8 @@ export interface TestServerOptions {
     channelAdapters?: Partial<Record<ChannelKind, AdapterFactory>>;
     /** 微信 iLink 指向假服务器(ADR 0024);设置后注册真实的微信适配器,地址校验放开为本机。 */
     wechatBaseUrl?: string;
+    /** QQ 官方机器人指向假的 QQ 开放平台(ADR 0052);设置后注册真实的 QQ 适配器,网关地址校验放开为本机。 */
+    qqPlatform?: { apiBaseUrl: string; tokenUrl: string };
     /** 渠道运行器的时钟(限流、配对码过期测试用)。 */
     now?: () => Date;
     /** 认证路由的时钟与临时凭证、第二因素限流(TOTP 测试用)。 */
@@ -247,7 +249,27 @@ export async function createTestServer(
         logger,
         ...(options.wechatBaseUrl ? { baseUrl: options.wechatBaseUrl, allowUrl: () => true } : {}),
     });
-    const adapters = options.channelAdapters ?? (options.wechatBaseUrl ? { wechat: wechat.factory } : undefined);
+    const qq = new QqChannels({
+        repos,
+        secrets,
+        logger,
+        ...(options.qqPlatform
+            ? {
+                  adapter: {
+                      ...options.qqPlatform,
+                      allowGatewayUrl: (url: string) => url.startsWith('ws://127.0.0.1:'),
+                  },
+              }
+            : {}),
+    });
+    const adapters =
+        options.channelAdapters ??
+        (options.wechatBaseUrl || options.qqPlatform
+            ? {
+                  ...(options.wechatBaseUrl ? { wechat: wechat.factory } : {}),
+                  ...(options.qqPlatform ? { qq: qq.factory } : {}),
+              }
+            : undefined);
     const channels = new ChannelHub({
         repos,
         runs,
@@ -264,6 +286,7 @@ export async function createTestServer(
         taskComplete: options.taskComplete ?? createMailComplete(repos, providerFor),
         channels,
         wechat,
+        qq,
         mcp,
         plugins,
         skills,
