@@ -3090,7 +3090,9 @@ input.kn-search {
     z-index: 7;
     flex: none;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    /* 4 个标签;打开编码项目后多一个「代码」 */
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     border-top: var(--border-width) solid var(--border);
     background: var(--glass-bg);
@@ -3395,4 +3397,138 @@ input.kn-search {
 
 input.code-timeout {
     width: 9em;
+}
+
+/* 「代码」面板(ADR 0049 第 4 节) */
+.code-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    min-width: 0;
+}
+
+.code-project {
+    overflow-wrap: anywhere;
+}
+
+.code-section h4 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.code-commits {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+}
+
+.code-commits li + li {
+    border-top: var(--border-width) solid var(--border);
+}
+
+.code-commit {
+    display: grid;
+    grid-template-columns: 2ch auto 1fr auto;
+    gap: 8px;
+    align-items: baseline;
+    width: 100%;
+    padding: 6px 10px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.code-commit:hover,
+.code-commit.on {
+    background: var(--surface-2);
+}
+
+.code-commit .code-n {
+    color: var(--muted);
+    text-align: right;
+}
+
+.code-subject {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.code-ask {
+    margin: 0;
+    padding: 0 10px 6px;
+}
+
+.code-header,
+.code-output {
+    margin: 0;
+    padding: 8px 10px;
+    max-height: 320px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font:
+        12px/1.5 ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        monospace;
+}
+
+.code-header {
+    border-bottom: var(--border-width) solid var(--border);
+}
+
+.code-output {
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface-2);
+}
+
+.code-note {
+    margin: 0;
+    padding: 6px 10px;
+}
+
+.diff-ln.file {
+    padding: 4px 10px;
+    font-weight: 600;
+    border-top: var(--border-width) solid var(--border);
+}
+
+.diff-ln.meta {
+    color: var(--muted);
+    padding-left: 10px;
+}
+
+.code-run-status {
+    margin: 0 0 6px;
+}
+
+.code-run-status.failed,
+.code-run-status.rejected {
+    color: var(--danger);
+}
+
+.added-args {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: baseline;
+}
+
+.added-arg {
+    padding: 0 4px;
+    border-radius: 4px;
+    background: var(--surface-2);
+    outline: var(--border-width) solid var(--warn);
 }
