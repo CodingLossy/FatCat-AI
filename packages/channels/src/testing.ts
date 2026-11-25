@@ -81,3 +81,5 @@ export class FakeChannelAdapter implements ChannelAdapter {
         return this.sent.filter((s) => s.target.externalUserId === externalUserId).map((s) => s.text);
     }
 }
+
+export * from './qq-fake.js';

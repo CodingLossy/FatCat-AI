@@ -4,7 +4,7 @@
 // 外连目标清单(ADR 0028):由配置现算,不入库。每个 category 一个具名函数;
 // scripts/check-egress.mjs 要求登记表里 kind 为 fixed 的条目的 listedAs 能在本文件找到同名符号。
 // 清单只含 origin(协议://主机[:端口]),不含路径、查询、凭据,也不含任何密钥或密钥引用名。
-import { ILINK_DEFAULT_BASE_URL } from '@fatcat-ai/channels';
+import { ILINK_DEFAULT_BASE_URL, QQ_API_BASE_URL } from '@fatcat-ai/channels';
 import { ANTHROPIC_BASE_URL, GEMINI_BASE_URL } from '@fatcat-ai/providers';
 import { EgressTarget, type EgressTargetList, type McpServer, type VoiceSettings } from '@fatcat-ai/shared';
 import type { ChannelRecord, MailAccountRecord, ModelProfileRecord } from '@fatcat-ai/storage';
@@ -145,19 +145,33 @@ export function mailTargets(accounts: readonly MailAccountRecord[], log?: Egress
     return finish(drafts, log);
 }
 
-/** 渠道(目前只有微信 iLink);停用的渠道仍列出。企业微信推迟,不出现。 */
+/**
+ * 渠道:微信 iLink(地址是渠道的 baseUrl 或默认地址)与 QQ 官方机器人(令牌、网关地址、发消息与 WebSocket 网关
+ * 都在 api.bot.qq.com,ADR 0052 第 4 节);停用的渠道仍列出。企业微信推迟,不出现。
+ */
 export function channelTargets(channels: readonly ChannelRecord[], log?: EgressLog): EgressTarget[] {
     const drafts: Draft[] = [];
     for (const c of channels) {
-        if (c.kind !== 'wechat') continue;
+        if (c.kind !== 'wechat' && c.kind !== 'qq') continue;
         drafts.push({
             id: `channel:${c.id}`,
             category: 'channel',
             label: c.label,
-            address: c.config.baseUrl || ILINK_DEFAULT_BASE_URL,
+            address: c.kind === 'qq' ? QQ_API_BASE_URL : c.config.baseUrl || ILINK_DEFAULT_BASE_URL,
             source: { kind: 'channel', id: c.id },
             enabled: c.enabled,
         });
+        // 网关是 wss:// 连接,单独列一项,方便按协议放行
+        if (c.kind === 'qq') {
+            drafts.push({
+                id: `channel:${c.id}:gateway`,
+                category: 'channel',
+                label: c.label,
+                address: QQ_API_BASE_URL.replace(/^https:/, 'wss:'),
+                source: { kind: 'channel', id: c.id },
+                enabled: c.enabled,
+            });
+        }
     }
     return finish(drafts, log);
 }

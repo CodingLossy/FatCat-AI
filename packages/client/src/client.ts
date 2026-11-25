@@ -47,6 +47,7 @@ import type {
     Channel,
     ChannelCreate,
     ChannelPairing,
+    QqCredentials,
     WechatLoginStart,
     WechatLoginState,
     ChannelPatch,
@@ -611,6 +612,9 @@ export function createClient(options: ClientOptions) {
             wechatLogin: (id: string) =>
                 t.json<WechatLoginStart>(`/channels/${enc(id)}/wechat/login`, { method: 'POST' }),
             wechatLoginState: (id: string) => t.json<WechatLoginState>(`/channels/${enc(id)}/wechat/login`),
+            /** QQ 官方机器人凭据(ADR 0052):AppSecret 写进服务器的 secrets.yaml,任何响应都不返回它。 */
+            qqCredentials: (id: string, body: QqCredentials) =>
+                t.json<void>(`/channels/${enc(id)}/qq/credentials`, { method: 'PUT', body }),
         },
 
         tasks: {

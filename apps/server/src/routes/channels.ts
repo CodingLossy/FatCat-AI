@@ -12,12 +12,13 @@ import {
     ChannelStatus,
     Id,
     pageOf,
+    QqCredentials,
     WechatLoginStart,
     WechatLoginState,
 } from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
-import { type ChannelHub, toChannel, type WechatChannels } from '@fatcat-ai/channels/hub';
+import { type ChannelHub, type QqChannels, toChannel, type WechatChannels } from '@fatcat-ai/channels/hub';
 import { ApiError, notFound } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
 
@@ -126,8 +127,27 @@ const wechatLoginStateRoute = createRoute({
     },
 });
 
-export function channelRoutes(deps: { repos: Repositories; hub: ChannelHub; wechat: WechatChannels }) {
-    const { repos, hub, wechat } = deps;
+const qqCredentialsRoute = createRoute({
+    method: 'put',
+    path: '/channels/{id}/qq/credentials',
+    tags,
+    summary: 'Save the QQ bot AppID and AppSecret; the AppSecret goes to secrets.yaml and is never returned',
+    request: {
+        params: idParam,
+        body: { content: { 'application/json': { schema: QqCredentials } }, required: true },
+    },
+    responses: {
+        204: { description: 'Saved; the channel restarts with the new credentials' },
+        400: problem('Invalid request'),
+        404: problem('Not found'),
+        409: problem('Not a QQ channel'),
+        500: problem('secrets.yaml could not be written; it was not changed'),
+        ...authErrors,
+    },
+});
+
+export function channelRoutes(deps: { repos: Repositories; hub: ChannelHub; wechat: WechatChannels; qq: QqChannels }) {
+    const { repos, hub, wechat, qq } = deps;
     const channelOr404 = (ownerId: string, id: string) => {
         const channel = repos.channels.get(ownerId, id);
         if (!channel) throw notFound('Channel');
@@ -163,6 +183,7 @@ export function channelRoutes(deps: { repos: Repositories; hub: ChannelHub; wech
             const channel = channelOr404(ownerId, c.req.valid('param').id);
             await hub.remove(channel.id);
             if (channel.kind === 'wechat') wechat.forget(channel.id);
+            if (channel.kind === 'qq') qq.forget(channel.id);
             repos.channels.delete(ownerId, channel.id);
             return c.body(null, 204);
         })
@@ -189,5 +210,13 @@ export function channelRoutes(deps: { repos: Repositories; hub: ChannelHub; wech
             const state = wechat.loginState(channel.id);
             if (!state) throw notFound('WeChat login');
             return c.json(state, 200);
+        })
+        .openapi(qqCredentialsRoute, async (c) => {
+            const channel = channelOr404(requireOwner(c), c.req.valid('param').id);
+            if (channel.kind !== 'qq') {
+                throw new ApiError(409, 'conflict', 'Conflict', 'This channel does not use QQ bot credentials.');
+            }
+            await qq.saveCredentials(channel, c.req.valid('json'));
+            return c.body(null, 204);
         });
 }

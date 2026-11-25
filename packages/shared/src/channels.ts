@@ -7,10 +7,10 @@ import { z } from 'zod';
 import { Id, IsoDateTime } from './common.js';
 
 /**
- * 渠道类型。1.0 先做微信(iLink);企业微信已推迟(业主 2026-11-11),以后作为新值加入。
+ * 渠道类型。1.0 先做微信(iLink);QQ 官方机器人见 ADR 0052;企业微信已推迟(业主 2026-11-11),以后作为新值加入。
  * 枚举只增不改:客户端必须把未知的 kind 当作「不认识的渠道」显示,不能报错(ADR 0004)。
  */
-export const ChannelKind = z.enum(['wechat']);
+export const ChannelKind = z.enum(['wechat', 'qq']);
 export type ChannelKind = z.infer<typeof ChannelKind>;
 
 /**
@@ -38,6 +38,8 @@ export const Channel = z.object({
     binding: ChannelBinding.nullable(),
     /** 连续出现召回降级时推送一次提醒(ADR 0017 第 5 节);默认关闭。 */
     notifyDegraded: z.boolean(),
+    /** 只在 kind 为 qq 时出现(ADR 0052 第 2 节):已保存的 AppID(在 QQ 开放平台本来就公开);AppSecret 永不返回。 */
+    qq: z.object({ appId: z.string().nullable() }).optional(),
     createdAt: IsoDateTime,
     updatedAt: IsoDateTime,
 });
@@ -105,3 +107,18 @@ export const WechatLoginState = z.object({
     code: z.string().optional(),
 });
 export type WechatLoginState = z.infer<typeof WechatLoginState>;
+
+/**
+ * `PUT /api/v1/channels/{id}/qq/credentials`(ADR 0052 第 4 节):QQ 官方机器人的 AppID 与 AppSecret。
+ * AppSecret 由服务器写进 secrets.yaml(ADR 0022 第 9 节),任何响应都不返回它或它的引用。
+ */
+export const QqCredentials = z
+    .object({
+        appId: z
+            .string()
+            .trim()
+            .regex(/^\d{1,32}$/),
+        appSecret: z.string().trim().min(1).max(128),
+    })
+    .strict();
+export type QqCredentials = z.infer<typeof QqCredentials>;

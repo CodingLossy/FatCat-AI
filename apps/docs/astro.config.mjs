@@ -35,6 +35,7 @@ export default defineConfig({
                         { slug: 'guides/docker' },
                         { slug: 'guides/desktop' },
                         { slug: 'guides/channels' },
+                        { slug: 'guides/qq' },
                         { slug: 'guides/plugins' },
                         { slug: 'guides/tool-groups' },
                         { slug: 'security' },

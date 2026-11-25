@@ -9,6 +9,7 @@ import {
     ChannelPairing,
     ChannelPatch,
     isSupportedTimeZone,
+    QqCredentials,
     TimeZoneName,
 } from './index.js';
 
@@ -16,8 +17,8 @@ const ID = '01JC0000000000000000000000';
 const NOW = '2026-11-11T08:00:00.000Z';
 
 describe('channels (ADR 0022)', () => {
-    it('1.0 只有 wechat;企业微信推迟,未知 kind 被拒绝', () => {
-        expect(ChannelKind.options).toEqual(['wechat']);
+    it('wechat 与 qq(ADR 0052);企业微信推迟,未知 kind 被拒绝', () => {
+        expect(ChannelKind.options).toEqual(['wechat', 'qq']);
         expect(ChannelCreate.safeParse({ kind: 'wecom', label: '企业微信' }).success).toBe(false);
         expect(ChannelCreate.parse({ kind: 'wechat', label: '  微信 ' })).toEqual({ kind: 'wechat', label: '微信' });
     });
@@ -68,5 +69,16 @@ describe('time zones (ADR 0023)', () => {
         for (const tz of ['+08:00', 'CST', 'GMT', 'Mars/Olympus', '', 'Asia/Shanghai; rm -rf']) {
             expect(TimeZoneName.safeParse(tz).success, tz).toBe(false);
         }
+    });
+
+    it('QqCredentials:AppID 只含数字,AppSecret 非空且不超过 128;不接受多余字段', () => {
+        expect(QqCredentials.parse({ appId: ' 102030 ', appSecret: ' s3cret ' })).toEqual({
+            appId: '102030',
+            appSecret: 's3cret',
+        });
+        expect(QqCredentials.safeParse({ appId: 'abc', appSecret: 'x' }).success).toBe(false);
+        expect(QqCredentials.safeParse({ appId: '1', appSecret: '' }).success).toBe(false);
+        expect(QqCredentials.safeParse({ appId: '1', appSecret: 'x'.repeat(129) }).success).toBe(false);
+        expect(QqCredentials.safeParse({ appId: '1', appSecret: 'x', secretRef: 'env:X' }).success).toBe(false);
     });
 });

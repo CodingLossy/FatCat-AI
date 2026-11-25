@@ -78,7 +78,7 @@ function makeCtx(token: string | null) {
             return Promise.resolve();
         },
         report: (state, error) => reports.push({ state, error }),
-        secrets: { resolve: (ref) => (ref === 'file:ILINK_TOKEN_c1' ? token : null) },
+        secrets: { resolve: (ref) => (ref === 'file:ILINK_TOKEN_c1' ? token : null), protect: () => undefined },
         log: { info: () => undefined, warn: () => undefined },
         signal: controller.signal,
     };

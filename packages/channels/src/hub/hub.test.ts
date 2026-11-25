@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 包级中枢单测(ADR 0050 第 2 节、ADR 0052 第 6 节):绑定、过滤、指令、审批短码、排队、限流、切段与退避。
-// 用例按渠道 kind 各跑一次:中枢不按 kind 分支,替身也只有一套;`feat/channel-qq` 把 'qq' 加进 KINDS。
+// 用例按渠道 kind(微信、QQ)各跑一次:中枢不按 kind 分支,替身也只有一套。
 import type { ChannelKind } from '@fatcat-ai/shared';
 import type { ToolDefinition } from '@fatcat-ai/tools';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -59,7 +59,7 @@ const waitFor = async (check: () => boolean, what: string) => {
 
 const codeIn = (text: string | undefined) => /确认 ([A-Z][2-9])/.exec(text ?? '')?.[1];
 
-const KINDS: ChannelKind[] = ['wechat'];
+const KINDS: ChannelKind[] = ['wechat', 'qq'];
 
 describe.each(KINDS)('ChannelHub (%s)', (kind) => {
     it('配对码绑定主人;之后只有主人的私聊进入会话', async () => {
@@ -301,6 +301,15 @@ describe.each(KINDS)('ChannelHub (%s)', (kind) => {
         await h.hub.push(h.ownerId, h.channel().id, '**提醒**');
         expect(h.replies().at(-1)).toBe('提醒');
         expect(h.adapter().textsTo(STRANGER)).toEqual([]);
+    });
+
+    it('任务推送发送失败时抛给调用方;普通回答发送失败只记错误', async () => {
+        const h = await setup({ kind });
+        await h.bind();
+        h.adapter().send = () => Promise.reject(new Error('platform refused'));
+        await expect(h.hub.push(h.ownerId, h.channel().id, '提醒')).rejects.toThrow('platform refused');
+        await h.say('你好');
+        expect(h.hub.status(h.channel()).lastError).toMatchObject({ code: 'send_failed' });
     });
 
     it('解除绑定后旧主人的消息被忽略,待审批短码作废', async () => {

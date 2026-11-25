@@ -398,6 +398,7 @@ function minimal(schema: Schema | undefined, depth = 0): unknown {
 /** schema 里有细化规则(至少改一项、日期格式等),拼不出来的几条手写。 */
 const BODIES: Record<string, unknown> = {
     'PATCH /api/v1/channels/{id}': { label: 'mine now' },
+    'PUT /api/v1/channels/{id}/qq/credentials': { appId: '102030', appSecret: 'not-saved' },
     'PATCH /api/v1/tasks/{id}': { name: 'mine now' },
     'POST /api/v1/tasks/{id}/confirm': { version: '2026-01-01T00:00:00.000Z' },
     'POST /api/v1/tool-calls/{callId}/result': { ok: false, code: 'unsupported' },

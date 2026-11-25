@@ -63,7 +63,7 @@ import { timingSafeEqual } from 'node:crypto';
 import type { TaskComplete } from './scheduler/nl-parse.js';
 import { startScheduler, type Scheduler } from './scheduler-setup.js';
 import { startMaintenance } from './maintenance-setup.js';
-import { ChannelHub, WechatChannels } from '@fatcat-ai/channels/hub';
+import { ChannelHub, QqChannels, WechatChannels } from '@fatcat-ai/channels/hub';
 import { channelHubServerDeps } from './channel-setup.js';
 import { TRANSCRIPTION_OVERHEAD_BYTES, type VoiceRouteDeps, voiceRoutes } from './routes/voice.js';
 import { ClientCalls } from './client-calls.js';
@@ -128,6 +128,8 @@ export interface AppDeps {
     clientCalls?: ClientCalls;
     /** 微信 iLink 的扫码授权与适配器工厂;测试时可指向假的 iLink 服务器。 */
     wechat?: WechatChannels;
+    /** QQ 官方机器人的凭据保存与适配器工厂(ADR 0052);测试时可指向假的 QQ 开放平台。 */
+    qq?: QqChannels;
 }
 
 /** 每个用户每分钟的转写与朗读次数(ADR 0021 第 5 节)。 */
@@ -181,11 +183,12 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         deps.mail ?? createMailService({ repos, secrets: deps.secrets, redact: deps.redact ?? ((text) => text), now });
 
     const wechat = deps.wechat ?? new WechatChannels({ repos, secrets: deps.secrets, logger });
+    const qq = deps.qq ?? new QqChannels({ repos, secrets: deps.secrets, logger });
     const channels =
         deps.channels ??
         new ChannelHub({
             repos,
-            adapters: { wechat: wechat.factory },
+            adapters: { wechat: wechat.factory, qq: qq.factory },
             runs: deps.runs,
             bus: deps.bus,
             secrets: deps.secrets,
@@ -196,6 +199,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         });
 
     wechat.attach(channels);
+    qq.attach(channels);
 
     const scheduler =
         deps.scheduler ??
@@ -391,7 +395,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         .route('/', runRoutes(runDeps))
         .route('/', agentRoutes({ repos, runs: deps.runs }))
         .route('/', skillRoutes({ skills }))
-        .route('/', channelRoutes({ repos, hub: channels, wechat }))
+        .route('/', channelRoutes({ repos, hub: channels, wechat, qq }))
         .route(
             '/',
             taskRoutes({

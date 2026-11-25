@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import { ILINK_DEFAULT_BASE_URL } from '@fatcat-ai/channels';
+import { ILINK_DEFAULT_BASE_URL, QQ_API_BASE_URL } from '@fatcat-ai/channels';
 import { ANTHROPIC_BASE_URL } from '@fatcat-ai/providers';
 import { EgressTarget, type McpServer } from '@fatcat-ai/shared';
 import type { ChannelRecord, MailAccountRecord, ModelProfileRecord } from '@fatcat-ai/storage';
@@ -126,6 +126,15 @@ describe('targets per category', () => {
             ['channel:c1', normalizeOrigin(ILINK_DEFAULT_BASE_URL), false],
             ['channel:c2', 'https://ilink2.example.com', true],
         ]);
+    });
+
+    it('channel: a QQ channel lists the REST host and the wss:// gateway on api.bot.qq.com', () => {
+        const targets = channelTargets([channel({ id: 'q1', kind: 'qq', config: { appId: '1' } })]);
+        expect(targets.map((t) => [t.id, t.origin, t.enabled])).toEqual([
+            ['channel:q1', 'https://api.bot.qq.com', true],
+            ['channel:q1:gateway', 'wss://api.bot.qq.com', true],
+        ]);
+        expect(QQ_API_BASE_URL).toBe('https://api.bot.qq.com');
     });
 
     it('mcp: a stdio server is a local process without an origin', () => {

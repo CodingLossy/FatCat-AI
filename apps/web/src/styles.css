@@ -875,6 +875,11 @@ td .badge {
     margin-top: 0.5rem;
 }
 
+/* QQ 机器人凭据表单(ADR 0052 第 5 节):和下面的开关拉开距离 */
+.qq-credentials {
+    margin: 8px 0 12px;
+}
+
 .qr-login {
     display: flex;
     flex-direction: column;

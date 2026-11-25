@@ -18,6 +18,18 @@
     "reason": "WeChat iLink client; its base URL is the channel's baseUrl or ILINK_DEFAULT_BASE_URL"
   },
   {
+    "file": "packages/channels/src/qq-fake.ts",
+    "kind": "local-only",
+    "listedAs": "-",
+    "reason": "Test-only fake QQ platform (exported through @fatcat-ai/channels/testing): a node:http server on 127.0.0.1; never used by production code"
+  },
+  {
+    "file": "packages/channels/src/qq.ts",
+    "kind": "fixed",
+    "listedAs": "channelTargets",
+    "reason": "QQ official bot client (ADR 0052): access token, gateway address, messages and the WebSocket gateway, all on api.bot.qq.com (QQ_API_BASE_URL / QQ_TOKEN_URL); the gateway URL must be wss://*.qq.com"
+  },
+  {
     "file": "packages/client/src/transport.ts",
     "kind": "local-only",
     "listedAs": "-",

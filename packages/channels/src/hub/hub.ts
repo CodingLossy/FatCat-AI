@@ -144,6 +144,8 @@ export function toChannel(record: ChannelRecord): Channel {
             ? { maskedExternalUserId: maskExternalId(record.binding.externalUserId), boundAt: record.binding.boundAt }
             : null,
         notifyDegraded: record.notifyDegraded,
+        // 只返回 AppID;AppSecret 与它的引用都不出服务器(ADR 0052 第 2 节)
+        ...(record.kind === 'qq' ? { qq: { appId: record.config.appId ?? null } } : {}),
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,
     };
@@ -423,7 +425,10 @@ export class ChannelHub {
             channelId: channel.id,
             receive: (message) => this.receive(rt, message),
             report: (state, error) => this.report(rt, adapter, state, error),
-            secrets: { resolve: (ref) => this.options.secrets.resolve(ref) },
+            secrets: {
+                resolve: (ref) => this.options.secrets.resolve(ref),
+                protect: (value) => this.options.secrets.protect(value),
+            },
             log: {
                 info: (fields, msg) => this.log.info({ ...fields, channelId: channel.id }, msg),
                 warn: (fields, msg) => this.log.warn({ ...fields, channelId: channel.id }, msg),
@@ -510,7 +515,14 @@ export class ChannelHub {
         this.log.info({ channelId: rt.channelId, reason }, 'channel message ignored');
     }
 
-    private async send(rt: Runtime, target: ChannelTarget, markdown: string, plain = false): Promise<void> {
+    /** rethrow:任务推送用,发送失败时抛给调用方(任务运行记失败,ADR 0052 第 1 节第 5 条);其余只记错误。 */
+    private async send(
+        rt: Runtime,
+        target: ChannelTarget,
+        markdown: string,
+        plain = false,
+        rethrow = false,
+    ): Promise<void> {
         const adapter = rt.adapter;
         if (!adapter) return;
         const { markup, maxTextBytes } = adapter.capabilities;
@@ -524,6 +536,7 @@ export class ChannelHub {
                 message: error instanceof Error ? error.message.slice(0, 200) : 'Sending failed.',
             });
             this.log.warn({ channelId: rt.channelId, length: text.length }, 'channel send failed');
+            if (rethrow) throw error;
         }
     }
 
@@ -542,7 +555,7 @@ export class ChannelHub {
             rt.target?.externalUserId === channel.binding.externalUserId
                 ? rt.target
                 : { externalUserId: channel.binding.externalUserId };
-        await this.send(rt, target, markdown);
+        await this.send(rt, target, markdown, false, true);
     }
 
     /** 入站消息:去重 → 过滤 → 限流 → 指令或排队(ADR 0022 第 3、4、8 节)。 */
