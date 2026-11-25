@@ -52,7 +52,11 @@ export class SkillService implements SkillSource {
             },
             read: () => skill.instructions,
         }));
-        for (const record of repos.plugins.list(ownerId)) {
+        // 自己装的插件,加上管理员开放给成员的(ADR 0053 第 4.2 节)
+        const own = repos.plugins.list(ownerId);
+        const mine = new Set(own.map((r) => r.pluginId));
+        const usable = [...own, ...repos.plugins.listSharedWith(ownerId).filter((r) => !mine.has(r.pluginId))];
+        for (const record of usable) {
             if (record.state === 'uninstalled') continue;
             const manifest = record.manifest as PluginManifest;
             const dir = join(codeRoot, record.pluginId, record.version);

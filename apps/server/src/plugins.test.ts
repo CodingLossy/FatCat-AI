@@ -176,6 +176,71 @@ describe('插件 REST', () => {
         expect(after.some((t) => t.name.startsWith('plugin.probe.'))).toBe(false);
     }, 60_000);
 
+    it('开放给成员(ADR 0053 第 4.2 节):只有管理员能开;成员只读看到、能调用工具;收回后立即不能用', async () => {
+        const { send, settled, install } = await setup();
+        expect((await install(sourceDir())).res.status).toBe(201);
+        await settled();
+        const { code } = (await (await send('POST', '/api/v1/admin/users/invites')).json()) as { code: string };
+        const accepted = await s.app.request(
+            '/api/v1/auth/invite/accept',
+            jsonBody({ code, username: 'kid', password: TEST_PASSWORD }),
+        );
+        expect(accepted.status).toBe(201);
+        const kidId = ((await accepted.json()) as { owner: { id: string } }).owner.id;
+        const kidSession = sessionFrom(accepted);
+        const asKid = (method: string, p: string, body?: unknown) =>
+            s.app.request(p, {
+                method,
+                headers: {
+                    cookie: kidSession.cookie,
+                    'X-CSRF-Token': kidSession.csrf,
+                    'content-type': 'application/json',
+                },
+                ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+            });
+        const kidPlugins = async () =>
+            pageOf(PluginView).parse(await (await asKid('GET', '/api/v1/plugins')).json()).items;
+        const kidEcho = async () =>
+            ToolInfo.array()
+                .parse(((await (await asKid('GET', '/api/v1/tools')).json()) as { items: unknown[] }).items)
+                .find((t) => t.name === 'plugin.probe.echo');
+        // 改密钥绑定会重启插件、重新注册工具,所以每次都取当前的定义
+        const echo = () => s.runs.tools!.get('plugin.probe.echo')!;
+
+        // 没开放:成员看不到插件,工具对他关闭,调用被拒
+        expect(await kidPlugins()).toEqual([]);
+        expect((await kidEcho())?.approval).toBe('disabled');
+        await expect(echo().execute({ text: 'hi' }, { ownerId: kidId } as never)).rejects.toThrow(/another account/);
+        expect((await asKid('PATCH', '/api/v1/plugins/probe', { sharedWithMembers: true })).status).toBe(403);
+
+        // 管理员开放:不重启;成员只读看到,没有管理员的设置,能调用
+        await send('PATCH', '/api/v1/plugins/probe', { secretRefs: { WEATHER_API_KEY: 'env:MY_KEY' } });
+        await settled();
+        const shared = PluginView.parse(
+            await (await send('PATCH', '/api/v1/plugins/probe', { sharedWithMembers: true })).json(),
+        );
+        expect(shared.sharedWithMembers).toBe(true);
+        const [seen] = await kidPlugins();
+        expect(seen).toMatchObject({
+            id: 'probe',
+            readOnly: true,
+            sharedWithMembers: true,
+            secretRefs: {},
+            settings: {},
+        });
+        expect((await kidEcho())?.approval).not.toBe('disabled');
+        expect(await echo().execute({ text: 'hi' }, { ownerId: kidId } as never)).toMatchObject({ content: 'hi' });
+        // 成员不能停止、卸载或查看详情(插件不是他的)
+        expect((await asKid('POST', '/api/v1/plugins/probe/stop')).status).toBe(404);
+        expect((await asKid('DELETE', '/api/v1/plugins/probe')).status).toBe(404);
+        expect((await asKid('GET', '/api/v1/plugins/probe')).status).toBe(404);
+
+        // 收回:立即不能用
+        await send('PATCH', '/api/v1/plugins/probe', { sharedWithMembers: false });
+        expect(await kidPlugins()).toEqual([]);
+        await expect(echo().execute({ text: 'hi' }, { ownerId: kidId } as never)).rejects.toThrow(/another account/);
+    }, 60_000);
+
     it('必需的密钥没绑定时安装后是停用的,启用返回 409;只接受 env: 引用', async () => {
         const { send, install } = await setup();
         const src = sourceDir((m) => {

@@ -94,6 +94,12 @@ export const PluginView = z.object({
     taskTemplates: z.array(PluginTaskTemplate),
     runtime: PluginRuntimeSettingsInput,
     run: PluginRunInfo,
+    /** 管理员把它开放给了成员(ADR 0053 第 4.2 节,2.0 起)。旧服务器不返回。 */
+    sharedWithMembers: z.boolean().optional(),
+    /**
+     * 成员看到的、管理员开放的插件:只能用它的工具,不能改、停、卸载;密钥绑定、设置和运行限制不给(为空)。
+     */
+    readOnly: z.literal(true).optional(),
     installedAt: z.string(),
     updatedAt: z.string(),
 });
@@ -166,6 +172,8 @@ export const PluginPatch = z.strictObject({
         .optional(),
     settings: z.record(z.string(), z.unknown()).optional(),
     runtime: PluginRuntimeSettingsInput.optional(),
+    /** 开放给成员(只有管理员能改,ADR 0053 第 4.2 节)。 */
+    sharedWithMembers: z.boolean().optional(),
 });
 export type PluginPatch = z.infer<typeof PluginPatch>;
 

@@ -80128,6 +80128,15 @@
                               "rssSource"
                             ]
                           },
+                          "sharedWithMembers": {
+                            "type": "boolean"
+                          },
+                          "readOnly": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
                           "installedAt": {
                             "type": "string"
                           },
@@ -81116,6 +81125,15 @@
                         "rssSource"
                       ]
                     },
+                    "sharedWithMembers": {
+                      "type": "boolean"
+                    },
+                    "readOnly": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
                     "installedAt": {
                       "type": "string"
                     },
@@ -81649,6 +81667,9 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "sharedWithMembers": {
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false
@@ -82329,6 +82350,15 @@
                         "tools",
                         "rssBytes",
                         "rssSource"
+                      ]
+                    },
+                    "sharedWithMembers": {
+                      "type": "boolean"
+                    },
+                    "readOnly": {
+                      "type": "boolean",
+                      "enum": [
+                        true
                       ]
                     },
                     "installedAt": {
@@ -86267,6 +86297,15 @@
                         "rssSource"
                       ]
                     },
+                    "sharedWithMembers": {
+                      "type": "boolean"
+                    },
+                    "readOnly": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
                     "installedAt": {
                       "type": "string"
                     },
@@ -87604,6 +87643,15 @@
                         "tools",
                         "rssBytes",
                         "rssSource"
+                      ]
+                    },
+                    "sharedWithMembers": {
+                      "type": "boolean"
+                    },
+                    "readOnly": {
+                      "type": "boolean",
+                      "enum": [
+                        true
                       ]
                     },
                     "installedAt": {

@@ -525,6 +525,13 @@ export const en: Record<Key, string> = {
         'The bot may not receive direct messages. Turn them on at the QQ open platform',
     'channels.error.qq_bot_unavailable': 'The bot is delisted or banned. Check it at the QQ open platform',
     'nav.plugins': 'Plugins',
+    'plugins.memberSharedNote':
+        'Plugins an admin opened to members are listed below; their tools work in your conversations.',
+    'plugins.sharedByAdmin': 'Opened by admin',
+    'plugins.sharedBadge': 'Open to members',
+    'plugins.shareWithMembers': 'Open to members',
+    'plugins.shareHint':
+        "Other members' conversations can then use this plugin's tools. Secrets, settings and run limits stay visible and editable only to you. The plugin gets a per-plugin caller tag, not the account.",
     'plugins.title': 'Plugins',
     'plugins.empty': 'No plugins installed yet.',
     'plugins.installTitle': 'Install from a local folder',

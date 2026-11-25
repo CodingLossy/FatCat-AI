@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ToolRegistry } from '../registry.js';
 import { hashPluginDir } from './package.js';
 import {
+    callerTag,
     PluginQuotaError,
     PluginRuntime,
     pluginSettingsValues,
@@ -73,6 +74,7 @@ function setup(manifestPatch: (m: Record<string, unknown>) => void = () => undef
         onEvent: (_o, e) => events.push(e),
         onState: (_o, pluginId, state, error) => states.push({ pluginId, state, error }),
         ownerAllowed: () => ownerAllowed,
+        sharedWithMembers: () => shared,
     });
     const record: PluginRuntimeRecord = {
         ownerId: 'owner1',
@@ -90,6 +92,8 @@ function setup(manifestPatch: (m: Record<string, unknown>) => void = () => undef
 const ctx = (ownerId = 'owner1') => ({ ownerId }) as never;
 /** ADR 0053 第 4 节:插件只为管理员运行;测试里切换这个值模拟「降为成员」。 */
 let ownerAllowed = true;
+/** ADR 0053 第 4.2 节:安装者把插件开放给成员。 */
+let shared = false;
 
 /**
  * afterEach 要停掉子进程并删除临时目录。Windows 上释放进程与文件句柄比 Linux 慢得多,
@@ -156,6 +160,45 @@ describe('plugin runtime', { timeout: TEST_TIMEOUT_MS }, () => {
             ownerAllowed = true;
         }
     });
+
+    it(
+        'shared with members: other accounts can call it and see it, with a per-plugin caller tag (ADR 0053 section 4.2)',
+        async () => {
+            shared = true;
+            await h.runtime.apply(h.record);
+            const def = h.registry.get('plugin.probe.echo')!;
+            expect(def.enabledFor?.('someone-else')).toBe(true);
+            const content = async (ownerId: string) =>
+                ((await def.execute({ text: '__caller' }, ctx(ownerId))) as { content: string }).content;
+            const theirs = await content('someone-else');
+            const mine = await content('owner1');
+            expect(theirs).toBe(callerTag('probe', 'someone-else'));
+            expect(mine).toBe(callerTag('probe', 'owner1'));
+            expect(theirs).not.toBe(mine);
+            expect(theirs).not.toContain('someone-else');
+            expect(callerTag('other-plugin', 'someone-else')).not.toBe(theirs);
+
+            // 收回开放:不重启(运行时每次调用都问开关),立即拒绝,并从别人的工具列表里消失
+            shared = false;
+            expect(def.enabledFor?.('someone-else')).toBe(false);
+            expect(def.enabledFor?.('owner1')).toBe(true);
+            await expect(def.execute({ text: 'hi' }, ctx('someone-else'))).rejects.toThrow(/another account/);
+            // 安装者降为成员:谁都不能用,开放了也一样
+            shared = true;
+            ownerAllowed = false;
+            try {
+                expect(def.enabledFor?.('someone-else')).toBe(false);
+                expect(def.enabledFor?.('owner1')).toBe(false);
+                await expect(def.execute({ text: 'hi' }, ctx('someone-else'))).rejects.toThrow(
+                    /only available to admin/,
+                );
+            } finally {
+                ownerAllowed = true;
+                shared = false;
+            }
+        },
+        TEST_TIMEOUT_MS,
+    );
 
     it('blocks reads of host secrets, other plugins data and writes outside its data dir', async () => {
         await h.runtime.apply(h.record);

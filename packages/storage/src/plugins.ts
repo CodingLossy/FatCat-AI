@@ -51,6 +51,8 @@ export interface PluginRecord {
     settings: Record<string, unknown>;
     state: PluginState;
     error: string | null;
+    /** 管理员把插件开放给成员(ADR 0053 第 4.2 节)。 */
+    sharedWithMembers: boolean;
     installedAt: string;
     updatedAt: string;
 }
@@ -82,6 +84,7 @@ export interface PluginPatch {
     settings?: Record<string, unknown> | undefined;
     state?: PluginState | undefined;
     error?: string | null | undefined;
+    sharedWithMembers?: boolean | undefined;
 }
 
 export interface PluginEventRecord {
@@ -110,6 +113,7 @@ interface PluginRow {
     settingsJson: string;
     state: PluginState;
     error: string | null;
+    sharedWithMembers: number;
     installedAt: string;
     updatedAt: string;
 }
@@ -117,15 +121,16 @@ interface PluginRow {
 const PLUGIN_SELECT = `SELECT id, owner_id AS ownerId, plugin_id AS pluginId, version, previous_version AS previousVersion,
     source_kind AS sourceKind, source_ref AS sourceRef, signed_key_id AS signedKeyId, content_sha256 AS contentSha256,
     manifest_json AS manifestJson, granted_json AS grantedJson, secret_refs_json AS secretRefsJson,
-    settings_json AS settingsJson, state, error, installed_at AS installedAt, updated_at AS updatedAt FROM plugins`;
+    settings_json AS settingsJson, state, error, shared_with_members AS sharedWithMembers, installed_at AS installedAt, updated_at AS updatedAt FROM plugins`;
 const EVENT_SELECT = `SELECT id, owner_id AS ownerId, at, plugin_id AS pluginId, version, kind, detail FROM plugin_events`;
 
 const EventCursor = z.object({ at: z.string(), id: z.string() });
 
 function toPlugin(row: PluginRow): PluginRecord {
-    const { manifestJson, grantedJson, secretRefsJson, settingsJson, ...rest } = row;
+    const { manifestJson, grantedJson, secretRefsJson, settingsJson, sharedWithMembers, ...rest } = row;
     return {
         ...rest,
+        sharedWithMembers: sharedWithMembers === 1,
         manifest: JSON.parse(manifestJson) as unknown,
         granted: JSON.parse(grantedJson) as unknown,
         secretRefs: JSON.parse(secretRefsJson) as Record<string, string>,
@@ -140,6 +145,11 @@ export function createPluginRepository(conn: Connection, now: () => Date) {
         list: sqlite.prepare<[string], PluginRow>(`${PLUGIN_SELECT} WHERE owner_id = ? ORDER BY plugin_id`),
         listAll: sqlite.prepare<[], PluginRow>(`${PLUGIN_SELECT} ORDER BY owner_id, plugin_id`),
         get: sqlite.prepare<[string, string], PluginRow>(`${PLUGIN_SELECT} WHERE owner_id = ? AND plugin_id = ?`),
+        sharedFrom: sqlite.prepare<[string], PluginRow>(
+            `${PLUGIN_SELECT} WHERE shared_with_members = 1 AND owner_id <> ? AND state <> 'uninstalled'
+                AND owner_id IN (SELECT id FROM owners WHERE role = 'admin' AND disabled_at IS NULL)
+             ORDER BY plugin_id`,
+        ),
         insert: sqlite.prepare(
             `INSERT INTO plugins (id, owner_id, plugin_id, version, source_kind, source_ref, signed_key_id,
                content_sha256, manifest_json, granted_json, secret_refs_json, settings_json, state, installed_at, updated_at)
@@ -149,7 +159,8 @@ export function createPluginRepository(conn: Connection, now: () => Date) {
         update: sqlite.prepare(
             `UPDATE plugins SET version = @version, previous_version = @previousVersion, source_kind = @sourceKind, source_ref = @sourceRef,
                signed_key_id = @signedKeyId, content_sha256 = @sha, manifest_json = @manifest, granted_json = @granted,
-               secret_refs_json = @secretRefs, settings_json = @settings, state = @state, error = @error, updated_at = @at
+               secret_refs_json = @secretRefs, settings_json = @settings, state = @state, error = @error,
+               shared_with_members = @shared, updated_at = @at
              WHERE owner_id = @ownerId AND plugin_id = @pluginId`,
         ),
         delete: sqlite.prepare<[string, string]>('DELETE FROM plugins WHERE owner_id = ? AND plugin_id = ?'),
@@ -174,6 +185,13 @@ export function createPluginRepository(conn: Connection, now: () => Date) {
     return {
         list(ownerId: string): PluginRecord[] {
             return q.list.all(ownerId).map(toPlugin);
+        },
+        /**
+         * 未停用的管理员开放给成员、这个账户自己没装的插件(ADR 0053 第 4.2 节);管理员降级或停用后立即不再出现。
+         * 不含已卸载的。
+         */
+        listSharedWith(ownerId: string): PluginRecord[] {
+            return q.sharedFrom.all(ownerId).map(toPlugin);
         },
         /** 全部 owner 的插件(服务启动时拉起已启用的插件用)。 */
         listAll(): PluginRecord[] {
@@ -221,6 +239,7 @@ export function createPluginRepository(conn: Connection, now: () => Date) {
                 settings: patch.settings ? JSON.stringify(patch.settings) : current.settingsJson,
                 state: patch.state ?? current.state,
                 error: patch.error !== undefined ? patch.error : current.error,
+                shared: (patch.sharedWithMembers ?? current.sharedWithMembers === 1) ? 1 : 0,
                 at: now().toISOString(),
             });
             return toPlugin(q.get.get(ownerId, pluginId)!);

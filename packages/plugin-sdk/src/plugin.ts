@@ -91,6 +91,13 @@ export interface PluginContext {
     /** 插件的数据目录(唯一可写的位置)。 */
     readonly dataDir: string | undefined;
     items: { upsert(items: (PluginItemNode & { parentId?: string })[]): Promise<number> };
+    /**
+     * 工具调用时:是谁的对话在调用(FatCat-AI 2.0 起,管理员可以把插件开放给家里其他成员)。
+     * 是一个按插件区分的不透明标识,同一个人每次相同,但不是账户 id,不同插件拿到的也不同;
+     * 旧版本主程序不给时为 undefined。插件按它区分不同人的数据,不要把一个人的结果缓存给另一个人。
+     * 知识地图回调和启动时没有调用者,也是 undefined。
+     */
+    readonly caller?: string | undefined;
 }
 
 export interface RunOptions {
@@ -230,7 +237,12 @@ export function definePlugin(options: PluginOptions): Plugin {
                                 })),
                             };
                         case 'tools/call': {
-                            const call = (params ?? {}) as { name?: unknown; arguments?: unknown };
+                            const call = (params ?? {}) as { name?: unknown; arguments?: unknown; _meta?: unknown };
+                            const meta = call._meta;
+                            const caller =
+                                meta !== null && typeof meta === 'object' && !Array.isArray(meta)
+                                    ? (meta as Record<string, unknown>)['fatcat/caller']
+                                    : undefined;
                             const tool = typeof call.name === 'string' ? tools.get(call.name) : undefined;
                             if (!tool) throw invalid('unknown tool');
                             const args =
@@ -240,7 +252,10 @@ export function definePlugin(options: PluginOptions): Plugin {
                                     ? (call.arguments as Record<string, unknown>)
                                     : {};
                             try {
-                                const result = await tool.handler(args, ctx);
+                                const result = await tool.handler(
+                                    args,
+                                    typeof caller === 'string' ? { ...ctx, caller } : ctx,
+                                );
                                 return typeof result === 'string'
                                     ? { content: [{ type: 'text', text: result }] }
                                     : result;

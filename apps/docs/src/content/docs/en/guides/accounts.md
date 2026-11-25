@@ -7,7 +7,7 @@ description: Admins add members with invite codes, reset passwords, and disable 
 
 From FatCat-AI 2.0, one server can have several accounts. The first account is an **admin**; later accounts are invited by an admin and are **members** by default. Each account has its own sessions, memories, mail, tasks, channels and devices, which nobody else can see. Admins manage the accounts themselves and cannot see a member's data either.
 
-> Multi-user support is still being built (ADR 0053, 6 PRs). Members' own model keys, shared model profiles and opening plugins to members come in later PRs.
+> Multi-user support is still being built (ADR 0053, 6 PRs). Queueing and fairness when several people use the server at once come in a later PR.
 
 ## Add a member
 
@@ -42,7 +42,7 @@ The server runs as one system user, and the capabilities below let the assistant
 
 - **Authorized folders**: only admins add and revoke them. In Accounts, click **Assign folders** on a member's row to give that member a folder. Under Settings → Workbench → Folders a member sees only the folders assigned to them and can choose whether each goes into the knowledge base, but cannot add or revoke folders; writes still ask for approval every time. The same folder can be assigned to several people.
 - **MCP servers**: only admins add and enable them; a member's settings page shows a short note instead.
-- **Plugins**: only admins install, upgrade, roll back, enable and change settings. Opening plugins to members comes in a later PR.
+- **Plugins**: only admins install, upgrade, roll back, enable and change settings. An admin can tick **Open to members** under a plugin's Manage: members then see it read-only on the plugins page (marked Opened by admin) and can use its tools in conversations, but cannot see its secret bindings or settings and cannot enable, stop or uninstall it. Unticking it, or the admin being demoted or disabled, stops members using it at once.
 - **Coding projects** (`git.*`, `code.run`): only admins configure and use them.
 - **Embedding model**: one per server (changing it means rebuilding every vector), so only admins create embed profiles and rebuild the index; members' knowledge bases use it too.
 - **Secrets file**: only admins see its status and run the encryption migration; each account's own secrets are covered in the next section.

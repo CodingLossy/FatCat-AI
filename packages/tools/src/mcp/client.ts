@@ -165,8 +165,13 @@ export class StdioMcpClient {
         return tools;
     }
 
-    callTool(name: string, args: unknown): Promise<McpCallResult> {
-        return this.request('tools/call', { name, arguments: args ?? {} }) as Promise<McpCallResult>;
+    /** `meta` 放进 MCP 的 `_meta`(插件用它拿到调用者,ADR 0053 第 4.2 节)。 */
+    callTool(name: string, args: unknown, meta?: Record<string, unknown>): Promise<McpCallResult> {
+        return this.request('tools/call', {
+            name,
+            arguments: args ?? {},
+            ...(meta ? { _meta: meta } : {}),
+        }) as Promise<McpCallResult>;
     }
 
     /** 最近的 stderr 输出(报错时附上,便于排查;不写日志)。 */

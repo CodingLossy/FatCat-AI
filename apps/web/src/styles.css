@@ -11,6 +11,11 @@
     box-sizing: border-box;
 }
 
+/* 带 hidden 属性的元素一律不显示:否则 .row、.card 这类设了 display 的类会把它重新显示出来 */
+[hidden] {
+    display: none !important;
+}
+
 body {
     margin: 0;
     line-height: var(--line-body);
