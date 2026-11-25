@@ -90,6 +90,38 @@ describe('member secrets (ADR 0053 section 5)', () => {
         expect(s.secrets.resolve('file:ILINK_TOKEN_abc')).toBe('channel-token');
     });
 
+    it('跨账户:成员删不到管理员的键,碰不到别的成员的键;管理员也碰不到成员的键;列表里没有值和成员 id', async () => {
+        const kid = await member();
+        const sib = await member('sib');
+        await json(await as(admin, 'PUT', '/api/v1/settings/secret-keys/OPENAI_KEY', { value: 'sk-admin-1234' }), 200);
+        await json(await as(sib.session, 'PUT', '/api/v1/settings/secret-keys/B', { value: 'sib-value-1' }), 200);
+        await json(await as(kid.session, 'PUT', '/api/v1/settings/secret-keys/B', { value: 'kid-value-1' }), 200);
+
+        // 成员删管理员才有的键名:按自己的前缀找,找不到
+        expect((await as(kid.session, 'DELETE', '/api/v1/settings/secret-keys/OPENAI_KEY')).status).toBe(404);
+        expect(s.secrets.resolve('file:OPENAI_KEY')).toBe('sk-admin-1234');
+
+        // 成员写或删别的成员前缀的名字:保留名,400
+        const sibKey = `U${sib.id}_B`;
+        expect((await as(kid.session, 'PUT', `/api/v1/settings/secret-keys/${sibKey}`, { value: 'x' })).status).toBe(
+            400,
+        );
+        expect((await as(kid.session, 'DELETE', `/api/v1/settings/secret-keys/${sibKey}`)).status).toBe(400);
+        expect(s.secrets.resolve(`file:${sibKey}`)).toBe('sib-value-1');
+
+        // 管理员删成员的键:同样 400
+        const kidKey = `U${kid.id}_B`;
+        expect((await as(admin, 'DELETE', `/api/v1/settings/secret-keys/${kidKey}`)).status).toBe(400);
+        expect(s.secrets.resolve(`file:${kidKey}`)).toBe('kid-value-1');
+
+        // 管理员的列表:没有值,也没有任何成员 id
+        const raw = await (await as(admin, 'GET', '/api/v1/settings/secret-keys')).text();
+        for (const hidden of ['sk-admin-1234', 'sib-value-1', 'kid-value-1', kid.id, sib.id]) {
+            expect(raw).not.toContain(hidden);
+        }
+        expect(JSON.parse(raw)).toEqual({ items: [{ name: 'OPENAI_KEY', ref: 'file:OPENAI_KEY' }] });
+    });
+
     it('引用在保存时换算:成员的 file: 加前缀,env: 和别人的键被拒;管理员原样', async () => {
         const kid = await member();
         const other = await member('sib');

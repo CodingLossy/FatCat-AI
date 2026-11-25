@@ -14,11 +14,21 @@ const openapi = JSON.parse(readFileSync(new URL('../openapi/v1.json', import.met
     paths: Record<string, Record<string, unknown>>;
 };
 
+/**
+ * 路径参数不是数据库里某个账户的资源 id 的路由:前缀 → 原因。扫描跳过它们,越权由注明的测试覆盖。
+ * 每个前缀都必须对应 openapi 里还存在的路由(见第一个用例),免得留下过期条目。
+ */
+const NOT_OWNED: Record<string, string> = {
+    '/api/v1/settings/secret-keys/':
+        '键名按调用者的账户前缀换算(ADR 0053 第 5 节),不是共享的资源 id;越权由 member-secrets.test.ts 覆盖',
+};
+
 /** 带参数的路由的方法列表:`GET /api/v1/sessions/{id}` 这样的字符串。 */
 function parameterizedRoutes(): string[] {
     const out: string[] = [];
     for (const [path, ops] of Object.entries(openapi.paths)) {
         if (!path.includes('{')) continue;
+        if (Object.keys(NOT_OWNED).some((prefix) => path.startsWith(prefix))) continue;
         for (const [method, op] of Object.entries(ops)) {
             // 管理员路由按设计就是管别的账户(ADR 0053 第 6 节),由 admin-scope.test.ts 用成员身份扫描
             if ((op as Record<string, unknown>)['x-fatcat-admin'] === true) continue;
@@ -56,14 +66,7 @@ const ROUTE_IDS: [prefix: string, fixture: keyof Fixtures][] = [
     ['/api/v1/plugins/', 'plugin'],
     ['/api/v1/approvals/', 'approvalCall'],
     ['/api/v1/tool-calls/', 'clientCall'],
-    ['/api/v1/settings/secret-keys/', 'secretKey'],
 ];
-
-/**
- * 按名字找、名字里带账户前缀的路由(ADR 0053 第 5 节):别的账户前缀的名字在校验时就被拒(400 保留名),
- * 根本不会碰到文件;不存在的账户前缀一样是 400。这里允许对照为 400,只要两边回答相同、文件不变。
- */
-const NAME_REJECTED = ['/api/v1/settings/secret-keys/'];
 
 interface Fixtures {
     session: string;
@@ -95,15 +98,12 @@ interface Fixtures {
      * 别人的调用拿不到由 client-calls.test.ts「结果只对本人、仅一次、迟到的拒绝」覆盖。
      */
     clientCall: string;
-    /** secrets.yaml 里别的账户的键(存储名,带 `U<id>_` 前缀)。 */
-    secretKey: string;
 }
 
 /** 和各资源 id 格式一致的「不存在的 id」。 */
 const NONEXISTENT: Partial<Record<keyof Fixtures, () => string>> = {
     plugin: () => 'nobody-plugin',
     clientCall: () => `cc_${'b'.repeat(20)}`,
-    secretKey: () => `U${newId()}_THEIRS`,
 };
 
 /** 这些表里只有「别人」的行,扫一遍之后必须一行不差;审计、事件这类追加型的表不比。 */
@@ -163,8 +163,6 @@ function seedOther(): Fixtures {
 
 function seedRows(other: string): Fixtures {
     const { repos, conn } = s;
-    const secretKey = `U${other}_THEIRS`;
-    s.secrets.write(secretKey, 'their-secret-value');
     const session = repos.sessions.create(other, { title: 'theirs' }).id;
     const message = repos.messages.append(other, session, {
         role: 'user',
@@ -326,7 +324,6 @@ function seedRows(other: string): Fixtures {
         plugin,
         approvalCall,
         clientCall: `cc_${'a'.repeat(20)}`,
-        secretKey,
     };
 }
 
@@ -437,6 +434,10 @@ describe('ownerId 覆盖(ADR 0051)', () => {
             (route) => !ROUTE_IDS.some(([prefix]) => route.split(' ')[1]!.startsWith(prefix)),
         );
         expect(missing).toEqual([]);
+        const stale = Object.keys(NOT_OWNED).filter(
+            (prefix) => !Object.keys(openapi.paths).some((path) => path.startsWith(prefix) && path.includes('{')),
+        );
+        expect(stale).toEqual([]);
     });
 
     it('越权:别人的资源和不存在的一样拿不到,数据一行不变', async () => {
@@ -459,14 +460,11 @@ describe('ownerId 覆盖(ADR 0051)', () => {
             const fixture = ROUTE_IDS.find(([prefix]) => template.startsWith(prefix))![1];
             const theirs = await answer(method, template, ids[fixture]);
             const nobody = await answer(method, template, (NONEXISTENT[fixture] ?? newId)());
-            const nameRejected = NAME_REJECTED.some((prefix) => template.startsWith(prefix));
-            if (theirs !== nobody || /^2/.test(theirs) || (/^400/.test(nobody) && !nameRejected)) {
+            if (theirs !== nobody || /^2/.test(theirs) || /^400/.test(nobody)) {
                 leaks.push(`${route}: theirs ${theirs}, nonexistent ${nobody}`);
             }
         }
         expect(leaks).toEqual([]);
         expect(snapshot()).toBe(before);
-        expect(s.secrets.resolve(`file:${ids.secretKey}`)).toBe('their-secret-value');
-        expect(s.secrets.keyNames()).toEqual([ids.secretKey]);
     });
 });
