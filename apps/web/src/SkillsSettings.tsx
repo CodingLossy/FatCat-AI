@@ -2,7 +2,8 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 设置 → 工具 → 技能(ADR 0048 第 5、8 节):已安装的 Skill、内置 Skill 的开关、从任务模板建草稿。
-// 插件 Skill 随插件启用或停用,这里只显示;说明原文不在界面上显示(交给模型时按数据包装)。
+// 插件 Skill 随插件启用或停用,这里只显示。每个 Skill 显示给模型看的一句话 description;instructions 原文不在界面上显示
+// (交给模型时按数据包装)。插件的 description 是第三方文本:只用 React 文本节点渲染,不要换成 dangerouslySetInnerHTML。
 import { SKILL_CATALOG_MAX, type Settings, type SkillInfo } from '@fatcat-ai/shared';
 import { useEffect, useState } from 'react';
 import { api, errorText } from './api.js';

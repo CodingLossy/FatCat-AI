@@ -183,6 +183,13 @@ test('技能:设置页开关与模板、插件页的纯指令插件、代理页�
     const card = page.getByTestId('task-draft');
     await expect(card).toContainText('每日邮件摘要');
     await expect(card.getByLabel('任务可用的工具')).toHaveValue('mail.list, mail.read, mail.search, mail.summarize');
+    // 草稿来自模板:说明不说「由模型根据你的话生成」
+    await expect(card.getByTestId('draft-notice')).toContainText('来自技能或插件的任务模板');
+    await expect(card).toContainText('这是任务模板指定的工具集');
+    await expect(card).not.toContainText('由模型根据你的话');
+    // 工具集输入框整行宽,四个工具不被截断
+    const toolsBox = card.getByLabel('任务可用的工具');
+    expect(await toolsBox.evaluate((el: HTMLTextAreaElement) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
     await shot(page, 'skills-task-draft', card);
     type Tasks = { items: { name: string; status: string; policy: { toolSet?: string[] } }[] };
     const daily = async () =>
@@ -303,6 +310,21 @@ test('技能:设置页开关与模板、插件页的纯指令插件、代理页�
     await expect(page.getByTestId('skill-list').locator('[data-skill]')).toHaveCount(4);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await shot(page, 'skills-settings-mobile', page.getByTestId('skill-list'));
+
+    // 手机:模板草稿的确认卡,工具集输入框整行宽
+    await page
+        .getByTestId('skill-list')
+        .locator('[data-skill="mail-assistant"]')
+        .getByRole('button', { name: /建任务草稿:每日邮件摘要/ })
+        .click();
+    const phoneCard = page.getByTestId('task-draft');
+    const phoneTools = phoneCard.getByLabel('任务可用的工具');
+    await expect(phoneTools).toHaveValue('mail.list, mail.read, mail.search, mail.summarize');
+    expect(await phoneTools.evaluate((el: HTMLTextAreaElement) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await shot(page, 'skills-task-draft-mobile', phoneTools);
+    await phoneCard.getByRole('button', { name: '丢弃' }).click();
+    await expect(phoneCard).toHaveCount(0);
 
     // 手机:市场页的技能列表与「纯指令」标记
     await page.route(/\/api\/v1\/plugins\/market(\/refresh)?$/, (route) => route.fulfill({ json: listing }));

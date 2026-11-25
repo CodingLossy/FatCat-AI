@@ -205,6 +205,7 @@ export const zh = {
     'tasks.nlSubmit': '生成草稿',
     'tasks.draftTitle': '确认这个任务',
     'tasks.draftNotice': '这只是草稿,确认之前不会运行。名称与提示词由模型根据你的话生成,请检查。',
+    'tasks.draftNoticeTemplate': '这只是草稿,确认之前不会运行。名称、提示词和工具集来自技能或插件的任务模板,请检查。',
     'tasks.draftConfirm': '确认并启用',
     'tasks.draftDiscard': '丢弃',
     'tasks.create': '创建',
@@ -248,6 +249,8 @@ export const zh = {
     'tasks.toolset.placeholder': '例如 kb.search, web.(留空 = 不限制)',
     'tasks.toolset.hint':
         '写工具名,或以 . 结尾的前缀(web. 表示所有 web 工具),用逗号分隔。留空表示不限制。工具集只缩小任务能用的工具,不会扩大授权:需要批准的工具仍然要批准。',
+    'tasks.toolset.fromTemplate':
+        '这是任务模板指定的工具集,请检查:任务需要的工具不在里面时,运行会因为「未知工具」失败。清空表示不限制。',
     'tasks.toolset.suggested':
         '这是模型根据你的话建议的工具集,请检查:任务需要的工具不在里面时,运行会因为「未知工具」失败。清空表示不限制。',
     'tasks.reason.task_toolset_unknown': '工具集里有不存在的工具名或前缀。',

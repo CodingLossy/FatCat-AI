@@ -3,7 +3,14 @@
 
 import type { SkillInfo } from '@fatcat-ai/shared';
 import { describe, expect, it } from 'vitest';
-import { agentSkillState, catalogOverflow, entriesOverlap, fitsToolSet, toggleSkill } from './skills-ui.js';
+import {
+    AGENT_MAX_SKILLS,
+    agentSkillState,
+    catalogOverflow,
+    entriesOverlap,
+    fitsToolSet,
+    toggleSkill,
+} from './skills-ui.js';
 
 const skill = (id: string, toolSet: string[], enabled = true): SkillInfo => ({
     id,
@@ -35,8 +42,19 @@ describe('Skill 界面(ADR 0048)', () => {
         expect(agentSkillState('local-files', skills, ['kb.'])).toBe('ok');
     });
 
-    it('勾选最多 8 个;目录超过 30 个启用的 Skill 时提示', () => {
-        const eight = Array.from({ length: 8 }, (_, i) => `s${i}x`);
+    it('插件被停用后,它的 Skill 在代理里显示「未启用」', () => {
+        const minutes: SkillInfo = {
+            ...skill('plugin.notes.minutes', ['fs.read', 'fs.write'], false),
+            source: 'plugin',
+            pluginId: 'notes',
+        };
+        expect(agentSkillState('plugin.notes.minutes', [minutes], ['fs.'])).toBe('off');
+        expect(agentSkillState('plugin.notes.minutes', [{ ...minutes, enabled: true }], ['fs.'])).toBe('ok');
+    });
+
+    it('勾选最多 AGENT_MAX_SKILLS(8)个;目录超过 30 个启用的 Skill 时提示', () => {
+        expect(AGENT_MAX_SKILLS).toBe(8);
+        const eight = Array.from({ length: AGENT_MAX_SKILLS }, (_, i) => `s${i}x`);
         expect(toggleSkill(eight, 'extra')).toEqual(eight);
         expect(toggleSkill(eight, 's0x')).toHaveLength(7);
         expect(toggleSkill([], 'a1')).toEqual(['a1']);

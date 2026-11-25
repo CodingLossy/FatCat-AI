@@ -39,7 +39,10 @@ export function TasksPage() {
     // 确认卡上的工具集文字(空 = 不限制)
     // 草稿带的工具集(例如 Skill 模板写进来的)要预填,否则确认时会被当成「改成不限工具」
     const [draftToolSet, setDraftToolSet] = useState(() => (peekDraft()?.task.policy.toolSet ?? []).join(', '));
+    // 别的页面交来的草稿来自 Skill 模板:说明文字不能说「由模型根据你的话生成」
+    const [handedOffId] = useState(() => peekDraft()?.task.id ?? null);
     useEffect(() => clearDraft(), []);
+    const fromTemplate = (d: TaskDraftResult) => d.task.id === handedOffId || d.task.policy.fromPlugin !== undefined;
     const draftRef = useRef(draft);
     useEffect(() => {
         draftRef.current = draft;
@@ -294,17 +297,23 @@ export function TasksPage() {
                     />
                     <label className="toolset" data-testid="toolset-editor">
                         {t('tasks.toolset.title')}
-                        <input
+                        {/* 多行:手机上长工具集换行显示,不被截断 */}
+                        <textarea
+                            rows={2}
                             value={draftToolSet}
                             placeholder={t('tasks.toolset.placeholder')}
                             aria-label={t('tasks.toolset.title')}
-                            onChange={(e) => setDraftToolSet(e.target.value)}
+                            onChange={(e) => setDraftToolSet(e.target.value.replace(/\n/g, ' '))}
                         />
                     </label>
                     <p className="small muted">
-                        {draft.task.policy.toolSet ? t('tasks.toolset.suggested') : t('tasks.toolset.hint')}
+                        {draft.task.policy.toolSet
+                            ? t(fromTemplate(draft) ? 'tasks.toolset.fromTemplate' : 'tasks.toolset.suggested')
+                            : t('tasks.toolset.hint')}
                     </p>
-                    <p className="muted small">{t('tasks.draftNotice')}</p>
+                    <p className="muted small" data-testid="draft-notice">
+                        {t(fromTemplate(draft) ? 'tasks.draftNoticeTemplate' : 'tasks.draftNotice')}
+                    </p>
                     <button type="button" onClick={() => void confirmDraft()}>
                         {t('tasks.draftConfirm')}
                     </button>{' '}

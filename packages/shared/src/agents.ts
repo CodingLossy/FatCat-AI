@@ -19,10 +19,13 @@ export type AgentMemoryScope = z.infer<typeof AgentMemoryScope>;
 
 const Name = z.string().trim().min(1).max(80);
 
-/** 代理角色自动使用的 Skill(ADR 0048 第 7 节):全局 Skill id,最多 8 个。 */
+/** 代理角色最多自动使用的 Skill 个数;Web 端的选择器也用它。 */
+export const AGENT_MAX_SKILLS = 8;
+
+/** 代理角色自动使用的 Skill(ADR 0048 第 7 节):全局 Skill id,最多 AGENT_MAX_SKILLS 个。 */
 export const AgentSkills = z
     .array(z.string().regex(/^(?:plugin\.[a-z][a-z0-9-]{1,31}\.)?[a-z][a-z0-9-]{1,31}$/, 'invalid skill id'))
-    .max(8)
+    .max(AGENT_MAX_SKILLS)
     .refine((ids) => new Set(ids).size === ids.length, 'duplicate skill id');
 
 export const AgentInput = z.strictObject({
