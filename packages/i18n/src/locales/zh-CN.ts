@@ -485,6 +485,12 @@ export const zh = {
     'channels.error.qq_intent_not_permitted': '机器人没有接收单聊消息的权限,请在 QQ 开放平台开通',
     'channels.error.qq_bot_unavailable': '机器人已下架或被封禁,请在 QQ 开放平台查看',
     'nav.plugins': '插件',
+    'plugins.memberSharedNote': '管理员开放给成员的插件列在下面,可以在对话里直接用它的工具。',
+    'plugins.sharedByAdmin': '管理员开放',
+    'plugins.sharedBadge': '已开放给成员',
+    'plugins.shareWithMembers': '开放给成员',
+    'plugins.shareHint':
+        '开放后,家里其他成员的对话也能用这个插件的工具;密钥、设置和运行限制仍只有你能看、能改。插件拿到的是按插件区分的调用者标识,不是账户。',
     'plugins.title': '插件',
     'plugins.empty': '还没有安装插件。',
     'plugins.installTitle': '从本地目录安装',

@@ -347,6 +347,7 @@ export const TABLE_COLUMNS = {
         'error',
         'installed_at',
         'updated_at',
+        'shared_with_members',
     ],
     agents: [
         'id',

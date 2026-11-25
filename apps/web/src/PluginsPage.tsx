@@ -120,9 +120,12 @@ export function PluginsPage() {
         <div className="page" data-page="plugins">
             <h1>{t('plugins.title')}</h1>
             {isAdmin === false ? (
-                <p className="muted small" data-testid="admin-only">
-                    {t('admin.onlyNote')}
-                </p>
+                <>
+                    <p className="muted small" data-testid="admin-only">
+                        {t('admin.onlyNote')}
+                    </p>
+                    <p className="muted small">{t('plugins.memberSharedNote')}</p>
+                </>
             ) : null}
             <div className="row" role="tablist" hidden={!manage}>
                 {(['installed', 'market'] as const).map((name) => (
@@ -439,6 +442,15 @@ function PluginCard({
                         {t(`plugins.state.${plugin.state}`)}
                     </span>
                     {plugin.unreviewed ? <span className="badge">{t('plugins.unreviewed')}</span> : null}
+                    {plugin.readOnly ? (
+                        <span className="badge" data-testid="plugin-shared-by-admin">
+                            {t('plugins.sharedByAdmin')}
+                        </span>
+                    ) : plugin.sharedWithMembers ? (
+                        <span className="badge" data-testid="plugin-shared">
+                            {t('plugins.sharedBadge')}
+                        </span>
+                    ) : null}
                     {plugin.instructionOnly ? (
                         <span className="badge" data-testid="plugin-instruction-only">
                             {t('plugins.instructionOnlyBadge')}
@@ -467,32 +479,35 @@ function PluginCard({
                     {plugin.error ? <p className="small error">{plugin.error}</p> : null}
                     {skills.length > 0 ? <PluginSkills skills={skills} /> : null}
                 </div>
-                <div className="row">
-                    <button
-                        type="button"
-                        disabled={busy || plugin.missingSecrets.length > 0}
-                        title={plugin.missingSecrets.length > 0 ? t('plugins.bindFirst') : undefined}
-                        onClick={() =>
-                            void act(() => api.plugins.update(plugin.id, { enabled: plugin.state !== 'enabled' }))
-                        }
-                    >
-                        {plugin.state === 'enabled' ? t('plugins.disable') : t('plugins.enable')}
-                    </button>
-                    {plugin.instructionOnly ? null : (
+                {/* 管理员开放的插件:成员只能在对话里用,不能启停、管理 */}
+                {plugin.readOnly ? null : (
+                    <div className="row">
                         <button
                             type="button"
-                            disabled={busy || plugin.state !== 'enabled'}
-                            onClick={() => void act(() => api.plugins.stop(plugin.id))}
+                            disabled={busy || plugin.missingSecrets.length > 0}
+                            title={plugin.missingSecrets.length > 0 ? t('plugins.bindFirst') : undefined}
+                            onClick={() =>
+                                void act(() => api.plugins.update(plugin.id, { enabled: plugin.state !== 'enabled' }))
+                            }
                         >
-                            {t('plugins.stop')}
+                            {plugin.state === 'enabled' ? t('plugins.disable') : t('plugins.enable')}
                         </button>
-                    )}
-                    <button type="button" onClick={onToggle} aria-expanded={expanded}>
-                        {expanded ? t('plugins.hideManage') : t('plugins.manage')}
-                    </button>
-                </div>
+                        {plugin.instructionOnly ? null : (
+                            <button
+                                type="button"
+                                disabled={busy || plugin.state !== 'enabled'}
+                                onClick={() => void act(() => api.plugins.stop(plugin.id))}
+                            >
+                                {t('plugins.stop')}
+                            </button>
+                        )}
+                        <button type="button" onClick={onToggle} aria-expanded={expanded}>
+                            {expanded ? t('plugins.hideManage') : t('plugins.manage')}
+                        </button>
+                    </div>
+                )}
             </div>
-            {expanded ? <PluginManage plugin={plugin} busy={busy} act={act} /> : null}
+            {expanded && !plugin.readOnly ? <PluginManage plugin={plugin} busy={busy} act={act} /> : null}
         </>
     );
 }
@@ -530,6 +545,19 @@ function PluginManage({
 
     return (
         <div className="plugin-manage" data-testid="plugin-manage">
+            <label className="inline">
+                <input
+                    type="checkbox"
+                    name="sharedWithMembers"
+                    checked={plugin.sharedWithMembers === true}
+                    disabled={busy}
+                    onChange={(e) =>
+                        void act(() => api.plugins.update(plugin.id, { sharedWithMembers: e.target.checked }))
+                    }
+                />{' '}
+                {t('plugins.shareWithMembers')}
+            </label>
+            <p className="small muted">{t('plugins.shareHint')}</p>
             {plugin.permissions.secrets.length > 0 ? <SecretBindings plugin={plugin} busy={busy} act={act} /> : null}
             {plugin.settingsSchema ? <SettingsForm plugin={plugin} busy={busy} act={act} /> : null}
             {plugin.instructionOnly ? (

@@ -81,6 +81,20 @@ describe('plugin SDK', () => {
         expect(called.result).toEqual({ content: [{ type: 'text', text: 'echo:hi' }] });
     });
 
+    it('passes the caller tag from _meta to the handler and leaves it undefined without one', async () => {
+        open = harness((plugin) => {
+            plugin.registerTool({
+                name: 'who',
+                description: 'Who is calling',
+                handler: (_args, ctx) => ctx.caller ?? 'nobody',
+            });
+        });
+        const tagged = await open.call(1, 'tools/call', { name: 'who', _meta: { 'fatcat/caller': 'abc123' } });
+        expect(tagged.result).toEqual({ content: [{ type: 'text', text: 'abc123' }] });
+        const plain = await open.call(2, 'tools/call', { name: 'who' });
+        expect(plain.result).toEqual({ content: [{ type: 'text', text: 'nobody' }] });
+    });
+
     it('turns a failing handler into an isError result without a stack, and rejects unknown tools', async () => {
         open = harness((plugin) => {
             plugin.registerTool({

@@ -101,7 +101,7 @@ test.afterAll(async () => {
     if (dir) rmSync(dir, { recursive: true, force: true });
 });
 
-test('plugins page: install, configure, stop, uninstall and see the disabled task', async ({ page }) => {
+test('plugins page: install, configure, stop, uninstall and see the disabled task', async ({ page, browser }) => {
     await page.goto(base);
     await page.getByLabel('用户名').fill('owner');
     await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
@@ -204,6 +204,37 @@ test('plugins page: install, configure, stop, uninstall and see the disabled tas
     await card.getByRole('button', { name: '停止' }).click();
     await expect(card).toContainText('已启用');
     if (SHOTS) await page.screenshot({ path: join(SHOTS, 'plugins-manage.png'), fullPage: true });
+
+    // 开放给成员(ADR 0053 第 4.2 节):成员只读看到它,没有按钮,也看不到管理员的密钥绑定
+    await card.getByRole('checkbox', { name: '开放给成员' }).click();
+    await expect(card.getByTestId('plugin-shared')).toBeVisible();
+    if (SHOTS) await page.screenshot({ path: join(SHOTS, 'plugin-share-admin.png'), fullPage: true });
+    const invite = await page.request.post(`${base}/api/v1/admin/users/invites`, { headers: { 'X-CSRF-Token': csrf } });
+    const { code } = (await invite.json()) as { code: string };
+    const memberContext = await browser.newContext();
+    const member = await memberContext.newPage();
+    await member.goto(base);
+    await member.getByRole('button', { name: '有邀请码' }).click();
+    await member.getByLabel('邀请码').fill(code);
+    await member.getByLabel('用户名').fill('kid');
+    await member.getByLabel('密码', { exact: true }).fill(PASSWORD);
+    await member.getByRole('button', { name: '创建账户并登录' }).click();
+    await member.getByRole('link', { name: '插件' }).click();
+    const shared = member.locator('[data-plugin="weather"]');
+    await expect(shared.getByTestId('plugin-shared-by-admin')).toBeVisible();
+    await expect(shared.getByRole('button', { name: '停用' })).toBeHidden();
+    await expect(shared.getByRole('button', { name: '管理' })).toBeHidden();
+    // 成员没有安装入口和市场
+    await expect(member.getByRole('tab', { name: '市场' })).toBeHidden();
+    await expect(member.getByRole('button', { name: '检查' })).toBeHidden();
+    await expect(shared).not.toContainText('E2E_WEATHER_KEY');
+    if (SHOTS) await member.screenshot({ path: join(SHOTS, 'plugin-share-member.png'), fullPage: true });
+    await card.getByRole('checkbox', { name: '开放给成员' }).click();
+    await expect(card.getByTestId('plugin-shared')).toHaveCount(0);
+    await member.reload();
+    await expect(member.locator('[data-plugin="weather"]')).toHaveCount(0);
+    await memberContext.close();
+
     await card.getByRole('button', { name: '停用' }).click();
     await expect(card).toContainText('已停用');
 

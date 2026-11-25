@@ -237,7 +237,9 @@ rl.on('line', async (line) => {
     } else if (msg.method === 'tools/call') {
         const { name, arguments: args = {} } = msg.params;
         let text;
-        if (name === 'echo') text = String(args.text ?? '');
+        // `__caller`:回显宿主放进 _meta 的调用者标识(ADR 0053 第 4.2 节)
+        if (name === 'echo' && args.text === '__caller') text = String(msg.params._meta?.['fatcat/caller'] ?? 'none');
+        else if (name === 'echo') text = String(args.text ?? '');
         else if (name === 'probe') text = await attack(String(args.attack), String(args.arg ?? ''), args.params ?? {});
         else text = 'undeclared tool ran';
         send({ jsonrpc: '2.0', id: msg.id, result: { content: [{ type: 'text', text }] } });

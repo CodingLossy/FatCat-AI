@@ -4,6 +4,7 @@
 // 插件运行时(ADR 0040 第 3、4、8 节):按需启动、权限模型 + 预加载隔离、环境与密钥绑定、空闲停止、手动停止、
 // 崩溃停用、心跳与 fatcat/log 路由、把声明的工具按风险下限注册进 ToolRegistry。
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -65,6 +66,12 @@ export interface PluginRuntimeRecord {
     settings: Record<string, unknown>;
 }
 
+/** 插件在 `_meta` 里看到的调用者:按插件 id 加盐的账户摘要,同一个人在不同插件里不同,插件拿不到账户 id。 */
+export const CALLER_META_KEY = 'fatcat/caller';
+export function callerTag(pluginId: string, ownerId: string): string {
+    return createHash('sha256').update(`fatcat-plugin-caller\0${pluginId}\0${ownerId}`).digest('hex').slice(0, 32);
+}
+
 export type PluginRunState = 'running' | 'idle' | 'starting' | 'error' | 'disabled';
 
 export interface PluginRuntimeStatus {
@@ -111,6 +118,11 @@ export interface PluginRuntimeOptions {
      * 这个账户现在能不能用插件(ADR 0053 第 4 节:2.0 里插件只为管理员运行,降为成员后不能再调用);不给时都能用。
      */
     ownerAllowed?: (ownerId: string) => boolean;
+    /**
+     * 安装者是否把插件开放给了成员(ADR 0053 第 4.2 节):开放时其他账户的运行也能调用它的工具。
+     * 每次调用都问一次(读库),改开关不用重启插件;不给时只有安装者能用。
+     */
+    sharedWithMembers?: (installerId: string, pluginId: string) => boolean;
     /** 测试用:替换 DNS 解析与地址判断。 */
     netFetchOverrides?: Pick<PluginNetFetchOptions, 'resolve' | 'isBlocked' | 'timeoutMs' | 'maxBytes'>;
     /**
@@ -459,6 +471,8 @@ export class PluginRuntime {
                 source: 'plugin',
                 server: record.pluginId,
                 untrustedOutput: true,
+                // 不能用的账户(插件没开放给它,或安装者已不是管理员)在交给模型的工具列表里就看不到
+                enabledFor: (ownerId) => this.usableBy(record.pluginId, ownerId),
                 summarize: (input) => {
                     const text = JSON.stringify(input ?? {});
                     return `${record.pluginId}: ${tool.name} ${text.length > 200 ? `${text.slice(0, 199)}…` : text}`;
@@ -475,10 +489,25 @@ export class PluginRuntime {
         entry.registered = true;
     }
 
+    /**
+     * 这个账户现在能不能调用插件的工具:安装者必须仍是可用的管理员(ownerAllowed);
+     * 调用者是安装者本人,或者插件开放给了成员。
+     */
+    usableBy(pluginId: string, ownerId: string): boolean {
+        const entry = this.entries.get(pluginId);
+        if (!entry) return false;
+        const installer = entry.record.ownerId;
+        if (this.options.ownerAllowed?.(installer) === false) return false;
+        return ownerId === installer || this.options.sharedWithMembers?.(installer, pluginId) === true;
+    }
+
     private async call(entry: Entry, tool: string, name: string, input: unknown, ownerId: string): Promise<unknown> {
-        if (ownerId !== entry.record.ownerId) throw new ToolDeniedError('This plugin belongs to another account.');
-        if (this.options.ownerAllowed?.(ownerId) === false) {
+        const installer = entry.record.ownerId;
+        if (this.options.ownerAllowed?.(installer) === false) {
             throw new ToolDeniedError('Plugins are only available to admin accounts.');
+        }
+        if (ownerId !== installer && this.options.sharedWithMembers?.(installer, entry.record.pluginId) !== true) {
+            throw new ToolDeniedError('This plugin belongs to another account.');
         }
         if (this.entries.get(entry.record.pluginId) !== entry)
             throw new ToolDeniedError('This plugin is not available.');
@@ -494,7 +523,9 @@ export class PluginRuntime {
         }
         if (entry.idleTimer) clearTimeout(entry.idleTimer);
         try {
-            const result = await client.callTool(tool, input);
+            const result = await client.callTool(tool, input, {
+                [CALLER_META_KEY]: callerTag(entry.record.pluginId, ownerId),
+            });
             const text = result.isError
                 ? `[The plugin tool reported an error]\n${resultText(result)}`
                 : resultText(result);

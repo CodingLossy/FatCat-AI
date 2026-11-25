@@ -22,6 +22,8 @@ export {
 export {
     effectiveRisk,
     PluginQuotaError,
+    CALLER_META_KEY,
+    callerTag,
     PluginRuntime,
     pluginSettingsValues,
     type PluginUpsertItem,

@@ -18,6 +18,7 @@ await plugin.run();
 - `registerTool` / `registerItemProvider` register what the manifest's `permissions` declares; anything not declared there is not registered by the host.
 - `ctx.fetch` sends the request through the host (`fatcat/net.fetch`), which checks the domain against `permissions.net` and the SSRF rules.
 - `ctx.log` writes to the host log; `ctx.secret(name)` reads a secret the user bound to the plugin; `ctx.items.upsert` adds knowledge-map items.
+- `ctx.caller` (tool calls only, FatCat-AI 2.0 and later): an opaque per-plugin tag for whose conversation is calling, since an admin can open a plugin to other members. It is not the account id and differs between plugins. Keep each caller's data apart and do not cache one caller's results for another; it is `undefined` with older hosts.
 - A heartbeat with the process RSS is sent every 30 seconds.
 
 Install: `npm install @fatcat-ai/plugin-sdk` (it depends on `@fatcat-ai/shared`). Bundle the SDK into your entry file before you ship the plugin: the host never runs `npm install`. A complete example is in `examples/plugins/hello`.

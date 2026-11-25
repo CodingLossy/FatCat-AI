@@ -266,11 +266,13 @@ export class PluginService {
             const runtime = new Runtime({
                 netIsolation: isolation,
                 allowFakeIp: (ownerId) => this.options.repos.settings.get(ownerId).network?.allowFakeIp === true,
-                // 2.0 里插件只为管理员运行;开放给成员是单独的一步(ADR 0053 第 4.2 节)
+                // 插件只在安装者仍是未停用的管理员时运行;开放给成员的插件,成员的运行也能调用(ADR 0053 第 4.2 节)
                 ownerAllowed: (ownerId) => {
                     const owner = this.options.repos.owners.get(ownerId);
                     return owner?.role === 'admin' && owner.disabledAt === null;
                 },
+                sharedWithMembers: (installerId, pluginId) =>
+                    this.options.repos.plugins.get(installerId, pluginId)?.sharedWithMembers === true,
                 upsertItems: (ownerId, pluginId, items) => {
                     const record = this.options.repos.plugins.get(ownerId, pluginId);
                     if (!record) throw new Error('unknown plugin');
@@ -453,8 +455,27 @@ export class PluginService {
             taskTemplates: manifest.taskTemplates ?? [],
             runtime: (runtime ?? {}) as PluginView['runtime'],
             run: this.runInfo(record),
+            sharedWithMembers: record.sharedWithMembers,
             installedAt: record.installedAt,
             updatedAt: record.updatedAt,
+        };
+    }
+
+    /**
+     * 成员看到的、管理员开放的插件(ADR 0053 第 4.2 节):名称、说明、权限、运行状态照常;
+     * 管理员的密钥绑定、设置和运行限制不给,也没有任务模板(建任务草稿要求插件属于自己)。
+     */
+    private sharedView(record: PluginRecord): PluginView {
+        return {
+            ...this.toView(record),
+            secretRefs: {},
+            missingSecrets: [],
+            settings: {},
+            settingsSchema: null,
+            taskTemplates: [],
+            runtime: {},
+            sharedWithMembers: true,
+            readOnly: true,
         };
     }
 
@@ -464,11 +485,27 @@ export class PluginService {
         return reason === null ? null : { reason };
     }
 
+    /** 自己装的插件,加上未停用的管理员开放给成员的(只读,排在后面)。 */
     list(ownerId: string): PluginView[] {
-        return this.options.repos.plugins
+        const { plugins } = this.options.repos;
+        const own = plugins
             .list(ownerId)
             .filter((r) => r.state !== 'uninstalled')
             .map((r) => this.toView(r));
+        const mine = new Set(own.map((p) => p.id));
+        const shared = plugins
+            .listSharedWith(ownerId)
+            .filter((r) => !mine.has(r.pluginId))
+            .map((r) => this.sharedView(r));
+        return [...own, ...shared];
+    }
+
+    /** 这个账户能用的插件记录:自己的(不含已卸载)和开放给它的。技能列表和外连清单用。 */
+    usableRecords(ownerId: string): PluginRecord[] {
+        const { plugins } = this.options.repos;
+        const own = plugins.list(ownerId).filter((r) => r.state !== 'uninstalled');
+        const mine = new Set(own.map((r) => r.pluginId));
+        return [...own, ...plugins.listSharedWith(ownerId).filter((r) => !mine.has(r.pluginId))];
     }
 
     private require(ownerId: string, pluginId: string): PluginRecord {
@@ -1102,6 +1139,13 @@ export class PluginService {
     async patch(ownerId: string, pluginId: string, patch: PluginPatch): Promise<PluginView> {
         const { repos } = this.options;
         let record = this.require(ownerId, pluginId);
+        if (patch.sharedWithMembers !== undefined && patch.sharedWithMembers !== record.sharedWithMembers) {
+            // 只改开放开关:不重启插件;运行时每次调用都读这个开关,立即放行或拒绝
+            record = repos.plugins.update(ownerId, pluginId, { sharedWithMembers: patch.sharedWithMembers })!;
+            this.options.log?.info({ plugin: pluginId, shared: patch.sharedWithMembers }, 'plugin sharing changed');
+        }
+        const others = { ...patch, sharedWithMembers: undefined };
+        if (Object.values(others).every((v) => v === undefined)) return this.toView(record);
         const manifest = record.manifest as PluginManifest;
         const declared = new Set(manifest.permissions.secrets.map((s) => s.name));
         const secretRefs = { ...record.secretRefs };
@@ -1246,8 +1290,7 @@ export class PluginService {
     /** 外连清单用:已启用插件授权的域名(第 3.3 节,PR 3 起会真正使用)。 */
     egressDomains(ownerId: string): { pluginId: string; name: string; domain: string; enabled: boolean }[] {
         const out: { pluginId: string; name: string; domain: string; enabled: boolean }[] = [];
-        for (const record of this.options.repos.plugins.list(ownerId)) {
-            if (record.state === 'uninstalled') continue;
+        for (const record of this.usableRecords(ownerId)) {
             const manifest = record.manifest as PluginManifest;
             for (const domain of manifest.permissions.net) {
                 out.push({
