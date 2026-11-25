@@ -110,8 +110,7 @@ export interface LayoutMigration {
  */
 export async function migrateAttachmentLayout(dataDir: string, repos: Repositories): Promise<LayoutMigration> {
     const dir = join(dataDir, 'attachments');
-    const marker = join(dir, LAYOUT_MARKER);
-    if (await stat(marker).catch(() => null)) return { moved: 0, missing: 0, alreadyDone: true };
+    if ((await names(dir)).includes(LAYOUT_MARKER)) return { moved: 0, missing: 0, alreadyDone: true };
     const rows = repos.attachments.allOwned();
     let moved = 0;
     let missing = 0;
@@ -138,7 +137,12 @@ export async function migrateAttachmentLayout(dataDir: string, repos: Repositori
         moved++;
     }
     await mkdir(dir, { recursive: true, mode: 0o700 });
-    await writeFile(marker, `${new Date().toISOString()}\n`, { mode: 0o600 });
+    // wx:不覆盖已有的标记(服务器锁保证同一时间只有一个进程在搬)
+    await writeFile(join(dir, LAYOUT_MARKER), `${new Date().toISOString()}\n`, { mode: 0o600, flag: 'wx' }).catch(
+        (error: unknown) => {
+            if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+        },
+    );
     // 全部复制完、标记已写:这时才删旧文件。没有数据库行的旧文件留给每天的清理(超过宽限期才删)
     for (const file of copied) await rm(file, { force: true });
     return { moved, missing, alreadyDone: false };
