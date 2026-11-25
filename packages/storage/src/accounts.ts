@@ -84,6 +84,11 @@ export function createAccountRepository(conn: Connection, now: () => Date) {
         deleteResetCodes: sqlite.prepare(
             "DELETE FROM account_codes WHERE target_owner_id = ? AND kind = 'reset' AND used_at IS NULL",
         ),
+        deleteIssuedCodes: sqlite.prepare('DELETE FROM account_codes WHERE owner_id = ? AND used_at IS NULL'),
+        usable: sqlite.prepare<[string, string, string], { n: number }>(
+            `SELECT 1 AS n FROM account_codes
+             WHERE code_hash = ? AND kind = ? AND used_at IS NULL AND expires_at > ? AND ${issuerActive}`,
+        ),
     });
     const q = () => (statements ??= prepare());
     const toAccount = (row: AccountRecord & { totpEnabled: number | boolean }): AccountRecord => ({
@@ -145,19 +150,33 @@ export function createAccountRepository(conn: Connection, now: () => Date) {
             })();
         },
 
-        /** 用邀请码建成员账户。用户名已被占用时不消耗邀请码。 */
+        /** 只读预检:这个码现在能不能用(调用方据此决定要不要做昂贵的密码哈希)。不消耗码。 */
+        isCodeUsable(codeHash: string, kind: 'invite' | 'reset'): boolean {
+            return q().usable.get(codeHash, kind, iso()) !== undefined;
+        },
+
+        /**
+         * 用邀请码建成员账户。先核对邀请码:码无效时只回答 `invalid`,不透露用户名是否存在;
+         * 码有效但用户名已被占用时回滚(码不被消耗),回答 `username_taken`。
+         */
         acceptInvite(
             codeHash: string,
             input: { username: string; passwordHash: string; displayName: string | null },
         ): AcceptInviteResult {
-            return sqlite.transaction((): AcceptInviteResult => {
-                if (q().usernameTaken.get(input.username)) return { status: 'username_taken' };
-                const at = iso();
-                if (!q().consume.get(at, codeHash, 'invite', at)) return { status: 'invalid' };
-                const id = newId(now());
-                q().insertOwner.run({ id, ...input, createdAt: at });
-                return { status: 'ok', owner: { id, username: input.username, role: 'member', createdAt: at } };
-            })();
+            const taken = new Error('username taken');
+            try {
+                return sqlite.transaction((): AcceptInviteResult => {
+                    const at = iso();
+                    if (!q().consume.get(at, codeHash, 'invite', at)) return { status: 'invalid' };
+                    if (q().usernameTaken.get(input.username)) throw taken; // 回滚,码不被消耗
+                    const id = newId(now());
+                    q().insertOwner.run({ id, ...input, createdAt: at });
+                    return { status: 'ok', owner: { id, username: input.username, role: 'member', createdAt: at } };
+                })();
+            } catch (error) {
+                if (error === taken) return { status: 'username_taken' };
+                throw error;
+            }
         },
 
         /** 用重置码设新密码;成功后这个账户的会话、令牌和设备全部作废(TOTP 保留)。 */
@@ -172,15 +191,23 @@ export function createAccountRepository(conn: Connection, now: () => Date) {
             })();
         },
 
+        /** 降为成员时,这个账户以管理员身份发出的未用的码一并作废(以后再升回管理员也不恢复)。 */
         setRole(id: string, role: OwnerRole): AccountChange {
-            return guarded(() => q().setRole.run(role, iso(), id).changes);
+            return sqlite.transaction(() => {
+                const result = guarded(() => q().setRole.run(role, iso(), id).changes);
+                if (result === 'ok' && role === 'member') q().deleteIssuedCodes.run(id);
+                return result;
+            })();
         },
 
-        /** 停用时立即作废这个账户的全部凭据;启用不会恢复它们,要重新登录。 */
+        /** 停用时立即作废这个账户的全部凭据和它发出的码;启用不会恢复它们,要重新登录。 */
         setDisabled(id: string, disabled: boolean): AccountChange {
             return sqlite.transaction(() => {
                 const result = guarded(() => q().setDisabled.run(disabled ? iso() : null, iso(), id).changes);
-                if (result === 'ok' && disabled) revokeCredentials(id);
+                if (result === 'ok' && disabled) {
+                    revokeCredentials(id);
+                    q().deleteIssuedCodes.run(id); // 它发出的码也作废,启用后不恢复
+                }
                 return result;
             })();
         },

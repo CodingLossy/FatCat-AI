@@ -100,16 +100,21 @@ async function backup(sqlite: Sqlite, dir: string, firstPending: number, now: Da
 }
 
 /**
- * 在线备份到 `dir/db-<时间>-pre-<tag>.sqlite`,只保留最近 keep 份 `db-*.sqlite`。
- * 迁移前用(tag 是迁移号),删除账户前也用(tag 为 `delete-account`,ADR 0053 第 2 节)。
+ * 在线备份到 `dir/db-<时间>-pre-<tag>.sqlite`,同一类备份只保留最近 keep 份:迁移前的备份(tag 是迁移号)算一类,
+ * 其他 tag 各算一类,所以连删几个账户(tag 为 `delete-account`,ADR 0053 第 2 节)不会挤掉迁移前的备份。
  */
 export async function backupDatabase(sqlite: Sqlite, dir: string, tag: string, now: Date, keep = 5): Promise<string> {
     mkdirSync(dir, { recursive: true });
     const file = `db-${timestampForFile(now)}-pre-${tag}.sqlite`;
     const path = join(dir, file);
     await sqlite.backup(path);
+    const kind = (name: string) => {
+        const found = /^db-.*-pre-(.+)\.sqlite$/.exec(name)?.[1];
+        return found === undefined ? null : /^\d+$/.test(found) ? 'migration' : found;
+    };
+    const mine = kind(file);
     const backups = readdirSync(dir)
-        .filter((f) => /^db-.*\.sqlite$/.test(f))
+        .filter((f) => kind(f) === mine)
         .sort();
     for (const old of backups.slice(0, Math.max(0, backups.length - keep))) {
         rmSync(join(dir, old), { force: true });

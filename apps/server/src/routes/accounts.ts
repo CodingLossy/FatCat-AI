@@ -243,7 +243,12 @@ export function accountRoutes(deps: AccountRouteDeps) {
             }
             const backupPath = await deps.backup('delete-account');
             const qqChannels = await lifecycle.beforeDelete(id);
-            changed(repos.accounts.remove(id));
+            const removed = repos.accounts.remove(id);
+            if (removed !== 'ok') {
+                // 并发改动让删除没成(例如最后一个管理员):账户还在,把停掉的运行时按它的设置恢复
+                if (removed === 'last_admin') await lifecycle.enabled(id);
+                changed(removed);
+            }
             lifecycle.afterDelete(id, qqChannels);
             c.get('logger').info({ ownerId: adminId, target: id, backup: backupPath }, 'account deleted');
             return c.body(null, 204);

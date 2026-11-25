@@ -421,9 +421,17 @@ export function authRoutes(deps: AuthRouteDeps) {
             const body = c.req.valid('json');
             const key = ipKey(deps.clientIp(c));
             guardCode(key);
+            const codeHash = sha256(normalizePairingCode(body.code));
+            const rejected = () => {
+                codeLimiter.recordFailure(key);
+                c.get('logger').warn({ ip: deps.clientIp(c) }, 'invite code rejected');
+                return new ApiError(401, 'unauthorized', 'Unauthorized', 'The invite code is invalid or has expired.');
+            };
+            // 先核对邀请码再做密码哈希:没有有效码的人既探测不到用户名是否存在,也不能白耗 CPU
+            if (!repos.accounts.isCodeUsable(codeHash, 'invite')) throw rejected();
             const passwordHash = await hashPassword(body.password);
             guardCode(key);
-            const result = repos.accounts.acceptInvite(sha256(normalizePairingCode(body.code)), {
+            const result = repos.accounts.acceptInvite(codeHash, {
                 username: body.username,
                 passwordHash,
                 displayName: body.displayName ?? null,
@@ -431,11 +439,7 @@ export function authRoutes(deps: AuthRouteDeps) {
             if (result.status === 'username_taken') {
                 throw new ApiError(409, 'conflict', 'Conflict', 'This username is taken; choose another one.');
             }
-            if (result.status === 'invalid') {
-                codeLimiter.recordFailure(key);
-                c.get('logger').warn({ ip: deps.clientIp(c) }, 'invite code rejected');
-                throw new ApiError(401, 'unauthorized', 'Unauthorized', 'The invite code is invalid or has expired.');
-            }
+            if (result.status === 'invalid') throw rejected();
             c.get('logger').info({ ownerId: result.owner.id }, 'member account created from an invite');
             return c.json(startSession(c, result.owner), 201);
         })

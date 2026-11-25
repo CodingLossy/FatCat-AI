@@ -20,6 +20,11 @@
     "reason": "Looks up a one-time invite code by its hash and creates the member account."
   },
   {
+    "key": "accounts.ts:createAccountRepository.isCodeUsable",
+    "category": "credential",
+    "reason": "Read-only check of a one-time code by its hash before the password is hashed; returns only a boolean."
+  },
+  {
     "key": "accounts.ts:createAccountRepository.setRole",
     "category": "system",
     "reason": "Admin-only role change (routes call requireAdmin); the last-admin trigger guards it."

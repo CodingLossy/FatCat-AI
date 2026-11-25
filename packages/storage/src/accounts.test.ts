@@ -46,7 +46,11 @@ function credentials(ownerId: string, tag: string) {
 describe('accounts', () => {
     it('邀请码:建成员、只能用一次;过期、未知、用户名被占用(不消耗码)都不行', () => {
         expect(invite('h1')).toBe(true);
+        expect(join('unknown', 'owner')).toEqual({ status: 'invalid' }); // 没有有效码就探测不到用户名
+        expect(t.repos.accounts.isCodeUsable('h1', 'invite')).toBe(true);
+        expect(t.repos.accounts.isCodeUsable('h1', 'reset')).toBe(false);
         expect(join('h1', 'owner')).toEqual({ status: 'username_taken' });
+        expect(t.repos.accounts.isCodeUsable('h1', 'invite')).toBe(true); // 用户名被占用时码不被消耗
         const ok = join('h1', 'kid');
         expect(ok).toMatchObject({ status: 'ok', owner: { username: 'kid', role: 'member' } });
         expect(join('h1', 'kid2')).toEqual({ status: 'invalid' });
@@ -60,16 +64,30 @@ describe('accounts', () => {
         ]);
     });
 
-    it('未用的码有上限;生成它的管理员被停用后码作废', () => {
+    it('未用的码有上限;生成它的管理员被停用或降级后码作废,恢复后也不重新生效', () => {
         for (let i = 0; i < MAX_OPEN_ACCOUNT_CODES; i++) expect(invite(`c${i}`)).toBe(true);
         expect(invite('too-many')).toBe(false);
 
         const second = t.repos.owners.create({ username: 'admin2', passwordHash: 'x', role: 'admin' }).id;
+        const bySecond = (hash: string) =>
+            t.repos.accounts.createCode({
+                adminId: second,
+                kind: 'invite',
+                targetOwnerId: null,
+                codeHash: hash,
+                expiresAt: later(DAY),
+            });
         expect(t.repos.accounts.setDisabled(t.ownerId, true)).toBe('ok');
         expect(join('c0', 'kid')).toEqual({ status: 'invalid' });
         expect(t.repos.accounts.setDisabled(t.ownerId, false)).toBe('ok');
-        expect(join('c0', 'kid')).toMatchObject({ status: 'ok' });
-        expect(second).toBeTruthy();
+        expect(join('c0', 'kid')).toEqual({ status: 'invalid' });
+        expect(invite('fresh')).toBe(true); // 码都作废了,上限也随之释放
+        expect(join('fresh', 'kid')).toMatchObject({ status: 'ok' });
+
+        expect(bySecond('s1')).toBe(true);
+        expect(t.repos.accounts.setRole(second, 'member')).toBe('ok');
+        expect(t.repos.accounts.setRole(second, 'admin')).toBe('ok');
+        expect(join('s1', 'kid2')).toEqual({ status: 'invalid' });
     });
 
     it('重置码:设新密码,作废该账户的会话、令牌和设备,别人的不动', () => {

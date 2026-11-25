@@ -69,6 +69,10 @@ describe('account administration', () => {
         expect((await accept(code, 'kid2')).status).toBe(401);
         expect((await accept('AAAAA-BBBBB', 'kid3')).status).toBe(401);
 
+        // 没有有效码就探测不到用户名:假码 + 已存在的用户名也是 401,并计入限速
+        for (let i = 0; i < 10; i++) expect((await accept('AAAAA-CCCCC', 'owner', '10.9.0.1')).status).toBe(401);
+        expect((await accept('AAAAA-CCCCC', 'owner', '10.9.0.1')).status).toBe(429);
+
         const list = AccountList.parse(await (await as(admin, 'GET', '/api/v1/admin/users')).json());
         expect(list.accounts.map((a) => [a.username, a.role, a.disabled])).toEqual([
             ['owner', 'admin', false],
@@ -155,6 +159,10 @@ describe('account administration', () => {
         expect(s.repos.owners.get(kid.id)).toBeNull();
         expect(await me(kid.session)).toBe(401);
         expect(readFileSync(secretsFile, 'utf8')).toBe('OTHER_KEY: keep-me\n');
+        // secrets.yaml 改之前先备份了一份(含被删的行)
+        const secretBackups = readdirSync(join(s.dir, 'backups')).filter((f) => /^secrets-.*\.yaml$/.test(f));
+        expect(secretBackups).toHaveLength(1);
+        expect(readFileSync(join(s.dir, 'backups', secretBackups[0]!), 'utf8')).toContain(`U${kid.id}_OPENAI_API_KEY`);
         expect(existsSync(join(s.dir, 'backups'))).toBe(true);
         expect(s.conn.sqlite.pragma('foreign_key_check')).toEqual([]);
         expect((await as(admin, 'DELETE', `/api/v1/admin/users/${kid.id}`, { confirmUsername: 'kid' })).status).toBe(
