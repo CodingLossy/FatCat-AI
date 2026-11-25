@@ -74,6 +74,9 @@ export function createKbRepository(conn: Connection, now: () => Date) {
         moveEmbeddings: sqlite.prepare<[string, string]>('UPDATE embeddings SET item_id = ? WHERE item_id = ?'),
         moveQueue: sqlite.prepare<[string, string]>('UPDATE embed_queue SET item_id = ? WHERE item_id = ?'),
         deleteSource: sqlite.prepare<[string]>('DELETE FROM kb_sources WHERE item_id = ?'),
+        bytesByOwner: sqlite.prepare<[], { ownerId: string; bytes: number }>(
+            'SELECT owner_id AS ownerId, sum(length(CAST(text AS BLOB))) AS bytes FROM kb_chunks GROUP BY owner_id',
+        ),
         deleteChunks: sqlite.prepare<[string]>('DELETE FROM kb_chunks WHERE item_id = ?'),
         insertChunk: sqlite.prepare(
             `INSERT INTO kb_chunks (owner_id, item_id, chunk, page, heading, text)
@@ -90,6 +93,10 @@ export function createKbRepository(conn: Connection, now: () => Date) {
     };
 
     return {
+        /** 每个账户知识库索引里保存的文本字节数(账户列表里显示用量,ADR 0053 第 8 节)。 */
+        bytesByOwner(): Map<string, number> {
+            return new Map(q.bytesByOwner.all().map((r) => [r.ownerId, r.bytes]));
+        },
         /** 当前未删除的文件条目(授权目录内,由 files 提供者登记)。 */
         files(ownerId: string): KbFile[] {
             return q.files.all(ownerId).filter((f): f is KbFile => typeof f.path === 'string');

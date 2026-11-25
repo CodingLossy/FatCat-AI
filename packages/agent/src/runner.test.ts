@@ -195,6 +195,106 @@ describe('RunManager', () => {
         expect(last).toEqual({ type: 'run-finished', runId: run.runId, reason: 'cancelled' });
     });
 
+    describe('并发上限与排队(ADR 0053 第 8 节)', () => {
+        /** 每个运行停在流里,直到测试放行;按运行的输入文字区分。 */
+        let gates: Map<string, () => void>;
+        const blocking = () => {
+            gates = new Map();
+            script = async function* (request) {
+                const last = request.messages.at(-1);
+                const text = typeof last?.content === 'string' ? last.content : JSON.stringify(last?.content);
+                await new Promise<void>((resolve) => {
+                    gates.set(text, resolve);
+                    request.signal?.addEventListener('abort', () => resolve());
+                });
+                yield { type: 'text-delta', delta: 'ok' };
+                yield { type: 'finish', reason: 'stop' };
+            };
+        };
+        const tick = () => new Promise((r) => setTimeout(r, 20));
+        const open = (text: string) => [...gates.keys()].find((k) => k.includes(text));
+        const release = (text: string) => gates.get(open(text)!)!();
+        const statusOf = (who: string, runId: string) => repos.runs.get(who, runId)?.status;
+
+        it('超出每个账户的上限时排队,前一个结束后自动开始;排队中的运行可以取消', async () => {
+            blocking();
+            manager = new RunManager({
+                repos,
+                bus,
+                providerFor: () => fakeProvider,
+                persistIntervalMs: 0,
+                maxActivePerOwner: 1,
+            });
+            const a = manager.start({ ownerId, sessionId: repos.sessions.create(ownerId).id, profile, text: 'first' });
+            const b = manager.start({ ownerId, sessionId: repos.sessions.create(ownerId).id, profile, text: 'second' });
+            const c = manager.start({ ownerId, sessionId: repos.sessions.create(ownerId).id, profile, text: 'third' });
+            await tick();
+            expect(statusOf(ownerId, a.runId)).toBe('running');
+            expect(statusOf(ownerId, b.runId)).toBe('queued');
+            expect(manager.queuedFor(ownerId)).toBe(2);
+            expect(manager.isActive(b.runId)).toBe(true);
+            // 排队时发一条带说明的状态事件,还没有 run-started
+            const queuedEvents = types(repos.events.listRunAfter(ownerId, b.runId, 0, 100));
+            expect(queuedEvents).toEqual(['assistant-state']);
+
+            // 取消排队中的第三个:按取消收尾,不占位
+            expect(manager.cancel(c.runId)).toBe(true);
+            await tick();
+            expect(statusOf(ownerId, c.runId)).toBe('cancelled');
+            expect(statusOf(ownerId, b.runId)).toBe('queued');
+
+            release('first');
+            await tick();
+            expect(statusOf(ownerId, a.runId)).toBe('succeeded');
+            expect(statusOf(ownerId, b.runId)).toBe('running');
+            release('second');
+            await manager.idle();
+            expect(statusOf(ownerId, b.runId)).toBe('succeeded');
+            expect(repos.messages.get(ownerId, b.assistantMessageId)?.status).toBe('complete');
+        });
+
+        it('整个安装满了时,先让正在运行最少的账户开始,而不是先来先到', async () => {
+            blocking();
+            const other = repos.owners.create({ username: 'kid', passwordHash: 'x' }).id;
+            const theirProfile = repos.modelProfiles.create(other, { ...profile, apiKeyRef: null });
+            manager = new RunManager({
+                repos,
+                bus,
+                providerFor: () => fakeProvider,
+                persistIntervalMs: 0,
+                maxActivePerOwner: 2,
+                maxActiveTotal: 2,
+            });
+            const mine = (text: string) =>
+                manager.start({ ownerId, sessionId: repos.sessions.create(ownerId).id, profile, text });
+            const a1 = mine('a1');
+            const a2 = mine('a2');
+            const a3 = mine('a3'); // 先排队
+            const k1 = manager.start({
+                ownerId: other,
+                sessionId: repos.sessions.create(other).id,
+                profile: theirProfile,
+                text: 'k1',
+            }); // 后排队
+            await tick();
+            expect([a1, a2].map((r) => statusOf(ownerId, r.runId))).toEqual(['running', 'running']);
+            expect(statusOf(ownerId, a3.runId)).toBe('queued');
+            expect(statusOf(other, k1.runId)).toBe('queued');
+
+            // 空出一个位:owner 还有 1 个在跑,kid 是 0 个,所以 kid 先
+            release('a1');
+            await tick();
+            expect(statusOf(other, k1.runId)).toBe('running');
+            expect(statusOf(ownerId, a3.runId)).toBe('queued');
+            release('a2');
+            await tick();
+            expect(statusOf(ownerId, a3.runId)).toBe('running');
+            release('k1');
+            release('a3');
+            await manager.idle();
+        });
+    });
+
     it('上游错误:运行失败,事件带 providerCode,消息标为 error', async () => {
         script = async function* () {
             yield { type: 'text-delta', delta: '半' };

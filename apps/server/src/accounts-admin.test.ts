@@ -126,6 +126,27 @@ describe('account administration', () => {
         expect((await as(admin, 'POST', `/api/v1/admin/users/${ownerId}/reset-code`)).status).toBe(409);
     });
 
+    it('账户列表显示每个账户的磁盘用量:附件和知识库索引分开算,别的账户不算进来', async () => {
+        const kid = await join2();
+        s.repos.attachments.create(kid.id, { mediaType: 'image/png', bytes: 1500, sha256: 'x', fileName: 'a.png' });
+        s.repos.attachments.create(kid.id, { mediaType: 'image/png', bytes: 500, sha256: 'y', fileName: 'b.png' });
+        const item = s.repos.items.upsert(kid.id, {
+            source: 'test',
+            sourceRef: 'doc',
+            kind: 'content',
+            type: 'test.leaf',
+            title: 'doc',
+            parentId: null,
+        });
+        s.repos.kb.replace(kid.id, { itemId: item.id, mtime: null, size: null, chunkChars: 100 }, [
+            { page: null, heading: null, text: '你好' }, // 6 字节(UTF-8)
+        ]);
+        const res = await as(admin, 'GET', '/api/v1/admin/users');
+        const { accounts } = AccountList.parse(await res.json());
+        expect(accounts.find((a) => a.id === kid.id)?.usage).toEqual({ attachmentBytes: 2000, knowledgeBytes: 6 });
+        expect(accounts.find((a) => a.username === 'owner')?.usage).toEqual({ attachmentBytes: 0, knowledgeBytes: 0 });
+    });
+
     it('改角色:成员升为管理员后能管账户;最后一个管理员不能被降级', async () => {
         const kid = await join2();
         expect((await as(kid.session, 'GET', '/api/v1/admin/users')).status).toBe(403);

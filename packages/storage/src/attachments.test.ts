@@ -74,7 +74,7 @@ describe('attachments', () => {
         clock.tick();
         const fresh = attachments.create(t.ownerId, png);
 
-        expect(attachments.removeUnlinkedBefore(cutoff)).toEqual([old.id]);
+        expect(attachments.removeUnlinkedBefore(cutoff)).toEqual([{ id: old.id, ownerId: expect.any(String) }]);
         expect(attachments.exists(old.id)).toBe(false);
         expect(attachments.exists(used.id)).toBe(true);
         expect(attachments.exists(fresh.id)).toBe(true);

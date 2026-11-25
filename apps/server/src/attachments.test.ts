@@ -68,7 +68,7 @@ describe('上传', () => {
         expect(res.status).toBe(201);
         const a = Attachment.parse(await res.json());
         expect(a).toMatchObject({ mediaType: 'image/png', bytes: PNG.length, fileName: 'evil.svg', messageId: null });
-        expect(existsSync(join(s.dir, 'attachments', a.id))).toBe(true);
+        expect(existsSync(join(s.dir, 'attachments', s.repos.owners.ids()[0]!, a.id))).toBe(true);
 
         const got = await req(`/api/v1/attachments/${a.id}`);
         expect(got.status).toBe(200);
@@ -160,7 +160,7 @@ describe('删除与清理', () => {
         await send({ text: '看图', attachmentIds: [a.id] });
         await s.runs.idle();
         expect((await req(`/api/v1/sessions/${session.id}`, { method: 'DELETE' })).status).toBe(204);
-        expect(await s.attachmentFiles.read(a.id)).toBeNull();
+        expect(await s.attachmentFiles.read(s.repos.owners.ids()[0]!, a.id)).toBeNull();
         expect(s.repos.attachments.exists(a.id)).toBe(false);
     });
 
@@ -170,10 +170,13 @@ describe('删除与清理', () => {
         const unused = Attachment.parse(await (await upload(PNG)).json());
         await send({ text: '看图', attachmentIds: [used.id] });
         await s.runs.idle();
-        await s.attachmentFiles.write('01JXRPHANXRPHANXRPHANXRPHA', PNG);
+        const ownerId = s.repos.owners.ids()[0]!;
+        await s.attachmentFiles.write(ownerId, '01JXRPHANXRPHANXRPHANXRPHA', PNG);
+        // 别的账户目录里冒用这个附件 id 的文件:行的账户对不上,也当孤立文件删掉
+        await s.attachmentFiles.write('01JXSTHERSTHERSTHERSTHERST', used.id, PNG);
 
         const later = new Date(Date.now() + Math.max(UNLINKED_TTL_MS, ORPHAN_GRACE_MS) + 1000);
-        expect(await sweepAttachments(s.repos, s.attachmentFiles, later)).toBe(2);
+        expect(await sweepAttachments(s.repos, s.attachmentFiles, later)).toBe(3);
         expect((await s.attachmentFiles.list()).map((f) => f.id)).toEqual([used.id]);
         expect(s.repos.attachments.exists(unused.id)).toBe(false);
     });

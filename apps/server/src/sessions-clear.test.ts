@@ -105,7 +105,7 @@ describe('清空全部对话', () => {
 
         expect(aborted).toBe(true);
         expect(s.repos.sessions.ids(ownerId)).toEqual([]);
-        expect(await s.attachmentFiles.read(uploaded.id)).toBeNull();
+        expect(await s.attachmentFiles.read(ownerId, uploaded.id)).toBeNull();
         expect(s.repos.attachments.exists(uploaded.id)).toBe(false);
         expect(s.repos.memories.get(ownerId, memoryId)?.text).toBe('用户的名字是 Theodore Yin');
         expect(s.conn.sqlite.prepare('SELECT session_id AS sessionId FROM memory_sources').get()).toEqual({

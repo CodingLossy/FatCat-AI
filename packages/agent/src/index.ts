@@ -16,6 +16,8 @@ export {
     type SkillSource,
     type RunAgent,
     RunConflictError,
+    DEFAULT_MAX_ACTIVE_PER_OWNER,
+    DEFAULT_MAX_ACTIVE_TOTAL,
     RunManager,
     type RunManagerOptions,
     type StartedRun,

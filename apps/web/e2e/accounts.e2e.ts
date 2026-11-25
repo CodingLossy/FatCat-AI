@@ -123,6 +123,8 @@ test('邀请成员、停用与启用、重置密码、删除', async ({ page, br
     await page.reload();
     const row = section.locator('[data-account="kid"]');
     await expect(row).toContainText('成员');
+    // 每个账户的磁盘用量(ADR 0053 第 8 节)
+    await expect(row).toContainText('附件 0 B,知识库 0 B');
     await shot(section, 'accounts-list');
 
     // 停用:成员的会话立即失效

@@ -73,7 +73,10 @@ export class TaskEngine {
     private readonly eventNotes = new Map<string, string>();
     private readonly next = new Map<string, Date>();
     private readonly queue: Pending[] = [];
-    private readonly running = new Map<string, { controller: AbortController; run: TaskRunRecord }>();
+    /** 每个账户最近一次开始运行的序号,用于按账户轮转。 */
+    private readonly lastStarted = new Map<string, number>();
+    private startSeq = 0;
+    private readonly running = new Map<string, { controller: AbortController; run: TaskRunRecord; ownerId: string }>();
     private readonly timers = new Set<ReturnType<typeof setTimeout>>();
     /** 等待重试 / 推迟的记录(不在队列也不在运行中):算「同一任务忙」,可以取消。 */
     private readonly waiting = new Map<string, { timer: ReturnType<typeof setTimeout>; run: TaskRunRecord }>();
@@ -347,8 +350,9 @@ export class TaskEngine {
             return null;
         }
         if (this.queue.length >= this.queueLimit) {
-            const dropped = this.queue.shift()!;
-            this.finish(dropped.run, 'skipped', 'queue_full');
+            // 队列满了:丢掉排队最多的账户最早的一条,一个账户排满队列不会挤掉别人的任务(ADR 0053 第 8 节)
+            const [dropped] = this.queue.splice(this.indexToDrop(), 1);
+            this.finish(dropped!.run, 'skipped', 'queue_full');
         }
         const run = repos.tasks.createRun({
             taskId: task.id,
@@ -364,9 +368,53 @@ export class TaskEngine {
 
     private pump(): void {
         while (!this.stopped && this.running.size < this.maxConcurrency && this.queue.length > 0) {
-            const pending = this.queue.shift()!;
-            void this.execute(pending);
+            const [pending] = this.queue.splice(this.indexToRun(), 1);
+            void this.execute(pending!);
         }
+    }
+
+    /** 每个账户正在运行的任务数。 */
+    private runningByOwner(): Map<string, number> {
+        const counts = new Map<string, number>();
+        for (const { ownerId } of this.running.values()) counts.set(ownerId, (counts.get(ownerId) ?? 0) + 1);
+        return counts;
+    }
+
+    /**
+     * 下一个要运行的(按账户轮转,ADR 0053 第 8 节):正在运行的任务最少的账户优先;一样多时,最久没轮到的账户优先;
+     * 同一账户内按排队先后。
+     */
+    private indexToRun(): number {
+        const counts = this.runningByOwner();
+        let best = 0;
+        let bestKey: [number, number] = [Infinity, Infinity];
+        for (const [i, p] of this.queue.entries()) {
+            const key: [number, number] = [counts.get(p.task.ownerId) ?? 0, this.lastStarted.get(p.task.ownerId) ?? -1];
+            if (key[0] < bestKey[0] || (key[0] === bestKey[0] && key[1] < bestKey[1])) {
+                best = i;
+                bestKey = key;
+            }
+        }
+        this.lastStarted.set(this.queue[best]!.task.ownerId, ++this.startSeq);
+        return best;
+    }
+
+    /** 队列满时丢掉的:排队最多的账户里最早的一条。 */
+    private indexToDrop(): number {
+        const counts = new Map<string, number>();
+        for (const p of this.queue) counts.set(p.task.ownerId, (counts.get(p.task.ownerId) ?? 0) + 1);
+        let most = 0;
+        let owner = '';
+        for (const [id, n] of counts) {
+            if (n > most) {
+                most = n;
+                owner = id;
+            }
+        }
+        return Math.max(
+            0,
+            this.queue.findIndex((p) => p.task.ownerId === owner),
+        );
     }
 
     private async execute({ run, task }: Pending): Promise<void> {
@@ -374,7 +422,7 @@ export class TaskEngine {
         const controller = new AbortController();
         const startedAt = this.now().toISOString();
         const started = repos.tasks.updateRun(run.id, { status: 'running', startedAt })!;
-        this.running.set(run.id, { controller, run: started });
+        this.running.set(run.id, { controller, run: started, ownerId: task.ownerId });
         this.options.onRunChanged?.(started);
         const timeout = setTimeout(
             () => controller.abort(new ExecutorError('timeout', true)),

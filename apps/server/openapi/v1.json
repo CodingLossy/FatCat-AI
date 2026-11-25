@@ -6389,6 +6389,23 @@
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
+                          },
+                          "usage": {
+                            "type": "object",
+                            "properties": {
+                              "attachmentBytes": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "knowledgeBytes": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "attachmentBytes",
+                              "knowledgeBytes"
+                            ]
                           }
                         },
                         "required": [
@@ -7805,6 +7822,23 @@
                     "createdAt": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "usage": {
+                      "type": "object",
+                      "properties": {
+                        "attachmentBytes": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "knowledgeBytes": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "attachmentBytes",
+                        "knowledgeBytes"
+                      ]
                     }
                   },
                   "required": [

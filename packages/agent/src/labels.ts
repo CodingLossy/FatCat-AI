@@ -12,6 +12,11 @@ const LABELS: Record<Exclude<AssistantState, 'executing'>, ActivityLabel> = {
     speaking: { 'zh-CN': '正在朗读…', en: 'Speaking…' },
 };
 
+/** 运行在排队、还没开始时的状态文字(ADR 0053 第 8 节)。 */
+export function queuedLabel(locale: Locale): string {
+    return locale === 'zh-CN' ? '排队中:前面还有对话在进行…' : 'Queued: other conversations are still running…';
+}
+
 /** executing 时优先用工具的 activityLabel,否则「正在使用 <工具名>…」。 */
 export function assistantLabel(
     state: AssistantState,

@@ -31,7 +31,7 @@ export async function removeOwnerSessions(
         if (!deps.repos.sessions.delete(ownerId, session.id)) continue;
         removed++;
         for (const attachmentId of attachmentIds) {
-            await deps.files.remove(attachmentId).catch((err: unknown) => deps.warn(err));
+            await deps.files.remove(ownerId, attachmentId).catch((err: unknown) => deps.warn(err));
         }
     }
     return removed;

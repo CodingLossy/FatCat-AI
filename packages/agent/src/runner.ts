@@ -7,7 +7,7 @@ import type { AgentEvent, Message, MessagePart, PreauthRemember, Usage } from '@
 import { promptText } from '@fatcat-ai/i18n';
 import { ProviderError, type ToolCall } from '@fatcat-ai/providers';
 import type { ToolRegistry } from '@fatcat-ai/tools';
-import { assistantLabel } from './labels.js';
+import { assistantLabel, queuedLabel } from './labels.js';
 import { resolveApproval } from './run/approval-gate.js';
 import {
     type ApprovalVia,
@@ -59,12 +59,30 @@ export class RunConflictError extends Error {
 
 const TITLE_LENGTH = 40;
 
+/** 默认并发上限(ADR 0053 第 8 节)。 */
+export const DEFAULT_MAX_ACTIVE_PER_OWNER = 2;
+export const DEFAULT_MAX_ACTIVE_TOTAL = 6;
+
+type Created = StartedRun & { assistantSeq: number };
+interface Queued {
+    input: StartRunInput;
+    created: Created;
+    controller: AbortController;
+    /** 排进队列的顺序(同样多时先来先到)。 */
+    order: number;
+    done: Promise<void>;
+    release: () => void;
+}
+
 /**
  * 运行管理:运行与 HTTP 连接解耦,客户端断开不会中断运行,只有 cancel 会(ADR 0004 第 5 节)。
  * 每个事件先写入事件表(获得全局 seq),再经事件总线推送。
  */
 export class RunManager {
-    private readonly active = new Map<string, { controller: AbortController; done: Promise<void> }>();
+    private readonly active = new Map<string, { ownerId: string; controller: AbortController; done: Promise<void> }>();
+    /** 等空位的运行(ADR 0053 第 8 节);重启后和进行中的一样标为失败。 */
+    private readonly queued = new Map<string, Queued>();
+    private queueOrder = 0;
     /** 正在等待审批的运行;审批状态本身以 approval_requests 表为准(ADR 0010 第 5 节)。 */
     private readonly approvals = new Map<string, { ownerId: string; resolve: (r: Resolution) => void }>();
     private readonly persistIntervalMs: number;
@@ -96,9 +114,38 @@ export class RunManager {
         this.options.bus.publish(ownerId, envelope, runId);
     }
 
-    /** 在一个事务中创建用户消息、运行与空的助手消息,然后在后台执行。 */
+    private get perOwnerLimit(): number {
+        return Math.max(1, this.options.maxActivePerOwner ?? DEFAULT_MAX_ACTIVE_PER_OWNER);
+    }
+
+    private get totalLimit(): number {
+        return Math.max(1, this.options.maxActiveTotal ?? DEFAULT_MAX_ACTIVE_TOTAL);
+    }
+
+    private runningFor(ownerId: string): number {
+        let n = 0;
+        for (const entry of this.active.values()) if (entry.ownerId === ownerId) n++;
+        return n;
+    }
+
+    private hasSlot(ownerId: string): boolean {
+        return this.active.size < this.totalLimit && this.runningFor(ownerId) < this.perOwnerLimit;
+    }
+
+    /** 某个账户排队中的运行数(测试与状态显示用)。 */
+    queuedFor(ownerId: string): number {
+        let n = 0;
+        for (const q of this.queued.values()) if (q.input.ownerId === ownerId) n++;
+        return n;
+    }
+
+    /**
+     * 在一个事务中创建用户消息、运行与空的助手消息,然后在后台执行。
+     * 这个账户或整个安装的并发已满时,运行先排队(状态 queued),有空位时自动开始(ADR 0053 第 8 节)。
+     */
     start(input: StartRunInput): StartedRun {
         const { repos } = this.options;
+        const runNow = this.hasSlot(input.ownerId);
         const created = repos.transaction(() => {
             const running = repos.runs.activeInSession(input.ownerId, input.sessionId);
             if (running) throw new RunConflictError(running.id);
@@ -139,19 +186,32 @@ export class RunManager {
                 parentMessageId: input.replacesMessageId ?? null,
                 modelProfileId: input.profile.id,
             });
-            repos.runs.setStatus(run.id, 'running', { outputMessageId: assistant.id });
+            repos.runs.setStatus(run.id, runNow ? 'running' : 'queued', { outputMessageId: assistant.id });
             return { runId: run.id, userMessageId, assistantMessageId: assistant.id, assistantSeq: assistant.seq };
         });
 
         const controller = new AbortController();
         if (input.task) this.taskRuns.set(created.runId, input.task);
-        const done = this.execute(input, created, controller.signal)
-            .catch((error: unknown) => this.options.onError?.(error, { runId: created.runId }))
-            .finally(() => {
-                this.active.delete(created.runId);
-                this.taskRuns.delete(created.runId);
+        if (runNow) {
+            this.launch(input, created, controller);
+        } else {
+            let release!: () => void;
+            const done = new Promise<void>((resolve) => (release = resolve));
+            this.queued.set(created.runId, {
+                input,
+                created,
+                controller,
+                order: this.queueOrder++,
+                done,
+                release,
             });
-        this.active.set(created.runId, { controller, done });
+            const locale = repos.settings.get(input.ownerId).locale;
+            this.emit(input.ownerId, input.sessionId, created.runId, {
+                type: 'assistant-state',
+                state: 'idle',
+                label: queuedLabel(locale),
+            });
+        }
         return {
             runId: created.runId,
             userMessageId: created.userMessageId,
@@ -159,8 +219,51 @@ export class RunManager {
         };
     }
 
-    /** 中断运行;运行不存在或已结束时返回 false。 */
+    /** 开始执行(不检查空位);结束后从 active 移除,并让排队的下一个开始。 */
+    private launch(input: StartRunInput, created: Created, controller: AbortController): Promise<void> {
+        if (!controller.signal.aborted) this.options.repos.runs.setStatus(created.runId, 'running');
+        const done = this.execute(input, created, controller.signal)
+            .catch((error: unknown) => this.options.onError?.(error, { runId: created.runId }))
+            .finally(() => {
+                this.active.delete(created.runId);
+                this.taskRuns.delete(created.runId);
+                this.pump();
+            });
+        this.active.set(created.runId, { ownerId: input.ownerId, controller, done });
+        return done;
+    }
+
+    /** 有空位时取排队的运行:正在运行的最少的账户优先,同样多时先来先到。 */
+    private pump(): void {
+        while (this.queued.size > 0 && this.active.size < this.totalLimit) {
+            let next: Queued | null = null;
+            let nextRunning = Infinity;
+            for (const q of this.queued.values()) {
+                const running = this.runningFor(q.input.ownerId);
+                if (running >= this.perOwnerLimit) continue;
+                if (running < nextRunning || (running === nextRunning && q.order < next!.order)) {
+                    next = q;
+                    nextRunning = running;
+                }
+            }
+            if (!next) return;
+            this.queued.delete(next.created.runId);
+            void this.launch(next.input, next.created, next.controller).then(next.release);
+        }
+    }
+
+    /**
+     * 中断运行;运行不存在或已结束时返回 false。排队中的运行立即按取消结束
+     * (走和进行中的运行一样的收尾:run-started 之后马上 run-cancelled)。
+     */
     cancel(runId: string): boolean {
+        const waiting = this.queued.get(runId);
+        if (waiting) {
+            this.queued.delete(runId);
+            waiting.controller.abort();
+            void this.launch(waiting.input, waiting.created, waiting.controller).then(waiting.release);
+            return true;
+        }
         const entry = this.active.get(runId);
         if (!entry) return false;
         entry.controller.abort();
@@ -169,6 +272,12 @@ export class RunManager {
 
     /** 中断并等待运行完全结束(删除会话前调用,避免运行继续写已删除的行)。 */
     async stop(runId: string): Promise<void> {
+        const waiting = this.queued.get(runId);
+        if (waiting) {
+            this.cancel(runId);
+            await waiting.done;
+            return;
+        }
         const entry = this.active.get(runId);
         if (!entry) return;
         entry.controller.abort();
@@ -196,12 +305,16 @@ export class RunManager {
     }
 
     isActive(runId: string): boolean {
-        return this.active.has(runId);
+        return this.active.has(runId) || this.queued.has(runId);
     }
 
-    /** 等待所有进行中的运行结束(测试与优雅退出用)。 */
+    /** 等待所有进行中和排队中的运行结束(测试与优雅退出用)。 */
     async idle(): Promise<void> {
-        await Promise.all([...this.active.values()].map((e) => e.done));
+        while (this.active.size > 0 || this.queued.size > 0) {
+            await Promise.all(
+                [...this.active.values()].map((e) => e.done).concat([...this.queued.values()].map((q) => q.done)),
+            );
+        }
     }
 
     /** 进程启动时:把上次异常退出遗留的运行标为失败,并补发终止事件,让客户端不会一直等待。 */
@@ -219,11 +332,7 @@ export class RunManager {
         return unfinished.length;
     }
 
-    private async execute(
-        input: StartRunInput,
-        run: StartedRun & { assistantSeq: number },
-        signal: AbortSignal,
-    ): Promise<void> {
+    private async execute(input: StartRunInput, run: Created, signal: AbortSignal): Promise<void> {
         const { repos } = this.options;
         const { ownerId, sessionId } = input;
         const emit = (event: AgentEvent) => this.emit(ownerId, sessionId, run.runId, event);

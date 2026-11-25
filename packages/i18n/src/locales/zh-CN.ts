@@ -1194,6 +1194,7 @@ export const zh = {
     'accounts.totp': '两步验证',
     'accounts.you': '(你)',
     'accounts.createdAt': '创建于 {at}',
+    'accounts.usage': '附件 {attachments},知识库 {knowledge}',
     'accounts.resetCode': '生成重置码',
     'accounts.makeAdmin': '设为管理员',
     'accounts.makeMember': '改为成员',

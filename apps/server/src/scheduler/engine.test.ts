@@ -282,6 +282,54 @@ describe('任务调度器(ADR 0033)', () => {
         expect(peak).toBe(2);
     });
 
+    it('排队的任务按账户轮流运行,一个账户排满队列也只挤掉自己的任务(ADR 0053 第 8 节)', async () => {
+        const other = repos.owners.create({ username: 'member', passwordHash: 'x' }).id;
+        const mine = ['a', 'b', 'c'].map((k) => seed(k, { kind: 'cron', expression: '0 12 * * *' }, policy()));
+        const theirs = repos.tasks.ensureSystem(other, {
+            key: 'd',
+            name: 'd',
+            trigger: { kind: 'cron', expression: '0 12 * * *' },
+            action: { kind: 'system', key: 'd' },
+            policy: policy(),
+        });
+        const release: Array<() => void> = [];
+        const hold: Executor = () => new Promise((resolve) => release.push(() => resolve('succeeded')));
+        const e = make(
+            { a: hold, b: hold, c: hold, d: hold, d2: hold, late: hold },
+            { maxConcurrency: 1, queueLimit: 3 },
+        );
+        e.start();
+        for (const t of mine) e.runNow(t.id);
+        e.runNow(theirs.id);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(runsOf(mine[0]!.id)[0]?.status).toBe('running');
+        // 队列满(上限 3:b、c、d):再来一条时丢掉排队最多的账户最早的一条(b),不是别人的
+        const d2 = repos.tasks.ensureSystem(other, {
+            key: 'd2',
+            name: 'd2',
+            trigger: { kind: 'cron', expression: '0 12 * * *' },
+            action: { kind: 'system', key: 'd2' },
+            policy: policy(),
+        });
+        e.runNow(d2.id);
+        expect(runsOf(mine[1]!.id)[0]).toMatchObject({ status: 'skipped', errorCode: 'queue_full' });
+        // a 结束后,空位给另一个账户的 d,而不是同一账户排在前面的 c
+        release.shift()!();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(runsOf(theirs.id)[0]?.status).toBe('running');
+        expect(runsOf(mine[2]!.id)[0]?.status).toBe('queued');
+        // d 结束后轮回到这个账户的 c,d2 继续排队
+        release.shift()!();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(runsOf(mine[2]!.id)[0]?.status).toBe('running');
+        expect(runsOf(d2.id)[0]?.status).toBe('queued');
+        for (let i = 0; i < 2; i++) {
+            release.shift()!();
+            await vi.advanceTimersByTimeAsync(0);
+        }
+        expect(runsOf(d2.id)[0]?.status).toBe('succeeded');
+    });
+
     it('取消排队中与运行中的记录;停止时未结束的记录标为已取消;启动时清理上次遗留', async () => {
         const a = seed('a', { kind: 'cron', expression: '0 12 * * *' }, policy());
         const e = make({

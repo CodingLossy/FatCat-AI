@@ -67,20 +67,41 @@ export function createEmbeddingService(options: EmbeddingServiceOptions) {
         timer.unref();
     }
 
+    /** 上一批处理的账户;下一批从它后面的账户开始,轮流来,一个账户的大量积压不会饿死别人(ADR 0053 第 8 节)。 */
+    let lastOwner: string | null = null;
+
+    /** 按账户轮转挑下一个可处理的账户;都到了每日上限时返回 null 并安排下次唤醒。 */
+    function nextOwner(): { ownerId: string; used: number } | null {
+        const owners = store.dueOwners();
+        if (owners.length === 0) {
+            schedule(store.nextAttemptAt());
+            return null;
+        }
+        const start = lastOwner === null ? 0 : owners.findIndex((o) => o > lastOwner!);
+        const ordered = start <= 0 ? owners : [...owners.slice(start), ...owners.slice(0, start)];
+        let wake: Date | null = null;
+        for (const ownerId of ordered) {
+            const used = store.usage(ownerId, day(ownerId, now()));
+            if (used < dailyLimit) return { ownerId, used };
+            // 到达每日上限:这个账户等用户时区的明天 0 点,别的账户照常处理
+            const tomorrow = startOfNextLocalDay(now(), timeZoneOf(ownerId));
+            if (!wake || tomorrow < wake) wake = tomorrow;
+        }
+        const later = store.nextAttemptAfterNow();
+        schedule(later && (!wake || later < wake) ? later : wake);
+        return null;
+    }
+
     async function drainOnce(): Promise<void> {
         for (;;) {
             if (stopped) return;
-            const jobs = store.due(batchSize);
-            if (jobs.length === 0) return schedule(store.nextAttemptAt());
-            const ownerId = jobs[0]!.ownerId;
-            const batch = jobs.filter((j) => j.ownerId === ownerId);
+            const next = nextOwner();
+            if (!next) return;
             const profile = profileFor();
             if (!profile || mismatch(profile)) return;
-            const used = store.usage(ownerId, day(ownerId, now()));
-            if (used >= dailyLimit) {
-                // 到达每日上限:用户时区的明天 0 点再继续
-                return schedule(startOfNextLocalDay(now(), timeZoneOf(ownerId)));
-            }
+            const { ownerId, used } = next;
+            lastOwner = ownerId;
+            const batch = store.dueFor(ownerId, batchSize);
             const slice = batch.slice(0, dailyLimit - used);
             const provider = options.providerFor(profile);
             if (!provider.embed) return;
