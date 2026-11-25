@@ -3797,8 +3797,13 @@ input.code-timeout {
     transition: width 0.35s ease;
 }
 
+.wb-shell[data-minimal] {
+    /* 工作态舞台宽度:约 1/3,窄的桌面窗口(900 px 左右)不小于 22rem,审批卡少换行 */
+    --wb-stage-w: max(34%, 22rem);
+}
+
 .wb-shell[data-working] .wb-stage {
-    width: 34%;
+    width: var(--wb-stage-w);
 }
 
 .wb-shell[data-minimal] .voice-min-orb {
@@ -3819,7 +3824,7 @@ input.code-timeout {
 
 .wb-shell[data-working] .wb-float {
     top: 64px;
-    left: calc(34% + var(--space-4));
+    left: calc(var(--wb-stage-w) + var(--space-4));
     width: auto;
     border-radius: 20px;
     animation: wb-float-in 0.35s ease;
@@ -3953,4 +3958,106 @@ input.code-timeout {
 
 .wb-pill-more {
     color: var(--muted);
+}
+
+/*
+ * 手机的极简主界面(ADR 0049 第 10.6 节):同样没有按钮,球居中,字幕在安全区之上;
+ * 工作态时面板是从底部升起的抽屉(约占 62% 高),球缩小移到顶部,舞台只占抽屉上面那一段。
+ */
+.wb-shell[data-narrow][data-minimal] .voice-min-stage {
+    padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
+}
+
+.wb-shell[data-narrow][data-minimal] .wb-world {
+    flex-direction: column;
+}
+
+.wb-shell[data-narrow][data-minimal] .wb-stage {
+    height: 100%;
+    transition: height 0.35s ease;
+}
+
+/* 审批卡里的差异很宽:不让它把舞台撑宽,卡片自己横向滚动 */
+.wb-shell[data-narrow][data-minimal] .chat.voice-min {
+    min-width: 0;
+    width: 100%;
+}
+
+.wb-shell[data-narrow][data-working] .wb-stage {
+    width: 100%;
+    height: 38%;
+    flex: none;
+}
+
+/* 等审批时审批卡最要紧:舞台让出更多高度,抽屉降到 40% */
+.wb-shell[data-narrow][data-working][data-approving] .wb-stage {
+    height: 60%;
+}
+
+.wb-shell[data-narrow][data-working] .chat.voice-min {
+    justify-content: flex-start;
+    padding-top: calc(64px + env(safe-area-inset-top));
+}
+
+.wb-shell[data-narrow][data-working] .voice-min-orb {
+    width: min(14vh, 32vw);
+}
+
+.wb-shell[data-narrow][data-working] .voice-min-status {
+    margin-top: var(--space-1);
+    font-size: 1.05rem;
+}
+
+.wb-shell[data-narrow][data-working] .voice-min-caption {
+    font-size: 0.9rem;
+    margin-top: 0;
+}
+
+.wb-shell[data-narrow][data-working] .wb-float {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 62%;
+    width: auto;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    padding-bottom: env(safe-area-inset-bottom);
+    animation: wb-drawer-in 0.35s ease;
+    transition: height 0.35s ease;
+}
+
+.wb-shell[data-narrow][data-working][data-approving] .wb-float {
+    height: 40%;
+}
+
+@keyframes wb-drawer-in {
+    from {
+        transform: translateY(40%);
+        opacity: 0;
+    }
+}
+
+.wb-shell[data-narrow][data-minimal] .wb-pills {
+    top: calc(56px + env(safe-area-inset-top));
+}
+
+.wb-shell[data-narrow][data-minimal] .wb-pill-tool {
+    max-width: 6.5rem;
+}
+
+/* 等审批时小胶囊会压在审批卡上;右上角已显示正在等的工具名 */
+.wb-shell[data-narrow][data-approving] .wb-pills {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wb-shell[data-narrow][data-minimal] .wb-stage {
+        transition: none;
+    }
+
+    .wb-shell[data-narrow][data-working] .wb-float {
+        animation: none;
+        transition: none;
+    }
 }
