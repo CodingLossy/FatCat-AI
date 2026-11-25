@@ -10,12 +10,24 @@ import type { Hero, HeroMode, HeroOptions } from '../theme.js';
 import { addTick, currentQuality, fitCanvas, prefersReducedMotion } from '../voice-orb.js';
 import { type AnchoredKnowledgePalette, drawAnchoredKnowledge } from './anchored-knowledge.js';
 import { CAT_FACE, catPose, catStrokes, catWhiskers, flowGlow, outlineAnchors, posePoint } from './cat-model.js';
+import {
+    type HeroState,
+    mixRgb,
+    motionState,
+    parseColor,
+    readStateColors,
+    rgbString,
+    type StateColors,
+    stepTint,
+    type Tint,
+} from './state-tint.js';
 
 interface Palette {
     line: string;
     spark: string;
     core: string;
     whisker: string;
+    states: StateColors;
     knowledge: AnchoredKnowledgePalette;
 }
 
@@ -28,6 +40,7 @@ function readPalette(el: HTMLElement): Palette {
         spark: get('--cat-spark', '#ffb061'),
         core: get('--cat-spark-core', '#ffffff'),
         whisker: get('--cat-whisker', '#3b2a20'),
+        states: readStateColors((name) => cs.getPropertyValue(name), 'cat', CAT_STATES),
         knowledge: {
             branch: line,
             leaf: get('--cat-paw', '#f6b6b0'),
@@ -39,6 +52,14 @@ function readPalette(el: HTMLElement): Palette {
         },
     };
 }
+
+/** 猫主题的状态色(tokens.css 缺失时的后备):奶油底上要看得清,所以比深色主题更深、更饱和。 */
+const CAT_STATES: StateColors = {
+    listening: [91, 155, 216],
+    heard: [31, 157, 85],
+    thinking: [138, 79, 216],
+    speaking: [31, 95, 214],
+};
 
 const STROKES = catStrokes();
 const WHISKERS = catWhiskers();
@@ -67,6 +88,9 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
     if (!probe) return null;
     const reduced = options.reducedMotion ?? prefersReducedMotion();
     let state: OrbState = 'idle';
+    let heroState: HeroState = 'idle';
+    let tint: Tint = { color: CAT_STATES.listening, amount: 0 };
+    let lastMs = 0;
     let mode: HeroMode = 'assistant';
     let level: number | null = null;
     let palette = readPalette(canvas);
@@ -86,6 +110,22 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
         smooth += ((level ?? 0) - smooth) * 0.2;
         const knowledge = mode === 'knowledge';
         const pose = catPose(state, reduced ? 0 : smooth, t, knowledge);
+        // 状态色染在轮廓线和光点的光晕上(亮芯与胡须不变);知识模式不染色
+        tint = stepTint(
+            tint,
+            knowledge ? 'idle' : heroState,
+            palette.states,
+            lastMs ? Math.min(100, nowMs - lastMs) : 0,
+            reduced || !lastMs,
+        );
+        lastMs = nowMs;
+        const tinted = (base: string) => {
+            const rgb = parseColor(base);
+            // 互补色按比例混合会发灰:按最高比例归一,聆听时也基本是状态色
+            return rgb && tint.amount > 0.01 ? rgbString(mixRgb(rgb, tint.color, tint.amount / 0.75)) : base;
+        };
+        const line = tinted(palette.line);
+        const spark = tinted(palette.spark);
         const fit = fitCanvas(canvas);
         if (!fit) return;
         const { ctx: g, w, h } = fit;
@@ -118,7 +158,7 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
         g.stroke();
 
         // 单线条轮廓
-        g.strokeStyle = palette.line;
+        g.strokeStyle = line;
         g.lineWidth = Math.max(1.2, 2.4 * scale);
         g.globalAlpha = (0.55 + 0.45 * pose.brightness) * dim;
         g.beginPath();
@@ -133,7 +173,7 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
 
         // 说话:一段光顺着轮廓流动
         if (!reduced && pose.flow > 0) {
-            g.strokeStyle = palette.spark;
+            g.strokeStyle = spark;
             g.lineWidth = Math.max(2, 3.6 * scale);
             STROKES.forEach((st, si) => {
                 const us = OUTLINE_U[si] ?? [];
@@ -165,7 +205,7 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
                 const r = (1.2 + 0.6 * twinkle + 1.4 * flow) * Math.max(0.6, scale);
                 const a = (0.35 + 0.5 * twinkle * pose.brightness + 0.3 * flow) * dim;
                 // 一圈暖色光晕 + 亮芯,在奶油底上也看得出是「光点」
-                g.fillStyle = palette.spark;
+                g.fillStyle = spark;
                 g.globalAlpha = 0.45 * a;
                 g.beginPath();
                 g.arc(q[0], q[1], r * 2.6, 0, Math.PI * 2);
@@ -227,7 +267,8 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
     return {
         setState(next) {
             if (destroyed) return;
-            state = next;
+            heroState = next;
+            state = motionState(next);
             if (reduced) draw(performance.now());
         },
         setLevel(next) {

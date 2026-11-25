@@ -8,6 +8,17 @@ import { expandedId, type KnowledgeScene, pickNode, type ScreenNode } from '../k
 import { MAX_PARTICLES, orbEnergy, type OrbState, projectPoint, type Projection } from '../orb-model.js';
 import type { Hero, HeroMode, HeroOptions } from '../theme.js';
 import { addTick, currentQuality, fitCanvas, prefersReducedMotion } from '../voice-orb.js';
+import {
+    type HeroState,
+    mixRgb,
+    motionState,
+    parseColor,
+    readStateColors,
+    rgbString,
+    type StateColors,
+    stepTint,
+    type Tint,
+} from './state-tint.js';
 import { drawTechKnowledge, type KnowledgePalette } from './tech-knowledge.js';
 import { starLift, TECH_STAR_COUNT, techConstellations, techLook, techStars } from './tech-model.js';
 
@@ -15,8 +26,17 @@ interface Palette {
     stars: [string, string, string];
     fog: string;
     line: string;
+    states: StateColors;
     knowledge: KnowledgePalette;
 }
+
+/** 科技主题的状态色(tokens.css 缺失时的后备):聆听淡蓝白、检测到语音亮绿、思考紫、说话深亮蓝。 */
+const TECH_STATES: StateColors = {
+    listening: [214, 236, 255],
+    heard: [61, 245, 138],
+    thinking: [180, 140, 255],
+    speaking: [61, 139, 255],
+};
 
 function readPalette(el: HTMLElement): Palette {
     const cs = getComputedStyle(el);
@@ -25,6 +45,7 @@ function readPalette(el: HTMLElement): Palette {
         stars: [get('--hero-star-a', '#fff'), get('--hero-star-b', '#b9a8ff'), get('--hero-star-c', '#5fe3c8')],
         fog: get('--hero-fog', '#5fe3c8'),
         line: get('--hero-line', '#e2e8ff'),
+        states: readStateColors((name) => cs.getPropertyValue(name), 'hero', TECH_STATES),
         knowledge: {
             star: get('--hero-star-a', '#fff'),
             hit: get('--hero-star-c', '#5fe3c8'),
@@ -51,6 +72,10 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
     if (!probe) return null;
     const reduced = options.reducedMotion ?? prefersReducedMotion();
     let state: OrbState = 'idle';
+    let heroState: HeroState = 'idle';
+    let tint: Tint = { color: TECH_STATES.listening, amount: 0 };
+    let spin = 0.04;
+    let wobble = 0;
     let mode: HeroMode = 'assistant';
     let level: number | null = null;
     let palette = readPalette(canvas);
@@ -72,7 +97,14 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
         const t = reduced ? 4.2 : (nowMs - start) / 1000;
         const look = techLook(state, mode === 'knowledge');
         const lv = level ?? 0;
-        if (!reduced && lastMs) angle += look.spin * Math.min(0.1, (nowMs - lastMs) / 1000);
+        const dt = lastMs ? Math.min(100, nowMs - lastMs) : 0;
+        // 状态色平滑过渡;减少动态时直接换色(每次变化只画一帧)
+        tint = stepTint(tint, heroState, palette.states, dt, reduced || !lastMs);
+        // 转速与摆动也平滑过渡,换状态时不会突然反转
+        const ease = 1 - Math.exp(-dt / 260);
+        spin += (look.spin - spin) * ease;
+        wobble += (look.wobble - wobble) * ease;
+        if (!reduced && lastMs) angle += spin * (dt / 1000);
         lastMs = nowMs;
         const energy = reduced ? 0 : orbEnergy(state, level, t);
         const fit = fitCanvas(canvas);
@@ -84,14 +116,16 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
             cy: h / 2,
             radius: R * (1 + (reduced ? 0 : 0.03 * energy)),
             rotation: reduced ? 0.6 : angle + 0.6,
-            tilt: 0.3,
+            tilt: reduced ? 0.3 : 0.3 + wobble * Math.sin(t * 0.9),
         };
 
         // 内部星云雾
         const fog = g.createRadialGradient(proj.cx, proj.cy, 0, proj.cx, proj.cy, proj.radius);
-        fog.addColorStop(0, palette.fog);
+        // 星云雾也染上状态色,颜色从远处也看得出来
+        const fogRgb = parseColor(palette.fog);
+        fog.addColorStop(0, fogRgb ? rgbString(mixRgb(fogRgb, tint.color, tint.amount)) : palette.fog);
         fog.addColorStop(1, 'transparent');
-        g.globalAlpha = 0.1 * look.brightness;
+        g.globalAlpha = (0.1 + 0.08 * tint.amount) * look.brightness;
         g.fillStyle = fog;
         g.beginPath();
         g.arc(proj.cx, proj.cy, proj.radius, 0, Math.PI * 2);
@@ -104,15 +138,17 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
             STARS.length,
             Math.round(MAX_PARTICLES * currentQuality().quality * 1.2 * Math.max(0.15, scale)),
         );
+        // 前三组是星点自己的颜色,第四组是状态色
+        const colors = [...palette.stars, rgbString(tint.color)];
         const paths: Path2D[] = [];
-        for (let i = 0; i < 3 * BUCKETS; i++) paths.push(new Path2D());
+        for (let i = 0; i < colors.length * BUCKETS; i++) paths.push(new Path2D());
         for (let i = 0; i < n; i++) {
             const s = STARS[i];
             if (!s) break;
             const k = 1 + (reduced ? 0 : starLift(state, lv, s.phase, t));
             const q = projectPoint(s.x * k, s.y * k, s.z * k, proj);
             const depth = (q[2] + 1) / 2;
-            const color = s.rank < look.tintAmount ? look.tintColor : s.color;
+            const color = s.rank < tint.amount ? 3 : s.color;
             const alpha = (0.25 + 0.75 * depth) * (0.5 + 0.5 * s.size) * look.brightness;
             const bucket = Math.min(BUCKETS - 1, Math.floor(alpha * BUCKETS));
             const size = (0.45 + s.size * 1.4) * (0.55 + 0.8 * depth) * Math.max(0.5, scale);
@@ -121,7 +157,7 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
             path?.arc(q[0], q[1], size, 0, Math.PI * 2);
         }
         for (let i = 0; i < paths.length; i++) {
-            g.fillStyle = palette.stars[Math.floor(i / BUCKETS)] ?? palette.stars[0];
+            g.fillStyle = colors[Math.floor(i / BUCKETS)] ?? palette.stars[0];
             g.globalAlpha = ((i % BUCKETS) + 0.6) / BUCKETS;
             g.fill(paths[i] as Path2D);
         }
@@ -183,7 +219,8 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
     return {
         setState(next) {
             if (destroyed) return;
-            state = next;
+            heroState = next;
+            state = motionState(next);
             if (reduced) draw(performance.now());
         },
         setLevel(next) {

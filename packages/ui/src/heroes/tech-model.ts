@@ -85,33 +85,37 @@ export function techConstellations(count = TECH_CONSTELLATIONS, seed = 5): Const
 }
 
 export interface TechLook {
-    /** 被染色的星点比例(0–1)和染成的颜色(1 淡紫 / 2 青)。 */
-    readonly tintAmount: number;
-    readonly tintColor: 1 | 2;
-    /** 自转速度(弧度 / 秒)。 */
+    /** 自转速度(弧度 / 秒);负数是反方向。 */
     readonly spin: number;
+    /** 球轴前后摆动的幅度(弧度):思考时换一种转法(反向自转加上摆动)。 */
+    readonly wobble: number;
     /** 星点总体亮度(0–1)。 */
     readonly brightness: number;
     /** 星座连线亮度(0–1)。 */
     readonly lines: number;
 }
 
-/** 聆听偏青、思考偏紫并缓慢旋转、说话保持白色(星点随音量起伏由绘制处处理)、待机最暗;知识模式整体压暗且不画装饰连线。 */
+/**
+ * 各状态的运动与亮度(颜色在 state-tint.ts):聆听慢转;思考反向自转并且球轴前后摆动;说话慢转,星点随音量
+ * 向外脉动(绘制处);待机最暗。知识模式整体压暗且不画装饰连线。
+ */
 export function techLook(state: OrbState, knowledge: boolean): TechLook {
     const base: TechLook =
         state === 'listening'
-            ? { tintAmount: 0.45, tintColor: 2, spin: 0.07, brightness: 0.9, lines: 0.5 }
+            ? { spin: 0.07, wobble: 0, brightness: 0.9, lines: 0.5 }
             : state === 'thinking' || state === 'executing'
-              ? { tintAmount: 0.5, tintColor: 1, spin: 0.16, brightness: 0.95, lines: 0.6 }
+              ? { spin: -0.22, wobble: 0.22, brightness: 0.95, lines: 0.6 }
               : state === 'speaking'
-                ? { tintAmount: 0.12, tintColor: 2, spin: 0.06, brightness: 1, lines: 0.55 }
-                : { tintAmount: 0, tintColor: 2, spin: 0.04, brightness: 0.75, lines: 0.4 };
+                ? { spin: 0.06, wobble: 0, brightness: 1, lines: 0.55 }
+                : { spin: 0.04, wobble: 0, brightness: 0.75, lines: 0.4 };
     // 知识模式:星球压暗、装饰用的星座连线隐去,只留知识节点自己的连线
-    return knowledge ? { ...base, spin: base.spin * 0.5, brightness: base.brightness * 0.6, lines: 0 } : base;
+    return knowledge
+        ? { ...base, spin: Math.abs(base.spin) * 0.5, wobble: 0, brightness: base.brightness * 0.6, lines: 0 }
+        : base;
 }
 
-/** 说话时单颗星点向外的位移比例,随电平和各自的相位起伏;其他状态为 0。 */
+/** 说话时单颗星点向外的位移比例(只向外,不向里缩),随朗读音量和各自的相位脉动;其他状态为 0。 */
 export function starLift(state: OrbState, level: number, phase: number, tSec: number): number {
     if (state !== 'speaking') return 0;
-    return 0.07 * Math.min(1, Math.max(0, level)) * Math.sin(phase * 3 + tSec * 6);
+    return 0.1 * Math.min(1, Math.max(0, level)) * (0.55 + 0.45 * Math.sin(phase * 3 + tSec * 6));
 }

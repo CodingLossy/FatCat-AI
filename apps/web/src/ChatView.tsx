@@ -1245,7 +1245,7 @@ export function ChatView({
                             }
                         }}
                     >
-                        <VoiceIndicator state={orbState} level={level} />
+                        <VoiceIndicator state={orbState} heard={phase === 'heard'} level={level} />
                     </button>
                     <p className="voice-min-status" aria-live="polite" data-testid="voice-status">
                         {phase === 'idle' ? name : t(`voice.stage.${phase}`, { name })}

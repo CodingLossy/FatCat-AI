@@ -101,6 +101,12 @@
     --hero-star-c: #5fe3c8;
     --hero-fog: #5fe3c8;
     --hero-line: #e2e8ff;
+    /* tech hero state colours (ADR 0049 section 10.4): listening pale blue-white, voice detected bright green,
+       thinking violet, speaking deep bright blue */
+    --hero-state-listening: #d6ecff;
+    --hero-state-heard: #3df58a;
+    --hero-state-thinking: #b48cff;
+    --hero-state-speaking: #3d8bff;
 
     /* ---- Nature hero palette [owner]: gold trunk, pale green canopy, root glow, low mist, fireflies. Defined on
        :root (not per theme) so the theme picker can preview the tree whichever theme is active. ---- */
@@ -109,6 +115,11 @@
     --nature-root: #e8c27a;
     --nature-mist: #a6d99a;
     --nature-firefly: #e9f29b;
+    /* nature state colours, tinted onto the canopy dots and fireflies */
+    --nature-state-listening: #e2f3ea;
+    --nature-state-heard: #8ef06e;
+    --nature-state-thinking: #c39af2;
+    --nature-state-speaking: #4a9cff;
 
     /* ---- Cat hero palette [owner]: orange line drawing, small sparks on the line, cocoa whiskers, paw pink ---- */
     --cat-line: #f28c38;
@@ -116,6 +127,11 @@
     --cat-spark-core: #ffffff;
     --cat-whisker: #3b2a20;
     --cat-paw: #f6b6b0;
+    /* cat state colours, tinted onto the outline and sparks; deeper than the dark themes to read on cream */
+    --cat-state-listening: #5b9bd8;
+    --cat-state-heard: #1f9d55;
+    --cat-state-thinking: #8a4fd8;
+    --cat-state-speaking: #1f5fd6;
 
     /* ---- Maps and knowledge views (memory types, session roots / forks, edges) ---- */
     --map-semantic: var(--hero-star-c);

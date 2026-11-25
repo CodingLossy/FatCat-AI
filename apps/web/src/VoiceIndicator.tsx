@@ -19,10 +19,13 @@ const ENERGY: Record<AssistantState, number> = {
 
 export function VoiceIndicator({
     state,
+    heard = false,
     label,
     level,
 }: {
     state: AssistantState;
+    /** 连续对话里检测到说话:球换成「检测到语音」的颜色(只在本机,ADR 0049 第 10.4 节)。 */
+    heard?: boolean;
     /** 状态文字;不给时不显示(极简主界面在球下面自己写状态行)。 */
     label?: string;
     /** 本端录音 / 播放的电平(每帧更新的 ref,避免整页重渲染);其他端的状态没有电平。 */
@@ -57,9 +60,10 @@ export function VoiceIndicator({
         return () => observer.disconnect();
     }, []);
 
+    const heroState = heard && state === 'listening' ? 'heard' : state;
     useEffect(() => {
-        orb.current?.setState(state);
-    }, [state, noCanvas, theme]);
+        orb.current?.setState(heroState);
+    }, [heroState, noCanvas, theme]);
 
     // 全窗口光晕跟主视觉:能量按状态、亮度随说话音量;写在工作台外壳的 CSS 变量上,减少动态时保持静态
     const shell = useRef<HTMLElement | null>(null);
@@ -80,7 +84,7 @@ export function VoiceIndicator({
     }, [level, state]);
 
     return (
-        <div className="voice-indicator" data-testid="voice-indicator" data-state={state}>
+        <div className="voice-indicator" data-testid="voice-indicator" data-state={state} data-hero={heroState}>
             {noCanvas ? null : (
                 <div className="voice-orb-wrap" aria-hidden="true">
                     <canvas ref={canvas} className="voice-orb" width={168} height={168} />

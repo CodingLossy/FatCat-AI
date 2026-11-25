@@ -19,6 +19,25 @@ import {
     tipsFor,
     TREE_BASE,
 } from './nature-model.js';
+import {
+    type HeroState,
+    mixRgb,
+    motionState,
+    parseColor,
+    readStateColors,
+    rgbString,
+    type StateColors,
+    stepTint,
+    type Tint,
+} from './state-tint.js';
+
+/** 自然主题的状态色(tokens.css 缺失时的后备):聆听淡青白、检测到语音嫩绿、思考淡紫、说话亮蓝。 */
+const NATURE_STATES: StateColors = {
+    listening: [226, 243, 234],
+    heard: [142, 240, 110],
+    thinking: [195, 154, 242],
+    speaking: [74, 156, 255],
+};
 
 interface Palette {
     trunk: string;
@@ -26,6 +45,7 @@ interface Palette {
     root: string;
     mist: string;
     firefly: string;
+    states: StateColors;
     knowledge: AnchoredKnowledgePalette;
 }
 
@@ -40,6 +60,7 @@ function readPalette(el: HTMLElement): Palette {
         root: get('--nature-root', '#e8c27a'),
         mist: get('--nature-mist', '#a6d99a'),
         firefly: get('--nature-firefly', '#e9f29b'),
+        states: readStateColors((name) => cs.getPropertyValue(name), 'nature', NATURE_STATES),
         knowledge: {
             branch: trunk,
             leaf: canopy,
@@ -66,6 +87,9 @@ export function createNatureHero(canvas: HTMLCanvasElement, options: HeroOptions
     if (!probe) return null;
     const reduced = options.reducedMotion ?? prefersReducedMotion();
     let state: OrbState = 'idle';
+    let heroState: HeroState = 'idle';
+    let tint: Tint = { color: NATURE_STATES.listening, amount: 0 };
+    let lastMs = 0;
     let mode: HeroMode = 'assistant';
     let level: number | null = null;
     let palette = readPalette(canvas);
@@ -87,6 +111,20 @@ export function createNatureHero(canvas: HTMLCanvasElement, options: HeroOptions
         smooth += ((level ?? 0) - smooth) * 0.2;
         const knowledge = mode === 'knowledge';
         const look = natureLook(state, reduced ? 0 : smooth, knowledge);
+        // 状态色染在树冠光点和萤火上(枝干保持金色);知识模式不染色
+        tint = stepTint(
+            tint,
+            knowledge ? 'idle' : heroState,
+            palette.states,
+            lastMs ? Math.min(100, nowMs - lastMs) : 0,
+            reduced || !lastMs,
+        );
+        lastMs = nowMs;
+        const tinted = (base: string) => {
+            const rgb = parseColor(base);
+            // 互补色按比例混合会发灰:按最高比例归一,聆听时也基本是状态色
+            return rgb && tint.amount > 0.01 ? rgbString(mixRgb(rgb, tint.color, tint.amount / 0.75)) : base;
+        };
         const fit = fitCanvas(canvas);
         if (!fit) return;
         const { ctx: g, w, h } = fit;
@@ -205,7 +243,7 @@ export function createNatureHero(canvas: HTMLCanvasElement, options: HeroOptions
                 path?.moveTo(x + size, y);
                 path?.arc(x, y, size, 0, Math.PI * 2);
             }
-            g.fillStyle = color === 'trunk' ? palette.trunk : palette.canopy;
+            g.fillStyle = color === 'trunk' ? palette.trunk : tinted(palette.canopy);
             paths.forEach((path, i) => {
                 g.globalAlpha = (i + 0.7) / BUCKETS;
                 g.fill(path);
@@ -216,7 +254,7 @@ export function createNatureHero(canvas: HTMLCanvasElement, options: HeroOptions
 
         // 萤火:低处绕圈;聆听时向树冠聚拢
         if (!knowledge) {
-            g.fillStyle = palette.firefly;
+            g.fillStyle = tinted(palette.firefly);
             for (const f of FIREFLIES) {
                 const fx = f.x + Math.sin(t * f.speed * 0.6 + f.phase) * 0.08;
                 const fy = f.y + Math.cos(t * f.speed * 0.5 + f.phase * 1.7) * 0.05;
@@ -278,7 +316,8 @@ export function createNatureHero(canvas: HTMLCanvasElement, options: HeroOptions
     return {
         setState(next) {
             if (destroyed) return;
-            state = next;
+            heroState = next;
+            state = motionState(next);
             if (reduced) draw(performance.now());
         },
         setLevel(next) {
