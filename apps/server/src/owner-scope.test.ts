@@ -56,7 +56,14 @@ const ROUTE_IDS: [prefix: string, fixture: keyof Fixtures][] = [
     ['/api/v1/plugins/', 'plugin'],
     ['/api/v1/approvals/', 'approvalCall'],
     ['/api/v1/tool-calls/', 'clientCall'],
+    ['/api/v1/settings/secret-keys/', 'secretKey'],
 ];
+
+/**
+ * 按名字找、名字里带账户前缀的路由(ADR 0053 第 5 节):别的账户前缀的名字在校验时就被拒(400 保留名),
+ * 根本不会碰到文件;不存在的账户前缀一样是 400。这里允许对照为 400,只要两边回答相同、文件不变。
+ */
+const NAME_REJECTED = ['/api/v1/settings/secret-keys/'];
 
 interface Fixtures {
     session: string;
@@ -88,12 +95,15 @@ interface Fixtures {
      * 别人的调用拿不到由 client-calls.test.ts「结果只对本人、仅一次、迟到的拒绝」覆盖。
      */
     clientCall: string;
+    /** secrets.yaml 里别的账户的键(存储名,带 `U<id>_` 前缀)。 */
+    secretKey: string;
 }
 
 /** 和各资源 id 格式一致的「不存在的 id」。 */
 const NONEXISTENT: Partial<Record<keyof Fixtures, () => string>> = {
     plugin: () => 'nobody-plugin',
     clientCall: () => `cc_${'b'.repeat(20)}`,
+    secretKey: () => `U${newId()}_THEIRS`,
 };
 
 /** 这些表里只有「别人」的行,扫一遍之后必须一行不差;审计、事件这类追加型的表不比。 */
@@ -153,6 +163,8 @@ function seedOther(): Fixtures {
 
 function seedRows(other: string): Fixtures {
     const { repos, conn } = s;
+    const secretKey = `U${other}_THEIRS`;
+    s.secrets.write(secretKey, 'their-secret-value');
     const session = repos.sessions.create(other, { title: 'theirs' }).id;
     const message = repos.messages.append(other, session, {
         role: 'user',
@@ -314,6 +326,7 @@ function seedRows(other: string): Fixtures {
         plugin,
         approvalCall,
         clientCall: `cc_${'a'.repeat(20)}`,
+        secretKey,
     };
 }
 
@@ -446,11 +459,14 @@ describe('ownerId 覆盖(ADR 0051)', () => {
             const fixture = ROUTE_IDS.find(([prefix]) => template.startsWith(prefix))![1];
             const theirs = await answer(method, template, ids[fixture]);
             const nobody = await answer(method, template, (NONEXISTENT[fixture] ?? newId)());
-            if (theirs !== nobody || /^2/.test(theirs) || /^400/.test(nobody)) {
+            const nameRejected = NAME_REJECTED.some((prefix) => template.startsWith(prefix));
+            if (theirs !== nobody || /^2/.test(theirs) || (/^400/.test(nobody) && !nameRejected)) {
                 leaks.push(`${route}: theirs ${theirs}, nonexistent ${nobody}`);
             }
         }
         expect(leaks).toEqual([]);
         expect(snapshot()).toBe(before);
+        expect(s.secrets.resolve(`file:${ids.secretKey}`)).toBe('their-secret-value');
+        expect(s.secrets.keyNames()).toEqual([ids.secretKey]);
     });
 });
