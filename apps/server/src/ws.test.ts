@@ -224,6 +224,52 @@ describe('WebSocket /api/v1/ws', () => {
         expect(second.seqs()).toEqual(stored);
     });
 
+    it('两个账户各开一个连接:补发和实时推送都只有自己的事件(ADR 0053 第 3 节)', async () => {
+        const { port, token, chat, post } = await start();
+        const { code } = (await (await post('/api/v1/admin/users/invites')).json()) as { code: string };
+        const accepted = await s.app.request(
+            '/api/v1/auth/invite/accept',
+            jsonBody({ code, username: 'kid', password: TEST_PASSWORD }),
+        );
+        const kid = sessionFrom(accepted);
+        const kidHeaders = { cookie: kid.cookie, 'X-CSRF-Token': kid.csrf, 'content-type': 'application/json' };
+        const kidPost = (path: string, body: unknown = {}) =>
+            s.app.request(path, { method: 'POST', headers: kidHeaders, body: JSON.stringify(body) });
+        await kidPost('/api/v1/models', {
+            label: 'fake',
+            kind: 'openai-compatible',
+            baseURL: 'http://fake.test/v1',
+            apiKeyRef: null,
+            model: 'm',
+            purpose: ['chat'],
+        });
+        const kidToken = ((await (await kidPost('/api/v1/tokens', { name: 'ws' })).json()) as { token: string }).token;
+        const kidSession = ((await (await kidPost('/api/v1/sessions')).json()) as { id: string }).id;
+        const kidChat = async () => {
+            await kidPost(`/api/v1/sessions/${kidSession}/messages?stream=false`, { text: 'hi' });
+            await s.runs.idle();
+        };
+        await chat();
+        await kidChat(); // 连接前各有一次运行:补发
+
+        const mine = connect(port, { authorization: `Bearer ${token}` });
+        const theirs = connect(port, { authorization: `Bearer ${kidToken}` });
+        await Promise.all([mine.opened, theirs.opened]);
+        mine.hello(0);
+        theirs.hello(0);
+        await chat();
+        await kidChat(); // 连接中各有一次运行:实时推送
+
+        const ownerId = s.repos.owners.getByUsername('owner')!.id;
+        const kidId = s.repos.owners.getByUsername('kid')!.id;
+        const stored = (id: string) => s.repos.events.listAfter(id, 0, 1000).map((e) => e.seq);
+        await mine.until(() => mine.seqs().length >= stored(ownerId).length);
+        await theirs.until(() => theirs.seqs().length >= stored(kidId).length);
+        expect(mine.seqs()).toEqual(stored(ownerId));
+        expect(theirs.seqs()).toEqual(stored(kidId));
+        expect(mine.seqs().filter((seq) => theirs.seqs().includes(seq))).toEqual([]);
+    });
+
     it('不带 lastSeq 只接收实时事件;ping 得到 pong;非法帧关闭连接', async () => {
         const { port, token, chat } = await start();
         await chat();

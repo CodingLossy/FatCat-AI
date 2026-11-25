@@ -54,6 +54,7 @@ import { acquireServerLock, installLockRelease, installShutdownHandlers, running
 import { attachWebSocket } from './ws.js';
 import { ChannelHub, QqChannels, WechatChannels } from '@fatcat-ai/channels/hub';
 import { channelHubServerDeps } from './channel-setup.js';
+import { findUnusableRefs, ownerSecrets } from './member-secrets.js';
 
 // 离线子命令:`node dist/index.js secrets migrate|rekey|cleanup`(ADR 0026);不启动服务器
 if (process.argv[2] === 'secrets') {
@@ -172,8 +173,17 @@ if (repos.owners.count() === 0) {
     }
 }
 
+// 成员账户里它用不了的密钥引用(管理员降级前保存的 env: 或不带前缀的 file:):只提示 id,由本人重新填写
+for (const found of findUnusableRefs(repos)) {
+    logger.warn(found, 'an account that is not an admin has key references it cannot use; they show as missing');
+}
 const providerDeps = { secrets, redactor };
-const providerFor = (profile: Parameters<typeof createProvider>[0]) => createProvider(profile, providerDeps);
+const providerFor = (profile: Parameters<typeof createProvider>[0]) =>
+    createProvider(profile, {
+        ...providerDeps,
+        // 按配置档所属账户检查密钥引用(管理员降为成员后,env: 等引用当作缺失;ADR 0053 第 5 节)
+        secrets: ownerSecrets(repos, secrets, repos.modelProfiles.ownerOf(profile.id)),
+    });
 // 嵌入队列:有 embed 配置档或已有向量表时才加载 sqlite-vec(ADR 0014)
 const embeddings = createEmbeddingService({
     repos,

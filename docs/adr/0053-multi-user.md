@@ -209,3 +209,11 @@
 - **附件目录**:`attachments/<ownerId>/<id>`。`AttachmentFiles` 的读写删都带 `ownerId`,两个 id 都必须是 ULID 才拼进路径。启动时 `migrateAttachmentLayout` 按数据库行把旧的 `attachments/<id>` 复制过去(先写 `.part` 再改名),全部复制完写 `attachments/.layout-v2`,然后才删旧文件;中途失败时旧文件都在,下次启动重新检查,已经复制好的跳过;失败不阻止启动,读取回落到旧位置。没有行的旧文件留给每天的清理(超过宽限期才删);清理账户子目录时要求行和账户都对得上。删除账户后它的附件文件由每天的清理删掉。
 - **用量**:`GET /admin/users` 的每个账户带可选的 `usage`:附件按 `message_attachments.bytes` 合计,知识库按 `kb_chunks` 文本的 UTF-8 字节数合计(都从数据库算,不扫磁盘)。不做配额。
 - **隔离测试**:`account-isolation.test.ts`:两个账户同时对话时事件总线、运行事件、增量同步只给本人,别人的运行和会话 404;记忆检索、条目检索和会话列表搜不到别人的内容。
+
+### PR 6 `docs/self-check`
+
+- **管理员降级后的旧引用**(X 在 #153 的跟进):选了解析时检查,不改库里的引用。新的 `ownerSecrets(repos, secrets, ownerId)` 按账户解析:管理员都能用;不是管理员的账户只能用带自己前缀的 `file:`,其余当作缺失。用在模型 provider(`providerFor` 按 `modelProfiles.ownerOf(id)` 找所属账户)、配置档和邮箱的 `keyStatus` / `passwordStatus`、发消息前的检查、语音和邮件同步。所以降级后这些配置档和邮箱显示「缺失」、也解析不出值,改回管理员后立即恢复。`ProviderDeps.secrets` 只需要 `resolve`。
+- **启动时提示**:`findUnusableRefs` 列出不是管理员的账户里用不了的配置档和邮箱 id(不含引用和值),每个账户一行 warn 日志。
+- **`auth reset-totp [<username>]`**:以前重置所有设置了 TOTP 的账户;现在有多个账户时必须给出用户名,只重置那一个(`resetTotpOffline` 新参数 `ownerId`),只有一个账户时可以省略。
+- **WebSocket 隔离测试**(第 3 节第 2 条):两个账户各开一个连接,补发和实时推送都只有自己的事件。
+- **文档**:「家庭成员账户」新增「家庭 / 小团队部署建议」「升级到 2.0 与回退」两节;Docker 部署指南的「升级」指向它;常见问题和 README 的 `auth reset-totp` 带用户名。自检清单在 `docs/milestones/2.0-self-check.md`。

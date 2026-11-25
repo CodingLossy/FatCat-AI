@@ -149,7 +149,7 @@ These must run while the app is stopped:
 ```bash
 docker compose -f docker-compose.prod.yml stop fatcat-ai
 docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai node dist/index.js secrets migrate
-docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai node dist/index.js auth reset-totp
+docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai node dist/index.js auth reset-totp USERNAME
 docker compose -f docker-compose.prod.yml start fatcat-ai
 ```
 
@@ -165,6 +165,8 @@ cd docker
 # back up first (section 8), then:
 docker compose -f docker-compose.prod.yml up -d --build
 ```
+
+Before upgrading from 1.x to 2.0 (multi-user), read Upgrading to 2.0 and going back in [Family accounts](/FatCat-AI/en/guides/accounts/): the first start moves attachments into per-account folders, and going back needs the whole backup taken before the upgrade.
 
 With a published image, set `FATCAT_AI_IMAGE=ghcr.io/codinglossy/fatcat-ai:TAG` in `.env` and upgrade with `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`. Database migrations run on startup, with an automatic backup first. To roll back, switch back to the old tag and restore the pre-upgrade backup (migrations are not reversible, so changing only the image is not enough).
 

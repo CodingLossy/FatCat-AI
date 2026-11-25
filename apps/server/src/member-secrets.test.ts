@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { LoginResponse, SecretKeyList } from '@fatcat-ai/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { findUnusableRefs } from './member-secrets.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 let s: TestServer;
@@ -235,5 +236,54 @@ describe('member secrets (ADR 0053 section 5)', () => {
         s.secrets.invalidate();
         expect(s.secrets.keyNames()).toEqual(['KEEP']);
         expect(s.secrets.resolve('file:KEEP')).toBe('keep-me-1');
+    });
+
+    it('管理员降为成员后,他以前保存的不带前缀的引用显示为缺失、也解析不出来;再升回管理员就恢复(库里的引用不改)', async () => {
+        s.secrets.write('OPENAI_KEY', 'sk-admin-1234');
+        s.secrets.write('MAIL_PW', 'mail-pw-1234');
+        const created = await json<{ id: string; keyStatus: string }>(
+            await as(admin, 'POST', '/api/v1/models', profile()),
+            201,
+        );
+        expect(created.keyStatus).toBe('present');
+        const mail = await json<{ id: string; passwordStatus: string }>(
+            await as(admin, 'POST', '/api/v1/mail/accounts', {
+                label: 'Mail',
+                address: 'me@example.test',
+                username: 'me@example.test',
+                imap: { host: 'imap.example.test', port: 993, security: 'tls' },
+                smtp: { host: 'smtp.example.test', port: 465, security: 'tls' },
+                passwordRef: 'file:MAIL_PW',
+            }),
+            201,
+        );
+        expect(mail.passwordStatus).toBe('present');
+
+        const kid = await member();
+        await json(await as(admin, 'PATCH', `/api/v1/admin/users/${kid.id}`, { role: 'admin' }), 200);
+        const ownerId = s.repos.owners.getByUsername('owner')!.id;
+        await json(await as(kid.session, 'PATCH', `/api/v1/admin/users/${ownerId}`, { role: 'member' }), 200);
+
+        const status = async () => ({
+            key: (await json<{ keyStatus: string }>(await as(admin, 'GET', `/api/v1/models/${created.id}`), 200))
+                .keyStatus,
+            mail: (
+                await json<{ passwordStatus: string }>(await as(admin, 'GET', `/api/v1/mail/accounts/${mail.id}`), 200)
+            ).passwordStatus,
+        });
+        expect(await status()).toEqual({ key: 'missing', mail: 'missing' });
+        // 对话也拿不到这个键:开会话发消息回 409 model_key_missing
+        const session = await json<{ id: string }>(await as(admin, 'POST', '/api/v1/sessions', {}), 201);
+        const sent = await as(admin, 'POST', `/api/v1/sessions/${session.id}/messages?stream=false`, { text: 'hi' });
+        expect(sent.status).toBe(409);
+        expect(((await sent.json()) as { code: string }).code).toBe('model_key_missing');
+        expect(s.repos.modelProfiles.get(ownerId, created.id)?.apiKeyRef).toBe('file:OPENAI_KEY');
+
+        // 启动时的提示只列 id
+        expect(findUnusableRefs(s.repos)).toEqual([{ ownerId, profiles: [created.id], mailAccounts: [mail.id] }]);
+
+        await json(await as(kid.session, 'PATCH', `/api/v1/admin/users/${ownerId}`, { role: 'admin' }), 200);
+        expect(await status()).toEqual({ key: 'present', mail: 'present' });
+        expect(findUnusableRefs(s.repos)).toEqual([]);
     });
 });

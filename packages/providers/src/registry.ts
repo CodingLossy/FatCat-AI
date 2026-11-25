@@ -10,7 +10,7 @@ import type { SecretStore } from './secrets.js';
 import type { ModelProvider, ProviderProfile } from './types.js';
 
 export interface ProviderDeps {
-    secrets: SecretStore;
+    secrets: Pick<SecretStore, 'resolve'>;
     redactor: Redactor;
     fetch?: typeof fetch;
     firstTokenTimeoutMs?: number;

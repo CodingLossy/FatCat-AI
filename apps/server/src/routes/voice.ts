@@ -12,16 +12,24 @@ import {
     sniffAudioType,
     TranscriptionResult,
 } from '@fatcat-ai/shared';
-import { createVoiceClient, ProviderError, type ProviderDeps, type VoiceClientOptions } from '@fatcat-ai/providers';
+import {
+    createVoiceClient,
+    ProviderError,
+    type ProviderDeps,
+    type SecretStore,
+    type VoiceClientOptions,
+} from '@fatcat-ai/providers';
 import type { ModelProfileRecord, Repositories } from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
+import { ownerSecrets } from '../member-secrets.js';
 import type { WindowLimiter } from '../voice-limit.js';
 import { authErrors, json, problem, router } from './common.js';
 
 export interface VoiceRouteDeps {
     repos: Repositories;
     providerDeps: ProviderDeps;
+    secrets: Pick<SecretStore, 'resolve' | 'status'>;
     /** 每个用户每分钟的转写 / 朗读次数(各自独立计数)。 */
     limits: { transcribe: WindowLimiter; speak: WindowLimiter };
     /** 测试中缩短超时。 */
@@ -121,7 +129,7 @@ function pickProfile(
             throw new ApiError(409, 'model_profile_missing', 'Conflict', `Create a ${what} model profile first.`);
         }
     }
-    if (deps.providerDeps.secrets.status(profile.apiKeyRef) === 'missing') {
+    if (keyOf(deps, profile).status(profile.apiKeyRef) === 'missing') {
         throw new ApiError(
             409,
             'model_key_missing',
@@ -146,10 +154,14 @@ function upstreamError(error: unknown): unknown {
     return new ApiError(502, 'provider_error', 'Bad Gateway', error.message, { providerCode: error.code });
 }
 
+/** 按配置档所属账户检查密钥引用(ADR 0053 第 5 节)。 */
+const keyOf = (deps: VoiceRouteDeps, profile: ModelProfileRecord) =>
+    ownerSecrets(deps.repos, deps.secrets, deps.repos.modelProfiles.ownerOf(profile.id));
+
 function clientFor(deps: VoiceRouteDeps, profile: ModelProfileRecord) {
     return createVoiceClient({
         profile,
-        getApiKey: () => deps.providerDeps.secrets.resolve(profile.apiKeyRef),
+        getApiKey: () => keyOf(deps, profile).resolve(profile.apiKeyRef),
         redactor: deps.providerDeps.redactor,
         fetch: deps.providerDeps.fetch,
         ...deps.timeouts,

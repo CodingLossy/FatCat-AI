@@ -422,6 +422,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             voiceRoutes({
                 repos,
                 providerDeps: deps.providerDeps,
+                secrets: deps.secrets,
                 limits: deps.voice?.limits ?? {
                     transcribe: new WindowLimiter(VOICE_REQUESTS_PER_MINUTE, 60_000),
                     speak: new WindowLimiter(VOICE_REQUESTS_PER_MINUTE, 60_000),

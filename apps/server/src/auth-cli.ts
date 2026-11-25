@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// 离线命令(ADR 0027 第 7 节):auth reset-totp。验证码与恢复码都丢了时,在服务器本机重置;没有任何远程入口。
+// 离线命令(ADR 0027 第 7 节):auth reset-totp [<username>]。验证码与恢复码都丢了时,在服务器本机重置;
+// 没有任何远程入口。有多个账户时必须给出用户名,只重置那一个(ADR 0053 第 14 节 PR 6)。
 // 输出里只有数量,没有密钥或恢复码。
 // auth reset-password <username>(ADR 0053 第 14 节 PR 3):唯一的管理员忘了密码时在服务器本机改密码。
 // 新密码从标准输入读(终端里不回显),不出现在命令行参数和 shell 历史里。
@@ -12,8 +13,9 @@ import { createAccountRepository, openDatabase, resetTotpOffline } from '@fatcat
 import { hashPassword } from './auth/crypto.js';
 
 export const AUTH_USAGE = `Usage:
-  auth reset-totp
-      Remove the TOTP secret and recovery codes, sign out every session and write an audit entry.
+  auth reset-totp [<username>]
+      Remove an account's TOTP secret and recovery codes, sign out its sessions and write an audit entry.
+      The username is required when there is more than one account.
       Run it on the server machine; the server may be running or stopped.
   auth reset-password <username>
       Set a new password for an account (asked for twice, or read from standard input when it is not a terminal).
@@ -38,7 +40,7 @@ export function runAuthCommand(argv: readonly string[], io: AuthCommandIo): numb
         }
         return resetPassword(rest[0], io);
     }
-    if (command !== 'reset-totp' || rest.length > 0) {
+    if (command !== 'reset-totp' || rest.length > 1 || rest[0] === '') {
         io.err(
             `${command && command !== 'reset-totp' ? `unknown command "${command}"` : 'unexpected arguments'}\n${AUTH_USAGE}`,
         );
@@ -52,7 +54,20 @@ export function runAuthCommand(argv: readonly string[], io: AuthCommandIo): numb
     try {
         const conn = openDatabase(dbPath);
         try {
-            const result = resetTotpOffline(conn, io.now);
+            const username = rest[0];
+            const accounts = createAccountRepository(conn, io.now ?? (() => new Date())).list();
+            let ownerId: string | undefined;
+            if (username !== undefined) {
+                ownerId = accounts.find((a) => a.username === username)?.id;
+                if (!ownerId) {
+                    io.err(`There is no account named "${username}". Nothing was changed.`);
+                    return 1;
+                }
+            } else if (accounts.length > 1) {
+                io.err(`There is more than one account; say whose TOTP to reset: auth reset-totp <username>`);
+                return 2;
+            }
+            const result = resetTotpOffline(conn, io.now, ownerId);
             if (result.credentials === 0) {
                 io.out('TOTP is not set up; nothing was changed.');
             } else {

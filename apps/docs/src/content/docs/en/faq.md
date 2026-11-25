@@ -21,10 +21,10 @@ By default in `~/.fatcat-ai` (`%USERPROFILE%\.fatcat-ai` on Windows, the `/data`
 
 ## I lost my authenticator and recovery codes
 
-Stop the server first, then run the command below. Your password keeps working.
+Stop the server first, then run the command below. It resets two-step verification for that one account and your password keeps working. Replace USERNAME with your username; it can be left out when the server has only one account.
 
-- From source: in the repository's `apps/server` directory (after `pnpm build`) run `node dist/index.js auth reset-totp`.
-- Docker: from the repository's `docker/` directory run `docker compose -f docker-compose.prod.yml stop fatcat-ai`, then `docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai node dist/index.js auth reset-totp`, then `docker compose -f docker-compose.prod.yml start fatcat-ai`.
+- From source: in the repository's `apps/server` directory (after `pnpm build`) run `node dist/index.js auth reset-totp USERNAME`.
+- Docker: from the repository's `docker/` directory run `docker compose -f docker-compose.prod.yml stop fatcat-ai`, then `docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai node dist/index.js auth reset-totp USERNAME`, then `docker compose -f docker-compose.prod.yml start fatcat-ai`.
 
 ## What if I lose the master key?
 

@@ -64,6 +64,35 @@ describe('auth reset-totp', () => {
     });
 });
 
+describe('auth reset-totp with several accounts (ADR 0053)', () => {
+    it('needs a username and resets only that account', async () => {
+        const { conn, repos, ownerId } = await seed();
+        const kid = repos.owners.create({ username: 'kid', passwordHash: 'x' });
+        repos.authSessions.create({
+            idHash: 'k1',
+            ownerId: kid.id,
+            csrfHash: 'c',
+            expiresAt: new Date(Date.now() + 1e6),
+        });
+        repos.totp.saveSetup(kid.id, encryptSecrets(SECRET, parseMasterKey(OLD_KEY)));
+        repos.totp.enable({ ownerId: kid.id, step: 1, codes: [{ salt: 's', codeHash: 'h' }], keepSessionHash: 'k1' });
+        const io = { dataDir: dir, out: (l: string) => out.push(l), err: (l: string) => err.push(l) };
+
+        expect(runAuthCommand(['reset-totp'], io)).toBe(2);
+        expect(err.join('\n')).toContain('auth reset-totp <username>');
+        expect(runAuthCommand(['reset-totp', 'nobody'], io)).toBe(1);
+        expect(repos.totp.get(kid.id)).not.toBeNull();
+
+        expect(runAuthCommand(['reset-totp', 'kid'], io)).toBe(0);
+        expect(repos.totp.get(kid.id)).toBeNull();
+        expect(repos.authSessions.getValid('k1')).toBeNull();
+        // 别的账户不受影响
+        expect(repos.totp.get(ownerId)).not.toBeNull();
+        expect(repos.authSessions.getValid('s1')).not.toBeNull();
+        conn.close();
+    });
+});
+
 describe('secrets rekey with a TOTP secret in the database', () => {
     const run = (argv: string[], extra: Record<string, unknown> = {}) =>
         runSecretsCommand(argv, { dataDir: dir, env: {}, out: (l) => out.push(l), err: (l) => err.push(l), ...extra });

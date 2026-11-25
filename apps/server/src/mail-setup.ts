@@ -8,6 +8,7 @@ import { type MailJobRunner, ownThreadKey, runInWorker } from '@fatcat-ai/mail';
 import type { MailAccountRecord, MailFolderSync, Repositories } from '@fatcat-ai/storage';
 import type { SecretStore } from '@fatcat-ai/providers';
 import { FairQueue } from './fair-queue.js';
+import { ownerSecrets } from './member-secrets.js';
 
 /** 每分钟检查一次哪些账户到了同步时间。 */
 export const MAIL_TICK_MS = 60_000;
@@ -54,8 +55,9 @@ export function createMailService(options: MailServiceOptions): MailService {
 
     const message = (error: unknown) => redact(error instanceof Error ? error.message : String(error)).slice(0, 500);
 
-    function password(account: MailAccountRecord): string {
-        const value = options.secrets.resolve(account.passwordRef);
+    function password(ownerId: string, account: MailAccountRecord): string {
+        // 按账户检查引用:管理员降为成员后,env: 等引用当作缺失(ADR 0053 第 5 节)
+        const value = ownerSecrets(repos, options.secrets, ownerId).resolve(account.passwordRef);
         if (!value) throw new MailSyncError(`The password referenced by ${account.passwordRef} is not set.`);
         return value;
     }
@@ -70,7 +72,7 @@ export function createMailService(options: MailServiceOptions): MailService {
                 input: {
                     server: account.imap,
                     username: account.username,
-                    password: password(account),
+                    password: password(ownerId, account),
                     initialSyncDays: account.initialSyncDays,
                     folders: repos.mail.knownFolders(accountId),
                     now: now().toISOString(),
@@ -137,7 +139,7 @@ export function createMailService(options: MailServiceOptions): MailService {
         if (!account) throw new MailSyncError('The account was removed.');
         let pass: string;
         try {
-            pass = password(account);
+            pass = password(ownerId, account);
         } catch (error) {
             const check = { ok: false, error: message(error) };
             return { imap: check, smtp: check };
