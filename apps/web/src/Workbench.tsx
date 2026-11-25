@@ -898,6 +898,15 @@ export function Workbench({
                         {minimal && running.rows.length > 0 ? (
                             // 工作态:球和面板之间竖排本轮工具的小胶囊,完成后淡出(ADR 0049 第 10.5 节)
                             <ol className="wb-pills" aria-label={t('wb.running')} data-testid="wb-pills">
+                                {running.hidden > 0 ? (
+                                    // 超出上限的更早几条:和旧卡片的「还有 N 个」一样
+                                    <li
+                                        className="wb-pill-tool wb-pill-more"
+                                        title={t('wb.runningMore', { n: running.hidden })}
+                                    >
+                                        <span>+{running.hidden}</span>
+                                    </li>
+                                ) : null}
                                 {running.rows.map((row) => {
                                     const icon = statusIcon(row.status);
                                     return (

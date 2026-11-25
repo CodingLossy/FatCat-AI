@@ -403,11 +403,16 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
         });
 
         // 诱饵:名字去掉结尾空白后的目录是干净的仓库;git 实际读的带空白的目录经 alternates 指到外面
+        // 目标目录先建好再复制:CI 上偶发过 cpSync 建目标子目录时报 ENOENT(#150)
+        const copyGitDir = (from: string, to: string) => {
+            mkdirSync(to, { recursive: true });
+            cpSync(from, to, { recursive: true });
+        };
         const decoyPair = (base: string, tail: string) => {
             const clean = fresh();
-            cpSync(join(clean, '.git'), base, { recursive: true });
+            copyGitDir(join(clean, '.git'), base);
             const real = base + tail;
-            cpSync(join(secret, '.git'), real, { recursive: true });
+            copyGitDir(join(secret, '.git'), real);
             rmSync(join(real, 'objects'), { recursive: true, force: true });
             mkdirSync(join(real, 'objects', 'info'), { recursive: true });
             writeFileSync(join(real, 'objects', 'info', 'alternates'), `${join(secret, '.git', 'objects')}\n`);

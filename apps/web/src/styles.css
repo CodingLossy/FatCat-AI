@@ -3950,3 +3950,7 @@ input.code-timeout {
     width: 12px;
     height: 12px;
 }
+
+.wb-pill-more {
+    color: var(--muted);
+}
