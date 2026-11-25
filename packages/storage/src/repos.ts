@@ -39,7 +39,15 @@ import { createMailCacheRepository } from './mail-cache.js';
 import { decodeCursor, encodeCursor, type Page } from './cursor.js';
 import type { Connection } from './db.js';
 import { newId } from './ids.js';
-import { selectList, type EventRow, type MessageRow, type OwnerRow, type RunRow, type SessionRow } from './schema.js';
+import {
+    selectList,
+    type EventRow,
+    type MessageRow,
+    type OwnerRole,
+    type OwnerRow,
+    type RunRow,
+    type SessionRow,
+} from './schema.js';
 
 export interface RepoOptions {
     now?: () => Date;
@@ -130,35 +138,78 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
     const iso = () => now().toISOString();
 
     // ---------- owners ----------
-    const ownerQ = {
+    // 首次用到时才 prepare:迁移测试会在 0022 之前的库上建仓储(那时 owners 还没有 role 等列)
+    let ownerStatements: ReturnType<typeof prepareOwners> | null = null;
+    const prepareOwners = () => ({
         count: sqlite.prepare<[], { n: number }>('SELECT count(*) AS n FROM owners'),
         ids: sqlite.prepare<[], { id: string }>('SELECT id FROM owners ORDER BY created_at'),
         insert: sqlite.prepare(
-            `INSERT INTO owners (id, username, password_hash, created_at, updated_at)
-             VALUES (@id, @username, @passwordHash, @createdAt, @updatedAt)`,
+            `INSERT INTO owners (id, username, password_hash, created_at, updated_at, role, display_name)
+             VALUES (@id, @username, @passwordHash, @createdAt, @updatedAt, @role, @displayName)`,
+        ),
+        // 只在一个账户都没有时插入:并发的两个 setup 只有一个能成功(ADR 0053 第 6 节)
+        insertFirst: sqlite.prepare(
+            `INSERT INTO owners (id, username, password_hash, created_at, updated_at, role, display_name)
+             SELECT @id, @username, @passwordHash, @createdAt, @updatedAt, 'admin', NULL
+             WHERE NOT EXISTS (SELECT 1 FROM owners)`,
+        ),
+        activeAdmins: sqlite.prepare<[], { id: string }>(
+            `SELECT id FROM owners WHERE role = 'admin' AND disabled_at IS NULL ORDER BY created_at, id`,
         ),
         byId: sqlite.prepare<[string], OwnerRow>(`SELECT ${selectList('owners')} FROM owners WHERE id = ?`),
         byUsername: sqlite.prepare<[string], OwnerRow>(`SELECT ${selectList('owners')} FROM owners WHERE username = ?`),
-    };
+    });
+    const ownerQ = () => (ownerStatements ??= prepareOwners());
 
     const owners = {
         count(): number {
-            return ownerQ.count.get()?.n ?? 0;
+            return ownerQ().count.get()?.n ?? 0;
         },
         ids(): string[] {
-            return ownerQ.ids.all().map((r) => r.id);
+            return ownerQ()
+                .ids.all()
+                .map((r) => r.id);
         },
-        create(input: { username: string; passwordHash: string }) {
+        /**
+         * 不给 role 时建成员;还没有未停用的管理员时总是建成管理员(第一个账户,ADR 0053 第 2 节)。
+         * 调用方必须使用返回的 `role`,不能假定是传入的值。
+         */
+        create(input: { username: string; passwordHash: string; role?: OwnerRole; displayName?: string | null }) {
             const at = iso();
-            const row = { id: newId(now()), ...input, createdAt: at, updatedAt: at };
-            ownerQ.insert.run(row);
-            return { id: row.id, username: row.username, createdAt: at };
+            const role: OwnerRole = input.role ?? 'member';
+            const row = {
+                id: newId(now()),
+                username: input.username,
+                passwordHash: input.passwordHash,
+                role,
+                displayName: input.displayName ?? null,
+                createdAt: at,
+                updatedAt: at,
+            };
+            ownerQ().insert.run(row);
+            // 还没有未停用的管理员时,触发器会把这一行设为 admin:返回库里的实际角色
+            return { id: row.id, username: row.username, role: ownerQ().byId.get(row.id)?.role ?? role, createdAt: at };
+        },
+        /** setup 用:只在一个账户都没有时建管理员,已有账户(包括并发的另一个 setup 刚建好)时返回 null。 */
+        createFirst(input: { username: string; passwordHash: string }) {
+            const at = iso();
+            const id = newId(now());
+            const info = ownerQ().insertFirst.run({ id, ...input, createdAt: at, updatedAt: at });
+            if (info.changes !== 1) return null;
+            return { id, username: input.username, role: 'admin' as OwnerRole, createdAt: at };
+        },
+        /**
+         * 最早建的未停用管理员。只用于还没按账户拆开的全局行为(服务器默认时区、配对失败事件的归属),
+         * 1.x 里它就是唯一的主人。
+         */
+        primaryAdmin(): string | null {
+            return ownerQ().activeAdmins.get()?.id ?? null;
         },
         get(id: string): OwnerRow | null {
-            return ownerQ.byId.get(id) ?? null;
+            return ownerQ().byId.get(id) ?? null;
         },
         getByUsername(username: string): OwnerRow | null {
-            return ownerQ.byUsername.get(username) ?? null;
+            return ownerQ().byUsername.get(username) ?? null;
         },
     };
 

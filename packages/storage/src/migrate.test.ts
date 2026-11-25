@@ -68,6 +68,48 @@ describe('migrate', () => {
         expect(c.sqlite.pragma('foreign_key_check')).toEqual([]);
     });
 
+    it('0022 accounts:1.0 的主人升级为管理员、数据不变,单主人触发器换成最后一个管理员保护', async () => {
+        const c = open();
+        await migrate(c.sqlite, migrations.slice(0, 21), { backupDir: join(dir, 'backups') });
+        const at = '2026-10-01T00:00:00.000Z';
+        c.sqlite
+            .prepare(
+                "INSERT INTO owners (id, username, password_hash, created_at, updated_at) VALUES ('o1', 'me', 'h', ?, ?)",
+            )
+            .run(at, at);
+        const result = await migrate(c.sqlite, migrations, { backupDir: join(dir, 'backups') });
+        expect(result.applied).toEqual([22]);
+        expect(result.backupPath).not.toBeNull();
+        expect(c.sqlite.prepare('SELECT * FROM owners').all()).toEqual([
+            {
+                id: 'o1',
+                username: 'me',
+                password_hash: 'h',
+                created_at: at,
+                updated_at: at,
+                role: 'admin',
+                display_name: null,
+                disabled_at: null,
+            },
+        ]);
+        const triggers = (
+            c.sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'owners'").all() as {
+                name: string;
+            }[]
+        ).map((r) => r.name);
+        expect(triggers.sort()).toEqual([
+            'trg_owners_first_admin',
+            'trg_owners_last_admin_delete',
+            'trg_owners_last_admin_update',
+        ]);
+        c.sqlite
+            .prepare(
+                "INSERT INTO owners (id, username, password_hash, created_at, updated_at) VALUES ('o2', 'kid', 'h', ?, ?)",
+            )
+            .run(at, at);
+        expect(c.sqlite.prepare("SELECT role FROM owners WHERE id = 'o2'").get()).toEqual({ role: 'member' });
+    });
+
     it('已执行的迁移被修改时拒绝启动', async () => {
         const c = open();
         await migrate(c.sqlite, [{ id: 1, name: 'a', sql: 'CREATE TABLE a (x)' }]);

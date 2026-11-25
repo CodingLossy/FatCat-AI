@@ -71,7 +71,13 @@ describe('migration 0021', () => {
                 { backupDir: join(dir, 'backups') },
             );
             const repos = createRepositories(conn);
-            const owner = repos.owners.create({ username: 'o', passwordHash: 'h' }).id;
+            // 0022 之前的 owners 没有 role 列,按当时的列直接插入(仓储的 owners 语句用到时才 prepare)
+            const owner = 'o';
+            conn.sqlite
+                .prepare(
+                    "INSERT INTO owners (id, username, password_hash, created_at, updated_at) VALUES ('o','o','h','t','t')",
+                )
+                .run();
             const session = repos.sessions.create(owner, { title: 'old' });
             repos.messages.append(owner, session.id, {
                 role: 'user',
@@ -84,7 +90,11 @@ describe('migration 0021', () => {
                     .sort();
             const before = tables();
 
-            const result = await migrate(conn.sqlite, migrations, { backupDir: join(dir, 'backups') });
+            const result = await migrate(
+                conn.sqlite,
+                migrations.filter((m) => m.id <= 21),
+                { backupDir: join(dir, 'backups') },
+            );
             expect(result.applied).toEqual([21]);
             expect(result.backupPath && existsSync(result.backupPath)).toBe(true);
             expect(tables().filter((n) => !before.includes(n))).toEqual(['change_log']);

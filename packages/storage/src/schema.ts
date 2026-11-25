@@ -6,7 +6,7 @@
 
 /** 表名 → 列名(snake_case,与 SQL 一致)。 */
 export const TABLE_COLUMNS = {
-    owners: ['id', 'username', 'password_hash', 'created_at', 'updated_at'],
+    owners: ['id', 'username', 'password_hash', 'created_at', 'updated_at', 'role', 'display_name', 'disabled_at'],
     auth_sessions: ['id', 'owner_id', 'csrf_hash', 'created_at', 'expires_at', 'last_seen_at', 'second_factor_at'],
     totp_credentials: ['owner_id', 'secret_enc', 'enabled', 'last_used_step', 'created_at', 'enabled_at'],
     totp_recovery_codes: ['id', 'owner_id', 'salt', 'code_hash', 'used_at', 'created_at'],
@@ -390,12 +390,18 @@ export function selectList(table: TableName, prefix = table): string {
     return TABLE_COLUMNS[table].map((c) => `${prefix}.${c} AS "${camel(c)}"`).join(', ');
 }
 
+export type OwnerRole = 'admin' | 'member';
+
 export interface OwnerRow {
     id: string;
     username: string;
     passwordHash: string;
     createdAt: string;
     updatedAt: string;
+    /** ADR 0053 第 2 节;迁移 0022 之前的主人都是 admin。 */
+    role: OwnerRole;
+    displayName: string | null;
+    disabledAt: string | null;
 }
 
 export interface SessionRow {

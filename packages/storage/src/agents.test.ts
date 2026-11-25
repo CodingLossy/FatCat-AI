@@ -120,7 +120,7 @@ describe('migration 0019', () => {
             );
 
             const result = await migrate(conn.sqlite, migrations, { backupDir: join(dir, 'backups') });
-            expect(result.applied).toEqual([19, 20, 21]);
+            expect(result.applied).toEqual(migrations.filter((m) => m.id >= 19).map((m) => m.id));
             expect(result.backupPath && existsSync(result.backupPath)).toBe(true);
             expect(conn.sqlite.pragma('foreign_key_check')).toEqual([]);
             const repos = createRepositories(conn);

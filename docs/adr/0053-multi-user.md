@@ -145,4 +145,17 @@
 3. **共享模型配置档**。推荐:做(第 5.1 节),家庭里最常见的是一个人付费大家用;成员看不到密钥。
 4. **管理员能否查看成员数据**。推荐:不能,管理员只管账户;需要帮成员排查时由成员自己导出诊断包。
 5. **每个账户同时运行的上限**。推荐:默认 2,管理员可改。
-6. **排期**。推荐:本 ADR 确认后,2.0 的实现从第 12 节第 1 个 PR 开始;在此之前 1.x 继续只有一个账户,`trg_owners_single` 保留。
+6. **排期**。推荐:本 ADR 确认后,2.0 的实现从第 12 节第 1 个 PR 开始;在此之前 1.x 继续只有一个账户,`trg_owners_single` 保留。(业主 2026-11-25 确认按推荐开工;PR 1 的迁移 0022 删掉了 `trg_owners_single`,见第 14 节。)
+
+## 14. 实现记录
+
+### PR 1 `feat/accounts-schema`
+
+- 迁移 `0022_accounts`:`owners` 加 `role`(默认 `member`,CHECK)、`display_name`、`disabled_at`,已有主人设为 `admin`;删 `trg_owners_single`。和第 2 节的写法不同的一点:「第一个账户」用 `AFTER INSERT` 触发器**自动设为管理员**,而不是拒绝插入;插入之后仍然没有未停用的管理员(空表插入已停用的行、`INSERT OR REPLACE` 把唯一的管理员换成已停用的行;`recursive_triggers` 关着,REPLACE 的隐式删除不触发删除触发器)就中止。最后一个未停用的管理员不能降级、停用或删除(两个 `BEFORE` 触发器)。
+- setup 不再靠单行触发器挡并发:新增 `owners.createFirst`(`INSERT … SELECT … WHERE NOT EXISTS (SELECT 1 FROM owners)`,看 `changes`),同时到达的两个 setup 只有一个成功,另一个 409 `already_initialized`。
+- 第 10 节说的 `plugins.shared_with_members` 与 `model_profiles.shared` 不在这个迁移里:各自跟读写它们的代码一起加(PR 3、PR 4 各一个小迁移),避免出现没有代码读的列。
+- 仓储:`owners.create` 可带 `role` / `displayName`,返回库里的实际角色;新增 `owners.primaryAdmin()`(最早的未停用管理员),替换 `apps/server` 里两处 `owners.ids()[0]`(定时任务的默认时区、配对失败事件的归属)。owners 的语句改为首次用到时才 prepare,迁移测试可以在 0022 之前的库上建仓储。
+- `GET /auth/me` 增加可选的 `role`、`displayName`(`Me` 里都是 optional,旧核心不返回时客户端按管理员处理);新错误码 `admin_required`;`requireAdmin(c, repos)` 每次从库里读角色。这个 PR 里还没有路由用它(第 4 节的能力分级在 PR 3)。
+- 停用(`disabled_at`)在这个 PR 里只有列和触发器;登录与会话检查停用状态和停用接口一起在 PR 2 做。
+- 附件路径在 PR 1–4 期间仍按旧布局读写,按账户分子目录的搬迁在 PR 5(第 10 节最后一条)。
+- `owner-scope.test.ts` 改用真的成员账户,外键照常开着。
