@@ -15,6 +15,10 @@
 //  4. 静态检查(第 3.4 节第 2 层):打包产物里不得出现加载被拒绝内置模块的写法(import / import() / require /
 //     createRequire / getBuiltinModule,含 node: 前缀与 /promises)、process.binding、process.dlopen、eval / new Function。
 //     只看字面量,不认普通字符串里的模块名;局限见 MODULE 模式上方的注释与 ADR 0040 第 3.4 节。
+//  5. Skill(ADR 0048 第 9 节):`instructionOnly` 与包内清单是否有 `entry` 一致;没有下架的最新版本的 Skill 与条目的
+//     `skills` 一致(条目只改 `skills`、或最新版本被下架时,也重新下载那个版本核对);Skill 的 description 与
+//     instructions 做中英文话术初筛(要求跳过或绕过审批、读取或输出密钥、把对话或数据发到外部、忽略之前的指令)。
+//     初筛只看关键词与模式,人工审核是最后一关;漏过的说明在运行时也拿不到任何额外权限(ADR 0048 第 4 节)。
 // 需要先构建 packages/shared 与 packages/tools(`pnpm build`);索引仓库的工作流见 scripts/plugins/README.md。
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
@@ -90,6 +94,80 @@ export function staticScan(files) {
     return findings;
 }
 
+// Skill 说明的话术初筛(ADR 0048 第 9 节):命中任何一条就拦下,由人工确认后改写说明。宁可多报,不可漏报常见写法。
+const INSTRUCTION_PATTERNS = [
+    [
+        /\b(?:skip|bypass|avoid|disable|ignore|circumvent|get around|work around)\b[^.\n]{0,40}\b(?:approvals?|confirmations?|approval cards?|permission prompts?)\b/i,
+        'asks to skip or bypass approval',
+    ],
+    [
+        /\bapprove\b[^.\n]{0,20}\b(?:automatically|by itself|on (?:its|your) own|everything|all)\b/i,
+        'asks to approve automatically',
+    ],
+    [/\bauto[- ]?approv/i, 'asks to approve automatically'],
+    [
+        /\bwithout (?:asking|approval|confirmation|telling) (?:the )?(?:user|owner|them)?/i,
+        'asks to act without asking the user',
+    ],
+    [/\bsecrets?\.ya?ml(?:\.enc|\.migrated)?\b|\bmaster[- ]key\b|\.env\b/i, 'mentions a secrets file'],
+    [
+        /\b(?:read|print|show|output|reveal|send|copy|dump|export|leak)\b[^.\n]{0,40}\b(?:secrets?|api[- ]?keys?|passwords?|tokens?|private keys?|credentials?|environment variables?)\b/i,
+        'asks to read or output secrets',
+    ],
+    [
+        /\b(?:send|post|upload|forward|exfiltrate|leak|transmit|copy)\b[^.\n]{0,60}\b(?:conversation|chat history|messages|memory|memories|files?|e-?mails?)\b[^.\n]{0,40}\b(?:to|into)\b[^.\n]{0,20}(?:https?:\/\/|www\.|[a-z0-9-]+\.[a-z]{2,}\/)/i,
+        'asks to send data to an outside address',
+    ],
+    [
+        /\b(?:ignore|disregard|override|forget)\b[^.\n]{0,30}\b(?:previous|prior|system|your|all)\b[^.\n]{0,20}\b(?:instructions|rules|prompt)\b/i,
+        'asks to ignore the system rules',
+    ],
+    // 中文写法:中文没有词边界,用字符匹配,中间最多隔 20 个字(不跨句号和换行)
+    [
+        /(?:跳过|绕过|绕开|无需|不需要|不用|免去|省略|关闭)[^。\n]{0,20}(?:审批|确认|授权|批准)|自动(?:通过|批准|确认|授权)/,
+        'asks to skip or bypass approval',
+    ],
+    [
+        /不(?:用|必|要|需要)[^。\n]{0,6}(?:询问|告诉|征求|通知|问)[^。\n]{0,6}(?:用户|业主|主人|对方)/,
+        'asks to act without asking the user',
+    ],
+    [
+        /(?:读取|读出|输出|打印|显示|发送|导出|泄露|复制|告诉)[^。\n]{0,20}(?:密钥|密码|令牌|凭据|凭证|私钥|API ?Key|环境变量)|(?:密钥|密码|令牌|凭据|凭证|私钥|API ?Key)[^。\n]{0,10}(?:打印|输出|显示|发送|导出|泄露|发给|贴)/i,
+        'asks to read or output secrets',
+    ],
+    [
+        /(?:(?:发送|上传|转发|同步|复制|发给)[^。\n]{0,20}(?:对话|聊天记录|消息|记忆|文件|邮件)|(?:对话|聊天记录|消息|记忆|文件|邮件)[^。\n]{0,20}(?:发送|上传|转发|同步|复制|发给))[^。\n]{0,20}(?:https?:\/\/|www\.|[a-z0-9-]+\.[a-z]{2,}\/)/i,
+        'asks to send data to an outside address',
+    ],
+    [
+        /(?:忽略|无视|忘掉|忘记|不要理会)[^。\n]{0,10}(?:之前|上面|以上|前面|系统|所有|全部)[^。\n]{0,10}(?:指令|规则|提示|指示|要求)/,
+        'asks to ignore the system rules',
+    ],
+];
+
+/** Skill 说明与 description 的话术初筛;`files` 是 { path, text }。返回每个命中项的描述。 */
+export function instructionScan(files) {
+    const findings = [];
+    for (const { path, text } of files) {
+        text.split('\n').forEach((line, i) => {
+            for (const [pattern, label] of INSTRUCTION_PATTERNS) {
+                if (pattern.test(line)) findings.push(`${path}:${i + 1}: ${label}`);
+            }
+        });
+    }
+    return findings;
+}
+
+/** 包内清单的 Skill 要检查的文字:每个 description 和 instructions 文件(路径已由清单 schema 限定在包内)。 */
+export function skillTexts(manifest, dir) {
+    const out = [];
+    (manifest.skills ?? []).forEach((skill, i) => {
+        out.push({ path: `plugin.json skills.${i}.description`, text: skill.description });
+        out.push({ path: skill.instructions, text: readFileSync(join(dir, skill.instructions), 'utf8') });
+    });
+    return out;
+}
+
 /** 递归规范化(对象键排序,数组按元素文本排序),用来比较两份权限清单。 */
 export function canonical(value) {
     if (Array.isArray(value)) return `[${value.map(canonical).sort().join(',')}]`;
@@ -103,7 +181,7 @@ export function canonical(value) {
     return JSON.stringify(value);
 }
 
-const IMMUTABLE = ['url', 'size', 'sha256', 'publishedAt'];
+const IMMUTABLE = ['url', 'size', 'sha256', 'publishedAt', 'instructionOnly'];
 
 /** 与上一版索引比较(纯函数):返回问题列表,并列出需要重新下载核对的 { id, version }。 */
 export function compareIndexes(previous, next) {
@@ -199,7 +277,20 @@ export function listScripts(dir, base = dir) {
 }
 
 /**
- * 完整检查。`deps` 提供与客户端相同的实现:{ PluginIndex, extractTgz, validateStagedPackage };
+ * 条目的 `skills` 对应的版本:没有下架的最新版本(按语义化版本),也就是市场页默认展示的那个;
+ * 全部下架时取最新版本。
+ */
+export function skillsReference(plugin, deps) {
+    const parse = deps.parseSemver;
+    const live = plugin.versions.filter((v) => !v.yanked);
+    const pool = live.length > 0 ? live : plugin.versions;
+    return pool.reduce((best, v) => (deps.compareSemver(parse(v.version), parse(best.version)) > 0 ? v : best));
+}
+
+const skillList = (skills) => canonical((skills ?? []).map((s) => ({ id: s.id, description: s.description })));
+
+/**
+ * 完整检查。`deps` 提供与客户端相同的实现:{ PluginIndex, extractTgz, validateStagedPackage, parseSemver, compareSemver };
  * `download(url, allowedHosts)` 默认真的下载,测试里可以替换。
  */
 export async function checkIndex({
@@ -235,6 +326,20 @@ export async function checkIndex({
     if (Date.parse(next.expiresAt) <= Date.parse(next.generatedAt)) errors.push('expiresAt must be after generatedAt');
     const compared = compareIndexes(previous, next);
     errors.push(...compared.errors);
+    // 条目的 skills 变了,或者对应的版本变了(例如最新版本被下架),没有新版本也要重新核对那个版本
+    if (previous) {
+        const before = new Map(previous.plugins.map((p) => [p.id, p]));
+        for (const plugin of next.plugins) {
+            const old = before.get(plugin.id);
+            if (!old) continue;
+            const reference = skillsReference(plugin, deps);
+            const moved = skillsReference(old, deps).version !== reference.version;
+            if (skillList(plugin.skills) === skillList(old.skills) && !moved) continue;
+            if (!compared.changed.some((c) => c.plugin.id === plugin.id && c.version.version === reference.version)) {
+                compared.changed.push({ plugin, version: reference });
+            }
+        }
+    }
 
     const checked = [];
     for (const { plugin, version } of compared.changed) {
@@ -263,6 +368,20 @@ export async function checkIndex({
                 errors.push(`${label}: plugin.json permissions do not match the index entry`);
             }
             for (const finding of staticScan(listScripts(target))) errors.push(`${label}: ${finding}`);
+            const instructionOnly = manifest.entry === undefined;
+            if (instructionOnly !== version.instructionOnly) {
+                errors.push(
+                    `${label}: instructionOnly must be ${instructionOnly} (plugin.json ${instructionOnly ? 'has no' : 'has an'} entry)`,
+                );
+            }
+            if (skillsReference(plugin, deps).version === version.version) {
+                if (skillList(plugin.skills) !== skillList(manifest.skills)) {
+                    errors.push(`${label}: skills do not match the skills in plugin.json`);
+                }
+            }
+            for (const finding of instructionScan(skillTexts(manifest, target))) {
+                errors.push(`${label}: ${finding} (rewrite the skill text; a maintainer reviews it either way)`);
+            }
         } catch (error) {
             errors.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
@@ -280,6 +399,8 @@ async function loadDeps() {
         const market = await load('packages/tools/dist/plugins/market-entry.js');
         return {
             PluginIndex: shared.PluginIndex,
+            parseSemver: shared.parseSemver,
+            compareSemver: shared.compareSemver,
             extractTgz: market.extractTgz,
             validateStagedPackage: market.validateStagedPackage,
         };

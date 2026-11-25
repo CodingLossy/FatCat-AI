@@ -272,6 +272,7 @@ export class MarketService {
                         publishedAt: v.publishedAt,
                         permissions: v.permissions,
                         compatible: satisfiesEngine(context.coreVersion, v.engines.fatcat),
+                        instructionOnly: v.instructionOnly,
                     }));
                 if (versions.length === 0) continue;
                 plugins.push({
@@ -284,6 +285,7 @@ export class MarketService {
                     homepage: entry.homepage ?? null,
                     versions,
                     installed: context.installed(entry.id),
+                    skills: (entry.skills ?? []).map((skill) => ({ id: skill.id, description: skill.description })),
                 });
             }
         }

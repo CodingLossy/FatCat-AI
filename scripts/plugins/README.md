@@ -52,7 +52,7 @@ You can also copy `sign-index.mjs` on its own to the machine that holds the key:
 
 - `index.json` matches the same `PluginIndex` schema the client uses; ids are unique; every `url` is `https:` on a host in `downloadHosts`.
 - Compared with the previous index: no plugin or version is removed (withdraw with `"yanked": true` and a `yankedReason`),
-  a published version's `url`, `size`, `sha256`, `engines`, `permissions` and `publishedAt` never change, a withdrawn
+  a published version's `url`, `size`, `sha256`, `engines`, `permissions`, `instructionOnly` and `publishedAt` never change, a withdrawn
   version is never restored, `serial` never goes down and goes up whenever the content changes.
 - Every new version is downloaded again: the size and `sha256` must match, the archive must pass the same tar reader as
   the client (no symbolic links, `..`, drive letters, reserved Windows names, case-only duplicates, decompression
@@ -65,6 +65,15 @@ You can also copy `sign-index.mjs` on its own to the machine that holds the key:
   It reads literals only: a name built at run time, a `createRequire` result stored in a variable first, or a loader
   passed around as a value is not seen. The scan is a first filter before the human review; the preload hooks and the
   operating-system isolation in `docs/adr/0040-plugins-and-market.md` section 3.4 are what stop those at run time.
+- Skills (`docs/adr/0048-skills.md` section 9): a version's `instructionOnly` must be `true` exactly when its
+  `plugin.json` has no `entry`, and the plugin's `skills` (id and description) must equal the manifest `skills` of
+  the newest version that is not yanked (the newest version when all are yanked), which is the one the market page
+  shows. When an entry changes only its `skills`, or that version changes (for example the newest is yanked), the
+  version is downloaded and checked again even though no new version was added. Every skill's instructions file is screened for wording that asks to skip or bypass approvals,
+  approve without asking, read or print secrets (`secrets.yaml`, the master key, `.env`), send data to an outside
+  address, or ignore earlier instructions, in English and Chinese. A hit fails the check with the file and the rule.
+  The screen is keyword based: instructions that quote such phrases as examples are flagged too and the human reviewer
+  decides; a missed phrase still gets no extra permission at run time.
 
 ## Packing a plugin (plugin author)
 

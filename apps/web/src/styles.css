@@ -705,6 +705,19 @@ td .badge {
     margin-bottom: 1rem;
 }
 
+/* 确认卡上的工具集:整行宽,长列表不被截断 */
+.task-card .toolset {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.task-card .toolset textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+}
+
 .task-head {
     display: flex;
     flex-wrap: wrap;

@@ -76,6 +76,8 @@ export const PluginView = z.object({
     sourceRef: z.string(),
     /** 本地目录安装:未经市场审核、未签名。 */
     unreviewed: z.boolean(),
+    /** 纯指令插件(清单没有 `entry`,不起进程,ADR 0048):界面不显示运行状态和内存设置。旧服务器不返回。 */
+    instructionOnly: z.boolean().optional(),
     /** 验证市场索引用的公钥 id(市场安装);本地安装为 null。 */
     signedKeyId: z.string().nullable(),
     /** 市场把已安装的这个版本下架了:不自动卸载或停用,只在界面警告(第 5.2 节)。 */

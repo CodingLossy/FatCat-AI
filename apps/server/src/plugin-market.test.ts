@@ -108,10 +108,18 @@ interface VersionSpec {
     size?: number;
     yanked?: boolean;
     permissions?: unknown;
+    instructionOnly?: boolean;
 }
 
 function makeIndex(
-    opts: { serial?: number; expiresAt?: string; versions?: VersionSpec[]; market?: string; generatedAt?: string } = {},
+    opts: {
+        serial?: number;
+        expiresAt?: string;
+        versions?: VersionSpec[];
+        market?: string;
+        generatedAt?: string;
+        skills?: { id: string; description: string }[];
+    } = {},
 ) {
     const versions = (opts.versions ?? [{}]).map((v) => {
         const file = v.file ?? 'probe-0.1.0.tgz';
@@ -127,6 +135,7 @@ function makeIndex(
             publishedAt: '2026-11-18T00:00:00Z',
             yanked: v.yanked ?? false,
             yankedReason: v.yanked ? 'found a bug' : null,
+            ...(v.instructionOnly === undefined ? {} : { instructionOnly: v.instructionOnly }),
         };
     });
     return {
@@ -144,6 +153,7 @@ function makeIndex(
                 author: 'Test',
                 license: 'Apache-2.0',
                 versions,
+                ...(opts.skills ? { skills: opts.skills } : {}),
             },
         ],
     };
@@ -284,7 +294,12 @@ describe('插件市场', () => {
             expect(listing.markets[0]).toMatchObject({ id: 'official', state: 'ok', keyId: signer.keyId, serial: 1 });
             expect(listing.plugins).toHaveLength(1);
             expect(listing.plugins[0]).toMatchObject({ id: 'probe', installed: null });
-            expect(listing.plugins[0]?.versions[0]).toMatchObject({ version: '0.1.0', compatible: true });
+            expect(listing.plugins[0]?.versions[0]).toMatchObject({
+                version: '0.1.0',
+                compatible: true,
+                instructionOnly: false,
+            });
+            expect(listing.plugins[0]?.skills).toEqual([]);
 
             const res = await prepare();
             expect(res.status).toBe(200);
@@ -307,6 +322,7 @@ describe('插件市场', () => {
                 signedKeyId: signer.keyId,
                 unreviewed: false,
                 yanked: null,
+                instructionOnly: false,
             });
             expect(
                 PluginDetail.parse(await (await send('GET', '/api/v1/plugins/probe')).json()).protections.length,
@@ -314,6 +330,21 @@ describe('插件市场', () => {
             expect((await browse()).plugins[0]?.installed).toMatchObject({ version: '0.1.0' });
             await s.cleanup();
         }
+    });
+
+    it('索引里的技能与「纯指令」标记原样带到市场页(ADR 0048 第 9 节)', async () => {
+        publish(
+            makeIndex({
+                versions: [{ instructionOnly: true }],
+                skills: [{ id: 'minutes', description: 'Use when the user asks to turn notes into minutes' }],
+            }),
+        );
+        const { refresh } = await setup();
+        const [plugin] = (await refresh()).plugins;
+        expect(plugin?.versions[0]?.instructionOnly).toBe(true);
+        expect(plugin?.skills).toEqual([
+            { id: 'minutes', description: 'Use when the user asks to turn notes into minutes' },
+        ]);
     });
 
     it('签名错误、未知 keyId、serial 回退、过期索引都被拒绝,缓存里的旧索引继续可用并写 market-rejected', async () => {

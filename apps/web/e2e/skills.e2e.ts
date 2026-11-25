@@ -183,6 +183,13 @@ test('技能:设置页开关与模板、插件页的纯指令插件、代理页�
     const card = page.getByTestId('task-draft');
     await expect(card).toContainText('每日邮件摘要');
     await expect(card.getByLabel('任务可用的工具')).toHaveValue('mail.list, mail.read, mail.search, mail.summarize');
+    // 草稿来自模板:说明不说「由模型根据你的话生成」
+    await expect(card.getByTestId('draft-notice')).toContainText('来自技能或插件的任务模板');
+    await expect(card).toContainText('这是任务模板指定的工具集');
+    await expect(card).not.toContainText('由模型根据你的话');
+    // 工具集输入框整行宽,四个工具不被截断
+    const toolsBox = card.getByLabel('任务可用的工具');
+    expect(await toolsBox.evaluate((el: HTMLTextAreaElement) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
     await shot(page, 'skills-task-draft', card);
     type Tasks = { items: { name: string; status: string; policy: { toolSet?: string[] } }[] };
     const daily = async () =>
@@ -207,13 +214,67 @@ test('技能:设置页开关与模板、插件页的纯指令插件、代理页�
     await expect(confirm).toContainText('纯指令插件:不运行任何代码,只提供说明。');
     await expect(confirm.getByTestId('plugin-skills')).toContainText('会议纪要');
     await expect(confirm.getByTestId('plugin-skills')).toContainText('fs.read, fs.write');
+    await expect(confirm.getByTestId('plugin-protections')).toHaveCount(0);
     await shot(page, 'skills-plugin-confirm', confirm);
     await confirm.getByRole('checkbox').check();
     await confirm.getByRole('button', { name: '安装' }).click();
     const pluginCard = page.locator('[data-plugin="notes"]');
     await expect(pluginCard.getByTestId('plugin-skills')).toContainText('Use when the user asks to turn meeting notes');
     await expect(pluginCard).toContainText('已启用');
+    // 纯指令插件:有「纯指令」标记,没有「停止」按钮;管理面板(安装后自动展开)里没有内存设置
+    await expect(pluginCard.getByTestId('plugin-instruction-only')).toHaveText('纯指令');
+    await expect(pluginCard.getByRole('button', { name: '停止' })).toHaveCount(0);
+    await expect(pluginCard.getByTestId('plugin-manage')).toContainText('没有要运行的代码');
+    await expect(pluginCard.getByTestId('plugin-protections')).toHaveCount(0);
     await shot(page, 'skills-plugin-card', pluginCard);
+
+    // 市场页:索引带的技能与「纯指令」标记(签名索引的下载与验证由服务器测试覆盖,这里直接给出列表)
+    const listing = {
+        markets: [
+            {
+                id: 'official',
+                official: true,
+                state: 'ok',
+                keyId: 'k1',
+                serial: 1,
+                fetchedAt: '2026-11-25T00:00:00Z',
+                expiresAt: '2999-01-01T00:00:00Z',
+                error: null,
+            },
+        ],
+        plugins: [
+            {
+                market: 'official',
+                id: 'minutes-kit',
+                name: { en: 'Minutes kit', 'zh-CN': '纪要工具包' },
+                description: { en: 'Meeting minutes skill', 'zh-CN': '整理会议纪要的技能' },
+                author: 'Example',
+                license: 'MIT',
+                homepage: null,
+                versions: [
+                    {
+                        version: '1.0.0',
+                        engines: '>=1.2.0',
+                        size: 2048,
+                        publishedAt: '2026-11-20T00:00:00Z',
+                        permissions: { tools: [], net: [], secrets: [] },
+                        compatible: true,
+                        instructionOnly: true,
+                    },
+                ],
+                installed: null,
+                skills: [{ id: 'minutes', description: 'Use when the user asks to turn meeting notes into minutes' }],
+            },
+        ],
+    };
+    await page.route(/\/api\/v1\/plugins\/market(\/refresh)?$/, (route) => route.fulfill({ json: listing }));
+    await page.getByRole('tab', { name: '市场' }).click();
+    const marketSkills = page.getByTestId('market-skills');
+    await expect(marketSkills).toContainText('minutes');
+    await expect(marketSkills).toContainText('Use when the user asks to turn meeting notes');
+    await expect(page.getByTestId('market-instruction-only')).toHaveText('纯指令');
+    await shot(page, 'skills-market', marketSkills.locator('xpath=..'));
+    await page.unroute(/\/api\/v1\/plugins\/market(\/refresh)?$/);
 
     // 设置页里多了插件的技能,随插件启用或停用,没有自己的开关
     await openSkillSettings(page);
@@ -249,4 +310,27 @@ test('技能:设置页开关与模板、插件页的纯指令插件、代理页�
     await expect(page.getByTestId('skill-list').locator('[data-skill]')).toHaveCount(4);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await shot(page, 'skills-settings-mobile', page.getByTestId('skill-list'));
+
+    // 手机:模板草稿的确认卡,工具集输入框整行宽
+    await page
+        .getByTestId('skill-list')
+        .locator('[data-skill="mail-assistant"]')
+        .getByRole('button', { name: /建任务草稿:每日邮件摘要/ })
+        .click();
+    const phoneCard = page.getByTestId('task-draft');
+    const phoneTools = phoneCard.getByLabel('任务可用的工具');
+    await expect(phoneTools).toHaveValue('mail.list, mail.read, mail.search, mail.summarize');
+    expect(await phoneTools.evaluate((el: HTMLTextAreaElement) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await shot(page, 'skills-task-draft-mobile', phoneTools);
+    await phoneCard.getByRole('button', { name: '丢弃' }).click();
+    await expect(phoneCard).toHaveCount(0);
+
+    // 手机:市场页的技能列表与「纯指令」标记
+    await page.route(/\/api\/v1\/plugins\/market(\/refresh)?$/, (route) => route.fulfill({ json: listing }));
+    await page.goto(`${base}/plugins`);
+    await page.getByRole('tab', { name: '市场' }).click();
+    await expect(page.getByTestId('market-skills')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await shot(page, 'skills-market-mobile', page.getByTestId('market-skills').locator('xpath=../..'));
 });

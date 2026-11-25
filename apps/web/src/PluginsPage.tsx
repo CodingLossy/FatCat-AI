@@ -177,8 +177,13 @@ export function PluginsPage() {
                     {prepared.upgrade ? <UpgradePanel prepared={prepared} /> : null}
                     <h4>{t('plugins.permissions')}</h4>
                     <PermissionList permissions={prepared.manifest.permissions} />
-                    <h4>{t('plugins.protections')}</h4>
-                    <ProtectionTable rows={prepared.protections} />
+                    {/* 纯指令插件没有进程:进程隔离那张表对它没有意义 */}
+                    {prepared.manifest.entry === undefined ? null : (
+                        <>
+                            <h4>{t('plugins.protections')}</h4>
+                            <ProtectionTable rows={prepared.protections} />
+                        </>
+                    )}
                     {prepared.unreviewed ? <p className="warn">{t('plugins.unreviewedWarn')}</p> : null}
                     {prepared.market ? (
                         <p className="small muted" data-testid="plugin-signed">
@@ -425,6 +430,11 @@ function PluginCard({
                         {t(`plugins.state.${plugin.state}`)}
                     </span>
                     {plugin.unreviewed ? <span className="badge">{t('plugins.unreviewed')}</span> : null}
+                    {plugin.instructionOnly ? (
+                        <span className="badge" data-testid="plugin-instruction-only">
+                            {t('plugins.instructionOnlyBadge')}
+                        </span>
+                    ) : null}
                     {plugin.sourceKind === 'market' ? (
                         <span className="badge" title={plugin.signedKeyId ?? undefined}>
                             {t('plugins.fromMarket')}
@@ -438,7 +448,9 @@ function PluginCard({
                     <p className="small muted">{pickText(plugin.description, locale)}</p>
                     <p className="small muted">
                         {plugin.id} · {plugin.author} · {plugin.license}
-                        {plugin.state === 'enabled' ? ` · ${t(`plugins.run.${plugin.run.state}`)}` : ''}
+                        {plugin.state === 'enabled' && !plugin.instructionOnly
+                            ? ` · ${t(`plugins.run.${plugin.run.state}`)}`
+                            : ''}
                         {rss
                             ? ` · ${t('plugins.rss', { rss })}${plugin.run.rssSource === 'self-reported' ? ` (${t('plugins.selfReported')})` : ''}`
                             : ''}
@@ -457,13 +469,15 @@ function PluginCard({
                     >
                         {plugin.state === 'enabled' ? t('plugins.disable') : t('plugins.enable')}
                     </button>
-                    <button
-                        type="button"
-                        disabled={busy || plugin.state !== 'enabled'}
-                        onClick={() => void act(() => api.plugins.stop(plugin.id))}
-                    >
-                        {t('plugins.stop')}
-                    </button>
+                    {plugin.instructionOnly ? null : (
+                        <button
+                            type="button"
+                            disabled={busy || plugin.state !== 'enabled'}
+                            onClick={() => void act(() => api.plugins.stop(plugin.id))}
+                        >
+                            {t('plugins.stop')}
+                        </button>
+                    )}
                     <button type="button" onClick={onToggle} aria-expanded={expanded}>
                         {expanded ? t('plugins.hideManage') : t('plugins.manage')}
                     </button>
@@ -509,7 +523,11 @@ function PluginManage({
         <div className="plugin-manage" data-testid="plugin-manage">
             {plugin.permissions.secrets.length > 0 ? <SecretBindings plugin={plugin} busy={busy} act={act} /> : null}
             {plugin.settingsSchema ? <SettingsForm plugin={plugin} busy={busy} act={act} /> : null}
-            <RuntimeForm plugin={plugin} busy={busy} act={act} />
+            {plugin.instructionOnly ? (
+                <p className="small muted">{t('plugins.instructionOnlyRun')}</p>
+            ) : (
+                <RuntimeForm plugin={plugin} busy={busy} act={act} />
+            )}
             {plugin.taskTemplates.length > 0 && plugin.state === 'enabled' ? (
                 <div data-testid="plugin-templates">
                     <h4>{t('plugins.templatesTitle')}</h4>
@@ -575,7 +593,7 @@ function PluginManage({
             ) : null}
             <h4>{t('plugins.permissions')}</h4>
             <PermissionList permissions={plugin.permissions} />
-            {detail ? (
+            {detail && !plugin.instructionOnly ? (
                 <>
                     <h4>{t('plugins.protections')}</h4>
                     <ProtectionTable rows={detail.protections} />

@@ -3,10 +3,9 @@
 
 // Skill 界面的纯函数(ADR 0048 第 3、7 节):代理页的 Skill 状态、勾选上限、设置页的目录上限提示。
 // 只用来显示;Skill 能不能用、开出哪些工具,以服务器在运行时算出的交集为准。
-import { SKILL_CATALOG_MAX, type SkillInfo } from '@fatcat-ai/shared';
+import { AGENT_MAX_SKILLS, SKILL_CATALOG_MAX, type SkillInfo } from '@fatcat-ai/shared';
 
-/** 代理最多自动使用的 Skill 个数(与 shared 的 AgentSkills 一致)。 */
-export const AGENT_MAX_SKILLS = 8;
+export { AGENT_MAX_SKILLS };
 
 /** 两个工具集条目是否有共同的工具:相同,或一方是另一方的前缀(`fs.` 覆盖 `fs.read`)。 */
 export function entriesOverlap(a: string, b: string): boolean {

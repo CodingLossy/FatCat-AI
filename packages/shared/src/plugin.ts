@@ -664,6 +664,11 @@ export const PluginIndexVersion = z
         publishedAt: IsoDateTime,
         yanked: z.boolean().default(false),
         yankedReason: z.string().max(500).nullable().default(null),
+        /**
+         * 纯指令插件(清单没有 `entry`,不起进程,ADR 0048 第 2、9 节);市场页据此标「纯指令」。
+         * 索引仓库 CI 核对它与包内清单一致;旧索引没有这个字段时按 false 处理。
+         */
+        instructionOnly: z.boolean().default(false),
         /** 预留的作者级签名;M7 忽略。 */
         signatures: z.array(z.unknown()).optional(),
     })
@@ -672,6 +677,13 @@ export const PluginIndexVersion = z
         path: ['yankedReason'],
     });
 export type PluginIndexVersion = z.infer<typeof PluginIndexVersion>;
+
+/** 索引条目里一个 Skill 的摘要(ADR 0048 第 9 节):市场页展示用,内容与最新版本清单里的 Skill 一致。 */
+export const PluginIndexSkill = z.strictObject({
+    id: PluginSkillId,
+    description: z.string().trim().min(1).max(200),
+});
+export type PluginIndexSkill = z.infer<typeof PluginIndexSkill>;
 
 export const PluginIndexEntry = z.strictObject({
     id: PluginId,
@@ -686,6 +698,12 @@ export const PluginIndexEntry = z.strictObject({
         .max(200)
         .refine((versions) => unique(versions, (v) => v.version), 'duplicate version'),
     licensing: PluginLicensing.optional(),
+    /** 最新版本带的 Skill(可选,旧索引没有);索引仓库 CI 核对它与最新版本的清单一致。 */
+    skills: z
+        .array(PluginIndexSkill)
+        .max(PLUGIN_MAX_SKILLS)
+        .refine((skills) => unique(skills, (s) => s.id), 'duplicate skill id')
+        .optional(),
 });
 export type PluginIndexEntry = z.infer<typeof PluginIndexEntry>;
 

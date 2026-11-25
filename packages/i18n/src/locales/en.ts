@@ -213,6 +213,8 @@ export const en: Record<Key, string> = {
     'tasks.draftTitle': 'Confirm this task',
     'tasks.draftNotice':
         'This is only a draft and will not run until you confirm. The name and prompt were written by the model from your sentence; please check them.',
+    'tasks.draftNoticeTemplate':
+        'This is only a draft and will not run until you confirm. The name, prompt and tool set come from a skill or plugin task template; please check them.',
     'tasks.draftConfirm': 'Confirm and enable',
     'tasks.draftDiscard': 'Discard',
     'tasks.create': 'Create',
@@ -257,6 +259,8 @@ export const en: Record<Key, string> = {
     'tasks.toolset.placeholder': 'For example kb.search, web. (empty = no limit)',
     'tasks.toolset.hint':
         'Tool names, or prefixes ending in a dot (web. means every web tool), separated by commas. Empty means no limit. A tool set only narrows what the task can use; it never widens authorization, so tools that need approval still need it.',
+    'tasks.toolset.fromTemplate':
+        'This tool set comes from the task template; please check it. If the task needs a tool that is not listed, the run fails with "unknown tool". Clear it for no limit.',
     'tasks.toolset.suggested':
         'The model suggested this tool set from your sentence; please check it. If the task needs a tool that is not listed, the run fails with "unknown tool". Clear it for no limit.',
     'tasks.reason.task_toolset_unknown': 'The tool set contains a tool name or prefix that does not exist.',
@@ -1185,6 +1189,8 @@ export const en: Record<Key, string> = {
     'skills.templateHint': 'Creates a draft on the Tasks page. It only runs after you confirm it there.',
     'plugins.skills': 'Skills in this plugin',
     'plugins.instructionOnly': 'Instruction-only plugin: it runs no code and only provides instructions.',
+    'plugins.instructionOnlyBadge': 'Instruction-only',
+    'plugins.instructionOnlyRun': 'Nothing to run: this plugin has no code, so it has no process or memory settings.',
     'agents.skills': 'Skills',
     'agents.skillsHint':
         'Used automatically when this agent starts a run (up to {max}). A skill only adds tools that are also in the tool set above.',
