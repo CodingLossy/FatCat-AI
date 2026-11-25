@@ -1076,10 +1076,10 @@ export function ChatView({
         const phase: 'idle' | 'listening' | 'heard' | 'thinking' | 'speaking' = conversation.active
             ? conversation.speech
                 ? 'heard'
-                : live || voiceMode === 'transcribing'
-                  ? 'thinking'
-                  : localVoice === 'speaking' || shown.state === 'speaking'
-                    ? 'speaking'
+                : localVoice === 'speaking' || shown.state === 'speaking'
+                  ? 'speaking'
+                  : live || voiceMode === 'transcribing'
+                    ? 'thinking'
                     : 'listening'
             : recordingNow
               ? 'listening'
