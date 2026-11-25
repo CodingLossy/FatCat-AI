@@ -19,6 +19,8 @@ import {
 import { api, errorText } from './api.js';
 import { ApprovalPanel } from './ApprovalPanel.js';
 import { BrowserPanel } from './BrowserPanel.js';
+import { CodePanel } from './CodePanel.js';
+import { buildCodeView } from './code-panel.js';
 import { browserController } from './browser-session.js';
 import { ChatView, type ChatActivity } from './ChatView.js';
 import { FileTree, PreviewBody } from './FilePanel.js';
@@ -85,6 +87,7 @@ const SIDE_PANELS: { id: WorkbenchPanel; icon: IconName; label: Key }[] = [
     { id: 'mail', icon: 'mail', label: 'nav.mail' },
     { id: 'memory', icon: 'brain', label: 'nav.memory' },
     { id: 'browser', icon: 'globe', label: 'wb.rail.browser' },
+    { id: 'code', icon: 'terminal', label: 'wb.rail.code' },
 ];
 
 const PAGE_LINKS: { to: Route; icon: IconName; label: Key }[] = [
@@ -222,6 +225,10 @@ export function Workbench({
     const workspace = useMemo(() => buildWorkspace(tools), [tools]);
     const write = useMemo(() => latestWrite(tools), [tools]);
     const page = useMemo(() => latestFetchedPage(tools), [tools]);
+    const codeEnabled = settings.code?.enabled === true;
+    const codeProjects = settings.code?.projects;
+    const projects = useMemo(() => codeProjects ?? [], [codeProjects]);
+    const code = useMemo(() => buildCodeView(tools, projects), [tools, projects]);
     // 桌面壳里有可控制的浏览器面板;纯网页和手机上为 null,继续显示文字卡片
     const browser = browserController();
     useEffect(() => {
@@ -255,8 +262,8 @@ export function Workbench({
     useEffect(() => {
         // 手机上面板会盖住对话,不随工具调用自动打开,只在点标签时打开
         if (narrow) return;
-        dispatch({ type: 'live', runId, toolName: latestName, callId: latestCallId, input: latestInput });
-    }, [narrow, runId, latestName, latestCallId, latestInput]);
+        dispatch({ type: 'live', runId, toolName: latestName, callId: latestCallId, input: latestInput, projects });
+    }, [narrow, runId, latestName, latestCallId, latestInput, projects]);
 
     // 运行结束后 8 秒自动收起;固定、有待审批、或又开始新一轮时不收
     const autoClose = shouldAutoClose(panel, runActive, approvals);
@@ -338,6 +345,7 @@ export function Workbench({
             { id: 'close-panel', label: t('wb.cmd.closePanel'), keywords: 'close collapse hide panel', run: close },
             { id: 'sidebar', label: t('wb.cmd.sidebar'), keywords: 'sidebar collapse expand', run: toggleSidebar },
             { id: 'browser', label: t('wb.cmd.panel.browser'), keywords: 'browser', run: pin('browser') },
+            { id: 'code', label: t('wb.cmd.panel.code'), keywords: 'code git commits diff tests', run: pin('code') },
             { id: 'tasks', label: t('nav.tasks'), keywords: 'tasks', run: go({ name: 'tasks' }) },
             { id: 'plugins', label: t('nav.plugins'), keywords: 'plugins', run: go({ name: 'plugins' }) },
             { id: 'agents', label: t('nav.agents'), keywords: 'agents', run: go({ name: 'agents' }) },
@@ -514,19 +522,29 @@ export function Workbench({
         : sessions.find((session) => session.id === sessionId)?.title || t('nav.newChat');
 
     const sidePanels = SIDE_PANELS.filter((item) =>
-        // 记忆并入「知识」入口;手机上文件和浏览器在底部标签栏里
-        narrow ? item.id === 'changes' : item.id !== 'memory',
+        // 记忆并入「知识」入口;手机上文件、浏览器和代码在底部标签栏里;代码只在设置里打开后显示
+        narrow ? item.id === 'changes' : item.id !== 'memory' && (item.id !== 'code' || codeEnabled),
     );
     const pageLinks = narrow ? NARROW_PAGE_LINKS : PAGE_LINKS;
-    type TabId = 'chat' | 'files' | 'browser' | 'settings';
+    type TabId = 'chat' | 'files' | 'browser' | 'code' | 'settings';
     const tabs: { id: TabId; icon: IconName; label: string; on: boolean }[] = [
         { id: 'chat', icon: 'chat', label: t('wb.tab.chat'), on: !pageView && !panel.open },
         { id: 'files', icon: 'files', label: t('wb.rail.files'), on: panel.open && panel.panel === 'files' },
         { id: 'browser', icon: 'globe', label: t('wb.rail.browser'), on: panel.open && panel.panel === 'browser' },
+        ...(codeEnabled
+            ? [
+                  {
+                      id: 'code' as const,
+                      icon: 'terminal' as const,
+                      label: t('wb.rail.code'),
+                      on: panel.open && panel.panel === 'code',
+                  },
+              ]
+            : []),
         { id: 'settings', icon: 'gear', label: t('nav.settings'), on: route.name === 'settings' && !panel.open },
     ];
     const runTab = (id: TabId) => {
-        if (id === 'files' || id === 'browser') {
+        if (id === 'files' || id === 'browser' || id === 'code') {
             dispatch({ type: 'pin', panel: id });
             return;
         }
@@ -918,6 +936,7 @@ export function Workbench({
                                 )
                             ) : null}
                             {panel.panel === 'mail' ? <MailPage key={panel.opened} /> : null}
+                            {panel.panel === 'code' ? <CodePanel view={code} /> : null}
                             {panel.panel === 'memory' ? (
                                 <MemoryPage key={panel.opened} settings={settings} onSettings={onSettings} />
                             ) : null}

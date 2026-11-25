@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { api, errorText } from './api.js';
 import { ApprovalActions } from './ApprovalActions.js';
 import { useI18n } from './i18n.js';
+import { visibleText } from './visualizers/sanitize.js';
 import type { LiveTool } from './live-turn.js';
 import { DiffView } from './visualizers/DiffView.js';
 import { MailCard, MailDraftCard, MAIL_TEXT_TOOLS } from './visualizers/MailCard.js';
@@ -48,6 +49,7 @@ export function ToolCard({ tool, live = false }: { tool: LiveTool; live?: boolea
             <div className="tool-title">{t('tool.call', { name: tool.name })}</div>
             {tool.approval ? <p className="tool-summary">{tool.approval.summary}</p> : null}
             {pending ? <ApprovalWarnings warnings={tool.approval?.warnings} /> : null}
+            {tool.approval && tool.name === 'code.run' ? <AddedArgs input={tool.input} /> : null}
             {pending && tool.name === 'fs.write' ? (
                 <DiffView preview={tool.approval?.preview} fallbackContent={contentOf(tool.input)} />
             ) : null}
@@ -91,6 +93,27 @@ export function ToolCard({ tool, live = false }: { tool: LiveTool; live?: boolea
                 )
             ) : null}
         </div>
+    );
+}
+
+/**
+ * code.run 的审批卡:助手在登记的命令之后追加的参数单独高亮(#132 X 的建议),
+ * 例如登记的是 `git` 时,追加的 `-c`、`--config=` 会改变命令的行为。
+ */
+function AddedArgs({ input }: { input: unknown }) {
+    const { t } = useI18n();
+    const args = (input as { args?: unknown } | null)?.args;
+    const list = Array.isArray(args) ? args.filter((a): a is string => typeof a === 'string') : [];
+    if (list.length === 0) return null;
+    return (
+        <p className="small added-args" data-testid="added-args">
+            {t('tool.addedArgs')}{' '}
+            {list.map((arg, i) => (
+                <code key={i} className="added-arg">
+                    {visibleText(arg)}
+                </code>
+            ))}
+        </p>
     );
 }
 

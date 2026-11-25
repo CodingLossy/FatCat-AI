@@ -10,3 +10,14 @@ docs/plan
 apps/server/openapi
 .astro
 docs/design/prototype/index.html
+# apps/docs 构建时从仓库文档生成的页面(见 apps/docs/.gitignore)
+apps/docs/src/content/docs/guides/docker.md
+apps/docs/src/content/docs/en/guides/docker.md
+apps/docs/src/content/docs/guides/desktop.md
+apps/docs/src/content/docs/en/guides/desktop.md
+apps/docs/src/content/docs/guides/plugins.md
+apps/docs/src/content/docs/en/guides/plugins.md
+apps/docs/src/content/docs/changelog.md
+apps/docs/src/content/docs/en/changelog.md
+apps/docs/src/content/docs/reference/
+apps/docs/src/content/docs/en/reference/

@@ -5,6 +5,7 @@
 // 以及「面板跟随最近一次工具调用,手动点导轨则固定,直到下一轮运行」。
 
 import type { Message } from '@fatcat-ai/shared';
+import { type CodeProjectRef, isCodeTool } from './code-panel.js';
 import type { LiveTool, LiveTurn } from './live-turn.js';
 
 export type ToolRowStatus = 'running' | 'done' | 'failed' | 'waiting';
@@ -66,10 +67,18 @@ export function visibleToolRows(
     return { rows: rows.slice(rows.length - limit), hidden: rows.length - limit };
 }
 
-export type WorkbenchPanel = 'files' | 'changes' | 'mail' | 'memory' | 'browser';
+export type WorkbenchPanel = 'files' | 'changes' | 'mail' | 'memory' | 'browser' | 'code';
 
-/** 工具名对应的面板;不认识的工具不切换(聊天里仍用原来的卡片)。 */
-export function panelForTool(name: string): WorkbenchPanel | null {
+/**
+ * 工具对应的面板;不认识的工具不切换(聊天里仍用原来的卡片)。
+ * git.* 与 code.run,以及路径在已登记项目之内的 fs 工具,打开「代码」面板(ADR 0049 第 4 节)。
+ */
+export function panelForTool(
+    name: string,
+    input?: unknown,
+    projects: readonly CodeProjectRef[] = [],
+): WorkbenchPanel | null {
+    if (isCodeTool({ name, input }, projects)) return 'code';
     if (name === 'fs.list' || name === 'fs.search' || name === 'fs.read') return 'files';
     if (name === 'fs.write' || name === 'fs.move') return 'changes';
     if (name.startsWith('mail.')) return 'mail';
@@ -101,7 +110,14 @@ export type PanelAction =
     | { type: 'pin'; panel: WorkbenchPanel }
     | { type: 'close' }
     | { type: 'auto-close' }
-    | { type: 'live'; runId: string | null; toolName: string | null; callId?: string | null; input?: unknown };
+    | {
+          type: 'live';
+          runId: string | null;
+          toolName: string | null;
+          callId?: string | null;
+          input?: unknown;
+          projects?: readonly CodeProjectRef[];
+      };
 
 /** 运行结束后面板自动收起前的等待时间。 */
 export const AUTO_CLOSE_MS = 8000;
@@ -117,7 +133,7 @@ export function uiPanelRequest(input: unknown): { action: 'open'; panel: Workben
     return null;
 }
 
-const UI_PANELS: readonly WorkbenchPanel[] = ['files', 'changes', 'mail', 'memory', 'browser'];
+const UI_PANELS: readonly WorkbenchPanel[] = ['files', 'changes', 'mail', 'memory', 'browser', 'code'];
 
 /**
  * 新的 runId 先取消固定和「本轮已收起」,再按本轮最近一个工具切换并打开面板。
@@ -150,7 +166,7 @@ export function reducePanel(state: PanelState, action: PanelAction): PanelState 
             : { ...next, open: false, pinned: false, dismissedRun: next.runId, uiCallId: action.callId };
     }
     if (next.pinned || !action.toolName) return next;
-    const panel = panelForTool(action.toolName);
+    const panel = panelForTool(action.toolName, action.input, action.projects);
     if (!panel) return next;
     if (next.dismissedRun !== null && next.dismissedRun === next.runId) return { ...next, panel };
     return { ...next, panel, open: true };

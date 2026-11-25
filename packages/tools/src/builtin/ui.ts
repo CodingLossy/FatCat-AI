@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { ToolDefinition } from '../types.js';
 
 /** 右侧面板里能打开的内容;与 Web 工作台的 panelForTool 对应。 */
-export const UI_PANELS = ['files', 'changes', 'mail', 'memory', 'browser'] as const;
+export const UI_PANELS = ['files', 'changes', 'mail', 'memory', 'browser', 'code'] as const;
 export type UiPanel = (typeof UI_PANELS)[number];
 
 const Input = z.discriminatedUnion('action', [
@@ -22,7 +22,7 @@ export function createUiPanelTool(): ToolDefinition {
         name: 'ui.panel',
         description:
             'Open or close the side panel of the workbench window. ' +
-            'Use action "open" with a panel (files, changes, mail, memory or browser) to show it, ' +
+            'Use action "open" with a panel (files, changes, mail, memory, browser or code) to show it, ' +
             'or action "close" to collapse the panel. It only changes what is shown; it reads and changes nothing.',
         parameters: {
             type: 'object',
