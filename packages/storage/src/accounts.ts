@@ -221,6 +221,36 @@ export function createAccountRepository(conn: Connection, now: () => Date) {
             return guarded(() => q().remove.run(id).changes);
         },
 
+        /**
+         * 本机离线改密码(`auth reset-password`,ADR 0053 第 14 节 PR 3):按用户名找到账户,设新密码,
+         * 作废它的全部凭据(TOTP 保留),写一条审计。用户名不存在时返回 null,什么都不改。
+         */
+        setPasswordByUsername(
+            username: string,
+            passwordHash: string,
+        ): { ownerId: string; role: OwnerRole; disabled: boolean } | null {
+            return sqlite.transaction(() => {
+                const owner = sqlite
+                    .prepare<[string], { id: string; role: OwnerRole; disabledAt: string | null }>(
+                        'SELECT id, role, disabled_at AS "disabledAt" FROM owners WHERE username = ?',
+                    )
+                    .get(username);
+                if (!owner) return null;
+                const at = iso();
+                q().setPassword.run(passwordHash, at, owner.id);
+                revokeCredentials(owner.id);
+                // audit_log.action 有 CHECK 约束:和 auth.reset-totp 一样记为 tool-call + 固定名称
+                sqlite
+                    .prepare(
+                        `INSERT INTO audit_log (id, owner_id, at, action, tool_name, risk, call_id, run_id, session_id,
+                           decision, outcome, summary, input_digest, error)
+                         VALUES (?, ?, ?, 'tool-call', 'auth.reset-password', NULL, NULL, NULL, NULL, NULL, 'ok', ?, NULL, NULL)`,
+                    )
+                    .run(newId(now()), owner.id, at, '密码已本机重置');
+                return { ownerId: owner.id, role: owner.role, disabled: owner.disabledAt !== null };
+            })();
+        },
+
         revokeCredentials,
     };
 }

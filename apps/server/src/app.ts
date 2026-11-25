@@ -401,7 +401,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
                 onChanged: () => embeddings.kick(),
             }),
         )
-        .route('/', embeddingRoutes({ embeddings }))
+        .route('/', embeddingRoutes({ embeddings, repos }))
         .route(
             '/',
             settingsRoutes({
@@ -464,7 +464,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
                 redact: deps.redact ?? ((text) => text),
             }),
         )
-        .route('/', pluginRoutes({ plugins }))
+        .route('/', pluginRoutes({ plugins, repos }))
         .route(
             '/',
             mailRoutes({ repos, secrets: deps.secrets, mail, items: deps.items, ...(deps.kb ? { kb: deps.kb } : {}) }),

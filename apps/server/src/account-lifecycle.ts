@@ -4,7 +4,7 @@
 // 账户停用、启用、删除时让运行中的部分跟上(ADR 0053 第 2 节):库里的凭据由 accounts 仓储作废,
 // 这里关掉已建立的 WebSocket、停掉进行中的运行、停止渠道与 MCP 服务器、让定时任务重新排期;
 // 删除时再从 secrets.yaml 删掉这个账户的密钥行(成员前缀 `U<ownerId>_` 与 QQ 渠道的 AppSecret)。
-// 后台启动时的筛选(停用账户的任务、渠道、邮箱、MCP 不启动)在仓储的 SQL 里。
+// 后台启动时的筛选(停用账户的任务、渠道、邮箱、MCP 不启动;MCP 只为管理员启动)在仓储的 SQL 里。
 import type { RunManager } from '@fatcat-ai/agent';
 import type { ChannelHub, QqChannels } from '@fatcat-ai/channels/hub';
 import type { SecretStore } from '@fatcat-ai/providers';
@@ -39,12 +39,28 @@ export class AccountLifecycle {
 
     /** 启用之后:按账户的设置重新启动渠道与 MCP,定时任务重新排期。旧凭据不恢复,要重新登录。 */
     async enabled(ownerId: string): Promise<void> {
-        const { repos, channels, mcp } = this.deps;
+        const { repos, channels } = this.deps;
         for (const channel of repos.channels.list(ownerId)) await channels?.apply(channel);
+        await this.startMcp(ownerId);
+        this.reschedule();
+    }
+
+    /**
+     * 角色变了之后(ADR 0053 第 4 节):MCP 服务器只为管理员运行。降为成员时停掉它的 MCP 服务器(配置保留,
+     * 不能再改),升为管理员时按配置启动。编码工具和嵌入在每次调用时按角色判断,不用这里处理。
+     */
+    async roleChanged(ownerId: string): Promise<void> {
+        const { repos, mcp } = this.deps;
+        if (repos.owners.get(ownerId)?.role === 'admin') await this.startMcp(ownerId);
+        else for (const server of repos.mcpServers.list(ownerId)) mcp?.remove(server.id);
+    }
+
+    private async startMcp(ownerId: string): Promise<void> {
+        const { repos, mcp } = this.deps;
+        if (repos.owners.get(ownerId)?.role !== 'admin') return;
         for (const server of repos.mcpServers.list(ownerId)) {
             if (server.enabled) await mcp?.apply({ ...server, ownerId });
         }
-        this.reschedule();
     }
 
     /** 删除之前:断开、停掉一切,返回要在删除后清理的 QQ 渠道 id。 */

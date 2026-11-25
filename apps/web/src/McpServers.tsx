@@ -5,10 +5,14 @@ import type { McpServerView } from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { useIsAdmin } from './role.js';
 
 /** 设置页中的 MCP 服务器(ADR 0013):只能由用户增删;连接在后台进行,这里定时刷新状态。 */
 export function McpServers() {
     const { t } = useI18n();
+    // stdio 服务器会在服务器上起进程,2.0 只有管理员能添加和启用(ADR 0053 第 4 节);删除谁都能做
+    const isAdmin = useIsAdmin();
+    const manage = isAdmin === true;
     const [items, setItems] = useState<McpServerView[] | null>(null);
     const [name, setName] = useState('');
     const [command, setCommand] = useState('');
@@ -71,6 +75,11 @@ export function McpServers() {
     return (
         <section>
             <h2>{t('mcp.title')}</h2>
+            {isAdmin === false ? (
+                <p className="muted small" data-testid="admin-only">
+                    {t('admin.onlyNote')}
+                </p>
+            ) : null}
             {error ? <p className="error">{error}</p> : null}
             {items?.length === 0 ? <p className="muted">{t('mcp.empty')}</p> : null}
             <ul className="list">
@@ -89,12 +98,14 @@ export function McpServers() {
                             {s.status.error ? <div className="small error">{s.status.error}</div> : null}
                         </div>
                         <div className="row">
-                            <button
-                                type="button"
-                                onClick={() => void run(() => api.mcpServers.update(s.id, { enabled: !s.enabled }))}
-                            >
-                                {s.enabled ? t('mcp.disable') : t('mcp.enable')}
-                            </button>
+                            {manage ? (
+                                <button
+                                    type="button"
+                                    onClick={() => void run(() => api.mcpServers.update(s.id, { enabled: !s.enabled }))}
+                                >
+                                    {s.enabled ? t('mcp.disable') : t('mcp.enable')}
+                                </button>
+                            ) : null}
                             <button type="button" className="danger" onClick={() => remove(s)}>
                                 {t('mcp.remove')}
                             </button>
@@ -102,36 +113,38 @@ export function McpServers() {
                     </li>
                 ))}
             </ul>
-            <form className="card form" onSubmit={add}>
-                <input
-                    aria-label={t('mcp.name')}
-                    placeholder={t('mcp.name')}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    pattern="[a-z0-9_\-]{1,32}"
-                    spellCheck={false}
-                    required
-                />
-                <input
-                    aria-label={t('mcp.command')}
-                    placeholder={t('mcp.command')}
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
-                    spellCheck={false}
-                    required
-                />
-                <textarea
-                    aria-label={t('mcp.args')}
-                    placeholder={t('mcp.args')}
-                    value={args}
-                    onChange={(e) => setArgs(e.target.value)}
-                    rows={3}
-                    spellCheck={false}
-                />
-                <button type="submit" className="primary">
-                    {t('mcp.add')}
-                </button>
-            </form>
+            {manage ? (
+                <form className="card form" onSubmit={add}>
+                    <input
+                        aria-label={t('mcp.name')}
+                        placeholder={t('mcp.name')}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        pattern="[a-z0-9_\-]{1,32}"
+                        spellCheck={false}
+                        required
+                    />
+                    <input
+                        aria-label={t('mcp.command')}
+                        placeholder={t('mcp.command')}
+                        value={command}
+                        onChange={(e) => setCommand(e.target.value)}
+                        spellCheck={false}
+                        required
+                    />
+                    <textarea
+                        aria-label={t('mcp.args')}
+                        placeholder={t('mcp.args')}
+                        value={args}
+                        onChange={(e) => setArgs(e.target.value)}
+                        rows={3}
+                        spellCheck={false}
+                    />
+                    <button type="submit" className="primary">
+                        {t('mcp.add')}
+                    </button>
+                </form>
+            ) : null}
         </section>
     );
 }

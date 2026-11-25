@@ -2,15 +2,16 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // MCP 服务器配置的 REST(ADR 0013 第 1 节):只有用户能增删改,没有对应的工具。
+// 2.0(ADR 0053 第 4 节):stdio 服务器会在服务器上起进程,只有管理员能添加和修改;删除谁都能做(只会收回能力)。
 import path from 'node:path';
 import { createRoute, z } from '@hono/zod-openapi';
 import { Id, McpServerInput, McpServerPatch, McpServerStatus, McpServerView, pageOf } from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
 import { inputDigest } from '@fatcat-ai/tools';
 import type { McpControl } from '../mcp-setup.js';
-import { requireOwner } from '../auth/middleware.js';
+import { requireAdmin, requireOwner } from '../auth/middleware.js';
 import { ApiError, notFound } from '../errors.js';
-import { authErrors, json, problem, router } from './common.js';
+import { ADMIN, adminErrors, authErrors, json, problem, router } from './common.js';
 
 const tags = ['tools'];
 const idParam = z.object({ id: Id });
@@ -26,26 +27,29 @@ const createServerRoute = createRoute({
     method: 'post',
     path: '/mcp/servers',
     tags,
-    summary: 'Add an MCP server; it is started without a shell and only sees allowed environment variables',
+    summary:
+        'Add an MCP server (admin only); it is started without a shell and only sees allowed environment variables',
+    ...ADMIN,
     request: { body: { content: { 'application/json': { schema: McpServerInput } }, required: true } },
     responses: {
         201: json(McpServerView, 'Added; connecting in the background'),
         400: problem('Invalid request'),
         409: problem('A server with this name already exists'),
-        ...authErrors,
+        ...adminErrors,
     },
 });
 const patchRoute = createRoute({
     method: 'patch',
     path: '/mcp/servers/{id}',
     tags,
-    summary: 'Enable or disable a server, or change tool risk levels (it reconnects)',
+    summary: 'Enable or disable a server, or change tool risk levels (admin only; it reconnects)',
+    ...ADMIN,
     request: { params: idParam, body: { content: { 'application/json': { schema: McpServerPatch } }, required: true } },
     responses: {
         200: json(McpServerView, 'Updated'),
         400: problem('Invalid request'),
         404: problem('Not found'),
-        ...authErrors,
+        ...adminErrors,
     },
 });
 const deleteRoute = createRoute({
@@ -88,7 +92,7 @@ export function mcpRoutes(deps: { repos: Repositories; mcp: McpControl; redact: 
             ),
         )
         .openapi(createServerRoute, (c) => {
-            const ownerId = requireOwner(c);
+            const ownerId = requireAdmin(c, repos);
             const body = McpServerInput.parse(c.req.valid('json'));
             if (body.cwd && !path.isAbsolute(body.cwd)) {
                 throw new ApiError(400, 'validation_failed', 'Bad Request', 'cwd must be an absolute path.', {
@@ -104,7 +108,7 @@ export function mcpRoutes(deps: { repos: Repositories; mcp: McpControl; redact: 
             return c.json({ ...server, status: pending(server.enabled) }, 201);
         })
         .openapi(patchRoute, (c) => {
-            const ownerId = requireOwner(c);
+            const ownerId = requireAdmin(c, repos);
             const server = repos.mcpServers.update(ownerId, c.req.valid('param').id, c.req.valid('json'));
             if (!server) throw notFound('MCP server');
             connect({ ...server, ownerId });

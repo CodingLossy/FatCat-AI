@@ -5,10 +5,12 @@ import type { EmbeddingStatus } from '@fatcat-ai/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { useIsAdmin } from './role.js';
 
 /** 设置页中的向量索引(ADR 0014):显示 embed 配置档与队列状态;换了模型或维度时提示手动重建。 */
 export function EmbeddingIndex() {
     const { t } = useI18n();
+    const isAdmin = useIsAdmin();
     const [status, setStatus] = useState<EmbeddingStatus | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +59,8 @@ export function EmbeddingIndex() {
             )}
             {status.failed > 0 ? <p className="small error">{t('embed.failed', { n: status.failed })}</p> : null}
             {status.lastError ? <p className="small muted">{status.lastError}</p> : null}
-            {status.state === 'rebuild-required' ? (
+            {isAdmin === false ? <p className="small muted">{t('embed.adminNote')}</p> : null}
+            {status.state === 'rebuild-required' && isAdmin === true ? (
                 <div className="card row spread">
                     <span>{t('embed.rebuildHint', { old: status.indexModel ?? '', model: status.model ?? '' })}</span>
                     <button type="button" className="primary" onClick={() => void rebuild()}>

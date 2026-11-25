@@ -9,6 +9,7 @@ import { migrations } from './migrations/index.js';
 export { AttachmentLinkError, type AttachmentRepository, type NewAttachment } from './attachments.js';
 export type { AccessTokenRecord, AuthSessionRecord } from './auth.js';
 export {
+    createAccountRepository,
     MAX_OPEN_ACCOUNT_CODES,
     type AcceptInviteResult,
     type AccountChange,

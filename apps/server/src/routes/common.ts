@@ -30,3 +30,13 @@ export const authErrors = {
     401: problem('Authentication is required'),
     403: problem('CSRF token missing or invalid'),
 };
+
+/**
+ * 只有管理员能用的路由(ADR 0053 第 4、6 节)在 OpenAPI 里标 `x-fatcat-admin: true`;
+ * admin-scope.test.ts 用成员身份逐条调用,要求全部 403 admin_required。
+ */
+export const ADMIN = { 'x-fatcat-admin': true } as const;
+export const adminErrors = {
+    ...authErrors,
+    403: problem('Not an admin (admin_required), not a browser session, or CSRF token missing'),
+};

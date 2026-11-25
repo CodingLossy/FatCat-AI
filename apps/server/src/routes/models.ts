@@ -5,7 +5,7 @@ import { createRoute, z } from '@hono/zod-openapi';
 import { Id, ModelProfile, ModelProfileInput, ModelProfilePatch, ModelTestResult, pageOf } from '@fatcat-ai/shared';
 import { createProvider, type ProviderDeps, type SecretStore } from '@fatcat-ai/providers';
 import type { ModelProfileRecord, Repositories } from '@fatcat-ai/storage';
-import { requireOwner } from '../auth/middleware.js';
+import { requireAdmin, requireOwner } from '../auth/middleware.js';
 import { notFound, validationError } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
 
@@ -31,9 +31,15 @@ const createProfileRoute = createRoute({
     method: 'post',
     path: '/models',
     tags: ['models'],
-    summary: 'Create a model profile; keys are referenced as env:NAME or file:NAME, never sent in plaintext',
+    summary:
+        'Create a model profile; keys are referenced as env:NAME or file:NAME, never sent in plaintext. Only admins can create an embed profile (403 admin_required)',
     request: { body: { content: { 'application/json': { schema: ModelProfileInput } }, required: true } },
-    responses: { 201: json(ModelProfile, 'Created'), 400: problem('Invalid request'), ...authErrors },
+    responses: {
+        201: json(ModelProfile, 'Created'),
+        400: problem('Invalid request'),
+        ...authErrors,
+        403: problem('CSRF token missing or invalid, or a member asking for the embed purpose (admin_required)'),
+    },
 });
 
 const getRoute = createRoute({
@@ -87,13 +93,18 @@ const testRoute = createRoute({
 export function modelRoutes(deps: ModelRouteDeps) {
     const { repos, secrets } = deps;
     const withStatus = (p: ModelProfileRecord): ModelProfile => ({ ...p, keyStatus: secrets.status(p.apiKeyRef) });
+    /** 嵌入模型整个安装共用(换模型要重建全部向量),只有管理员能设(ADR 0053 第 8 节)。 */
+    const requireEmbedAdmin = (c: Parameters<typeof requireOwner>[0]) => requireAdmin(c, repos);
 
     return router()
         .openapi(listRoute, (c) =>
             c.json({ items: repos.modelProfiles.list(requireOwner(c)).map(withStatus), nextCursor: null }, 200),
         )
         .openapi(createProfileRoute, (c) => {
-            const created = repos.modelProfiles.create(requireOwner(c), c.req.valid('json'));
+            const input = c.req.valid('json');
+            const ownerId = requireOwner(c);
+            if (input.purpose.includes('embed')) requireEmbedAdmin(c);
+            const created = repos.modelProfiles.create(ownerId, input);
             c.get('logger').info({ profileId: created.id, kind: created.kind }, 'model profile created');
             deps.onChanged?.();
             return c.json(withStatus(created), 201);
@@ -126,6 +137,7 @@ export function modelRoutes(deps: ModelRouteDeps) {
                 ),
             );
             if (!merged.success) throw validationError(merged.error);
+            if (merged.data.purpose.includes('embed') && !existing.purpose.includes('embed')) requireEmbedAdmin(c);
             const replaced = repos.modelProfiles.replace(ownerId, id, merged.data)!;
             deps.onChanged?.();
             return c.json(withStatus(replaced), 200);

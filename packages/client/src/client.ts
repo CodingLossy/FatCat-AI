@@ -278,6 +278,14 @@ export function createClient(options: ClientOptions) {
                     t.json<Account>(`/admin/users/${enc(id)}`, { method: 'PATCH', body }),
                 remove: (id: string, body: DeleteAccountRequest) =>
                     t.json<void>(`/admin/users/${enc(id)}`, { method: 'DELETE', body }),
+                /** 分配给某个账户的授权文件夹(ADR 0053 第 4.1 节)。 */
+                fsRoots: {
+                    list: (id: string) => t.json<Page<FsRoot>>(`/admin/users/${enc(id)}/fs-roots`),
+                    assign: (id: string, body: FsRootInput) =>
+                        t.json<FsRoot>(`/admin/users/${enc(id)}/fs-roots`, { method: 'POST', body }),
+                    remove: (id: string, rootId: string) =>
+                        t.json<void>(`/admin/users/${enc(id)}/fs-roots/${enc(rootId)}`, { method: 'DELETE' }),
+                },
             },
         },
 

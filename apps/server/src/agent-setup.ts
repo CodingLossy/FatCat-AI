@@ -14,6 +14,7 @@ import {
 import { type ModelProvider, selectProfile } from '@fatcat-ai/providers';
 import { effectiveTimeZone, MemorySearchInput } from '@fatcat-ai/shared';
 import type { MemoryStack } from './memory-setup.js';
+import { isActiveAdmin } from './auth/middleware.js';
 import { createMailTools, type MailToolOptions } from '@fatcat-ai/mail';
 import { promptText } from '@fatcat-ai/i18n';
 import { z } from 'zod';
@@ -353,9 +354,10 @@ export function createToolRegistry(
             roots,
             host: builtin.systemOpen?.host,
         }),
-        // git.* 与 code.run:设置里默认关闭;项目由用户登记,每次调用重新检查授权文件夹(ADR 0049 第 3 节)
+        // git.* 与 code.run:设置里默认关闭;项目由用户登记,每次调用重新检查授权文件夹(ADR 0049 第 3 节)。
+        // 2.0 只有管理员能用(ADR 0053 第 4 节):降为成员后,哪怕设置里还开着也不可用
         ...createCodeTools({
-            enabled: (ownerId) => repos.settings.get(ownerId).code?.enabled === true,
+            enabled: (ownerId) => repos.settings.get(ownerId).code?.enabled === true && isActiveAdmin(repos, ownerId),
             projects: (ownerId) => repos.settings.get(ownerId).code?.projects ?? [],
             roots,
         }),

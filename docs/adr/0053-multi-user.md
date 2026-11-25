@@ -171,3 +171,16 @@
 - 管理员路由要求管理员 + 完整的浏览器会话(启用 TOTP 时要通过第二因素),个人访问令牌和设备令牌一律 403 `forbidden`;成员 403 `admin_required`。OpenAPI 用 `x-fatcat-admin: true` 标注,`admin-scope.test.ts` 检查 `/admin/` 下的路由都标了,并用成员会话逐条调用、要求 403 且账户相关的表不变。`owner-scope.test.ts` 的越权扫描跳过这些路由(管理员按设计就是管别的账户)。
 - 登录失败按来源地址和用户名分别累计(任一达到 5 次就锁),停用账户的登录回答与密码错误完全相同;邀请码和重置码的输入另有一个按来源地址的限速。
 - 和第 2 节不同 / 没做的:不记录「最后登录时间」;渠道状态里没有「账户已停用」的单独提示(停用后渠道直接停掉);管理员不能给自己生成重置码,也还没有「改自己的密码」的接口,唯一的管理员忘了密码时只能用备份恢复(待业主决定是否加离线命令 `auth reset-password`)。
+
+### PR 3 `feat/admin-capabilities`
+
+- **标注与扫描**:第 4 节「只有管理员」的写操作在 OpenAPI 里也标 `x-fatcat-admin: true`(`ADMIN` 与 `adminErrors` 移到 `routes/common.ts`)。`admin-scope.test.ts` 改为:`/admin/` 下的必须都标;另外列出第 4 节必须标的路由;所有标了的路由用成员会话逐条调用,全部 403 `admin_required`,账户、文件夹、MCP、插件的表不变。`/admin/` 以外的这些路由对管理员的行为和 1.0 一样,令牌也能用(不要求浏览器会话);`/admin/` 下的仍要求浏览器会话(`requireAdminSession` 移到 `auth/middleware.ts`)。
+- **授权文件夹(第 4.1 节)**:`POST /fs/roots`、`DELETE /fs/roots/{id}` 只有管理员能用(管理自己的文件夹)。分配给别的账户走新路由 `GET` / `POST /admin/users/{id}/fs-roots` 与 `DELETE /admin/users/{id}/fs-roots/{rootId}`:行属于被分配的账户,同一个路径分给两个人就是两行;收回时和自己撤销一样删掉落在里面的 `fs.*` 预授权并记审计。`PATCH /fs/roots/{id}`(是否进知识库)成员也能改自己的那一行。没有改 `FsRootInput`,所以 `packages/shared` 不变。
+- **MCP**:添加、修改(启用、风险级别)只有管理员;删除谁都能做(只收回能力)。`mcpServers.allEnabled()` 只返回未停用的**管理员**的服务器,所以启动时不为成员起进程;改角色时 `AccountLifecycle.roleChanged` 降级就停掉这个账户的 MCP 服务器,升级就按配置启动。配置保留。
+- **插件**:准备、安装 / 升级、回退、修改(启用、密钥、设置、运行限制)和市场刷新只有管理员;停止、卸载谁都能做。插件运行时多一个 `ownerAllowed`:调用插件工具或知识地图提供者时账户必须是未停用的管理员,降级后立即不能用。**开放给成员(第 4.2 节的 `shared_with_members`)不在这个 PR**:运行时现在按插件 id 只有一份进程、调用者必须是安装者,开放给成员要改调用上下文、设置与事件的归属和 SDK 文档,改动和本 PR 其余部分一样大;放在 PR 4 之后单独一个 PR(待业主确认),在那之前成员用不了插件。
+- **编码项目**:`PUT /settings` 里带 `code` 的请求要求管理员;编码工具的开关在每次调用时还要求账户是未停用的管理员(以前是管理员时打开的、降级后仍存着的设置不再生效)。
+- **嵌入模型(第 8 节)**:所有账户都用主管理员(最早的未停用管理员)的 embed 配置档,向量表只有一种维度;成员建 embed 用途的配置档或把已有的改成 embed 回 403 `admin_required`;`POST /embeddings/rebuild` 只有管理员。成员的 `GET /embeddings/status` 能看到模型名,`profileId` 为 null(配置档不是他的)。
+- **密钥文件**:`GET /settings/secrets` 与 `POST /settings/secrets/migrate` 只有管理员(整个安装一份)。
+- **外连目标页**:仍按账户列出自己的模型、邮箱、渠道、MCP 与插件(第 4 节表格最后一行);成员的知识库嵌入走主管理员的 embed 配置档,这一项暂时只出现在管理员的列表里。
+- **离线命令 `auth reset-password <username>`**(第 14 节 PR 2 留下的问题):在服务器本机给某个账户设新密码。密码从标准输入读(终端里不回显、输两次;管道读第一行),不出现在参数和 shell 历史里;长度规则同 `Password`。在一个事务里改密码、作废全部凭据(同 `revokeCredentials`,TOTP 保留),写一条 `auth.reset-password` 审计。服务器开着或停着都能运行;库还没升级到有账户表的版本时报错并提示先启动一次服务器。`auth reset-totp` 仍对所有账户生效(1.0 的行为),按用户名重置留到以后。
+- **Web**:`useIsAdmin()`(读 `/auth/me` 的 `role`,老服务器按管理员处理)决定显示哪些入口:成员看不到添加文件夹、撤销、MCP 的添加与启用、插件安装与市场、编码项目、向量重建和密钥迁移,这些地方显示一句「只有管理员能设置这一项」。账户列表每个成员多一个「分配文件夹」,展开后复用文件夹组件管理分给他的文件夹。

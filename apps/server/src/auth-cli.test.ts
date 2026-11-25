@@ -100,3 +100,56 @@ describe('secrets rekey with a TOTP secret in the database', () => {
         conn.close();
     });
 });
+
+describe('auth reset-password', () => {
+    const io = (password: string | null) => ({
+        dataDir: dir,
+        out: (l: string) => out.push(l),
+        err: (l: string) => err.push(l),
+        readPassword: () => Promise.resolve(password),
+    });
+
+    it('sets the new password, signs that account out everywhere, keeps TOTP and writes an audit entry', async () => {
+        const { conn, repos, ownerId } = await seed();
+        const other = repos.owners.create({ username: 'kid', passwordHash: 'kid-hash' });
+        repos.authSessions.create({
+            idHash: 's2',
+            ownerId: other.id,
+            csrfHash: 'c',
+            expiresAt: new Date(Date.now() + 1e6),
+        });
+        const before = conn.sqlite.prepare('SELECT password_hash AS h FROM owners WHERE id = ?').get(ownerId) as {
+            h: string;
+        };
+
+        expect(await runAuthCommand(['reset-password', 'owner'], io('a brand new password 1'))).toBe(0);
+        const after = conn.sqlite.prepare('SELECT password_hash AS h FROM owners WHERE id = ?').get(ownerId) as {
+            h: string;
+        };
+        expect(after.h).not.toBe(before.h);
+        expect(after.h.startsWith('scrypt$')).toBe(true);
+        expect(repos.authSessions.getValid('s1')).toBeNull();
+        expect(repos.totp.get(ownerId)?.enabled).toBe(true);
+        // 别的账户不受影响
+        expect(repos.authSessions.getValid('s2')).not.toBeNull();
+        const audit = conn.sqlite
+            .prepare("SELECT owner_id AS ownerId FROM audit_log WHERE tool_name = 'auth.reset-password'")
+            .all();
+        expect(audit).toEqual([{ ownerId }]);
+        expect(out.join('\n')).not.toContain('a brand new password 1');
+        conn.close();
+    });
+
+    it('changes nothing for an unknown user, a short password, a mismatch or a missing username', async () => {
+        const { conn } = await seed();
+        const hash = () => (conn.sqlite.prepare('SELECT password_hash AS h FROM owners').get() as { h: string }).h;
+        const start = hash();
+        expect(await runAuthCommand(['reset-password', 'nobody'], io('a brand new password 1'))).toBe(1);
+        expect(await runAuthCommand(['reset-password', 'owner'], io('short'))).toBe(1);
+        expect(await runAuthCommand(['reset-password', 'owner'], io(null))).toBe(1);
+        expect(await runAuthCommand(['reset-password'], io('a brand new password 1'))).toBe(2);
+        expect(hash()).toBe(start);
+        expect(err.join('\n')).toContain('no account named "nobody"');
+        conn.close();
+    });
+});
