@@ -109,8 +109,13 @@ export async function backupDatabase(sqlite: Sqlite, dir: string, tag: string, n
     const path = join(dir, file);
     await sqlite.backup(path);
     const kind = (name: string) => {
-        const found = /^db-.*-pre-(.+)\.sqlite$/.exec(name)?.[1];
-        return found === undefined ? null : /^\d+$/.test(found) ? 'migration' : found;
+        // 用字符串操作而不是带回溯的正则:目录里的文件名不受我们控制
+        if (!name.startsWith('db-') || !name.endsWith('.sqlite')) return null;
+        const at = name.lastIndexOf('-pre-');
+        if (at < 2) return null;
+        const found = name.slice(at + '-pre-'.length, -'.sqlite'.length);
+        if (found === '') return null;
+        return /^\d+$/.test(found) ? 'migration' : found;
     };
     const mine = kind(file);
     const backups = readdirSync(dir)
