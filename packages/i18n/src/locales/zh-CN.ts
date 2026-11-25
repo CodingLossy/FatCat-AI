@@ -1175,4 +1175,11 @@ export const zh = {
     'accounts.confirmDelete': '输入 {username} 确认删除:这个账户的全部数据会被删掉,删除前自动备份数据库',
     'accounts.deleteNow': '永久删除',
     'accounts.cancel': '取消',
+    'voice.stage.defaultName': 'FatCat',
+    'voice.stage.listening': '{name} 正在聆听',
+    'voice.stage.heard': '检测到语音',
+    'voice.stage.thinking': '{name} 正在思考',
+    'voice.stage.speaking': '{name} 正在说话',
+    'wb.cmd.model': '切换模型:{label}',
+    'wb.cmd.agent': '切换代理:{name}',
 };

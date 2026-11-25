@@ -220,12 +220,13 @@ async function shot(page: Page, name: string) {
 async function speak(page: Page, said: string) {
     transcripts.push(said);
     const talk = page.getByTestId('voice-talk');
-    await expect(talk).toHaveText('说话');
+    await expect(talk).toHaveAttribute('aria-label', /^点一下开始说话/);
     await talk.click();
-    await expect(talk).toHaveText('再点一下结束');
+    await expect(talk).toHaveAttribute('aria-label', '再点一下结束');
     await page.waitForTimeout(800);
     await talk.click();
-    await expect(page.getByTestId('caption-user')).toHaveText(said);
+    // 假 STT 取走了这一句(主界面字幕只显示当前一句,不保留用户的话)
+    await expect.poll(() => transcripts.length, { timeout: 10_000 }).toBe(0);
 }
 
 async function login(page: Page, first: boolean) {
@@ -233,7 +234,7 @@ async function login(page: Page, first: boolean) {
     await page.getByLabel('用户名').fill('owner');
     await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: first ? '创建并登录' : '登录', exact: true }).click();
-    await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
+    await expect(page.locator('.wb-shell')).toBeVisible();
 }
 
 async function api(page: Page, method: string, path: string, data: unknown) {
@@ -254,7 +255,7 @@ test('说「打开浏览器搜猫粮」:转写 → 开启 browser 组 → browse
         browser: { enabled: true },
     });
     await page.reload();
-    await page.getByRole('link', { name: '新对话' }).click();
+    await page.goto(base); // 新对话;语音优先时侧栏收在 logo 里
 
     await speak(page, SAY_BROWSER);
     // 模型先开启 browser 组,再请求打开搜索页:第一次访问这个主机要审批,卡片写出地址
@@ -266,7 +267,7 @@ test('说「打开浏览器搜猫粮」:转写 → 开启 browser 组 → browse
     await card.getByRole('button', { name: '批准' }).click();
 
     // .invalid 解析不到:取页失败,助手如实说明;面板仍在,不显示任何没取到的内容
-    await expect(page.getByTestId('caption-reply')).toContainText('搜索页现在打不开', { timeout: 20_000 });
+    await expect(page.getByTestId('voice-caption')).toContainText('搜索页现在打不开', { timeout: 20_000 });
     await expect(page.getByLabel('地址栏(点击输入新地址)')).toBeVisible();
     const sent = chatBodies.join('\n');
     expect(sent).toContain('search.invalid');
@@ -284,7 +285,7 @@ test('说「打开 FatCat-AI 项目,看最近第 3 次改动,修一下 bug」:�
         },
     });
     await page.reload();
-    await page.getByRole('link', { name: '新对话' }).click();
+    await page.goto(base); // 新对话;语音优先时侧栏收在 logo 里
 
     holdBefore = 'fs.read';
     await speak(page, SAY_CODE);
@@ -318,7 +319,7 @@ test('说「打开 FatCat-AI 项目,看最近第 3 次改动,修一下 bug」:�
     await expect(run).toHaveAttribute('data-state', 'done', { timeout: 20_000 });
     await expect(run).toContainText('node test.js 退出码 0');
     await expect(run.locator('.code-output')).toContainText('sum ok');
-    await expect(page.getByTestId('caption-reply')).toContainText('测试通过', { timeout: 20_000 });
+    await expect(page.getByTestId('voice-caption')).toContainText('测试通过', { timeout: 20_000 });
 
     // 模型拿到的是那次提交的内容(不可信内容包装)
     expect(chatBodies.join('\n')).toContain('refactor: simplify sum');

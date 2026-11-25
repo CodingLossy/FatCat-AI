@@ -66,3 +66,14 @@ export function captionTail(text: string, max = 280): string {
     const cut = tail.search(/[\u3002\uff01\uff1f\uff1b\uff0c.!?;,\s]/);
     return '…' + (cut >= 0 && cut < 60 ? tail.slice(cut + 1).trimStart() : tail);
 }
+
+/**
+ * 主界面字幕只显示「当前这一句」(ADR 0049 第 10 节):取最后一个非空的句子(流式回复里就是正在说的那句),
+ * 新句子出现时直接替换;太长时只留结尾。
+ */
+export function currentSentence(text: string, max = 120): string {
+    const flat = text.replace(/\s+/g, ' ').trim();
+    if (!flat) return '';
+    const parts = flat.split(/(?<=[。！？.!?])\s*/).filter((part) => part.trim() !== '');
+    return captionTail(parts[parts.length - 1] ?? flat, max);
+}

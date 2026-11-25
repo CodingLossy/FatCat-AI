@@ -23,7 +23,8 @@ export function VoiceIndicator({
     level,
 }: {
     state: AssistantState;
-    label: string;
+    /** 状态文字;不给时不显示(极简主界面在球下面自己写状态行)。 */
+    label?: string;
     /** 本端录音 / 播放的电平(每帧更新的 ref,避免整页重渲染);其他端的状态没有电平。 */
     level: { readonly current: number | null };
 }) {
@@ -85,9 +86,11 @@ export function VoiceIndicator({
                     <canvas ref={canvas} className="voice-orb" width={168} height={168} />
                 </div>
             )}
-            <span className="voice-label" aria-live="polite">
-                {label}
-            </span>
+            {label === undefined ? null : (
+                <span className="voice-label" aria-live="polite">
+                    {label}
+                </span>
+            )}
         </div>
     );
 }

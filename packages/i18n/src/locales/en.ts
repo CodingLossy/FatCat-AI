@@ -1255,4 +1255,11 @@ export const en: Record<Key, string> = {
         'Type {username} to confirm: all data of this account is deleted, and the database is backed up first',
     'accounts.deleteNow': 'Delete permanently',
     'accounts.cancel': 'Cancel',
+    'voice.stage.defaultName': 'FatCat',
+    'voice.stage.listening': '{name} is listening',
+    'voice.stage.heard': 'Voice detected',
+    'voice.stage.thinking': '{name} is thinking',
+    'voice.stage.speaking': '{name} is speaking',
+    'wb.cmd.model': 'Switch model: {label}',
+    'wb.cmd.agent': 'Switch agent: {name}',
 };

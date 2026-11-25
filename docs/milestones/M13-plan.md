@@ -79,6 +79,18 @@
 
 本组之后回到 Skills 实现第 3–5 步(`feat/builtin-skills`、`feat/skills-ui`、`feat/skills-market`),再进入后段。X 在 #127 留下的项随 `feat/builtin-skills` 一起做:`readInstructions` 在 Windows 上没有 `O_NOFOLLOW` 的注释与「说明文件换成包外符号链接时 `skill.use` 返回 unknown skill」的评测用例;`skill.use` 不受任务 `withholdToolPrefixes` 约束这一点在 ADR 0048 第 6 节写明或改走 `isWithheld`(都要补测试);子运行只自动使用自己代理的 Skill、不继承父运行的用例;以及仍未做的 `secrets.yaml.migrated` 收紧 ACL(#44)和 M10 自检文档里 updater 私钥说法与工作流私钥引用检查(#92)。
 
+## 主界面改版(ADR 0049 第 10 节)
+
+业主 2026-11-25 确认:2.0 的 PR 2(#146)合并后先做这一组,再继续 2.0 的 PR 3。主界面照参考视频的极简布局,界面上不再显示多余按钮。
+
+1. `feat/main-screen-minimal`:空闲主界面(只留左上角小圆 logo,球居中,球下三行:状态、音量条与模型名、当前一句字幕;模型与代理切换移到命令面板);ADR 0049 第 10 节与本节。
+2. `feat/voice-only-input`:默认连续语音,点球暂停 / 恢复,手机长按球打字、上滑看完整对话,没配语音识别时一句提示。
+3. `feat/sphere-states`:球的状态色与动效(三套主题)。
+4. `feat/workbench-split`:工作态布局(球移到左侧、右侧大面板、工具调用胶囊)。
+5. `feat/main-screen-mobile`:手机布局(底部抽屉面板)。
+
+截图放 `docs/pr-screenshots` 分支 `main-screen/` 下,业主看过对比图再合并。
+
 ## 后段顺序
 
 前段合并之后,按下面的顺序继续(每项开工前先写或更新 ADR):
