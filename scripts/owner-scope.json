@@ -1,0 +1,442 @@
+[
+  {
+    "key": "attachments.ts:createAttachmentRepository.removeUnlinkedBefore",
+    "category": "system",
+    "reason": "Startup and daily cleanup of attachments never linked to a message, for every owner."
+  },
+  {
+    "key": "attachments.ts:createAttachmentRepository.exists",
+    "category": "system",
+    "reason": "The daily attachment sweep checks whether a file on disk still has a database row, for every owner."
+  },
+  {
+    "key": "auth.ts:authSessions.getValid",
+    "category": "credential",
+    "reason": "Looks up a login session by the hash of the secret cookie; the row carries its ownerId."
+  },
+  {
+    "key": "auth.ts:authSessions.touch",
+    "category": "credential",
+    "reason": "Extends the login session found by its secret hash."
+  },
+  {
+    "key": "auth.ts:authSessions.delete",
+    "category": "credential",
+    "reason": "Logs out the session found by its secret hash."
+  },
+  {
+    "key": "auth.ts:authSessions.deleteExpired",
+    "category": "system",
+    "reason": "Periodic removal of expired login sessions for every owner."
+  },
+  {
+    "key": "auth.ts:accessTokens.findUsable",
+    "category": "credential",
+    "reason": "Looks up an API token by the hash of the secret; the row carries its ownerId."
+  },
+  {
+    "key": "auth.ts:accessTokens.touch",
+    "category": "credential",
+    "reason": "Records last use of the token found by findUsable."
+  },
+  {
+    "key": "channels.ts:createChannelRepository.allEnabled",
+    "category": "system",
+    "reason": "The channel hub starts every enabled channel at boot; each record carries its ownerId."
+  },
+  {
+    "key": "channels.ts:createChannelRepository.byId",
+    "category": "child",
+    "reason": "Channel hub runtime lookup by the id of a channel it started; HTTP routes use get(ownerId, id)."
+  },
+  {
+    "key": "channels.ts:createChannelRepository.setConfig",
+    "category": "child",
+    "reason": "WeChat login writes the token reference of a channel the route loaded with channelOr404(ownerId)."
+  },
+  {
+    "key": "channels.ts:createChannelRepository.setSession",
+    "category": "child",
+    "reason": "Channel hub records the session it created for the channel owner."
+  },
+  {
+    "key": "channels.ts:createChannelRepository.bind",
+    "category": "child",
+    "reason": "Pairing binds a channel the hub started; the pairing code was created by its owner."
+  },
+  {
+    "key": "channels.ts:createChannelRepository.unbind",
+    "category": "child",
+    "reason": "DELETE /channels/{id}/binding calls it after channelOr404(ownerId)."
+  },
+  {
+    "key": "channels.ts:createChannelRepository.setPairing",
+    "category": "child",
+    "reason": "POST /channels/{id}/pairing goes through channelOr404(ownerId) before the hub stores the code."
+  },
+  {
+    "key": "channels.ts:createChannelRepository.getPairing",
+    "category": "child",
+    "reason": "Channel hub reads the pairing code of a channel it started."
+  },
+  {
+    "key": "channels.ts:createChannelRepository.failPairing",
+    "category": "child",
+    "reason": "Channel hub counts failed pairing attempts on a channel it started."
+  },
+  {
+    "key": "channels.ts:createChannelRepository.deletePairing",
+    "category": "child",
+    "reason": "Channel hub removes the pairing code after binding or expiry."
+  },
+  {
+    "key": "channels.ts:createChannelRepository.recordInbound",
+    "category": "child",
+    "reason": "Channel hub de-duplicates inbound messages of a channel it started."
+  },
+  {
+    "key": "channels.ts:createChannelRepository.pruneInbox",
+    "category": "system",
+    "reason": "Daily removal of old de-duplication rows for every channel."
+  },
+  {
+    "key": "devices.ts:devices.rotate",
+    "category": "credential",
+    "reason": "POST /devices/refresh finds the device by the hash of its refresh token."
+  },
+  {
+    "key": "devices.ts:devices.touch",
+    "category": "credential",
+    "reason": "Records last use of a device authenticated by its token."
+  },
+  {
+    "key": "devices.ts:devices.purgeExpired",
+    "category": "system",
+    "reason": "Periodic removal of expired device tokens and pairing codes."
+  },
+  {
+    "key": "embeddings.ts:store.loadExtension",
+    "category": "internal",
+    "reason": "Loads the vector extension into the connection; no owner data."
+  },
+  {
+    "key": "embeddings.ts:store.vectorTableExists",
+    "category": "internal",
+    "reason": "Checks the vector table schema; no owner data."
+  },
+  {
+    "key": "embeddings.ts:store.state",
+    "category": "internal",
+    "reason": "Reads the embedding model state shared by the install."
+  },
+  {
+    "key": "embeddings.ts:store.ensureVectorTable",
+    "category": "internal",
+    "reason": "Creates the vector table for the configured dimension."
+  },
+  {
+    "key": "embeddings.ts:store.rebuild",
+    "category": "system",
+    "reason": "Re-queues every chunk after the embedding model changes."
+  },
+  {
+    "key": "embeddings.ts:store.removeItem",
+    "category": "child",
+    "reason": "Removes vectors of an item the caller loaded or deleted with its ownerId."
+  },
+  {
+    "key": "embeddings.ts:store.due",
+    "category": "system",
+    "reason": "Background embedder takes the next queued jobs; each job row carries its ownerId."
+  },
+  {
+    "key": "embeddings.ts:store.nextAttemptAt",
+    "category": "system",
+    "reason": "Background embedder schedules its next wake-up."
+  },
+  {
+    "key": "embeddings.ts:store.complete",
+    "category": "system",
+    "reason": "Background embedder stores vectors for the jobs it took from due()."
+  },
+  {
+    "key": "embeddings.ts:store.fail",
+    "category": "system",
+    "reason": "Background embedder records a failure for the jobs it took from due()."
+  },
+  {
+    "key": "items.ts:createItemRepository.parentId",
+    "category": "child",
+    "reason": "Walks up from an item the caller already loaded with its ownerId."
+  },
+  {
+    "key": "kb.ts:createKbRepository.reassign",
+    "category": "child",
+    "reason": "Mail sync moves knowledge-base chunks between two items of the same owner's account."
+  },
+  {
+    "key": "kb.ts:createKbRepository.source",
+    "category": "child",
+    "reason": "Reads the source record of an item the caller loaded with its ownerId."
+  },
+  {
+    "key": "kb.ts:createKbRepository.remove",
+    "category": "child",
+    "reason": "Removes chunks of an item the caller loaded or deleted with its ownerId."
+  },
+  {
+    "key": "mail-cache.ts:createMailCacheRepository.sentFolder",
+    "category": "child",
+    "reason": "mail.send reads the sent folder of the account it loaded with ctx.ownerId."
+  },
+  {
+    "key": "mail-cache.ts:createMailCacheRepository.deleteDraft",
+    "category": "child",
+    "reason": "Called after getDraft(ownerId, id) succeeded (route and mail.send)."
+  },
+  {
+    "key": "mail-cache.ts:createMailCacheRepository.itemRows",
+    "category": "child",
+    "reason": "Mail item sync lists rows of an account it loaded with its ownerId."
+  },
+  {
+    "key": "mail-cache.ts:createMailCacheRepository.signature",
+    "category": "child",
+    "reason": "Change signature of an account the caller loaded with its ownerId."
+  },
+  {
+    "key": "mail-cache.ts:createMailCacheRepository.markDownloaded",
+    "category": "child",
+    "reason": "Marks an attachment the caller loaded through an owner-scoped message."
+  },
+  {
+    "key": "mail.ts:createMailRepository.recordSync",
+    "category": "child",
+    "reason": "Mail sync records the result for an account it took from the owner's account list."
+  },
+  {
+    "key": "mail.ts:createMailRepository.folders",
+    "category": "child",
+    "reason": "GET /mail/accounts/{id}/folders calls it after load(ownerId, id); item sync uses the owner's account."
+  },
+  {
+    "key": "mail.ts:createMailRepository.knownFolders",
+    "category": "child",
+    "reason": "Mail sync reads folders of an account it took from the owner's account list."
+  },
+  {
+    "key": "mail.ts:createMailRepository.applySync",
+    "category": "child",
+    "reason": "Mail sync writes folders of an account it took from the owner's account list."
+  },
+  {
+    "key": "memory-maintenance.ts:createMemoryMaintenanceRepository.apply",
+    "category": "child",
+    "reason": "Memory maintenance applies decay and tier updates to rows it read with batch(ownerId, ...)."
+  },
+  {
+    "key": "memory-read.ts:createMemoryReadRepository.excerpt",
+    "category": "child",
+    "reason": "Retrieval reads the excerpt of a memory it found with an ownerId-filtered search."
+  },
+  {
+    "key": "memory.ts:createMemoryRepository.purgeQuarantine",
+    "category": "system",
+    "reason": "Removes expired quarantined memories for every owner; it has no production caller at the moment."
+  },
+  {
+    "key": "memory.ts:createSummaryRepository.list",
+    "category": "child",
+    "reason": "The runner reads summaries of the session of the run it is executing."
+  },
+  {
+    "key": "memory.ts:createSummaryRepository.add",
+    "category": "child",
+    "reason": "The runner adds a summary to the session of the run it is executing."
+  },
+  {
+    "key": "plugins.ts:createPluginRepository.listAll",
+    "category": "system",
+    "reason": "Plugin service starts and stops every installed plugin; each record carries its ownerId."
+  },
+  {
+    "key": "plugins.ts:createPluginRepository.purgeEvents",
+    "category": "system",
+    "reason": "Daily removal of plugin events older than 180 days."
+  },
+  {
+    "key": "repos.ts:owners.count",
+    "category": "system",
+    "reason": "Setup checks whether an owner account exists yet."
+  },
+  {
+    "key": "repos.ts:owners.ids",
+    "category": "system",
+    "reason": "Background jobs iterate over every owner."
+  },
+  {
+    "key": "repos.ts:owners.create",
+    "category": "system",
+    "reason": "Creates the owner account at setup."
+  },
+  {
+    "key": "repos.ts:owners.get",
+    "category": "credential",
+    "reason": "Loads the owner named by an authenticated session or token."
+  },
+  {
+    "key": "repos.ts:owners.getByUsername",
+    "category": "credential",
+    "reason": "Login looks up the account by username before checking the password."
+  },
+  {
+    "key": "repos.ts:sessions.untrustedAt",
+    "category": "child",
+    "reason": "The runner checks the session of the run it is executing."
+  },
+  {
+    "key": "repos.ts:sessions.markUntrusted",
+    "category": "child",
+    "reason": "The runner and channel hub mark the session of their own run or channel."
+  },
+  {
+    "key": "repos.ts:messages.findByClientMessageId",
+    "category": "child",
+    "reason": "POST /sessions/{id}/messages calls it after sessionOr404(ownerId, id)."
+  },
+  {
+    "key": "repos.ts:messages.update",
+    "category": "child",
+    "reason": "The runner updates the assistant message it created for its run."
+  },
+  {
+    "key": "repos.ts:messages.isSuperseded",
+    "category": "child",
+    "reason": "The context builder checks messages of the session of its run."
+  },
+  {
+    "key": "repos.ts:runs.setStatus",
+    "category": "child",
+    "reason": "The runner, approval gate and delegation update the run they are executing."
+  },
+  {
+    "key": "repos.ts:runs.error",
+    "category": "child",
+    "reason": "Scheduled tasks read the error of the run they started."
+  },
+  {
+    "key": "repos.ts:events.compact",
+    "category": "system",
+    "reason": "Periodic compaction of finished runs' events for every owner."
+  },
+  {
+    "key": "repos.ts:createRepositories.transaction",
+    "category": "internal",
+    "reason": "Wraps other repository calls in a SQLite transaction; reads nothing itself."
+  },
+  {
+    "key": "repos.ts:createRepositories.interruptStreamingMessages",
+    "category": "system",
+    "reason": "At startup, marks messages left streaming by a crash as interrupted, for every owner."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.listActive",
+    "category": "system",
+    "reason": "The scheduler loads every active task at boot; each record carries its ownerId."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.getById",
+    "category": "child",
+    "reason": "The scheduler loads a task it scheduled; the webhook endpoint loads it before checking the secret token."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.pruneDrafts",
+    "category": "system",
+    "reason": "Removes unconfirmed drafts older than the draft lifetime for every owner."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.markFired",
+    "category": "child",
+    "reason": "The scheduler records the run time of a task it scheduled."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.createRun",
+    "category": "child",
+    "reason": "The scheduler starts a run of a task it scheduled."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.setRunSession",
+    "category": "child",
+    "reason": "The task runner links the run it is executing to its session."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.getRun",
+    "category": "child",
+    "reason": "Routes call it through runOr404, which checks the task with tasks.get(ownerId, run.taskId)."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.updateRun",
+    "category": "child",
+    "reason": "The scheduler updates the run it is executing."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.lastRun",
+    "category": "child",
+    "reason": "The tasks route reads the last run of a task it loaded with ownerId."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.listRuns",
+    "category": "child",
+    "reason": "GET /tasks/{id}/runs calls it after taskOr404(ownerId, id)."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.webhookTokenHash",
+    "category": "credential",
+    "reason": "The webhook endpoint compares the secret token hash of the task."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.setWebhookTokenHash",
+    "category": "child",
+    "reason": "POST /tasks/{id}/webhook-token calls it after taskOr404(ownerId, id)."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.deleteWebhookToken",
+    "category": "child",
+    "reason": "PATCH /tasks/{id} calls it after taskOr404(ownerId, id)."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.touchWebhookToken",
+    "category": "credential",
+    "reason": "Records use of a webhook token after the secret matched."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.interruptUnfinished",
+    "category": "system",
+    "reason": "At startup, marks runs left running by a crash as interrupted, for every owner."
+  },
+  {
+    "key": "tasks.ts:createTaskRepository.pruneRuns",
+    "category": "child",
+    "reason": "The scheduler trims old runs of a task it executed."
+  },
+  {
+    "key": "tools.ts:approvals.expireAllPending",
+    "category": "system",
+    "reason": "At startup, expires approvals left pending by a restart, for every owner."
+  },
+  {
+    "key": "tools.ts:preauths.touch",
+    "category": "child",
+    "reason": "The approval gate records use of a pre-authorization it found with the run's ownerId."
+  },
+  {
+    "key": "tools.ts:audit.purgeBefore",
+    "category": "system",
+    "reason": "Periodic removal of audit rows older than the retention period."
+  },
+  {
+    "key": "totp.ts:createTotpRepository.markSecondFactor",
+    "category": "credential",
+    "reason": "Marks the login session found by its secret hash as having passed the second factor."
+  }
+]
