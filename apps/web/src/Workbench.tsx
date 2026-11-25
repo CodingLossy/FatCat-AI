@@ -188,7 +188,9 @@ export function Workbench({
     // 手机抽屉:记下打开时的路由,换页后自动关闭;Esc 关闭并把焦点还给「菜单」
     const routeKey = routePath(route);
     const [drawerAt, setDrawerAt] = useState<string | null>(null);
-    const drawer = narrow && drawerAt === routeKey;
+    // 语音优先的极简主界面:侧栏收进左上角的小圆 logo,和手机一样当抽屉打开(ADR 0049 第 10 节)
+    const minimal = !pageView && activity?.minimal === true;
+    const drawer = (narrow || minimal) && drawerAt === routeKey;
     const menuRef = useRef<HTMLButtonElement>(null);
     const sideRef = useRef<HTMLElement>(null);
     const lastSession = useRef<string | null>(null);
@@ -331,6 +333,19 @@ export function Workbench({
         return () => window.clearTimeout(timer);
     }, [query]);
 
+    const chooseModel = useCallback(
+        async (id: string) => {
+            setModelOpen(false);
+            try {
+                if (sessionId) await api.sessions.update(sessionId, { modelProfileId: id });
+                else onSettings(await api.settings.update({ defaultChatProfileId: id }));
+                setEpoch((n) => n + 1);
+            } catch {
+                // 选择失败时胶囊仍显示上一次读到的配置档
+            }
+        },
+        [onSettings, sessionId],
+    );
     const commands = useMemo(() => {
         const go = (target: Route) => () => navigate(target);
         const pin = (id: WorkbenchPanel) => () => dispatch({ type: 'pin', panel: id });
@@ -368,6 +383,25 @@ export function Workbench({
                 },
             },
         ];
+        // 模型与代理的切换在这里(极简主界面上没有胶囊和下拉,ADR 0049 第 10 节)
+        for (const profile of (activity?.profiles ?? []).filter((p) => p.purpose.includes('chat'))) {
+            list.push({
+                id: `model-${profile.id}`,
+                label: t('wb.cmd.model', { label: profile.label }),
+                keywords: `model ${profile.label}`,
+                run: () => void chooseModel(profile.id),
+            });
+        }
+        if ((activity?.agents ?? []).length > 0) {
+            for (const agent of [{ id: '', name: t('agents.pickerNone') }, ...(activity?.agents ?? [])]) {
+                list.push({
+                    id: `agent-${agent.id || 'none'}`,
+                    label: t('wb.cmd.agent', { name: agent.name }),
+                    keywords: `agent ${agent.name}`,
+                    run: () => activity?.chooseAgent(agent.id),
+                });
+            }
+        }
         for (const session of sessions) {
             const title = session.title || t('nav.untitled');
             list.push({
@@ -378,7 +412,7 @@ export function Workbench({
             });
         }
         return list;
-    }, [onSettings, sessions, settings.voice.autoSpeak, t, toggleSidebar]);
+    }, [activity, chooseModel, onSettings, sessions, settings.voice.autoSpeak, t, toggleSidebar]);
 
     const shownFiles = query.trim() ? files : [];
     const shownCommands = matchCommands(commands, query).slice(0, 8);
@@ -468,17 +502,6 @@ export function Workbench({
         : [];
     const agentName = narrow ? activity?.agents.find((agent) => agent.id === activity.agentId)?.name : undefined;
 
-    const chooseModel = async (id: string) => {
-        setModelOpen(false);
-        try {
-            if (sessionId) await api.sessions.update(sessionId, { modelProfileId: id });
-            else onSettings(await api.settings.update({ defaultChatProfileId: id }));
-            setEpoch((n) => n + 1);
-        } catch {
-            // 选择失败时胶囊仍显示上一次读到的配置档
-        }
-    };
-
     const activePreview =
         (selected && workspace.previews.get(selected)) || (opened && opened.path === selected ? opened : null);
     const statusLine = clicked && clicked.path === selected ? clicked.line : (activePreview?.highlightLine ?? 1);
@@ -558,9 +581,10 @@ export function Workbench({
     return (
         <div
             className="shell wb-shell"
-            data-sidebar={collapsed && !narrow ? 'min' : 'full'}
+            data-sidebar={collapsed && !narrow && !minimal ? 'min' : 'full'}
             data-panel={panel.open ? 'open' : 'closed'}
             data-narrow={narrow ? '' : undefined}
+            data-minimal={minimal ? '' : undefined}
         >
             <div className="wb-glow" aria-hidden="true" />
             {drawer ? <div className="wb-backdrop" aria-hidden="true" onClick={() => closeDrawer(true)} /> : null}
@@ -678,14 +702,30 @@ export function Workbench({
                         </button>
                     ) : null}
                 </nav>
-                {narrow ? <Footer meta={meta} /> : null}
+                {/* 极简主界面隐藏页脚:许可证与源码链接放进抽屉(AGPL 第 13 条要能找到源码) */}
+                {narrow || minimal ? <Footer meta={meta} /> : null}
             </aside>
             <div className="wb-world">
-                <div className="wb-capsule">
+                {minimal ? (
+                    <button
+                        type="button"
+                        ref={menuRef}
+                        className="wb-logo"
+                        aria-label={t('nav.menu')}
+                        title={t('nav.menu')}
+                        aria-expanded={drawer}
+                        aria-controls="wb-side"
+                        onClick={() => setDrawerAt(drawer ? null : routeKey)}
+                        data-testid="wb-logo"
+                    >
+                        <Icon name="paw" size={20} />
+                    </button>
+                ) : null}
+                <div className="wb-capsule" hidden={minimal}>
                     {narrow ? (
                         <button
                             type="button"
-                            ref={menuRef}
+                            ref={minimal ? undefined : menuRef}
                             className="wb-capsule-btn wb-menu"
                             aria-label={t('nav.menu')}
                             aria-expanded={drawer}
@@ -987,7 +1027,7 @@ export function Workbench({
                     </aside>
                 ) : null}
             </div>
-            {narrow ? (
+            {narrow && !minimal ? (
                 <nav className="wb-tabs" aria-label={t('wb.tabs')}>
                     {tabs.map((tab) => (
                         <button

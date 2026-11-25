@@ -9,6 +9,7 @@ import {
     MAX_ATTACHMENTS_PER_MESSAGE,
     MAX_RECORDING_SECONDS,
     type Agent,
+    type AssistantState,
     type MemoryDegradation,
     type Message,
     type ModelProfile,
@@ -32,7 +33,6 @@ import { effectiveProfile, prepareImage, precheck } from './images.js';
 import { applyEvent, newTurn, type LiveTool, type LiveTurn } from './live-turn.js';
 import { Markdown } from './Markdown.js';
 import { navigate, routePath } from './router.js';
-import { Icon } from './Icon.js';
 import { ToolCard } from './ToolCard.js';
 import { UsedMemories } from './UsedMemories.js';
 import { canRecord, type Playback, playSegments, type Recording, startRecording } from './audio.js';
@@ -44,9 +44,10 @@ import {
     useConversation,
     type ConversationEnd,
 } from './conversation.js';
-import { captionTail, markdownToSpeech, splitForSpeech } from './speech-text.js';
+import { currentSentence, markdownToSpeech, splitForSpeech } from './speech-text.js';
 import { useAssistantState } from './use-voice.js';
 import { VoiceIndicator } from './VoiceIndicator.js';
+import { LevelBar } from './LevelBar.js';
 
 /** 按下不到这么久就松开,视为「点按开始、再点结束」的语音消息。 */
 const TAP_MS = 300;
@@ -74,6 +75,8 @@ export interface ChatActivity {
     agents: Agent[];
     agentId: string;
     chooseAgent: (id: string) => void;
+    /** 语音优先的极简主界面正在显示(ADR 0049 第 10 节):工作台据此收起侧栏、胶囊和底部标签。 */
+    minimal: boolean;
 }
 
 /** 输入框里待发送的图片;`url`(object URL)只用于发送后消息里的临时预览,输入框缩略图不用它。 */
@@ -779,6 +782,7 @@ export function ChatView({
     const voiceFallback = wantsVoice && !voiceEnabled ? (canRecord() ? 'noStt' : 'noMic') : null;
     const continuous = voiceFirst && voiceConfig?.settings.continuous === true;
     const cancelRef = useRef(cancelRecording);
+    const stopRef = useRef(async () => undefined as void);
     useEffect(() => {
         cancelRef.current = cancelRecording;
     });
@@ -792,12 +796,20 @@ export function ChatView({
             if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'i') {
                 e.preventDefault();
                 setPopupOpen((open) => !open);
+            } else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'h') {
+                // 完整对话:主界面上没有入口按钮(ADR 0049 第 10 节)
+                e.preventDefault();
+                setShowHistory((open) => !open);
             } else if (e.key === 'Escape') {
                 if (cancelRef.current()) e.preventDefault();
                 else if (conversationState().active && !popupOpenRef.current) {
                     e.preventDefault();
                     endConversation('user');
-                } else setPopupOpen(false);
+                } else if (popupOpenRef.current) setPopupOpen(false);
+                else if (liveRef.current?.runId) {
+                    e.preventDefault();
+                    void stopRef.current();
+                } else setShowHistory(false);
             }
         };
         window.addEventListener('keydown', onKey);
@@ -842,9 +854,10 @@ export function ChatView({
         [sessionId],
     );
 
+    const minimal = voiceFirst && !showHistory;
     useEffect(() => {
-        onActivity?.({ messages, live, profile, profiles, agents, agentId, chooseAgent });
-    }, [messages, live, profile, profiles, agents, agentId, chooseAgent, onActivity]);
+        onActivity?.({ messages, live, profile, profiles, agents, agentId, chooseAgent, minimal });
+    }, [messages, live, profile, profiles, agents, agentId, chooseAgent, onActivity, minimal]);
 
     // 没有依赖数组:submit 用到的输入框状态每轮都变,这里只是把最新的发送函数交给搜索框。
     useEffect(() => {
@@ -855,7 +868,7 @@ export function ChatView({
         };
     });
 
-    /** 说话按钮:输入框里的小按钮,或语音界面中间的大按钮;点按与按住的规则相同(ADR 0049 第 1.3 节)。 */
+    /** 输入框里的说话按钮(文字模式)。 */
     const talkButton = (big: boolean) => (
         <button
             type="button"
@@ -918,6 +931,10 @@ export function ChatView({
         if (live?.runId) await api.runs.cancel(live.runId).catch((e: unknown) => setError(errorText(e)));
     };
 
+    useEffect(() => {
+        stopRef.current = stop;
+    });
+
     const deleteSession = async () => {
         if (!sessionId || !window.confirm(t('chat.deleteConfirm'))) return;
         await api.sessions.delete(sessionId).catch((e: unknown) => setError(errorText(e)));
@@ -933,55 +950,255 @@ export function ChatView({
         }
     }
 
-    /**
-     * 语音界面的字幕区(ADR 0049 第 1.3 节):上面是用户刚说的话,下面是助手回复的最后几句;
-     * 进行中的工具卡片(含审批)照常显示,批准仍然只能点卡片上的按钮。
-     */
-    const voiceStage = () => {
-        const lastOf = (role: Message['role']) => [...messages].reverse().find((m) => m.role === role);
-        const userCaption = live ? live.userText : lastOf('user') ? textOf(lastOf('user')!) : '';
-        const reply = live ? live.text : lastOf('assistant') ? textOf(lastOf('assistant')!) : '';
-        const replyCaption = captionTail(markdownToSpeech(reply, t('voice.codeOmitted')));
-        return (
-            <div className="voice-stage" data-testid="voice-stage">
-                <div className="voice-captions" aria-live="polite">
-                    {userCaption ? (
-                        <p className="caption-user" data-testid="caption-user">
-                            {captionTail(userCaption)}
-                        </p>
-                    ) : null}
-                    {replyCaption ? (
-                        <p className="caption-reply" data-testid="caption-reply">
-                            {replyCaption}
-                        </p>
-                    ) : live ? (
-                        <p className="caption-reply muted">{t('chat.thinking')}</p>
-                    ) : null}
-                </div>
-                {live?.tools.map((tool) => (
-                    <ToolCard key={tool.callId} tool={tool} live />
-                ))}
-                {continuous && live ? (
-                    // 连续对话里说话按钮是「结束对话」,停止这次回复的按钮放在字幕下面
-                    <button
-                        type="button"
-                        className="link small"
-                        onClick={() => void stop()}
-                        disabled={!live.runId}
-                        data-testid="voice-stop"
-                    >
-                        {t('chat.stop')}
+    /** 输入框;语音界面里是 Ctrl/Cmd+I 打开的文字弹窗(ADR 0049 第 1.4 节)。 */
+    const composerView = (
+        <div
+            className={voiceFirst ? 'composer-popup' : 'composer-wrap'}
+            {...(voiceFirst
+                ? { role: 'dialog', 'aria-label': t('voice.textPopup'), 'data-testid': 'composer-popup' }
+                : {})}
+        >
+            {voiceFirst ? (
+                <div className="composer-popup-head">
+                    <span>{t('voice.textPopup')}</span>
+                    <button type="button" className="link small" onClick={() => setPopupOpen(false)}>
+                        {t('voice.closePopup')}
                     </button>
-                ) : null}
-                {error ? <p className="error">{t('chat.failed', { msg: error })}</p> : null}
-                {voiceNotice ? (
-                    <p className="small warning" role="status">
-                        {voiceNotice}
+                </div>
+            ) : null}
+            {images.length > 0 || imageNotice || noVision || uploading ? (
+                <div className="composer-images" data-testid="composer-images">
+                    {images.length > 0 ? (
+                        <ul className="image-previews">
+                            {images.map((image) => (
+                                <li key={image.key}>
+                                    <ComposerPreview file={image.file} />
+                                    <button
+                                        type="button"
+                                        className="remove-image"
+                                        aria-label={t('chat.removeImage', { name: image.file.name })}
+                                        onClick={() => removeImage(image.key)}
+                                        disabled={uploading}
+                                    >
+                                        ×
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : null}
+                    {noVision && profile ? (
+                        <p className="small warning" role="status" data-testid="no-vision">
+                            {t('chat.noVision', { label: profile.label })}
+                        </p>
+                    ) : null}
+                    {imageNotice ? (
+                        <p className="small warning" role="status">
+                            {imageNotice}
+                        </p>
+                    ) : null}
+                    {uploading ? <p className="small muted">{t('chat.uploading')}</p> : null}
+                </div>
+            ) : null}
+            <div className="composer" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
+                {voiceFallback ? (
+                    <p className="small muted voice-fallback" role="status" data-testid="voice-fallback">
+                        {t(voiceFallback === 'noStt' ? 'voice.noStt' : 'voice.noMic')}{' '}
+                        {voiceFallback === 'noStt' ? (
+                            <a
+                                href={routePath({ name: 'settings' })}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    navigate({ name: 'settings' });
+                                }}
+                            >
+                                {t('voice.noSttLink')}
+                            </a>
+                        ) : null}
                     </p>
                 ) : null}
+                <textarea
+                    ref={textarea}
+                    aria-label={t('chat.placeholder')}
+                    placeholder={t('chat.placeholder')}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={onKeyDown}
+                    onPaste={onPaste}
+                    rows={3}
+                />
+                <input
+                    ref={fileInput}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    multiple
+                    hidden
+                    data-testid="image-input"
+                    onChange={(e) => {
+                        addFiles([...(e.target.files ?? [])]);
+                        e.target.value = '';
+                    }}
+                />
+                {voiceEnabled && !voiceFirst ? talkButton(false) : null}
+                <button
+                    type="button"
+                    title={t('chat.attachHint')}
+                    onClick={() => fileInput.current?.click()}
+                    disabled={uploading || images.length >= MAX_ATTACHMENTS_PER_MESSAGE}
+                >
+                    {t('chat.attachImage')}
+                </button>
+                {live ? (
+                    <button type="button" onClick={() => void stop()} disabled={!live.runId}>
+                        {t('chat.stop')}
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        className="primary"
+                        onClick={() => void submit()}
+                        disabled={(!input.trim() && images.length === 0) || uploading || noVision}
+                    >
+                        {t('chat.send')}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+
+    /**
+     * 极简主界面(ADR 0049 第 10 节):中间只有球,球下三行——状态、音量条与模型名、当前这一句字幕。
+     * 球本身就是说话的地方:点按 / 按住说话;连续对话时点一下开始或结束;回复进行中点一下停止。
+     * 文字输入用 Ctrl/Cmd+I,完整对话用 Ctrl/Cmd+H,都不放按钮。
+     */
+    if (minimal) {
+        const name = agents.find((a) => a.id === agentId)?.name ?? t('voice.stage.defaultName');
+        const recordingNow = voiceMode === 'hold' || voiceMode === 'tap';
+        const phase: 'idle' | 'listening' | 'heard' | 'thinking' | 'speaking' = conversation.active
+            ? conversation.speech
+                ? 'heard'
+                : localVoice === 'speaking' || shown.state === 'speaking'
+                  ? 'speaking'
+                  : live || voiceMode === 'transcribing'
+                    ? 'thinking'
+                    : 'listening'
+            : recordingNow
+              ? 'listening'
+              : voiceMode === 'transcribing'
+                ? 'thinking'
+                : localVoice === 'speaking' || shown.state === 'speaking'
+                  ? 'speaking'
+                  : live || shown.state === 'thinking' || shown.state === 'executing'
+                    ? 'thinking'
+                    : conversation.active || localVoice === 'listening' || shown.state === 'listening'
+                      ? 'listening'
+                      : 'idle';
+        const lastOf = (role: Message['role']) => [...messages].reverse().find((m) => m.role === role);
+        const reply = live ? live.text : lastOf('assistant') ? textOf(lastOf('assistant')!) : '';
+        const userLine = live?.userText ?? '';
+        const sentence = currentSentence(markdownToSpeech(reply, t('voice.codeOmitted'))) || currentSentence(userLine);
+        const orbState: AssistantState =
+            phase === 'heard'
+                ? 'listening'
+                : phase === 'idle'
+                  ? indicatorState
+                  : phase === 'thinking'
+                    ? 'thinking'
+                    : phase;
+        const action =
+            live?.runId && !recordingNow
+                ? t('chat.stop')
+                : continuous
+                  ? conversation.active
+                      ? t('voice.endConversation')
+                      : t('voice.startConversation')
+                  : live
+                    ? t('chat.stop')
+                    : recordingNow
+                      ? t('voice.tapRecording')
+                      : t('voice.talk');
+        // 回复进行中点球只停止这次回复(连续对话也一样,对话继续);结束对话用 Esc 或回复结束后再点
+        const orbMode = live?.runId && !recordingNow ? 'stop' : continuous ? 'conversation' : live ? 'stop' : 'talk';
+        return (
+            <div
+                className={workbench ? 'chat chat-stage voice-min' : 'chat voice-min'}
+                data-voice-first=""
+                data-phase={phase}
+            >
+                {conversation.active ? (
+                    <div className="mic-on" role="status" data-testid="mic-on">
+                        <span className="mic-on-dot" aria-hidden="true" />
+                        <span>{t('voice.micOn')}</span>
+                    </div>
+                ) : null}
+                <div className="voice-min-stage" data-testid="voice-stage">
+                    <button
+                        type="button"
+                        className="voice-min-orb"
+                        aria-label={action}
+                        data-testid={`voice-${orbMode}`}
+                        aria-pressed={orbMode === 'conversation' ? conversation.active : recordingNow}
+                        disabled={orbMode === 'stop' ? !live?.runId : voiceMode === 'transcribing'}
+                        onClick={() => {
+                            if (orbMode === 'conversation') {
+                                if (conversation.active) endConversation('user');
+                                else void beginConversation();
+                            } else if (orbMode === 'stop') void stop();
+                        }}
+                        onPointerDown={(e) => {
+                            if (orbMode !== 'talk') return;
+                            e.preventDefault();
+                            pressVoice();
+                        }}
+                        onPointerUp={() => {
+                            if (orbMode === 'talk') releaseVoice();
+                        }}
+                        onPointerLeave={() => {
+                            if (orbMode === 'talk' && mode.current === 'hold') void finishRecording();
+                        }}
+                        onKeyDown={(e) => {
+                            if (orbMode !== 'talk') return;
+                            if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
+                                e.preventDefault();
+                                pressVoice();
+                            }
+                        }}
+                        onKeyUp={(e) => {
+                            if (orbMode !== 'talk') return;
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                pressedAt.current = 0;
+                                releaseVoice();
+                            }
+                        }}
+                    >
+                        <VoiceIndicator state={orbState} level={level} />
+                    </button>
+                    <p className="voice-min-status" aria-live="polite" data-testid="voice-status">
+                        {phase === 'idle' ? name : t(`voice.stage.${phase}`, { name })}
+                    </p>
+                    <p className="voice-min-meta">
+                        <LevelBar level={level} />
+                        <span>{profile?.label ?? t('wb.noModel')}</span>
+                    </p>
+                    <p className="voice-min-caption" data-testid="voice-caption">
+                        {sentence}
+                    </p>
+                    {live?.tools
+                        .filter((tool) => tool.approval && !tool.approval.decision)
+                        .map((tool) => (
+                            <ToolCard key={tool.callId} tool={tool} live />
+                        ))}
+                    {error ? <p className="error">{t('chat.failed', { msg: error })}</p> : null}
+                    {voiceNotice ? (
+                        <p className="small warning" role="status">
+                            {voiceNotice}
+                        </p>
+                    ) : null}
+                </div>
+                {popupOpen ? composerView : null}
             </div>
         );
-    };
+    }
 
     return (
         <div
@@ -1023,9 +1240,7 @@ export function ChatView({
                     </button>
                 ) : null}
             </div>
-            {voiceFirst && !showHistory ? (
-                voiceStage()
-            ) : (
+            {
                 <div className="messages" data-testid="messages">
                     {blank && indicatorState !== 'idle' ? <p className="muted empty">{t('chat.empty')}</p> : null}
                     {messages.map((m) => (
@@ -1099,173 +1314,21 @@ export function ChatView({
                     ) : null}
                     <div ref={bottom} />
                 </div>
-            )}
+            }
             {voiceFirst ? (
                 <div className="voice-controls">
                     <button
                         type="button"
                         className="link small"
                         aria-expanded={showHistory}
-                        onClick={() => setShowHistory((v) => !v)}
+                        onClick={() => setShowHistory(false)}
                         data-testid="voice-history"
                     >
-                        {showHistory ? t('voice.hideHistory') : t('voice.history')}
-                    </button>
-                    {continuous ? (
-                        <button
-                            type="button"
-                            className={`voice-big${conversation.active ? ' recording' : ''}`}
-                            aria-pressed={conversation.active}
-                            title={t(conversation.active ? 'voice.endConversationHint' : 'voice.startConversationHint')}
-                            onClick={() => (conversation.active ? endConversation('user') : void beginConversation())}
-                            data-testid="voice-conversation"
-                        >
-                            {conversation.active
-                                ? conversation.speech
-                                    ? t('voice.recording')
-                                    : t('voice.endConversation')
-                                : t('voice.startConversation')}
-                        </button>
-                    ) : live ? (
-                        <button
-                            type="button"
-                            className="voice-big voice-stop"
-                            onClick={() => void stop()}
-                            disabled={!live.runId}
-                            data-testid="voice-stop"
-                        >
-                            {t('chat.stop')}
-                        </button>
-                    ) : (
-                        talkButton(true)
-                    )}
-                    <button
-                        type="button"
-                        className="voice-keyboard"
-                        title={t('voice.keyboardHint')}
-                        aria-label={t('voice.keyboardHint')}
-                        aria-expanded={popupOpen}
-                        onClick={() => setPopupOpen((open) => !open)}
-                        data-testid="voice-keyboard"
-                    >
-                        <Icon name="keyboard" />
-                        <span>{t('voice.keyboard')}</span>
+                        {t('voice.hideHistory')}
                     </button>
                 </div>
             ) : null}
-            {!voiceFirst || popupOpen ? (
-                <div
-                    className={voiceFirst ? 'composer-popup' : 'composer-wrap'}
-                    {...(voiceFirst
-                        ? { role: 'dialog', 'aria-label': t('voice.textPopup'), 'data-testid': 'composer-popup' }
-                        : {})}
-                >
-                    {voiceFirst ? (
-                        <div className="composer-popup-head">
-                            <span>{t('voice.textPopup')}</span>
-                            <button type="button" className="link small" onClick={() => setPopupOpen(false)}>
-                                {t('voice.closePopup')}
-                            </button>
-                        </div>
-                    ) : null}
-                    {images.length > 0 || imageNotice || noVision || uploading ? (
-                        <div className="composer-images" data-testid="composer-images">
-                            {images.length > 0 ? (
-                                <ul className="image-previews">
-                                    {images.map((image) => (
-                                        <li key={image.key}>
-                                            <ComposerPreview file={image.file} />
-                                            <button
-                                                type="button"
-                                                className="remove-image"
-                                                aria-label={t('chat.removeImage', { name: image.file.name })}
-                                                onClick={() => removeImage(image.key)}
-                                                disabled={uploading}
-                                            >
-                                                ×
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : null}
-                            {noVision && profile ? (
-                                <p className="small warning" role="status" data-testid="no-vision">
-                                    {t('chat.noVision', { label: profile.label })}
-                                </p>
-                            ) : null}
-                            {imageNotice ? (
-                                <p className="small warning" role="status">
-                                    {imageNotice}
-                                </p>
-                            ) : null}
-                            {uploading ? <p className="small muted">{t('chat.uploading')}</p> : null}
-                        </div>
-                    ) : null}
-                    <div className="composer" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
-                        {voiceFallback ? (
-                            <p className="small muted voice-fallback" role="status" data-testid="voice-fallback">
-                                {t(voiceFallback === 'noStt' ? 'voice.noStt' : 'voice.noMic')}{' '}
-                                {voiceFallback === 'noStt' ? (
-                                    <a
-                                        href={routePath({ name: 'settings' })}
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            navigate({ name: 'settings' });
-                                        }}
-                                    >
-                                        {t('voice.noSttLink')}
-                                    </a>
-                                ) : null}
-                            </p>
-                        ) : null}
-                        <textarea
-                            ref={textarea}
-                            aria-label={t('chat.placeholder')}
-                            placeholder={t('chat.placeholder')}
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={onKeyDown}
-                            onPaste={onPaste}
-                            rows={3}
-                        />
-                        <input
-                            ref={fileInput}
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp,image/gif"
-                            multiple
-                            hidden
-                            data-testid="image-input"
-                            onChange={(e) => {
-                                addFiles([...(e.target.files ?? [])]);
-                                e.target.value = '';
-                            }}
-                        />
-                        {voiceEnabled && !voiceFirst ? talkButton(false) : null}
-                        <button
-                            type="button"
-                            title={t('chat.attachHint')}
-                            onClick={() => fileInput.current?.click()}
-                            disabled={uploading || images.length >= MAX_ATTACHMENTS_PER_MESSAGE}
-                        >
-                            {t('chat.attachImage')}
-                        </button>
-                        {live ? (
-                            <button type="button" onClick={() => void stop()} disabled={!live.runId}>
-                                {t('chat.stop')}
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                className="primary"
-                                onClick={() => void submit()}
-                                disabled={(!input.trim() && images.length === 0) || uploading || noVision}
-                            >
-                                {t('chat.send')}
-                            </button>
-                        )}
-                    </div>
-                </div>
-            ) : null}
+            {!voiceFirst || popupOpen ? composerView : null}
         </div>
     );
 }

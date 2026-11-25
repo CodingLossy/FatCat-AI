@@ -3595,3 +3595,187 @@ input.code-timeout {
     display: grid;
     gap: 0.4rem;
 }
+
+/* 语音优先的极简主界面(ADR 0049 第 10 节):左上角只有一个小圆 logo,侧栏当抽屉;中间是球和三行文字 */
+.wb-shell[data-minimal] {
+    background: radial-gradient(120% 90% at 50% 38%, color-mix(in srgb, var(--accent) 7%, var(--bg)) 0%, var(--bg) 70%);
+}
+
+.wb-shell[data-minimal] .wb-capsule[hidden] {
+    display: none;
+}
+
+.wb-shell[data-minimal] .wb-side {
+    position: fixed;
+    z-index: 41;
+    inset: 0 auto 0 0;
+    width: min(18rem, 85vw);
+    overflow-y: auto;
+    background: var(--surface);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+        transform 0.15s ease,
+        visibility 0.15s;
+    padding-top: max(var(--space-3), env(safe-area-inset-top));
+    padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
+}
+
+.wb-shell[data-minimal] .wb-side[data-open] {
+    transform: none;
+    visibility: visible;
+    box-shadow: var(--shadow-drawer);
+}
+
+.wb-shell[data-minimal] .wb-side-toggle {
+    display: none;
+}
+
+.wb-logo {
+    position: absolute;
+    z-index: 6;
+    top: max(var(--space-3), env(safe-area-inset-top));
+    left: max(var(--space-3), env(safe-area-inset-left));
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    color: var(--fg);
+}
+
+.wb-logo:hover {
+    background: var(--surface);
+}
+
+.chat-stage.voice-min,
+.chat.voice-min {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.voice-min .mic-on {
+    position: absolute;
+    top: max(var(--space-3), env(safe-area-inset-top));
+    right: var(--space-3);
+    border-radius: 999px;
+}
+
+.voice-min-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    width: min(100%, 44rem);
+    max-height: 100%;
+    padding: 0 var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
+    overflow-y: auto;
+    text-align: center;
+}
+
+.voice-min-orb {
+    flex: none;
+    width: min(34vh, 70vw);
+    aspect-ratio: 1;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.voice-min-orb:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 8px;
+}
+
+.voice-min-orb:disabled {
+    cursor: default;
+}
+
+.chat-stage.voice-min .voice-indicator,
+.voice-min .voice-indicator {
+    position: static;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.chat-stage.voice-min .voice-orb-wrap,
+.voice-min .voice-orb-wrap {
+    position: static;
+    width: 100%;
+    height: 100%;
+    transform: none;
+}
+
+.voice-min-status {
+    margin: var(--space-3) 0 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--fg);
+}
+
+.voice-min-meta {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.voice-min-caption {
+    margin: var(--space-2) 0 0;
+    min-height: 1.6em;
+    max-width: 40rem;
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: var(--fg);
+}
+
+.voice-min .tool-card {
+    width: 100%;
+    text-align: left;
+}
+
+.level-bar {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 10px;
+}
+
+.level-bar > span {
+    width: 3px;
+    border-radius: 1px;
+    background: currentColor;
+    height: calc(20% + var(--level, 0) * 80%);
+    transition: height 0.08s linear;
+}
+
+.level-bar > span:nth-child(2) {
+    height: calc(30% + var(--level, 0) * 70%);
+}
+
+.level-bar > span:nth-child(3) {
+    height: calc(25% + var(--level, 0) * 60%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .level-bar > span {
+        transition: none;
+    }
+}
+
+.layout:has(> .wb-shell[data-minimal]) > .footer {
+    display: none;
+}

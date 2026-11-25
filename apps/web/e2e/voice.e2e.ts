@@ -165,7 +165,7 @@ test('按住说话 → 转写 → 回复 → 朗读', async ({ page }) => {
     await page.getByLabel('用户名').fill('owner');
     await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: '创建并登录' }).click();
-    await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
+    await expect(page.locator('.wb-shell')).toBeVisible();
 
     // 三个配置档与「自动朗读」通过 API 设置(同源 Cookie 会话 + CSRF)
     const csrf = (await page.context().cookies()).find((c) => c.name === 'aip_csrf')!.value;
@@ -187,7 +187,7 @@ test('按住说话 → 转写 → 回复 → 朗读', async ({ page }) => {
     chatQueue.push(...loadFixture(join(FIXTURES, 'deepseek-chat-stream.json')).interactions);
     // 重新加载,让聊天页读到新的配置档与设置
     await page.reload();
-    await page.getByRole('link', { name: '新对话' }).click();
+    await page.goto(base); // 新对话;语音优先时侧栏收在 logo 里
     const indicator = page.getByTestId('voice-indicator');
     await expect(indicator).toHaveAttribute('data-state', 'idle');
 
@@ -250,7 +250,7 @@ test('语音优先:点按说话、字幕、文字弹窗发送后收起(ADR 0049 
     await page.getByLabel('用户名').fill('owner');
     await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: '登录' }).click();
-    await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
+    await expect(page.locator('.wb-shell')).toBeVisible();
     const csrf = (await page.context().cookies()).find((c) => c.name === 'aip_csrf')!.value;
     const res = await page.request.fetch(`${base}/api/v1/settings`, {
         method: 'PUT',
@@ -269,28 +269,32 @@ test('语音优先:点按说话、字幕、文字弹窗发送后收起(ADR 0049 
         };
     });
     await page.reload();
-    await page.getByRole('link', { name: '新对话' }).click();
+    await page.goto(base); // 新对话;语音优先时侧栏收在 logo 里
 
-    // 主界面只有大的说话按钮与字幕,没有输入框
+    // 主界面只有球和下面三行字,没有输入框和按钮(ADR 0049 第 10 节);球本身就是说话的地方
     const talk = page.getByTestId('voice-talk');
-    await expect(talk).toHaveText('说话');
+    await expect(talk).toHaveAttribute('aria-label', /^点一下开始说话/);
+    await expect(page.getByTestId('voice-keyboard')).toHaveCount(0);
+    await expect(page.getByTestId('voice-history')).toHaveCount(0);
+    await expect(page.locator('.wb-capsule')).toBeHidden();
+    await expect(page.getByTestId('wb-logo')).toBeVisible();
     await expect(page.getByRole('textbox', { name: /^输入消息/ })).toHaveCount(0);
     await expect(page.getByTestId('voice-button')).toHaveCount(0);
 
     // 点一下开始,再点一下结束并发送
     await talk.click();
-    await expect(talk).toHaveText('再点一下结束');
+    await expect(talk).toHaveAttribute('aria-label', '再点一下结束');
+    await expect(page.getByTestId('voice-status')).toHaveText('FatCat 正在聆听');
     await sleep(800);
     await talk.click();
-    await expect(page.getByTestId('caption-user')).toHaveText(TRANSCRIPT);
-    await expect(page.getByTestId('caption-reply')).toContainText('你好世界', { timeout: 15_000 });
+    await expect(page.getByTestId('voice-caption')).toContainText('你好世界', { timeout: 15_000 });
 
     // 录音中按 Esc 取消,不发送
     const before = seen.filter((r) => r.path === '/v1/audio/transcriptions').length;
     await talk.click();
-    await expect(talk).toHaveText('再点一下结束');
+    await expect(talk).toHaveAttribute('aria-label', '再点一下结束');
     await page.keyboard.press('Escape');
-    await expect(talk).toHaveText('说话');
+    await expect(talk).toHaveAttribute('aria-label', /^点一下开始说话/);
     await expect(page.getByText('已取消这次录音。')).toBeVisible();
     expect(seen.filter((r) => r.path === '/v1/audio/transcriptions')).toHaveLength(before);
 
@@ -304,15 +308,15 @@ test('语音优先:点按说话、字幕、文字弹窗发送后收起(ADR 0049 
     await talk.click();
     await page.keyboard.press('Escape');
     await sleep(1500);
-    await expect(talk).toHaveText('说话');
+    await expect(talk).toHaveAttribute('aria-label', /^点一下开始说话/);
     expect(seen.filter((r) => r.path === '/v1/audio/transcriptions')).toHaveLength(before);
     expect(chats()).toBe(chatsBefore);
-    await expect(page.getByTestId('caption-user')).toHaveText(TRANSCRIPT);
 
-    // 完整对话可以展开
-    await page.getByTestId('voice-history').click();
+    // 完整对话用 Ctrl+H 展开,里面有「收起」
+    await page.keyboard.press('Control+h');
     await expect(page.locator('.message.user').first()).toHaveText(TRANSCRIPT);
     await page.getByTestId('voice-history').click();
+    await expect(page.getByTestId('voice-stage')).toBeVisible();
 
     // Ctrl+I 打开文字弹窗,Esc 收起且保留草稿;发送后自动收起
     chatQueue.push(...loadFixture(join(FIXTURES, 'deepseek-chat-stream.json')).interactions);
@@ -323,13 +327,16 @@ test('语音优先:点按说话、字幕、文字弹窗发送后收起(ADR 0049 
     await box.fill('打字发一句');
     await page.keyboard.press('Escape');
     await expect(popup).toHaveCount(0);
-    await page.getByTestId('voice-keyboard').click();
+    await page.keyboard.press('Control+i');
     await expect(box).toHaveValue('打字发一句');
     await popup.getByRole('button', { name: '发送' }).click();
     await expect(popup).toHaveCount(0);
-    await expect(page.getByTestId('caption-user')).toHaveText('打字发一句');
+    await expect(page.getByTestId('voice-caption')).toContainText('你好世界', { timeout: 15_000 });
+    await page.keyboard.press('Control+h');
+    await expect(page.locator('.message.user').last()).toHaveText('打字发一句');
+    await page.keyboard.press('Control+h');
 
-    // 回复进行中,说话按钮换成「停止」,不用打开弹窗
+    // 回复进行中,点球就是停止,不用打开弹窗
     holdChat = true;
     await page.keyboard.press('Control+i');
     await box.fill('这一句会被停止');
@@ -338,7 +345,7 @@ test('语音优先:点按说话、字幕、文字弹窗发送后收起(ADR 0049 
     await expect(stop).toBeEnabled();
     await expect(page.getByTestId('voice-talk')).toHaveCount(0);
     await stop.click();
-    await expect(page.getByTestId('voice-talk')).toHaveText('说话', { timeout: 10_000 });
+    await expect(page.getByTestId('voice-talk')).toHaveAttribute('aria-label', /^点一下开始说话/, { timeout: 10_000 });
     await expect(stop).toHaveCount(0);
     releaseChat();
 });
@@ -348,7 +355,7 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
     await page.getByLabel('用户名').fill('owner');
     await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: '登录' }).click();
-    await expect(page.getByRole('link', { name: '新对话' })).toBeVisible();
+    await expect(page.locator('.wb-shell')).toBeVisible();
     const csrf = (await page.context().cookies()).find((c) => c.name === 'aip_csrf')!.value;
     const res = await page.request.fetch(`${base}/api/v1/settings`, {
         method: 'PUT',
@@ -400,10 +407,10 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
         await page.evaluate(() => (window as unknown as { fakeMic: { off(): void } }).fakeMic.off());
     };
     await page.reload();
-    await page.getByRole('link', { name: '新对话' }).click();
+    await page.goto(base); // 新对话;语音优先时侧栏收在 logo 里
 
     const conversation = page.getByTestId('voice-conversation');
-    await expect(conversation).toHaveText('开始对话');
+    await expect(conversation).toHaveAttribute('aria-label', '开始对话');
     await expect(page.getByTestId('voice-talk')).toHaveCount(0);
     const indicator = page.getByTestId('voice-indicator');
     const transcriptions = () => seen.filter((r) => r.path === '/v1/audio/transcriptions').length;
@@ -416,8 +423,10 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
     speechSeconds = 6;
     await conversation.click();
     await expect(page.getByTestId('mic-on')).toContainText('麦克风开着');
-    await expect(conversation).toHaveText('结束对话');
+    await expect(conversation).toHaveAttribute('aria-label', '结束对话');
     await expect(page).toHaveTitle(/^\[麦克风开着\]/);
+    // 对话开着、没检测到说话:状态是「正在聆听」
+    await expect(page.getByTestId('voice-status')).toHaveText('FatCat 正在聆听');
     expect(
         await page.evaluate(() => (window as unknown as { fakeMic: { constraints: unknown[] } }).fakeMic.constraints),
     ).toEqual([{ audio: { echoCancellation: true, noiseSuppression: true } }]);
@@ -430,8 +439,7 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
 
     // 第一段:说完停顿后自动结束并发送;回复读出来
     await say(700);
-    await expect(page.getByTestId('caption-user')).toHaveText('第一句', { timeout: 10_000 });
-    await expect(page.getByTestId('caption-reply')).toContainText('你好世界', { timeout: 15_000 });
+    await expect(page.getByTestId('voice-caption')).toContainText('你好世界', { timeout: 15_000 });
     await expect(indicator).toHaveAttribute('data-state', 'speaking', { timeout: 10_000 });
 
     // 朗读时开口:立即停止朗读(6 秒的音频没读完),不取消运行,这一段作为下一条消息发送
@@ -448,15 +456,14 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
     expect(played[0]!.at).toBeLessThan(5);
     await sleep(500);
     await page.evaluate(() => (window as unknown as { fakeMic: { off(): void } }).fakeMic.off());
-    await expect(page.getByTestId('caption-user')).toHaveText('第二句', { timeout: 10_000 });
-    await expect(page.getByTestId('caption-reply')).toContainText('你好世界', { timeout: 15_000 });
-    expect(transcriptions()).toBe(sttBefore + 2);
+    await expect.poll(transcriptions, { timeout: 10_000 }).toBe(sttBefore + 2);
+    await expect(page.getByTestId('voice-caption')).toContainText('你好世界', { timeout: 15_000 });
     expect(cancels).toEqual([]);
 
     // 之后 3 秒没人说话(朗读与等回复的时间不算):自动结束,麦克风关闭
     await expect(page.getByTestId('mic-on')).toHaveCount(0, { timeout: 15_000 });
     await expect(page.getByText('一直没听到说话,对话已结束。')).toBeVisible();
-    await expect(conversation).toHaveText('开始对话');
+    await expect(conversation).toHaveAttribute('aria-label', '开始对话');
     await expect(page).toHaveTitle(/^FatCat-AI/);
 
     // 页面进入后台:立即结束
@@ -472,10 +479,99 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
         Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
     });
 
-    // Esc 结束对话
+    // 回复进行中点球只停止这次回复,对话继续;之后 Esc 结束对话
     await conversation.click();
     await expect(page.getByTestId('mic-on')).toBeVisible();
+    transcripts.push('第三句');
+    holdChat = true;
+    await say(700);
+    const stopOrb = page.getByTestId('voice-stop');
+    await expect(stopOrb).toHaveAttribute('aria-label', '停止', { timeout: 10_000 });
+    await expect(stopOrb).toBeEnabled();
+    await stopOrb.click();
+    await expect.poll(() => cancels.length, { timeout: 10_000 }).toBe(1);
+    await expect(page.getByTestId('mic-on')).toBeVisible();
+    releaseChat();
+    await expect(conversation).toHaveAttribute('aria-label', '结束对话', { timeout: 10_000 });
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('mic-on')).toHaveCount(0);
-    expect(transcriptions()).toBe(sttBefore + 2);
+    expect(transcriptions()).toBe(sttBefore + 3);
+});
+
+test('极简主界面:三套主题的空闲 / 聆听 / 思考,手机不横向溢出(ADR 0049 第 10 节)', async ({ page }) => {
+    const shots = process.env.FATCAT_SHOTS_DIR;
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(base);
+    await page.getByLabel('用户名').fill('owner');
+    await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
+    await page.getByRole('button', { name: '登录' }).click();
+    await expect(page.locator('.wb-shell')).toBeVisible();
+    const csrf = (await page.context().cookies()).find((c) => c.name === 'aip_csrf')!.value;
+    const put = async (data: unknown) =>
+        expect(
+            (
+                await page.request.fetch(`${base}/api/v1/settings`, {
+                    method: 'PUT',
+                    data,
+                    headers: { 'x-csrf-token': csrf },
+                })
+            ).ok(),
+        ).toBe(true);
+    await put({ voice: { autoSpeak: false, inputMode: 'voice', continuous: false } });
+
+    for (const theme of ['tech', 'nature', 'cat']) {
+        await put({ theme });
+        await page.goto(base);
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+        const talk = page.getByTestId('voice-talk');
+        await expect(talk).toBeVisible();
+        // 主界面上没有胶囊、代理下拉、说话 / 打字按钮和「查看完整对话」
+        await expect(page.locator('.wb-capsule')).toBeHidden();
+        await expect(page.locator('.wb-side')).toBeHidden();
+        await expect(page.getByTestId('agent-picker')).toHaveCount(0);
+        await expect(page.getByTestId('voice-status')).toHaveText('FatCat');
+        await page.waitForTimeout(400);
+        if (shots) await page.screenshot({ path: join(shots, `${theme}-idle.png`) });
+
+        await talk.click();
+        await expect(page.getByTestId('voice-status')).toHaveText('FatCat 正在聆听');
+        await page.waitForTimeout(400);
+        if (shots) await page.screenshot({ path: join(shots, `${theme}-listening.png`) });
+        await page.keyboard.press('Escape');
+
+        holdChat = true;
+        chatQueue.push(...loadFixture(join(FIXTURES, 'deepseek-chat-stream.json')).interactions);
+        await page.keyboard.press('Control+i');
+        await page.getByTestId('composer-popup').getByRole('textbox').fill('今天天气怎么样?');
+        await page.keyboard.press('Enter');
+        await expect(page.getByTestId('voice-status')).toHaveText('FatCat 正在思考');
+        await page.waitForTimeout(400);
+        if (shots) await page.screenshot({ path: join(shots, `${theme}-thinking.png`) });
+        releaseChat();
+        await expect(page.getByTestId('voice-caption')).toContainText('你好世界', { timeout: 15_000 });
+        if (shots) await page.screenshot({ path: join(shots, `${theme}-reply.png`) });
+
+        // 左上角的小圆 logo 打开原来的侧栏
+        await page.getByTestId('wb-logo').click();
+        await expect(page.locator('.wb-side')).toBeVisible();
+        await page.waitForTimeout(300); // 抽屉滑入的动画
+        if (shots && theme === 'tech') await page.screenshot({ path: join(shots, 'tech-menu.png') });
+        await page.keyboard.press('Escape');
+        await expect(page.locator('.wb-side')).toBeHidden();
+    }
+
+    // 命令面板里能切换模型和代理
+    await page.keyboard.press('Control+k');
+    await page.getByRole('combobox').fill('切换模型');
+    await expect(page.getByRole('option', { name: /^切换模型:/ }).first()).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await put({ theme: 'tech' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(base);
+    await expect(page.getByTestId('voice-talk')).toBeVisible();
+    await expect(page.locator('.wb-tabs')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.waitForTimeout(400);
+    if (shots) await page.screenshot({ path: join(shots, 'phone-idle.png') });
 });

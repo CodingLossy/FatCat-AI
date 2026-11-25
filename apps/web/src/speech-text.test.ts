@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import { describe, expect, it } from 'vitest';
-import { captionTail, markdownToSpeech, splitForSpeech } from './speech-text.js';
+import { captionTail, currentSentence, markdownToSpeech, splitForSpeech } from './speech-text.js';
 
 describe('markdownToSpeech', () => {
     it('代码块换成提示,链接只读文字,去掉 Markdown 标记', () => {
@@ -66,5 +66,20 @@ describe('captionTail', () => {
         expect(tail.endsWith('last sentence here')).toBe(true);
         // 没有边界时直接截取末尾
         expect(captionTail('y'.repeat(100), 10)).toBe(`…${'y'.repeat(10)}`);
+    });
+});
+
+describe('currentSentence', () => {
+    it('只取最后一句,流式回复里就是正在说的那句', () => {
+        expect(currentSentence('第一句。第二句!正在说的')).toBe('正在说的');
+        expect(currentSentence('Hello there. How are you?')).toBe('How are you?');
+        expect(currentSentence('  只有一句  ')).toBe('只有一句');
+        expect(currentSentence('')).toBe('');
+        expect(currentSentence('结尾有句号。')).toBe('结尾有句号。');
+    });
+
+    it('太长时只留结尾', () => {
+        const long = 'a'.repeat(300);
+        expect(currentSentence(long).length).toBeLessThanOrEqual(121);
     });
 });
