@@ -450,11 +450,17 @@ test('连续对话:本地断句、朗读时打断、静音与后台自动结束(
     await say(700);
     await expect(page.getByTestId('voice-caption')).toContainText('你好世界', { timeout: 15_000 });
     await expect(indicator).toHaveAttribute('data-state', 'speaking', { timeout: 10_000 });
+    // 连续对话里回复朗读中:状态行写「正在说话」,球是说话的颜色(ADR 0049 第 10.4 节)
+    await expect(page.getByTestId('voice-status')).toHaveText('FatCat 正在说话');
+    await expect(indicator).toHaveAttribute('data-hero', 'speaking');
 
     // 朗读时开口:立即停止朗读(6 秒的音频没读完),不取消运行,这一段作为下一条消息发送
     speechSeconds = 0.6;
     await page.evaluate(() => (window as unknown as { fakeMic: { on(): void } }).fakeMic.on());
     await expect(indicator).toHaveAttribute('data-state', 'listening', { timeout: 1500 });
+    // 检测到说话:状态行与球都换成「检测到语音」
+    await expect(page.getByTestId('voice-status')).toHaveText('检测到语音');
+    await expect(indicator).toHaveAttribute('data-hero', 'heard');
     const played = await page.evaluate(() =>
         (
             window as unknown as { fakeMic: { played(): { paused: boolean; ended: boolean; at: number }[] } }
@@ -590,18 +596,29 @@ test('极简主界面:三套主题的空闲 / 聆听 / 思考,手机不横向溢
     if (shots) await page.screenshot({ path: join(shots, 'phone-idle.png') });
 });
 
-test('连续语音默认开着:三套主题自动聆听;手机长按球打字、上滑看完整对话(ADR 0049 第 10.3 节)', async ({ browser }) => {
+test('连续语音默认开着、球的状态色:三套主题的聆听 / 检测到语音 / 空闲 / 思考 / 说话;手机长按球打字、上滑看完整对话(ADR 0049 第 10.3、10.4 节)', async ({
+    browser,
+}) => {
     const shots = process.env.FATCAT_SHOTS_DIR;
     const context = await browser.newContext({ permissions: ['microphone'], viewport: { width: 1280, height: 800 } });
     const page = await context.newPage();
-    // 安静的假麦克风:增益 0,VAD 听不到说话,不会发去转写
+    // 可控的假麦克风:平时增益 0(安静),fakeMic.on() 时像在说话
     await page.addInitScript(() => {
+        const gains: GainNode[] = [];
+        Object.assign(window, {
+            fakeMic: {
+                on: () => gains.forEach((g) => (g.gain.value = 0.8)),
+                off: () => gains.forEach((g) => (g.gain.value = 0)),
+            },
+        });
         navigator.mediaDevices.getUserMedia = async () => {
             const ctx = new AudioContext();
             await ctx.resume();
             const osc = ctx.createOscillator();
+            osc.frequency.value = 300;
             const gain = ctx.createGain();
             gain.gain.value = 0;
+            gains.push(gain);
             osc.connect(gain);
             osc.start();
             const dest = ctx.createMediaStreamDestination();
@@ -625,20 +642,57 @@ test('连续语音默认开着:三套主题自动聆听;手机长按球打字、
                 })
             ).ok(),
         ).toBe(true);
-    // 前面的用例关掉过连续语音;默认值(开着)由 packages/shared 的单测覆盖
-    await put({ voice: { autoSpeak: false, inputMode: 'voice', continuous: true, silenceEndSeconds: 60 } });
+    // 前面的用例关掉过连续语音;默认值(开着)由 packages/shared 的单测覆盖。朗读打开,用来拍「说话」
+    await put({ voice: { autoSpeak: true, inputMode: 'voice', continuous: true, silenceEndSeconds: 60 } });
+    const indicator = page.getByTestId('voice-indicator');
+    const status = page.getByTestId('voice-status');
+    const shot = async (name: string) => {
+        await page.waitForTimeout(600); // 状态色过渡
+        if (shots) await page.screenshot({ path: join(shots, name) });
+    };
 
     for (const theme of ['tech', 'nature', 'cat']) {
         await put({ theme });
         await page.goto(base);
         await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-        // 一打开就在听:顶部有「麦克风开着」,球的动作是暂停
+        // 一打开就在听:顶部有「麦克风开着」,球的动作是暂停,球是聆听色
         await expect(page.getByTestId('mic-on')).toBeVisible();
         await expect(page.getByTestId('voice-conversation')).toHaveAttribute('aria-label', '暂停聆听');
-        await expect(page.getByTestId('voice-status')).toHaveText('FatCat 正在聆听');
-        await page.waitForTimeout(400);
-        if (shots) await page.screenshot({ path: join(shots, `${theme}-auto-listening.png`) });
+        await expect(status).toHaveText('FatCat 正在聆听');
+        await expect(indicator).toHaveAttribute('data-hero', 'listening');
+        await shot(`${theme}-listening.png`);
+
+        // 检测到语音:亮绿;然后 Esc 暂停(这一段丢掉,不发去转写)
+        await page.evaluate(() => (window as unknown as { fakeMic: { on(): void } }).fakeMic.on());
+        await expect(status).toHaveText('检测到语音');
+        await expect(indicator).toHaveAttribute('data-hero', 'heard');
+        await shot(`${theme}-heard.png`);
+        await page.keyboard.press('Escape');
+        await page.evaluate(() => (window as unknown as { fakeMic: { off(): void } }).fakeMic.off());
+        await expect(page.getByTestId('mic-on')).toHaveCount(0);
+        await expect(status).toHaveText('FatCat');
+        await expect(indicator).toHaveAttribute('data-hero', 'idle');
+        await shot(`${theme}-idle.png`);
+
+        // 思考:紫色、换一种转法
+        holdChat = true;
+        speechSeconds = 8;
+        chatQueue.push(...loadFixture(join(FIXTURES, 'deepseek-chat-stream.json')).interactions);
+        await page.keyboard.press('Control+i');
+        await page.getByTestId('composer-popup').getByRole('textbox').fill('今天天气怎么样?');
+        await page.keyboard.press('Enter');
+        await expect(status).toHaveText('FatCat 正在思考');
+        await expect(indicator).toHaveAttribute('data-hero', 'thinking');
+        await shot(`${theme}-thinking.png`);
+
+        // 说话:深亮蓝,粒子随朗读音量向外脉动
+        releaseChat();
+        await expect(status).toHaveText('FatCat 正在说话', { timeout: 15_000 });
+        await expect(indicator).toHaveAttribute('data-hero', 'speaking');
+        await shot(`${theme}-speaking.png`);
+        await page.keyboard.press('Escape');
     }
+    speechSeconds = 0.6;
     await put({ theme: 'tech' });
     const cookies = await context.cookies();
     await context.close();

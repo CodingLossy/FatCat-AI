@@ -8,16 +8,18 @@ import { createCatHero } from './heroes/cat.js';
 import { createNatureHero } from './heroes/nature.js';
 import { createTechHero } from './heroes/tech.js';
 import type { KnowledgeScene } from './knowledge-model.js';
-import type { OrbState } from './orb-model.js';
+import type { HeroState } from './heroes/state-tint.js';
 import { resolveTheme, type ThemeId } from './theme-ids.js';
 
+export type { HeroState } from './heroes/state-tint.js';
 export { DEFAULT_THEME, resolveTheme, THEME_IDS, THEMES, type ThemeId } from './theme-ids.js';
 
 /** 主视觉的两种用途:助手(待机 / 聆听 / 思考 / 说话)和知识地图。 */
 export type HeroMode = 'assistant' | 'knowledge';
 
 export interface Hero {
-    setState(state: OrbState): void;
+    /** 助手状态,外加只在本机出现的「检测到语音」(`heard`,ADR 0049 第 10.4 节)。 */
+    setState(state: HeroState): void;
     /** 本地录音 / 播放的电平(0–1);null 表示没有电平。说话时主视觉随它起伏。 */
     setLevel(level: number | null): void;
     setMode(mode: HeroMode): void;

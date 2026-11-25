@@ -58,8 +58,21 @@ export {
     type HeroFactory,
     type HeroMode,
     type HeroOptions,
+    type HeroState,
     type ThemeId,
 } from './theme.js';
+export {
+    mixRgb,
+    motionState,
+    parseColor,
+    readStateColors,
+    rgbString,
+    stepTint,
+    tintTarget,
+    type Rgb,
+    type StateColors,
+    type Tint,
+} from './heroes/state-tint.js';
 export {
     starLift,
     STARS_PER_CONSTELLATION,

@@ -61,13 +61,16 @@ describe('tech hero model', () => {
     });
 
     it('聆听偏青、思考偏紫且转得更快,说话时星点随音量起伏,知识模式整体压暗', () => {
-        expect(techLook('listening', false).tintColor).toBe(2);
-        expect(techLook('thinking', false).tintColor).toBe(1);
-        expect(techLook('thinking', false).spin).toBeGreaterThan(techLook('listening', false).spin);
-        expect(techLook('idle', false).tintAmount).toBe(0);
+        // 思考换一种转法:反向自转并且球轴摆动,比聆听转得快
+        expect(techLook('thinking', false).spin).toBeLessThan(0);
+        expect(Math.abs(techLook('thinking', false).spin)).toBeGreaterThan(techLook('listening', false).spin);
+        expect(techLook('thinking', false).wobble).toBeGreaterThan(0);
+        expect(techLook('listening', false).wobble).toBe(0);
         expect(techLook('idle', true).brightness).toBeLessThan(techLook('idle', false).brightness);
         expect(starLift('speaking', 0, 1, 1)).toBe(0);
         expect(Math.abs(starLift('speaking', 1, 0.5, 0.3))).toBeGreaterThan(0);
+        // 说话时只向外脉动
+        for (let t = 0; t < 3; t += 0.1) expect(starLift('speaking', 1, 0.5, t)).toBeGreaterThan(0);
         expect(starLift('listening', 1, 0.5, 0.3)).toBe(0);
     });
 });
