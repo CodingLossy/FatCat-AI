@@ -66,8 +66,10 @@ You can also copy `sign-index.mjs` on its own to the machine that holds the key:
   passed around as a value is not seen. The scan is a first filter before the human review; the preload hooks and the
   operating-system isolation in `docs/adr/0040-plugins-and-market.md` section 3.4 are what stop those at run time.
 - Skills (`docs/adr/0048-skills.md` section 9): a version's `instructionOnly` must be `true` exactly when its
-  `plugin.json` has no `entry`, and the plugin's `skills` (id and description) must equal the newest version's
-  manifest `skills`. Every skill's instructions file is screened for wording that asks to skip or bypass approvals,
+  `plugin.json` has no `entry`, and the plugin's `skills` (id and description) must equal the manifest `skills` of
+  the newest version that is not yanked (the newest version when all are yanked), which is the one the market page
+  shows. When an entry changes only its `skills`, or that version changes (for example the newest is yanked), the
+  version is downloaded and checked again even though no new version was added. Every skill's instructions file is screened for wording that asks to skip or bypass approvals,
   approve without asking, read or print secrets (`secrets.yaml`, the master key, `.env`), send data to an outside
   address, or ignore earlier instructions, in English and Chinese. A hit fails the check with the file and the rule.
   The screen is keyword based: instructions that quote such phrases as examples are flagged too and the human reviewer

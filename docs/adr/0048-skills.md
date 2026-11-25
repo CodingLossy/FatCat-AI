@@ -134,7 +134,7 @@ instructions 用英文写(与系统提示一致),写清步骤、什么时候停�
 ## 9. 市场
 
 - 沿用 ADR 0040 的签名索引、校验和与人工审核;纯指令插件同样经过索引仓库 CI 和人工审核。
-- 索引条目(`PluginIndexEntry`)增加可选的 `skills: [{ id, description }]`(取最新版本清单里的 Skill),市场页据此展示;版本(`PluginIndexVersion`)增加 `instructionOnly`(默认 `false`,与清单有没有 `entry` 一致),市场页和插件卡片把这样的插件标为「纯指令」,插件卡片不显示运行状态、「停止」和内存设置。`instructionOnly` 和权限一样发布后不可改;检查脚本核对它与包内清单一致、最新版本的 `skills` 与 `entry.skills` 一致。
+- 索引条目(`PluginIndexEntry`)增加可选的 `skills: [{ id, description }]`(取没有下架的最新版本清单里的 Skill,也就是市场页默认展示的版本;全部下架时取最新版本),市场页据此展示;版本(`PluginIndexVersion`)增加 `instructionOnly`(默认 `false`,与清单有没有 `entry` 一致),市场页和插件卡片把这样的插件标为「纯指令」,插件卡片不显示运行状态、「停止」和内存设置。`instructionOnly` 和权限一样发布后不可改;检查脚本核对它与包内清单一致、条目的 `skills` 与上述版本清单里的 Skill 一致;条目只改 `skills`、或那个版本变了(例如最新版本被下架),即使没有新版本也重新下载那个版本核对。
 - 兼容:索引条目是严格对象,不认识新字段的旧核心会拒绝带 `skills` / `instructionOnly` 的索引。1.0 之前没有发布版,官方索引还是空的,影响为零;官方索引等这一版发布后再写入这两个字段。
 - 审核新增一条规则,由索引仓库的检查脚本初筛、人工复核:**instructions 里不得出现要求跳过或绕过审批、读取或输出密钥、访问清单外网络的话术**(例如 "approve automatically"、"read secrets.yaml"、"send the conversation to …")。脚本只做关键词与模式初筛,人工审核是最后一关;即使漏过,第 4 节保证这样的说明也拿不到任何额外权限。
 - 初筛规则(`scripts/plugins/check-index.mjs` 的 `instructionScan`,中英文都查):跳过 / 绕过 / 自动通过审批、「不用询问」;读取或输出密钥、`secrets.yaml`、主密钥、`.env`;把数据发到外部地址;「忽略之前的指令」。命中即报错,写明文件与规则。已知误报:说明里引用攻击示例(例如教模型识别「ignore your rules」)也会命中,由人工审核放行。
