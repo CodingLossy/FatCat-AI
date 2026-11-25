@@ -180,7 +180,7 @@ export function resolveDelegateAgent(
     if (!record) return null;
     return {
         agent: runAgentOf(repos, record, locale),
-        profile: record.modelProfileId ? repos.modelProfiles.get(ownerId, record.modelProfileId) : null,
+        profile: record.modelProfileId ? repos.modelProfiles.getUsable(ownerId, record.modelProfileId) : null,
     };
 }
 
@@ -198,7 +198,7 @@ export function agentRoutes(deps: { repos: Repositories; runs: Pick<RunManager, 
         });
     };
     const checkProfile = (ownerId: string, profileId: string | null | undefined) => {
-        if (profileId && !repos.modelProfiles.get(ownerId, profileId)) {
+        if (profileId && !repos.modelProfiles.getUsable(ownerId, profileId)) {
             throw issue(['modelProfileId'], 'The model profile does not exist.', 'agent_profile_missing');
         }
     };

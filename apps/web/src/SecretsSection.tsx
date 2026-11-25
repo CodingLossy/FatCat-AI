@@ -3,15 +3,145 @@
 
 // 设置页「密钥」一节(ADR 0026):密钥文件的状态、主密钥来源与指纹、显式迁移。
 // 迁移不会自动发生;secrets.yaml.migrated 只能用命令行清理,这里只显示提示文字。
-import type { PlaintextBackupAction, SecretsMigrateResponse, SecretsStatus } from '@fatcat-ai/shared';
-import { useEffect, useState } from 'react';
+// 「我的密钥」每个账户都有(ADR 0053 第 5 节):只列名字和引用,值只写不读。
+import type { PlaintextBackupAction, SecretKey, SecretsMigrateResponse, SecretsStatus } from '@fatcat-ai/shared';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
 import { useIsAdmin } from './role.js';
 
-export function SecretsSection() {
+const KEY_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+
+function SecretKeys({ isAdmin }: { isAdmin: boolean | null }) {
     const { t } = useI18n();
+    const [keys, setKeys] = useState<SecretKey[] | null>(null);
+    const [name, setName] = useState('');
+    const [value, setValue] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [note, setNote] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    const reload = useCallback(
+        () =>
+            api.secrets.keys.list().then(
+                (page) => setKeys(page.items),
+                (e: unknown) => setError(errorText(e)),
+            ),
+        [],
+    );
+    useEffect(() => {
+        void reload();
+    }, [reload]);
+
+    const save = async (e: FormEvent) => {
+        e.preventDefault();
+        setBusy(true);
+        setError(null);
+        setNote(null);
+        try {
+            const saved = await api.secrets.keys.save(name.trim(), value);
+            setName('');
+            setValue('');
+            setNote(t('secretKeys.saved', { name: saved.name }));
+            await reload();
+        } catch (err) {
+            setError(errorText(err));
+        } finally {
+            setBusy(false);
+        }
+    };
+    const remove = async (k: SecretKey) => {
+        if (!window.confirm(t('secretKeys.deleteConfirm', { name: k.name }))) return;
+        setError(null);
+        setNote(null);
+        try {
+            await api.secrets.keys.remove(k.name);
+        } catch (err) {
+            setError(errorText(err));
+        }
+        await reload();
+    };
+
+    return (
+        <section className="card form" aria-label={t('secretKeys.title')}>
+            <h2>{t('secretKeys.title')}</h2>
+            <p className="small muted">{t('secretKeys.hint')}</p>
+            {isAdmin === false ? <p className="small muted">{t('secretKeys.memberHint')}</p> : null}
+            {keys?.length === 0 ? <p className="muted small">{t('secretKeys.empty')}</p> : null}
+            {keys && keys.length > 0 ? (
+                <ul className="list" data-testid="secret-keys">
+                    {keys.map((k) => (
+                        <li key={k.name} className="row spread" data-key={k.name}>
+                            <span>
+                                <strong>{k.name}</strong> <code className="small">{k.ref}</code>
+                            </span>
+                            <button type="button" className="danger" onClick={() => void remove(k)}>
+                                {t('secretKeys.delete')}
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            ) : null}
+            <form className="row" onSubmit={(e) => void save(e)} aria-label={t('secretKeys.save')}>
+                <label>
+                    {t('secretKeys.name')}
+                    <input
+                        name="secretName"
+                        placeholder="OPENAI_API_KEY"
+                        autoComplete="off"
+                        spellCheck={false}
+                        maxLength={64}
+                        value={name}
+                        aria-invalid={name !== '' && !KEY_NAME.test(name.trim())}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                    />
+                </label>
+                <label>
+                    {t('secretKeys.value')}
+                    <input
+                        name="secretValue"
+                        type="password"
+                        autoComplete="new-password"
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        required
+                    />
+                </label>
+                <button
+                    type="submit"
+                    className="primary"
+                    disabled={busy || !KEY_NAME.test(name.trim()) || !value.trim()}
+                >
+                    {t('secretKeys.save')}
+                </button>
+            </form>
+            {note ? (
+                <p className="small" role="status">
+                    {note}
+                </p>
+            ) : null}
+            {error ? (
+                <p className="small error" role="alert">
+                    {error}
+                </p>
+            ) : null}
+        </section>
+    );
+}
+
+export function SecretsSection() {
     const isAdmin = useIsAdmin();
+    return (
+        <>
+            <SecretsFile isAdmin={isAdmin} />
+            <SecretKeys isAdmin={isAdmin} />
+        </>
+    );
+}
+
+function SecretsFile({ isAdmin }: { isAdmin: boolean | null }) {
+    const { t } = useI18n();
     const [status, setStatus] = useState<SecretsStatus | null>(null);
     const [available, setAvailable] = useState(true); // 老服务器没有这个接口(404):整节不显示
     const [confirming, setConfirming] = useState(false);
@@ -23,6 +153,7 @@ export function SecretsSection() {
 
     useEffect(() => {
         let alive = true;
+        if (isAdmin !== true) return;
         api.secrets
             .status()
             .then((s) => alive && setStatus(s))
@@ -30,7 +161,7 @@ export function SecretsSection() {
         return () => {
             alive = false;
         };
-    }, []);
+    }, [isAdmin]);
 
     // secrets.yaml 整个安装只有一份,只有管理员能看状态和迁移(ADR 0053 第 5 节)
     if (isAdmin === false) {

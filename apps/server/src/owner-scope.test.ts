@@ -14,11 +14,21 @@ const openapi = JSON.parse(readFileSync(new URL('../openapi/v1.json', import.met
     paths: Record<string, Record<string, unknown>>;
 };
 
+/**
+ * 路径参数不是数据库里某个账户的资源 id 的路由:前缀 → 原因。扫描跳过它们,越权由注明的测试覆盖。
+ * 每个前缀都必须对应 openapi 里还存在的路由(见第一个用例),免得留下过期条目。
+ */
+const NOT_OWNED: Record<string, string> = {
+    '/api/v1/settings/secret-keys/':
+        '键名按调用者的账户前缀换算(ADR 0053 第 5 节),不是共享的资源 id;越权由 member-secrets.test.ts 覆盖',
+};
+
 /** 带参数的路由的方法列表:`GET /api/v1/sessions/{id}` 这样的字符串。 */
 function parameterizedRoutes(): string[] {
     const out: string[] = [];
     for (const [path, ops] of Object.entries(openapi.paths)) {
         if (!path.includes('{')) continue;
+        if (Object.keys(NOT_OWNED).some((prefix) => path.startsWith(prefix))) continue;
         for (const [method, op] of Object.entries(ops)) {
             // 管理员路由按设计就是管别的账户(ADR 0053 第 6 节),由 admin-scope.test.ts 用成员身份扫描
             if ((op as Record<string, unknown>)['x-fatcat-admin'] === true) continue;
@@ -424,6 +434,10 @@ describe('ownerId 覆盖(ADR 0051)', () => {
             (route) => !ROUTE_IDS.some(([prefix]) => route.split(' ')[1]!.startsWith(prefix)),
         );
         expect(missing).toEqual([]);
+        const stale = Object.keys(NOT_OWNED).filter(
+            (prefix) => !Object.keys(openapi.paths).some((path) => path.startsWith(prefix) && path.includes('{')),
+        );
+        expect(stale).toEqual([]);
     });
 
     it('越权:别人的资源和不存在的一样拿不到,数据一行不变', async () => {

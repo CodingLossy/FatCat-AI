@@ -230,7 +230,7 @@ export function createMemoryTools(stack: Pick<MemoryStack, 'memory' | 'retriever
 export function cheapProfile(repos: Repositories, ownerId: string): ModelProfileRecord | null {
     const settings = repos.settings.get(ownerId);
     return (
-        selectProfile(repos.modelProfiles.list(ownerId), 'cheap', {
+        selectProfile(repos.modelProfiles.listUsable(ownerId), 'cheap', {
             chat: settings.defaultChatProfileId,
             cheap: settings.defaultCheapProfileId,
         }) ?? null

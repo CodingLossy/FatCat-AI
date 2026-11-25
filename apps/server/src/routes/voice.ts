@@ -101,7 +101,7 @@ function pickProfile(
     purpose: VoicePurpose,
     requested: string | undefined,
 ): ModelProfileRecord {
-    const profiles = deps.repos.modelProfiles.list(ownerId);
+    const profiles = deps.repos.modelProfiles.listUsable(ownerId);
     let profile: ModelProfileRecord | undefined;
     if (requested) {
         profile = profiles.find((p) => p.id === requested);

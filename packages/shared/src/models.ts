@@ -51,6 +51,11 @@ const ModelProfileFields = z.strictObject({
     params: ModelParams.optional(),
     /** 支持图片输入;省略即 false,由用户自己勾选(ADR 0020 第 1.2 节)。自 M4 起提供。 */
     vision: z.boolean().optional(),
+    /**
+     * 共享给成员(ADR 0053 第 5.1 节):只有管理员能设为 true;成员能选用,看不到地址和密钥引用,
+     * 不能编辑或测试连接。省略即 false。自 2.0 起提供,旧服务器不返回。
+     */
+    shared: z.boolean().optional(),
 });
 
 const requireBaseUrl = (p: { kind?: ModelKind; baseURL?: string | undefined }) =>
@@ -81,6 +86,11 @@ export const KeyStatus = z.enum(['present', 'missing', 'not_required']);
 export const ModelProfile = ModelProfileFields.extend({
     id: Id,
     keyStatus: KeyStatus,
+    /**
+     * 别的账户(管理员)共享来的配置档:只读,`baseURL` 省略、`apiKeyRef` 为 null(ADR 0053 第 5.1 节)。
+     * 自己的配置档省略这个字段。
+     */
+    readOnly: z.literal(true).optional(),
     createdAt: IsoDateTime,
     updatedAt: IsoDateTime,
 });

@@ -160,7 +160,7 @@ export function settingsRoutes(deps: {
             return c.json(
                 listEgressTargets(
                     {
-                        profiles: repos.modelProfiles.list(ownerId),
+                        profiles: repos.modelProfiles.listUsable(ownerId),
                         voice: repos.settings.get(ownerId).voice,
                         mailAccounts: repos.mail.list(ownerId),
                         channels: repos.channels.list(ownerId),
@@ -232,7 +232,7 @@ export function settingsRoutes(deps: {
             if (patch.code !== undefined) requireAdmin(c, repos);
             for (const key of ['defaultChatProfileId', 'defaultCheapProfileId'] as const) {
                 const id = patch[key];
-                if (id && !repos.modelProfiles.get(ownerId, id)) {
+                if (id && !repos.modelProfiles.getUsable(ownerId, id)) {
                     throw new ApiError(400, 'validation_failed', 'Bad Request', 'The request is invalid.', {
                         issues: [{ path: [key], message: 'Model profile does not exist' }],
                     });
@@ -245,7 +245,7 @@ export function settingsRoutes(deps: {
             ] as const) {
                 const id = patch.voice?.[key];
                 if (!id) continue;
-                const p = repos.modelProfiles.get(ownerId, id);
+                const p = repos.modelProfiles.getUsable(ownerId, id);
                 const message = !p
                     ? 'Model profile does not exist'
                     : p.kind !== 'openai-compatible' || !p.purpose.includes(purpose)

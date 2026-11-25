@@ -11840,6 +11840,9 @@
                           "vision": {
                             "type": "boolean"
                           },
+                          "shared": {
+                            "type": "boolean"
+                          },
                           "id": {
                             "type": "string",
                             "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
@@ -11850,6 +11853,12 @@
                               "present",
                               "missing",
                               "not_required"
+                            ]
+                          },
+                          "readOnly": {
+                            "type": "boolean",
+                            "enum": [
+                              true
                             ]
                           },
                           "createdAt": {
@@ -12224,6 +12233,9 @@
                   },
                   "vision": {
                     "type": "boolean"
+                  },
+                  "shared": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -12325,6 +12337,9 @@
                     "vision": {
                       "type": "boolean"
                     },
+                    "shared": {
+                      "type": "boolean"
+                    },
                     "id": {
                       "type": "string",
                       "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
@@ -12335,6 +12350,12 @@
                         "present",
                         "missing",
                         "not_required"
+                      ]
+                    },
+                    "readOnly": {
+                      "type": "boolean",
+                      "enum": [
+                        true
                       ]
                     },
                     "createdAt": {
@@ -12832,6 +12853,9 @@
                     "vision": {
                       "type": "boolean"
                     },
+                    "shared": {
+                      "type": "boolean"
+                    },
                     "id": {
                       "type": "string",
                       "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
@@ -12842,6 +12866,12 @@
                         "present",
                         "missing",
                         "not_required"
+                      ]
+                    },
+                    "readOnly": {
+                      "type": "boolean",
+                      "enum": [
+                        true
                       ]
                     },
                     "createdAt": {
@@ -13335,6 +13365,9 @@
                   },
                   "vision": {
                     "type": "boolean"
+                  },
+                  "shared": {
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false
@@ -13429,6 +13462,9 @@
                     "vision": {
                       "type": "boolean"
                     },
+                    "shared": {
+                      "type": "boolean"
+                    },
                     "id": {
                       "type": "string",
                       "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
@@ -13439,6 +13475,12 @@
                         "present",
                         "missing",
                         "not_required"
+                      ]
+                    },
+                    "readOnly": {
+                      "type": "boolean",
+                      "enum": [
+                        true
                       ]
                     },
                     "createdAt": {
@@ -18346,6 +18388,1595 @@
           },
           "409": {
             "description": "Nothing to migrate, already encrypted, or the master key is unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported",
+                        "admin_required"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/secret-keys": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Names of the secrets this account saved, with the file: reference to use in model profiles and mail accounts (values are never returned). Members see only their own keys; admins see the keys without an account prefix, except channel keys",
+        "responses": {
+          "200": {
+            "description": "Keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+                          },
+                          "ref": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "ref"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported",
+                        "admin_required"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF token missing or invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported",
+                        "admin_required"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The master key is unavailable or the secrets files conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported",
+                        "admin_required"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/secret-keys/{name}": {
+      "put": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Save a secret (add or replace). Only the one line changes and the previous file is backed up first. A member's key is stored under their own account prefix",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "name",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096,
+                    "pattern": "^[^\\r\\n]*$"
+                  }
+                },
+                "required": [
+                  "value"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+                    },
+                    "ref": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "ref"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or reserved name, or an invalid value",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported",
+                        "admin_required"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported",
+                        "admin_required"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF token missing or invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported",
+                        "admin_required"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The master key is unavailable or the secrets files conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported",
+                        "admin_required"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Delete a secret this account saved. Profiles and mail accounts that refer to it show the key as missing",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "name",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "Invalid or reserved name",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported",
+                        "admin_required"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported",
+                        "admin_required"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF token missing or invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported",
+                        "admin_required"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such key",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "default": "about:blank"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "unauthorized",
+                        "forbidden",
+                        "csrf_failed",
+                        "not_found",
+                        "conflict",
+                        "validation_failed",
+                        "rate_limited",
+                        "not_initialized",
+                        "already_initialized",
+                        "model_profile_missing",
+                        "model_key_missing",
+                        "provider_error",
+                        "run_not_active",
+                        "approval_not_pending",
+                        "internal",
+                        "model_no_vision",
+                        "payload_too_large",
+                        "unsupported_media_type",
+                        "plugin_package_invalid",
+                        "plugin_manifest_invalid",
+                        "plugin_incompatible",
+                        "plugin_secrets_missing",
+                        "plugin_staging_not_found",
+                        "market_disabled",
+                        "market_unavailable",
+                        "plugin_download_failed",
+                        "plugin_too_large",
+                        "plugin_checksum_mismatch",
+                        "plugin_manifest_mismatch",
+                        "plugin_yanked",
+                        "plugin_upgrade_failed",
+                        "plugin_backup_too_large",
+                        "plugin_network_unsupported",
+                        "admin_required"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ]
+                      }
+                    },
+                    "providerCode": {
+                      "type": "string",
+                      "enum": [
+                        "auth_failed",
+                        "not_found",
+                        "rate_limited",
+                        "timeout",
+                        "bad_request",
+                        "upstream_error",
+                        "network_error",
+                        "malformed_tool_call",
+                        "empty_response"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The master key is unavailable or the secrets files conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -88269,7 +89900,7 @@
         "tags": [
           "mail"
         ],
-        "summary": "Add a mail account; the password must be an env: or file: reference",
+        "summary": "Add a mail account; the password must be an env: (admin only) or file: reference",
         "requestBody": {
           "required": true,
           "content": {
@@ -88811,7 +90442,7 @@
             }
           },
           "403": {
-            "description": "CSRF token missing or invalid",
+            "description": "A member used an env: reference",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -90032,7 +91663,7 @@
             }
           },
           "403": {
-            "description": "CSRF token missing or invalid",
+            "description": "A member used an env: reference",
             "content": {
               "application/problem+json": {
                 "schema": {

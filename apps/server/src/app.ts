@@ -36,6 +36,7 @@ import { skillRoutes } from './routes/skills.js';
 import { SkillService } from './skills.js';
 import { runRoutes } from './routes/runs.js';
 import { settingsRoutes } from './routes/settings.js';
+import { secretKeyRoutes } from './routes/secret-keys.js';
 import type { ItemService, KnowledgeBase } from '@fatcat-ai/items';
 import { fsRoutes } from './routes/fs.js';
 import { itemRoutes } from './routes/items.js';
@@ -413,6 +414,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
                 pluginMarkets: (ownerId) => plugins.market.egressTargets(ownerId),
             }),
         )
+        .route('/', secretKeyRoutes({ repos, secrets: deps.secrets }))
         .route('/', sessionRoutes(runDeps))
         .route('/', attachmentRoutes({ repos, files }))
         .route(

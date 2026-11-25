@@ -34,6 +34,7 @@ import { EmbeddingIndex } from './EmbeddingIndex.js';
 import { Preauthorizations } from './Preauthorizations.js';
 import { EgressSection } from './EgressSection.js';
 import { SecretsSection } from './SecretsSection.js';
+import { useIsAdmin } from './role.js';
 import { DevicesSection } from './DevicesSection.js';
 import { TotpSection } from './TotpSection.js';
 import { AccountsSection } from './AccountsSection.js';
@@ -63,6 +64,8 @@ interface Draft {
     vision: boolean;
     /** TTS 音色(params.voice);空串表示用服务器默认。 */
     voice: string;
+    /** 共享给成员(ADR 0053 第 5.1 节);只有管理员能勾。 */
+    shared: boolean;
 }
 
 const emptyDraft: Draft = {
@@ -74,14 +77,17 @@ const emptyDraft: Draft = {
     purpose: ['chat'],
     vision: false,
     voice: '',
+    shared: false,
 };
 
 function ProfileForm({
     initial,
+    isAdmin,
     onSave,
     onCancel,
 }: {
     initial: Draft;
+    isAdmin: boolean | null;
     onSave: (d: Draft) => Promise<void>;
     onCancel: () => void;
 }) {
@@ -148,6 +154,7 @@ function ProfileForm({
                 <span className={`small ${keyRefOk ? 'muted' : 'error'}`}>
                     {keyRefOk ? t('models.keyRefHint') : t('models.keyRefInvalid')}
                 </span>
+                {isAdmin === false ? <span className="small muted">{t('models.memberKeyHint')}</span> : null}
             </label>
             <fieldset>
                 <legend>{t('models.purpose')}</legend>
@@ -167,6 +174,20 @@ function ProfileForm({
                 {t('models.vision')}
             </label>
             <span className="small muted">{t('models.visionHint')}</span>
+            {isAdmin ? (
+                <>
+                    <label className="inline">
+                        <input
+                            type="checkbox"
+                            name="shared"
+                            checked={d.shared}
+                            onChange={(e) => setD({ ...d, shared: e.target.checked })}
+                        />{' '}
+                        {t('models.shared')}
+                    </label>
+                    <span className="small muted">{t('models.sharedHint')}</span>
+                </>
+            ) : null}
             {d.purpose.includes('tts') ? (
                 <label>
                     {t('models.voice')}
@@ -195,6 +216,7 @@ function ProfileForm({
 
 function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) => void }) {
     const { t } = useI18n();
+    const isAdmin = useIsAdmin();
     const [profiles, setProfiles] = useState<ModelProfile[] | null>(null);
     const [editing, setEditing] = useState<string | 'new' | null>(null);
     const [notes, setNotes] = useState<Record<string, string>>({});
@@ -229,6 +251,8 @@ function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) =>
             purpose: d.purpose,
             vision: d.vision,
             ...(Object.keys(params).length > 0 || id ? { params } : {}),
+            // 只有管理员发 shared;成员的请求里不带,服务器保持原值
+            ...(isAdmin ? { shared: d.shared } : {}),
         };
         if (id) await api.models.update(id, body);
         else await api.models.create(body);
@@ -275,7 +299,9 @@ function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) =>
                                     purpose: p.purpose,
                                     vision: p.vision === true,
                                     voice: p.params?.voice ?? '',
+                                    shared: p.shared === true,
                                 }}
+                                isAdmin={isAdmin}
                                 onSave={(d) => save(p.id, d)}
                                 onCancel={() => setEditing(null)}
                             />
@@ -284,33 +310,52 @@ function ModelProfiles({ onChanged }: { onChanged: (profiles: ModelProfile[]) =>
                         <li key={p.id} className="card profile" data-profile={p.label}>
                             <div className="row spread">
                                 <strong>{p.label}</strong>
-                                <span className={`badge key-${p.keyStatus}`} data-testid="key-status">
-                                    {t('models.keyStatus')}: {t(`keyStatus.${p.keyStatus}`)}
+                                <span className="row">
+                                    {p.readOnly ? (
+                                        <span className="badge" data-testid="shared-by-admin">
+                                            {t('models.sharedByAdmin')}
+                                        </span>
+                                    ) : p.shared ? (
+                                        <span className="badge" data-testid="shared-badge">
+                                            {t('models.sharedBadge')}
+                                        </span>
+                                    ) : null}
+                                    <span className={`badge key-${p.keyStatus}`} data-testid="key-status">
+                                        {t('models.keyStatus')}: {t(`keyStatus.${p.keyStatus}`)}
+                                    </span>
                                 </span>
                             </div>
                             <div className="small muted">
-                                {p.kind} · {p.model} · {p.baseURL ?? DEFAULT_BASE_URLS[p.kind] ?? ''} ·{' '}
-                                {p.apiKeyRef ?? '—'} · {p.purpose.join(', ')}
+                                {p.readOnly
+                                    ? `${p.kind} · ${p.model} · ${p.purpose.join(', ')}`
+                                    : `${p.kind} · ${p.model} · ${p.baseURL ?? DEFAULT_BASE_URLS[p.kind] ?? ''} · ${p.apiKeyRef ?? '—'} · ${p.purpose.join(', ')}`}
                                 {p.vision ? ` · ${t('models.visionBadge')}` : ''}
                             </div>
-                            <div className="row">
-                                <button type="button" onClick={() => void test(p)}>
-                                    {t('models.test')}
-                                </button>
-                                <button type="button" onClick={() => setEditing(p.id)}>
-                                    {t('models.edit')}
-                                </button>
-                                <button type="button" className="danger" onClick={() => void remove(p)}>
-                                    {t('models.delete')}
-                                </button>
-                            </div>
+                            {p.readOnly ? null : (
+                                <div className="row">
+                                    <button type="button" onClick={() => void test(p)}>
+                                        {t('models.test')}
+                                    </button>
+                                    <button type="button" onClick={() => setEditing(p.id)}>
+                                        {t('models.edit')}
+                                    </button>
+                                    <button type="button" className="danger" onClick={() => void remove(p)}>
+                                        {t('models.delete')}
+                                    </button>
+                                </div>
+                            )}
                             {notes[p.id] ? <p className="small">{notes[p.id]}</p> : null}
                         </li>
                     ),
                 )}
             </ul>
             {editing === 'new' ? (
-                <ProfileForm initial={emptyDraft} onSave={(d) => save(null, d)} onCancel={() => setEditing(null)} />
+                <ProfileForm
+                    initial={emptyDraft}
+                    isAdmin={isAdmin}
+                    onSave={(d) => save(null, d)}
+                    onCancel={() => setEditing(null)}
+                />
             ) : (
                 <button type="button" className="primary" onClick={() => setEditing('new')}>
                     {t('models.add')}

@@ -20,6 +20,7 @@ import type { MailAccountRecord, Repositories } from '@fatcat-ai/storage';
 import type { ItemService, KnowledgeBase } from '@fatcat-ai/items';
 import { requireOwner } from '../auth/middleware.js';
 import { notFound } from '../errors.js';
+import { scopeSecretRef } from '../member-secrets.js';
 import type { MailService } from '../mail-setup.js';
 import { authErrors, json, problem, router } from './common.js';
 
@@ -44,12 +45,13 @@ const createAccountRoute = createRoute({
     method: 'post',
     path: '/mail/accounts',
     tags,
-    summary: 'Add a mail account; the password must be an env: or file: reference',
+    summary: 'Add a mail account; the password must be an env: (admin only) or file: reference',
     request: { body: { content: { 'application/json': { schema: MailAccountInput } }, required: true } },
     responses: {
         201: json(MailAccount, 'Added; it syncs within a minute'),
         400: problem('Invalid request'),
         ...authErrors,
+        403: problem('A member used an env: reference'),
     },
 });
 const getRoute = createRoute({
@@ -74,6 +76,7 @@ const patchRoute = createRoute({
         400: problem('Invalid request'),
         404: problem('Not found'),
         ...authErrors,
+        403: problem('A member used an env: reference'),
     },
 });
 const deleteRoute = createRoute({
@@ -137,7 +140,9 @@ export function mailRoutes(deps: {
         .openapi(listRoute, (c) => c.json({ items: repos.mail.list(requireOwner(c)).map(view), nextCursor: null }, 200))
         .openapi(createAccountRoute, (c) => {
             const ownerId = requireOwner(c);
-            const body = MailAccountInput.parse(c.req.valid('json'));
+            const input = MailAccountInput.parse(c.req.valid('json'));
+            // 成员的密码引用换成自己前缀的键;env: 只有管理员能用(ADR 0053 第 5 节)
+            const body = { ...input, passwordRef: scopeSecretRef(repos, ownerId, input.passwordRef, 'passwordRef') };
             const account = repos.mail.create(ownerId, body);
             c.get('logger').info({ mailAccount: account.id }, 'mail account added');
             return c.json(view(account), 201);
@@ -146,8 +151,13 @@ export function mailRoutes(deps: {
         .openapi(patchRoute, (c) => {
             const ownerId = requireOwner(c);
             const { id } = c.req.valid('param');
-            load(ownerId, id);
-            return c.json(view(repos.mail.update(ownerId, id, c.req.valid('json'))!), 200);
+            const existing = load(ownerId, id);
+            const patch = c.req.valid('json');
+            const scoped =
+                patch.passwordRef && patch.passwordRef !== existing.passwordRef
+                    ? { ...patch, passwordRef: scopeSecretRef(repos, ownerId, patch.passwordRef, 'passwordRef') }
+                    : patch;
+            return c.json(view(repos.mail.update(ownerId, id, scoped)!), 200);
         })
         .openapi(deleteRoute, async (c) => {
             const ownerId = requireOwner(c);

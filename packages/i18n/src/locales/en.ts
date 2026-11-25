@@ -134,6 +134,25 @@ export const en: Record<Key, string> = {
     'models.visionHint':
         'Tick this only if you know the model can read images. Endpoints do not report this reliably, so FatCat-AI does not guess.',
     'models.visionBadge': 'images',
+    'models.shared': 'Share with members',
+    'models.sharedHint':
+        'Members can pick this profile, but cannot see its address or key reference and cannot change it.',
+    'models.sharedBadge': 'shared with members',
+    'models.sharedByAdmin': 'Shared by admin',
+    'models.memberKeyHint': 'Members can only use file:NAME, where NAME is a key saved under My secrets below.',
+    'secretKeys.title': 'My secrets',
+    'secretKeys.hint':
+        'Save API keys and mail app passwords here. Once saved only the name is shown, never the value. Use the reference on the right in model profiles and mail accounts.',
+    'secretKeys.memberHint':
+        'Secrets you save can only be used by your own profiles and mail accounts; other accounts cannot see them.',
+    'secretKeys.empty': 'No secrets saved yet.',
+    'secretKeys.name': 'Name',
+    'secretKeys.value': 'Value',
+    'secretKeys.save': 'Save secret',
+    'secretKeys.saved': 'Saved {name}.',
+    'secretKeys.delete': 'Delete',
+    'secretKeys.deleteConfirm':
+        'Delete the secret {name}? Profiles and mail accounts that use it will show it as missing.',
     'models.cancel': 'Cancel',
     'models.keyStatus': 'Key',
     'keyStatus.present': 'Set',

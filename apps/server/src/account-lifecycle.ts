@@ -11,10 +11,10 @@ import type { SecretStore } from '@fatcat-ai/providers';
 import type { Repositories } from '@fatcat-ai/storage';
 import { closeAccountSockets } from './device-sockets.js';
 import type { McpControl } from './mcp-setup.js';
+import { memberSecretPrefix } from './member-secrets.js';
 import type { Scheduler } from './scheduler-setup.js';
 
-/** 成员写入 secrets.yaml 的键都带这个前缀(ADR 0053 第 5 节)。 */
-export const memberSecretPrefix = (ownerId: string) => `U${ownerId}_`;
+export { memberSecretPrefix } from './member-secrets.js';
 
 export interface AccountLifecycleDeps {
     repos: Repositories;
