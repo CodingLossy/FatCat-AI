@@ -17,6 +17,11 @@ export const Account = z.object({
     disabled: z.boolean(),
     totpEnabled: z.boolean(),
     createdAt: IsoDateTime,
+    /**
+     * 磁盘用量(ADR 0053 第 8 节):附件文件和知识库索引里保存的文本,单位字节。只在账户列表里给出;
+     * 2.0 不做硬配额。
+     */
+    usage: z.object({ attachmentBytes: z.number().int().min(0), knowledgeBytes: z.number().int().min(0) }).optional(),
 });
 export type Account = z.infer<typeof Account>;
 

@@ -51,13 +51,19 @@ export function createAttachmentRepository(conn: Connection, now: () => Date) {
             `SELECT a.id FROM message_attachments a JOIN messages m ON m.id = a.message_id
              WHERE a.owner_id = ? AND m.session_id = ?`,
         ),
-        unlinkedBefore: sqlite.prepare<[string], { id: string }>(
-            'SELECT id FROM message_attachments WHERE message_id IS NULL AND created_at < ?',
-        ),
         deleteUnlinkedBefore: sqlite.prepare<[string]>(
             'DELETE FROM message_attachments WHERE message_id IS NULL AND created_at < ?',
         ),
         exists: sqlite.prepare<[string], { n: number }>('SELECT count(*) AS n FROM message_attachments WHERE id = ?'),
+        all: sqlite.prepare<[], { id: string; ownerId: string }>(
+            'SELECT id, owner_id AS ownerId FROM message_attachments ORDER BY id',
+        ),
+        bytesByOwner: sqlite.prepare<[], { ownerId: string; bytes: number }>(
+            'SELECT owner_id AS ownerId, sum(bytes) AS bytes FROM message_attachments GROUP BY owner_id',
+        ),
+        unlinkedOwnedBefore: sqlite.prepare<[string], { id: string; ownerId: string }>(
+            'SELECT id, owner_id AS ownerId FROM message_attachments WHERE message_id IS NULL AND created_at < ?',
+        ),
     };
 
     const linkAll = sqlite.transaction((ownerId: string, ids: readonly string[], messageId: string): boolean => {
@@ -67,10 +73,10 @@ export function createAttachmentRepository(conn: Connection, now: () => Date) {
         return true;
     });
 
-    const removeUnlinked = sqlite.transaction((cutoff: string): string[] => {
-        const ids = q.unlinkedBefore.all(cutoff).map((r) => r.id);
+    const removeUnlinked = sqlite.transaction((cutoff: string): { id: string; ownerId: string }[] => {
+        const rows = q.unlinkedOwnedBefore.all(cutoff);
         q.deleteUnlinkedBefore.run(cutoff);
-        return ids;
+        return rows;
     });
 
     return {
@@ -95,9 +101,17 @@ export function createAttachmentRepository(conn: Connection, now: () => Date) {
         idsForSession(ownerId: string, sessionId: string): string[] {
             return q.forSession.all(ownerId, sessionId).map((r) => r.id);
         },
-        /** 删除早于 cutoff 且未被任何消息引用的附件行,返回被删除的 id(调用方再删文件)。 */
-        removeUnlinkedBefore(cutoff: Date): string[] {
+        /** 删除早于 cutoff 且未被任何消息引用的附件行,返回被删除的 id 和所属账户(调用方再删文件)。 */
+        removeUnlinkedBefore(cutoff: Date): { id: string; ownerId: string }[] {
             return removeUnlinked(cutoff.toISOString());
+        },
+        /** 全部附件的 id 与所属账户(附件目录按账户搬迁时用,ADR 0053 第 10 节)。 */
+        allOwned(): { id: string; ownerId: string }[] {
+            return q.all.all();
+        },
+        /** 每个账户的附件总字节数(账户列表里显示用量,ADR 0053 第 8 节)。 */
+        bytesByOwner(): Map<string, number> {
+            return new Map(q.bytesByOwner.all().map((r) => [r.ownerId, r.bytes]));
         },
         /** 是否还有这一行(清理孤立文件时用,不按 owner 过滤)。 */
         exists(id: string): boolean {

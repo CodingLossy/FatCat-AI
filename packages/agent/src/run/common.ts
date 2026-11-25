@@ -43,6 +43,12 @@ export interface RunManagerOptions {
     tools?: ToolRegistry;
     /** 委派时按名称或 id 找子代理(ADR 0042 第 3 节);没有提供时 delegate 工具不可用。 */
     resolveAgent?: (ownerId: string, ref: string) => ResolvedAgent | null;
+    /**
+     * 同时进行的根运行数上限(ADR 0053 第 8 节):每个账户默认 2,整个安装默认 6。超出的运行排队(状态 queued),
+     * 有空位时按「正在运行的最少的账户优先,同样多时先来先到」取下一个。委派出去的子运行不占位。
+     */
+    maxActivePerOwner?: number;
+    maxActiveTotal?: number;
     /** 每个运行内同时进行的委派数,默认 3。 */
     delegateParallelism?: number;
     /** 审批请求的有效期,默认 30 分钟;过期按拒绝处理。 */

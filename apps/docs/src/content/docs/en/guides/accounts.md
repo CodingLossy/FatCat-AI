@@ -59,6 +59,14 @@ Every account can save its own API keys and mail app passwords under Settings �
 
 An admin can tick **Share with members** on a model profile so the whole family uses one model account. Members see it in their model list marked Shared by admin and can pick it for conversations, the default model and voice, but cannot see its address or key reference and cannot edit, delete or test it. When the admin stops sharing it, is changed to a member or is disabled, members can no longer use it.
 
+## Concurrent conversations and disk use
+
+The machine and the model quota are shared by the whole family, so each account can have at most 2 conversations running at once and the whole installation at most 6. Sending another message does not fail: it shows Queued: other conversations are still running… and starts by itself when one finishes, and you can stop it while it waits. A conversation waiting for your approval also takes a place. Admins can change both limits (1–1000) with the environment variables `FATCAT_AI_MAX_RUNS_PER_ACCOUNT` and `FATCAT_AI_MAX_RUNS` when starting the server.
+
+Scheduled tasks, mail sync, memory extraction and knowledge-base embedding take turns between accounts in the background, so one account's large mailbox or batch of tasks does not keep everyone else waiting. The daily embedding limit counts separately for each account.
+
+In the Accounts list each account shows its disk use, attachments and the knowledge-base index separately. 2.0 only shows it and sets no quota. Attachments are kept per account under `attachments/<account id>/` in the data directory; when upgrading from an older version the server moves the existing attachments there the first time it starts (it copies first and deletes the old files only once everything is copied; if it is interrupted it carries on at the next start).
+
 ## Sign-in limits
 
 Five wrong passwords in a row from the same address, or for the same username from anywhere, lock sign-in for a while. Invite and reset codes have the same kind of limit.

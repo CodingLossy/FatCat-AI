@@ -1277,6 +1277,7 @@ export const en: Record<Key, string> = {
     'accounts.totp': 'Two-step',
     'accounts.you': '(you)',
     'accounts.createdAt': 'Created {at}',
+    'accounts.usage': 'Attachments {attachments}, knowledge base {knowledge}',
     'accounts.resetCode': 'Create reset code',
     'accounts.makeAdmin': 'Make admin',
     'accounts.makeMember': 'Make member',

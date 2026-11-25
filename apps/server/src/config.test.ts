@@ -21,6 +21,8 @@ describe('loadConfig', () => {
             cookieSecure: 'auto',
             setupCode: null,
             logLevel: 'info',
+            maxRunsPerAccount: null,
+            maxRuns: null,
         });
     });
 
@@ -30,8 +32,12 @@ describe('loadConfig', () => {
             FATCAT_AI_DATA_DIR: '/data',
             FATCAT_AI_COOKIE_SECURE: 'always',
             FATCAT_AI_SETUP_CODE: 'abcdefgh',
+            FATCAT_AI_MAX_RUNS_PER_ACCOUNT: '3',
+            FATCAT_AI_MAX_RUNS: '10',
         });
         expect(c).toMatchObject({
+            maxRunsPerAccount: 3,
+            maxRuns: 10,
             sourceUrl: 'https://example.com/fork',
             dataDir: '/data',
             cookieSecure: 'always',
@@ -43,6 +49,8 @@ describe('loadConfig', () => {
         expect(() => loadConfig({ FATCAT_AI_PORT: '70000' })).toThrow();
         expect(() => loadConfig({ FATCAT_AI_COOKIE_SECURE: 'maybe' })).toThrow();
         expect(() => loadConfig({ FATCAT_AI_SETUP_CODE: 'short' })).toThrow();
+        expect(() => loadConfig({ FATCAT_AI_MAX_RUNS_PER_ACCOUNT: '0' })).toThrow();
+        expect(() => loadConfig({ FATCAT_AI_MAX_RUNS: '2.5' })).toThrow();
     });
 });
 

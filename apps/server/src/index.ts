@@ -36,7 +36,12 @@ import { startScheduler } from './scheduler-setup.js';
 import { createChannelPushTool } from './scheduler/channel-push-tool.js';
 import { resolveDelegateAgent } from './routes/agents.js';
 import { BUILTIN_SKILLS, createDelegateTool } from '@fatcat-ai/tools';
-import { createAttachmentFiles, createImageLoader, sweepAttachments } from './attachment-files.js';
+import {
+    createAttachmentFiles,
+    createImageLoader,
+    migrateAttachmentLayout,
+    sweepAttachments,
+} from './attachment-files.js';
 import { itemProviders } from './memory-provider.js';
 import { createEmbeddingService } from './embeddings.js';
 import { randomToken } from './auth/crypto.js';
@@ -202,10 +207,21 @@ const bus = new EventBus();
 // 客户端执行的调用:桌面壳通过 WebSocket 声明能力,浏览器截图交给它(ADR 0046 第 14 节)
 const clientCalls = new ClientCalls();
 const attachmentFiles = createAttachmentFiles(config.dataDir);
+// 附件目录按账户分子目录(ADR 0053 第 10 节):先复制、全部复制完再删旧文件。失败不阻止启动,
+// 读取会回落到旧位置,下次启动接着搬
+try {
+    const layout = await migrateAttachmentLayout(config.dataDir, repos);
+    if (!layout.alreadyDone) logger.info(layout, 'moved attachments into per-account folders');
+} catch (err) {
+    logger.warn({ err }, 'could not move attachments into per-account folders; will retry at next start');
+}
 // 已安装的 Skill(ADR 0048):插件包在 <dataDir>/plugins 下;内置的三个 Skill 随核心发布(第 5 节)
 const skills = new SkillService({ repos, codeRoot: join(config.dataDir, 'plugins'), builtin: BUILTIN_SKILLS });
 const runs = new RunManager({
     repos,
+    // 同时进行的对话数上限:每个账户和整个安装,超出的排队(ADR 0053 第 8 节)
+    ...(config.maxRunsPerAccount !== null && { maxActivePerOwner: config.maxRunsPerAccount }),
+    ...(config.maxRuns !== null && { maxActiveTotal: config.maxRuns }),
     bus,
     skills,
     providerFor,

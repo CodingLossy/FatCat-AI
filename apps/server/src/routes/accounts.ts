@@ -165,7 +165,16 @@ export function accountRoutes(deps: AccountRouteDeps) {
     return router()
         .openapi(listRoute, (c) => {
             requireAdminSession(c);
-            return c.json({ accounts: repos.accounts.list().map(toAccount) }, 200);
+            const attachmentBytes = repos.attachments.bytesByOwner();
+            const knowledgeBytes = repos.kb.bytesByOwner();
+            const accounts = repos.accounts.list().map((a) => ({
+                ...toAccount(a),
+                usage: {
+                    attachmentBytes: attachmentBytes.get(a.id) ?? 0,
+                    knowledgeBytes: knowledgeBytes.get(a.id) ?? 0,
+                },
+            }));
+            return c.json({ accounts }, 200);
         })
         .openapi(inviteRoute, (c) => {
             const adminId = requireAdminSession(c);

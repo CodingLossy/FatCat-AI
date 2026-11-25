@@ -45,14 +45,14 @@
     "reason": "Admin-only account deletion after a database backup (routes call requireAdmin); cascades the account's rows."
   },
   {
-    "key": "attachments.ts:createAttachmentRepository.removeUnlinkedBefore",
-    "category": "system",
-    "reason": "Startup and daily cleanup of attachments never linked to a message, for every owner."
-  },
-  {
     "key": "attachments.ts:createAttachmentRepository.exists",
     "category": "system",
     "reason": "The daily attachment sweep checks whether a file on disk still has a database row, for every owner."
+  },
+  {
+    "key": "attachments.ts:createAttachmentRepository.bytesByOwner",
+    "category": "system",
+    "reason": "Admin-only account list shows each account's attachment total (routes call requireAdmin); returns byte counts, never content."
   },
   {
     "key": "auth.ts:authSessions.getValid",
@@ -210,6 +210,16 @@
     "reason": "Background embedder records a failure for the jobs it took from due()."
   },
   {
+    "key": "embeddings.ts:store.dueOwners",
+    "category": "system",
+    "reason": "Background embedder picks the next account in turn; returns account ids only."
+  },
+  {
+    "key": "embeddings.ts:store.nextAttemptAfterNow",
+    "category": "system",
+    "reason": "Background embedder schedules its next wake-up."
+  },
+  {
     "key": "items.ts:createItemRepository.parentId",
     "category": "child",
     "reason": "Walks up from an item the caller already loaded with its ownerId."
@@ -228,6 +238,11 @@
     "key": "kb.ts:createKbRepository.remove",
     "category": "child",
     "reason": "Removes chunks of an item the caller loaded or deleted with its ownerId."
+  },
+  {
+    "key": "kb.ts:createKbRepository.bytesByOwner",
+    "category": "system",
+    "reason": "Admin-only account list shows each account's knowledge-base index size (routes call requireAdmin); returns byte counts, never content."
   },
   {
     "key": "mail-cache.ts:createMailCacheRepository.sentFolder",

@@ -24,6 +24,10 @@ export interface ServerConfig {
     /** 首次初始化用的一次性设置码;未设置时启动时随机生成并打印到日志。 */
     setupCode: string | null;
     logLevel: LogLevel;
+    /** 每个账户同时进行的对话数上限,超出的排队(ADR 0053 第 8 节);null 用默认值。 */
+    maxRunsPerAccount: number | null;
+    /** 整个安装同时进行的对话数上限;null 用默认值。 */
+    maxRuns: number | null;
 }
 
 const DEFAULT_HOST = '127.0.0.1';
@@ -39,6 +43,8 @@ export const SERVER_ENV_NAMES = [
     'DATA_DIR',
     'COOKIE_SECURE',
     'LOG_LEVEL',
+    'MAX_RUNS_PER_ACCOUNT',
+    'MAX_RUNS',
 ] as const;
 
 function oneOf<T extends string>(name: string, value: string | undefined, allowed: readonly T[], fallback: T): T {
@@ -47,6 +53,13 @@ function oneOf<T extends string>(name: string, value: string | undefined, allowe
         throw new Error(`${name} must be one of ${allowed.join(', ')}; got "${value}"`);
     }
     return value as T;
+}
+
+function positiveInt(name: string, value: string | undefined): number | null {
+    if (value === undefined || value === '') return null;
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 1 || n > 1000) throw new Error(`${name} must be a whole number from 1 to 1000`);
+    return n;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -72,5 +85,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
         ),
         setupCode,
         logLevel: oneOf('FATCAT_AI_LOG_LEVEL', env.FATCAT_AI_LOG_LEVEL, ['debug', 'info', 'warn', 'error'], 'info'),
+        maxRunsPerAccount: positiveInt('FATCAT_AI_MAX_RUNS_PER_ACCOUNT', env.FATCAT_AI_MAX_RUNS_PER_ACCOUNT),
+        maxRuns: positiveInt('FATCAT_AI_MAX_RUNS', env.FATCAT_AI_MAX_RUNS),
     };
 }

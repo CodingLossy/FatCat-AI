@@ -15,6 +15,7 @@ import { type ModelProvider, selectProfile } from '@fatcat-ai/providers';
 import { effectiveTimeZone, MemorySearchInput } from '@fatcat-ai/shared';
 import type { MemoryStack } from './memory-setup.js';
 import { isActiveAdmin } from './auth/middleware.js';
+import { FairQueue } from './fair-queue.js';
 import { createMailTools, type MailToolOptions } from '@fatcat-ai/mail';
 import { promptText } from '@fatcat-ai/i18n';
 import { z } from 'zod';
@@ -305,10 +306,12 @@ export function createTurnExtractor(
             return profile ? { profileId: profile.id, model: profile.model } : null;
         },
     });
+    // 同时最多抽取 2 轮,按账户轮流(ADR 0053 第 8 节):一个账户连着聊很多轮也不会让别人的抽取一直排队
+    const queue = new FairQueue(2);
     return (turn) => {
         // 设置关闭时不做任何事,也不占用每日配额
         if (!repos.settings.get(turn.ownerId).memory.autoExtract) return;
-        extractor.extract(turn).catch((error: unknown) => onError(error, turn));
+        queue.run(turn.ownerId, () => extractor.extract(turn)).catch((error: unknown) => onError(error, turn));
     };
 }
 

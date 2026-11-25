@@ -30,7 +30,7 @@ describe('removeOwnerSessions', () => {
         );
         expect(stop).toHaveBeenCalledTimes(5);
         expect(deleted).toHaveBeenCalledWith('owner', 's1');
-        expect(remove).toHaveBeenCalledWith('a1');
+        expect(remove).toHaveBeenCalledWith('owner', 'a1');
         expect(removed).toBe(1);
     });
 });

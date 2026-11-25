@@ -80,6 +80,16 @@ export function createEmbeddingStore(conn: Connection, now: () => Date) {
             `SELECT id, owner_id AS ownerId, item_id AS itemId, chunk, text, attempts FROM embed_queue
              WHERE next_attempt_at <= ? ORDER BY next_attempt_at, id LIMIT ?`,
         ),
+        dueOwners: sqlite.prepare<[string], { ownerId: string }>(
+            'SELECT DISTINCT owner_id AS ownerId FROM embed_queue WHERE next_attempt_at <= ? ORDER BY owner_id',
+        ),
+        dueFor: sqlite.prepare<[string, string, number], EmbedJob>(
+            `SELECT id, owner_id AS ownerId, item_id AS itemId, chunk, text, attempts FROM embed_queue
+             WHERE owner_id = ? AND next_attempt_at <= ? ORDER BY next_attempt_at, id LIMIT ?`,
+        ),
+        nextAfter: sqlite.prepare<[string, string], { at: string | null }>(
+            'SELECT min(next_attempt_at) AS at FROM embed_queue WHERE next_attempt_at > ? AND next_attempt_at < ?',
+        ),
         nextDue: sqlite.prepare<[string], { at: string }>(
             'SELECT min(next_attempt_at) AS at FROM embed_queue WHERE next_attempt_at < ?',
         ),
@@ -203,6 +213,22 @@ export function createEmbeddingStore(conn: Connection, now: () => Date) {
         /** 到期的任务(按时间先后)。 */
         due(limit: number): EmbedJob[] {
             return q.due.all(iso(), limit);
+        },
+
+        /** 有到期任务的账户(按 id 排序),嵌入 worker 按账户轮转取活(ADR 0053 第 8 节)。 */
+        dueOwners(): string[] {
+            return q.dueOwners.all(iso()).map((r) => r.ownerId);
+        },
+
+        /** 某个账户到期的任务(按时间先后)。 */
+        dueFor(ownerId: string, limit: number): EmbedJob[] {
+            return q.dueFor.all(ownerId, iso(), limit);
+        },
+
+        /** 现在之后最早的一次重试时间(已经到期的不算,放弃的任务不算);没有时为 null。 */
+        nextAttemptAfterNow(): Date | null {
+            const at = q.nextAfter.get(iso(), NEVER)?.at;
+            return at ? new Date(at) : null;
         },
 
         /** 下一个待重试任务的时间;没有时为 null(放弃的任务不算)。 */

@@ -77,7 +77,7 @@ export function attachmentRoutes(deps: AttachmentRouteDeps) {
                 );
             }
             const id = newId();
-            await files.write(id, bytes);
+            await files.write(ownerId, id, bytes);
             try {
                 const attachment = repos.attachments.create(
                     ownerId,
@@ -91,14 +91,14 @@ export function attachmentRoutes(deps: AttachmentRouteDeps) {
                 );
                 return c.json(attachment, 201);
             } catch (error) {
-                await files.remove(id);
+                await files.remove(ownerId, id);
                 throw error;
             }
         })
         .openapi(getRoute, async (c) => {
             const ownerId = requireOwner(c);
             const attachment = repos.attachments.get(ownerId, c.req.valid('param').id);
-            const bytes = attachment ? await files.read(attachment.id) : null;
+            const bytes = attachment ? await files.read(ownerId, attachment.id) : null;
             if (!attachment || !bytes) throw notFound('Attachment');
             return c.body(bytes as Uint8Array<ArrayBuffer>, 200, {
                 'Content-Type': attachment.mediaType,

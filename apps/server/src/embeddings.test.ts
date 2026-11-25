@@ -159,6 +159,49 @@ describe('嵌入队列与向量索引', () => {
         expect(limited.status(ownerId)).toMatchObject({ embedded: 1, queued: 1, today: 1, dailyLimit: 1 });
         limited.stop();
     });
+
+    it('按账户轮流取活:一个账户的积压和每日上限不挡住别的账户(ADR 0053 第 8 节)', async () => {
+        const { ownerId, item, addProfile } = await setup();
+        await addProfile();
+        s.embeddings.stop();
+        const other = s.repos.owners.create({ username: 'member', passwordHash: 'x' }).id;
+        const otherItem = s.repos.items.upsert(other, {
+            source: 'test',
+            sourceRef: 'm',
+            kind: 'content',
+            type: 'test.leaf',
+            title: 'm',
+            parentId: null,
+        });
+        const seen: string[] = [];
+        const fair = createEmbeddingService({
+            repos: s.repos,
+            providerFor: () => ({
+                profileId: 'p',
+                stream: () => {
+                    throw new Error('unused');
+                },
+                test: () => Promise.resolve({ ok: true, latencyMs: 0 }),
+                embed: (texts) => {
+                    seen.push(...texts);
+                    return Promise.resolve({ vectors: texts.map(() => Float32Array.from([1, 0, 0])), model: 'x' });
+                },
+            }),
+            batchSize: 1,
+            dailyLimit: 2,
+        });
+        // 管理员先排了 4 条,成员后排 1 条
+        for (const ref of ['a1', 'a2', 'a3', 'a4']) s.repos.embeddings.enqueue(ownerId, item(ref).id, 0, ref);
+        s.repos.embeddings.enqueue(other, otherItem.id, 0, 'm1');
+        fair.kick();
+        await fair.idle();
+        // 成员的那条排在第二批,不用等管理员的积压;管理员到了每日上限,剩下的明天再做
+        expect(seen.slice(0, 2).sort()).toEqual(['a1', 'm1']);
+        expect(seen).toHaveLength(3);
+        expect(fair.status(ownerId)).toMatchObject({ queued: 2, today: 2 });
+        expect(fair.status(other)).toMatchObject({ queued: 0, today: 1 });
+        fair.stop();
+    });
 });
 
 /** 另一个只有 Cookie、没有 CSRF 令牌的请求头。 */

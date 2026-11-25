@@ -7,6 +7,7 @@ import type { MailConnectionTest, MailSyncResult } from '@fatcat-ai/shared';
 import { type MailJobRunner, ownThreadKey, runInWorker } from '@fatcat-ai/mail';
 import type { MailAccountRecord, MailFolderSync, Repositories } from '@fatcat-ai/storage';
 import type { SecretStore } from '@fatcat-ai/providers';
+import { FairQueue } from './fair-queue.js';
 
 /** 每分钟检查一次哪些账户到了同步时间。 */
 export const MAIL_TICK_MS = 60_000;
@@ -45,7 +46,8 @@ export function createMailService(options: MailServiceOptions): MailService {
     const runner = options.runner ?? runInWorker;
     const now = options.now ?? (() => new Date());
     const inFlight = new Map<string, Promise<MailSyncResult>>();
-    let queue: Promise<unknown> = Promise.resolve();
+    // 全局并发 1,按账户轮流(ADR 0053 第 8 节):一个账户的多个邮箱不会让别人的邮箱一直等
+    const queue = new FairQueue(1);
     let timer: ReturnType<typeof setInterval> | null = null;
     let first: ReturnType<typeof setTimeout> | null = null;
     let ticking: Promise<void> | null = null;
@@ -115,17 +117,15 @@ export function createMailService(options: MailServiceOptions): MailService {
     function sync(ownerId: string, accountId: string): Promise<MailSyncResult> {
         const running = inFlight.get(accountId);
         if (running) return running;
-        // 全局并发 1:排在前一个同步之后
-        const job = queue.then(() => runSync(ownerId, accountId));
-        queue = job.catch(() => undefined);
-        const tracked = job.finally(() => inFlight.delete(accountId));
+        const tracked = queue.run(ownerId, () => runSync(ownerId, accountId)).finally(() => inFlight.delete(accountId));
         inFlight.set(accountId, tracked);
         return tracked;
     }
 
     async function tick(): Promise<void> {
         ticking ??= (async () => {
-            for (const { ownerId, id } of repos.mail.due(now())) await sync(ownerId, id);
+            // 一次排进所有到期的邮箱,由队列按账户轮流同步
+            await Promise.all(repos.mail.due(now()).map(({ ownerId, id }) => sync(ownerId, id)));
         })().finally(() => {
             ticking = null;
         });

@@ -9,6 +9,18 @@ import { api, errorText } from './api.js';
 import { FsRoots } from './FsRoots.js';
 import { useI18n } from './i18n.js';
 
+/** 用量显示:B / KB / MB / GB,保留一位小数。 */
+function formatSize(bytes: number): string {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let value = bytes;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+        value /= 1024;
+        unit++;
+    }
+    return unit === 0 ? `${value} B` : `${value.toFixed(1)} ${units[unit]}`;
+}
+
 export function AccountsSection() {
     const { t, locale } = useI18n();
     const [accounts, setAccounts] = useState<Account[] | null>(null);
@@ -121,6 +133,12 @@ export function AccountsSection() {
                                     <br />
                                     <span className="small muted">
                                         {t('accounts.createdAt', { at: fmt(a.createdAt) })}
+                                        {a.usage
+                                            ? ` · ${t('accounts.usage', {
+                                                  attachments: formatSize(a.usage.attachmentBytes),
+                                                  knowledge: formatSize(a.usage.knowledgeBytes),
+                                              })}`
+                                            : null}
                                     </span>
                                 </span>
                                 {self ? null : deleting?.id === a.id ? (
