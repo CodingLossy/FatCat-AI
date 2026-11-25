@@ -36,6 +36,7 @@ import { EgressSection } from './EgressSection.js';
 import { SecretsSection } from './SecretsSection.js';
 import { DevicesSection } from './DevicesSection.js';
 import { TotpSection } from './TotpSection.js';
+import { AccountsSection } from './AccountsSection.js';
 import { ThemePicker } from './ThemePicker.js';
 import { CodeProjects } from './CodeProjects.js';
 import { SkillsSettings } from './SkillsSettings.js';
@@ -593,6 +594,7 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                     <>
                         <TotpSection />
                         <DevicesSection />
+                        <AccountsSection />
                     </>
                 );
             case 'system/secrets':

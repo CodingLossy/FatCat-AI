@@ -70,7 +70,10 @@ export function createChannelRepository(conn: Connection, now: () => Date) {
     const { sqlite } = conn;
     const q = {
         list: sqlite.prepare<[string], Row>(`${SELECT} WHERE c.owner_id = ? ORDER BY c.created_at, c.id`),
-        enabled: sqlite.prepare<[], Row>(`${SELECT} WHERE c.enabled = 1 ORDER BY c.created_at, c.id`),
+        // 停用账户的渠道不启动(ADR 0053 第 2 节)
+        enabled: sqlite.prepare<[], Row>(
+            `${SELECT} WHERE c.enabled = 1 AND c.owner_id IN (SELECT id FROM owners WHERE disabled_at IS NULL) ORDER BY c.created_at, c.id`,
+        ),
         get: sqlite.prepare<[string, string], Row>(`${SELECT} WHERE c.owner_id = ? AND c.id = ?`),
         insert: sqlite.prepare(
             `INSERT INTO channels (id, owner_id, kind, label, enabled, notify_degraded, config_json, created_at,

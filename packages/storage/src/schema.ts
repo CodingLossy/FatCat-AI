@@ -7,6 +7,7 @@
 /** 表名 → 列名(snake_case,与 SQL 一致)。 */
 export const TABLE_COLUMNS = {
     owners: ['id', 'username', 'password_hash', 'created_at', 'updated_at', 'role', 'display_name', 'disabled_at'],
+    account_codes: ['id', 'owner_id', 'kind', 'target_owner_id', 'code_hash', 'created_at', 'expires_at', 'used_at'],
     auth_sessions: ['id', 'owner_id', 'csrf_hash', 'created_at', 'expires_at', 'last_seen_at', 'second_factor_at'],
     totp_credentials: ['owner_id', 'secret_enc', 'enabled', 'last_used_step', 'created_at', 'enabled_at'],
     totp_recovery_codes: ['id', 'owner_id', 'salt', 'code_hash', 'used_at', 'created_at'],

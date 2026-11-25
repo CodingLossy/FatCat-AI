@@ -19,7 +19,9 @@ function parameterizedRoutes(): string[] {
     const out: string[] = [];
     for (const [path, ops] of Object.entries(openapi.paths)) {
         if (!path.includes('{')) continue;
-        for (const method of Object.keys(ops)) {
+        for (const [method, op] of Object.entries(ops)) {
+            // 管理员路由按设计就是管别的账户(ADR 0053 第 6 节),由 admin-scope.test.ts 用成员身份扫描
+            if ((op as Record<string, unknown>)['x-fatcat-admin'] === true) continue;
             if (['get', 'post', 'put', 'patch', 'delete'].includes(method)) out.push(`${method.toUpperCase()} ${path}`);
         }
     }

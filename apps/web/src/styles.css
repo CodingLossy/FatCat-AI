@@ -1272,6 +1272,13 @@ td .badge {
     align-items: center;
 }
 
+.account-delete {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-width: 30rem;
+}
+
 .pairing-code {
     margin: 0.2rem 0;
     font-family: var(--font-mono);

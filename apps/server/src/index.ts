@@ -12,7 +12,7 @@ import { EventBus, RunManager } from '@fatcat-ai/agent';
 import { createItemService, createKnowledgeBase } from '@fatcat-ai/items';
 import { createProvider, Redactor, SecretStore } from '@fatcat-ai/providers';
 import { applyLegacyEnv, effectiveTimeZone, legacyEnvWarning } from '@fatcat-ai/shared';
-import { createRepositories, openStorage } from '@fatcat-ai/storage';
+import { backupDatabase, createRepositories, openStorage } from '@fatcat-ai/storage';
 import {
     cheapProfile,
     createCheapComplete,
@@ -335,6 +335,7 @@ const mail = createMailService({
 mail.start();
 
 const app = createApp({
+    backup: (tag) => backupDatabase(conn.sqlite, join(config.dataDir, 'backups'), tag, new Date()),
     clientCalls,
     channels,
     wechat,

@@ -55,6 +55,8 @@ import { sessionRoutes } from './routes/sessions.js';
 import { attachmentRoutes, UPLOAD_OVERHEAD_BYTES } from './routes/attachments.js';
 import { type AttachmentFiles, createMemoryAttachmentFiles } from './attachment-files.js';
 import { deviceRoutes } from './routes/devices.js';
+import { accountRoutes } from './routes/accounts.js';
+import { AccountLifecycle } from './account-lifecycle.js';
 import { syncRoutes } from './routes/sync.js';
 import { tokenRoutes } from './routes/tokens.js';
 import { channelRoutes } from './routes/channels.js';
@@ -130,6 +132,8 @@ export interface AppDeps {
     wechat?: WechatChannels;
     /** QQ 官方机器人的凭据保存与适配器工厂(ADR 0052);测试时可指向假的 QQ 开放平台。 */
     qq?: QqChannels;
+    /** 删除账户前备份数据库(ADR 0053 第 2 节),返回备份路径;不给时删除账户回 500。 */
+    backup?: (tag: string) => Promise<string>;
 }
 
 /** 每个用户每分钟的转写与朗读次数(ADR 0021 第 5 节)。 */
@@ -217,6 +221,18 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             agent: { runs: deps.runs, secrets: deps.secrets },
             schedule: false,
         });
+
+    const mcp = deps.mcp ?? createMcpControl(deps.runs.tools);
+    const lifecycle = new AccountLifecycle({
+        repos,
+        runs: deps.runs,
+        secrets: deps.secrets,
+        channels,
+        qq,
+        mcp,
+        scheduler,
+        logger,
+    });
 
     app.onError(handleError);
 
@@ -355,6 +371,25 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         .route('/', tokenRoutes({ repos, now }))
         .route(
             '/',
+            accountRoutes({
+                repos,
+                now,
+                lifecycle,
+                backup:
+                    deps.backup ??
+                    (() =>
+                        Promise.reject(
+                            new ApiError(
+                                500,
+                                'internal',
+                                'Internal Server Error',
+                                'Database backups are not configured.',
+                            ),
+                        )),
+            }),
+        )
+        .route(
+            '/',
             deviceRoutes({ repos, now, clientIp, ...(deps.pairLimiter ? { pairLimiter: deps.pairLimiter } : {}) }),
         )
         .route(
@@ -425,7 +460,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             '/',
             mcpRoutes({
                 repos,
-                mcp: deps.mcp ?? createMcpControl(deps.runs.tools),
+                mcp,
                 redact: deps.redact ?? ((text) => text),
             }),
         )

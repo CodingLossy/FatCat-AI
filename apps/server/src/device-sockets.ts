@@ -32,3 +32,28 @@ export function closeDeviceSockets(deviceId: string): number {
     for (const socket of set) socket.close(DEVICE_REVOKED_CLOSE_CODE, 'device revoked');
     return set.size;
 }
+
+/** 账户停用或删除时(ADR 0053 第 2 节)关掉它的全部连接,不论用会话、令牌还是设备连上的。 */
+export const ACCOUNT_DISABLED_CLOSE_CODE = 4403;
+
+const accountSockets = new Map<string, Set<Closable>>();
+
+/** 登记一个账户的连接,返回注销函数。 */
+export function registerAccountSocket(ownerId: string, socket: Closable): () => void {
+    const set = accountSockets.get(ownerId) ?? new Set<Closable>();
+    set.add(socket);
+    accountSockets.set(ownerId, set);
+    return () => {
+        set.delete(socket);
+        if (set.size === 0 && accountSockets.get(ownerId) === set) accountSockets.delete(ownerId);
+    };
+}
+
+/** 关掉某个账户已建立的全部 WebSocket;返回关了几个。 */
+export function closeAccountSockets(ownerId: string): number {
+    const set = accountSockets.get(ownerId);
+    if (!set) return 0;
+    accountSockets.delete(ownerId);
+    for (const socket of set) socket.close(ACCOUNT_DISABLED_CLOSE_CODE, 'account disabled');
+    return set.size;
+}

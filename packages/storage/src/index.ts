@@ -8,6 +8,13 @@ import { migrations } from './migrations/index.js';
 
 export { AttachmentLinkError, type AttachmentRepository, type NewAttachment } from './attachments.js';
 export type { AccessTokenRecord, AuthSessionRecord } from './auth.js';
+export {
+    MAX_OPEN_ACCOUNT_CODES,
+    type AcceptInviteResult,
+    type AccountChange,
+    type AccountRecord,
+    type AccountRepository,
+} from './accounts.js';
 export { MAX_OPEN_PAIRING_CODES, type DeviceRepository, type DeviceTokenHashes, type RotateResult } from './devices.js';
 export {
     rekeyTotpSecrets,
@@ -79,6 +86,7 @@ export {
 export type { KbChunk, KbChunkInput, KbFile, KbRepository, KbSource } from './kb.js';
 export { ItemCycleError, type ItemInput, type ItemRepository } from './items.js';
 export {
+    backupDatabase,
     checksum,
     migrate,
     MigrationError,

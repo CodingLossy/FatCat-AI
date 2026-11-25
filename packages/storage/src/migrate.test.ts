@@ -77,7 +77,11 @@ describe('migrate', () => {
                 "INSERT INTO owners (id, username, password_hash, created_at, updated_at) VALUES ('o1', 'me', 'h', ?, ?)",
             )
             .run(at, at);
-        const result = await migrate(c.sqlite, migrations, { backupDir: join(dir, 'backups') });
+        const result = await migrate(
+            c.sqlite,
+            migrations.filter((m) => m.id <= 22),
+            { backupDir: join(dir, 'backups') },
+        );
         expect(result.applied).toEqual([22]);
         expect(result.backupPath).not.toBeNull();
         expect(c.sqlite.prepare('SELECT * FROM owners').all()).toEqual([

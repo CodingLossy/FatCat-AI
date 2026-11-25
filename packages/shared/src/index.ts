@@ -3,6 +3,7 @@
 
 export * from './attachments.js';
 export * from './auth.js';
+export * from './accounts.js';
 export * from './channels.js';
 export * from './client-calls.js';
 export * from './common.js';

@@ -96,8 +96,16 @@ function timestampForFile(date: Date): string {
 }
 
 async function backup(sqlite: Sqlite, dir: string, firstPending: number, now: Date, keep: number): Promise<string> {
+    return backupDatabase(sqlite, dir, String(firstPending).padStart(4, '0'), now, keep);
+}
+
+/**
+ * 在线备份到 `dir/db-<时间>-pre-<tag>.sqlite`,只保留最近 keep 份 `db-*.sqlite`。
+ * 迁移前用(tag 是迁移号),删除账户前也用(tag 为 `delete-account`,ADR 0053 第 2 节)。
+ */
+export async function backupDatabase(sqlite: Sqlite, dir: string, tag: string, now: Date, keep = 5): Promise<string> {
     mkdirSync(dir, { recursive: true });
-    const file = `db-${timestampForFile(now)}-pre-${String(firstPending).padStart(4, '0')}.sqlite`;
+    const file = `db-${timestampForFile(now)}-pre-${tag}.sqlite`;
     const path = join(dir, file);
     await sqlite.backup(path);
     const backups = readdirSync(dir)

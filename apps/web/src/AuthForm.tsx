@@ -25,9 +25,108 @@ function SubmitButton({ busy, children }: { busy: boolean; children: string }) {
     );
 }
 
+type CodeMode = 'invite' | 'reset';
+
+/** 用管理员给的邀请码建账户,或用重置码设新密码(ADR 0053 第 2 节)。 */
+function CodeForm({
+    mode,
+    onBack,
+    onDone,
+}: {
+    mode: CodeMode;
+    onBack: (notice?: string) => void;
+    onDone: () => Promise<void>;
+}) {
+    const { t } = useI18n();
+    const [code, setCode] = useState('');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const submit = async (e: FormEvent) => {
+        e.preventDefault();
+        setBusy(true);
+        setError(null);
+        try {
+            if (mode === 'invite') {
+                await api.auth.acceptInvite({ code: code.trim(), username, password });
+                setPassword('');
+                await onDone();
+            } else {
+                await api.auth.resetPassword({ code: code.trim(), password });
+                setPassword('');
+                onBack(t('auth.resetDone'));
+            }
+        } catch (err) {
+            setError(errorText(err));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <main className="auth">
+            <Brand tagline={t('app.tagline')} />
+            <form className="card form" onSubmit={submit}>
+                <h2>{mode === 'invite' ? t('auth.inviteTitle') : t('auth.resetTitle')}</h2>
+                <p className="muted small">{mode === 'invite' ? t('auth.inviteHint') : t('auth.resetHint')}</p>
+                <label>
+                    {mode === 'invite' ? t('auth.inviteCode') : t('auth.resetCode')}
+                    <input
+                        name="code"
+                        autoComplete="off"
+                        autoCapitalize="characters"
+                        placeholder="XXXXX-XXXXX"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        required
+                        autoFocus
+                    />
+                </label>
+                {mode === 'invite' ? (
+                    <label>
+                        {t('auth.username')}
+                        <input
+                            name="username"
+                            autoComplete="username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            required
+                        />
+                    </label>
+                ) : null}
+                <label>
+                    {mode === 'invite' ? t('auth.password') : t('auth.newPassword')}
+                    <input
+                        name="password"
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={12}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    />
+                </label>
+                {error ? <p className="error">{error}</p> : null}
+                <SubmitButton busy={busy}>
+                    {mode === 'invite' ? t('auth.inviteSubmit') : t('auth.resetSubmit')}
+                </SubmitButton>
+                <span className="row">
+                    <button type="button" disabled={busy} onClick={() => onBack()}>
+                        {t('auth.totpBack')}
+                    </button>
+                </span>
+            </form>
+        </main>
+    );
+}
+
 /** 首次启动的初始化表单,或已初始化后的登录表单。 */
 export function AuthForm({ initialized, onDone }: { initialized: boolean; onDone: () => Promise<void> }) {
     const { t } = useI18n();
+    const [mode, setMode] = useState<CodeMode | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [setupCode, setSetupCode] = useState('');
@@ -81,6 +180,19 @@ export function AuthForm({ initialized, onDone }: { initialized: boolean; onDone
             setBusy(false);
         }
     };
+
+    if (mode) {
+        return (
+            <CodeForm
+                mode={mode}
+                onDone={onDone}
+                onBack={(text) => {
+                    setMode(null);
+                    setNotice(text ?? null);
+                }}
+            />
+        );
+    }
 
     if (challenge) {
         return (
@@ -154,6 +266,11 @@ export function AuthForm({ initialized, onDone }: { initialized: boolean; onDone
             <form className="card form" onSubmit={submit}>
                 <h2>{initialized ? t('auth.loginTitle') : t('auth.setupTitle')}</h2>
                 {initialized ? null : <p className="muted small">{t('auth.setupHint')}</p>}
+                {notice ? (
+                    <p className="small" role="status">
+                        {notice}
+                    </p>
+                ) : null}
                 <label>
                     {t('auth.username')}
                     <input
@@ -204,6 +321,16 @@ export function AuthForm({ initialized, onDone }: { initialized: boolean; onDone
                 )}
                 {error ? <p className="error">{error}</p> : null}
                 <SubmitButton busy={busy}>{initialized ? t('auth.submitLogin') : t('auth.submitSetup')}</SubmitButton>
+                {initialized ? (
+                    <span className="row">
+                        <button type="button" disabled={busy} onClick={() => setMode('invite')}>
+                            {t('auth.haveInvite')}
+                        </button>
+                        <button type="button" disabled={busy} onClick={() => setMode('reset')}>
+                            {t('auth.haveReset')}
+                        </button>
+                    </span>
+                ) : null}
             </form>
         </main>
     );

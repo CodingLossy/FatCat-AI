@@ -3,11 +3,13 @@
 
 import { createRoute } from '@hono/zod-openapi';
 import {
+    AcceptInviteRequest,
     AuthStatus,
     LoginChallenge,
     LoginRequest,
     LoginResponse,
     Me,
+    ResetPasswordRequest,
     SetupRequest,
     TotpConfirmRequest,
     TotpEnableRequest,
@@ -21,7 +23,15 @@ import type { MasterKeyResolver } from '@fatcat-ai/providers';
 import type { Repositories } from '@fatcat-ai/storage';
 import type { Context } from 'hono';
 import { deleteCookie, setCookie } from 'hono/cookie';
-import { dummyPasswordHash, hashPassword, randomToken, safeEqual, sha256, verifyPassword } from '../auth/crypto.js';
+import {
+    dummyPasswordHash,
+    hashPassword,
+    normalizePairingCode,
+    randomToken,
+    safeEqual,
+    sha256,
+    verifyPassword,
+} from '../auth/crypto.js';
 import { CSRF_COOKIE, requireOwner, SESSION_COOKIE, SESSION_TTL_MS } from '../auth/middleware.js';
 import { LoginChallenges } from '../auth/login-challenge.js';
 import { type AttemptLimiter, EscalatingLimiter, FailureLimiter } from '../auth/rate-limit.js';
@@ -29,6 +39,7 @@ import { TotpService } from '../auth/totp-service.js';
 import { generateTotpSecret, otpauthUri } from '../auth/totp.js';
 import type { CookieSecure } from '../config.js';
 import type { AppEnv } from '../env.js';
+import { closeAccountSockets } from '../device-sockets.js';
 import { ApiError, unauthorized } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
 
@@ -41,6 +52,8 @@ export interface AuthRouteDeps {
     /** 请求来源地址(TCP 对端),用于限速与本机判断。 */
     clientIp: (c: Context<AppEnv>) => string;
     loginLimiter?: AttemptLimiter;
+    /** 邀请码与重置码的失败限速;默认每个来源每分钟 10 次。 */
+    codeLimiter?: AttemptLimiter;
     /** 第二因素的失败限速(按用户名与按 IP 分别计数,ADR 0027 第 5 节);不给时用逐级加长锁定的 EscalatingLimiter。 */
     totpLimiter?: AttemptLimiter;
     /** 主密钥来源(ADR 0026);TOTP 共享密钥用它加密入库。不可用时启用与验证都失败。 */
@@ -81,6 +94,34 @@ const setupRoute = createRoute({
         400: problem('Invalid request'),
         403: problem('A setup code is required for non-local requests'),
         409: problem('The owner account already exists'),
+    },
+});
+
+const acceptInviteRoute = createRoute({
+    method: 'post',
+    path: '/auth/invite/accept',
+    tags: ['auth'],
+    summary: 'Create your own (member) account with a one-time invite code from an admin (public, rate limited)',
+    request: { body: { content: { 'application/json': { schema: AcceptInviteRequest } }, required: true } },
+    responses: {
+        201: json(LoginResponse, 'Account created and signed in'),
+        401: problem('Invalid, used or expired invite code'),
+        409: problem('The username is taken (the code is not used up)'),
+        429: problem('Too many failed attempts'),
+    },
+});
+
+const resetPasswordRoute = createRoute({
+    method: 'post',
+    path: '/auth/password/reset',
+    tags: ['auth'],
+    summary:
+        'Set a new password with a one-time reset code from an admin (public, rate limited); signs out every session, token and device of that account',
+    request: { body: { content: { 'application/json': { schema: ResetPasswordRequest } }, required: true } },
+    responses: {
+        204: { description: 'Password changed' },
+        401: problem('Invalid, used or expired reset code'),
+        429: problem('Too many failed attempts'),
     },
 });
 
@@ -203,6 +244,16 @@ const meRoute = createRoute({
 export function authRoutes(deps: AuthRouteDeps) {
     const { repos, now } = deps;
     const limiter = deps.loginLimiter ?? new FailureLimiter(5, 60_000);
+    // 邀请码与重置码:每个来源每分钟 10 次失败(和设备配对一样)
+    const codeLimiter = deps.codeLimiter ?? new FailureLimiter(10, 60_000);
+    function guardCode(key: string): void {
+        const wait = codeLimiter.retryAfter(key);
+        if (wait > 0) {
+            throw new ApiError(429, 'rate_limited', 'Too Many Requests', 'Too many failed attempts.', {
+                headers: { 'Retry-After': String(wait) },
+            });
+        }
+    }
     // 第二因素:按用户名与按 IP 分别累计失败(24 小时),任一键被锁定即拒绝,锁定期间连正确的验证码也拒绝;
     // 锁定时长逐级加长(15 分钟 → 1 小时 → 翻倍),只有成功验证才清零
     const totpLimiter = deps.totpLimiter ?? new EscalatingLimiter(() => now().getTime());
@@ -321,8 +372,11 @@ export function authRoutes(deps: AuthRouteDeps) {
             return c.json(startSession(c, owner), 201);
         })
         .openapi(loginRoute, async (c) => {
-            const ip = deps.clientIp(c);
-            const wait = limiter.retryAfter(ip);
+            const body = c.req.valid('json');
+            // 按来源地址与按用户名分别计数,任一被锁定即拒绝(ADR 0053 第 6 节)
+            const keys = [ipKey(deps.clientIp(c)), userKey(body.username)];
+            const lockedOut = () => Math.max(...keys.map((k) => limiter.retryAfter(k)));
+            const wait = lockedOut();
             if (wait > 0) {
                 throw new ApiError(429, 'rate_limited', 'Too Many Requests', 'Too many failed sign-in attempts.', {
                     headers: { 'Retry-After': String(wait) },
@@ -331,22 +385,22 @@ export function authRoutes(deps: AuthRouteDeps) {
             if (repos.owners.count() === 0) {
                 throw new ApiError(409, 'not_initialized', 'Conflict', 'Create the owner account first.');
             }
-            const body = c.req.valid('json');
             const owner = repos.owners.getByUsername(body.username);
             const ok = await verifyPassword(body.password, owner?.passwordHash ?? (await dummyPasswordHash()));
-            // 并发的错误尝试在 await 期间可能已经把这个来源锁住:放行前再检查一次
-            const waitAfter = limiter.retryAfter(ip);
+            // 并发的错误尝试在 await 期间可能已经把这些键锁住:放行前再检查一次
+            const waitAfter = lockedOut();
             if (waitAfter > 0) {
                 throw new ApiError(429, 'rate_limited', 'Too Many Requests', 'Too many failed sign-in attempts.', {
                     headers: { 'Retry-After': String(waitAfter) },
                 });
             }
-            if (!owner || !ok) {
-                limiter.recordFailure(ip);
-                c.get('logger').warn({ ip }, 'sign-in failed');
+            // 停用的账户和密码错误回答一样,不透露账户状态
+            if (!owner || !ok || owner.disabledAt !== null) {
+                for (const k of keys) limiter.recordFailure(k);
+                c.get('logger').warn({ ip: deps.clientIp(c) }, 'sign-in failed');
                 throw new ApiError(401, 'unauthorized', 'Unauthorized', 'Wrong username or password.');
             }
-            limiter.reset(ip);
+            for (const k of keys) limiter.reset(k);
             repos.authSessions.deleteExpired();
             // 已启用 TOTP:不发会话,只发 5 分钟的一次性临时凭证(ADR 0027 第 2 节)
             if (repos.totp.get(owner.id)?.enabled) {
@@ -363,12 +417,51 @@ export function authRoutes(deps: AuthRouteDeps) {
             }
             return c.json(startSession(c, owner), 200);
         })
+        .openapi(acceptInviteRoute, async (c) => {
+            const body = c.req.valid('json');
+            const key = ipKey(deps.clientIp(c));
+            guardCode(key);
+            const passwordHash = await hashPassword(body.password);
+            guardCode(key);
+            const result = repos.accounts.acceptInvite(sha256(normalizePairingCode(body.code)), {
+                username: body.username,
+                passwordHash,
+                displayName: body.displayName ?? null,
+            });
+            if (result.status === 'username_taken') {
+                throw new ApiError(409, 'conflict', 'Conflict', 'This username is taken; choose another one.');
+            }
+            if (result.status === 'invalid') {
+                codeLimiter.recordFailure(key);
+                c.get('logger').warn({ ip: deps.clientIp(c) }, 'invite code rejected');
+                throw new ApiError(401, 'unauthorized', 'Unauthorized', 'The invite code is invalid or has expired.');
+            }
+            c.get('logger').info({ ownerId: result.owner.id }, 'member account created from an invite');
+            return c.json(startSession(c, result.owner), 201);
+        })
+        .openapi(resetPasswordRoute, async (c) => {
+            const body = c.req.valid('json');
+            const key = ipKey(deps.clientIp(c));
+            guardCode(key);
+            const passwordHash = await hashPassword(body.password);
+            guardCode(key);
+            const result = repos.accounts.resetPassword(sha256(normalizePairingCode(body.code)), passwordHash);
+            if (!result) {
+                codeLimiter.recordFailure(key);
+                c.get('logger').warn({ ip: deps.clientIp(c) }, 'reset code rejected');
+                throw new ApiError(401, 'unauthorized', 'Unauthorized', 'The reset code is invalid or has expired.');
+            }
+            closeAccountSockets(result.ownerId);
+            c.get('logger').info({ ownerId: result.ownerId }, 'password reset with a reset code');
+            return c.body(null, 204);
+        })
         .openapi(loginTotpRoute, (c) => {
             const body = c.req.valid('json');
             const ip = ipKey(deps.clientIp(c));
             guardTotp([ip]);
             const pending = challenges.lookup(body.challengeToken);
-            const owner = pending ? repos.owners.get(pending.ownerId) : null;
+            const found = pending ? repos.owners.get(pending.ownerId) : null;
+            const owner = found?.disabledAt === null ? found : null;
             if (!pending || !owner) {
                 failTotp(c, [ip]);
                 throw loginStepFailed();
