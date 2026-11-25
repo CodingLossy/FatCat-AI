@@ -2,7 +2,7 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 // 渠道框架(ADR 0022):适配器接口、IM 指令、富文本降级与切段、限流与退避。
-// 绑定、会话与审批的编排在服务器(apps/server/src/channels),那里能拿到存储与运行管理。
+// 绑定、会话与审批的编排在子路径 `@fatcat-ai/channels/hub`(ADR 0050),根入口不依赖存储与运行管理。
 export * from './types.js';
 export * from './commands.js';
 export * from './format.js';

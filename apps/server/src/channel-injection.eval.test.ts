@@ -18,7 +18,7 @@ import {
     MAX_PAIRING_FAILURES,
     OWNER_MESSAGES_PER_MINUTE,
     REPLIES,
-} from './channels/hub.js';
+} from '@fatcat-ai/channels/hub';
 import { createMemoryStack } from './memory-setup.js';
 import {
     enableGroupFor,

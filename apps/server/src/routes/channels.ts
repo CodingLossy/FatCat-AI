@@ -17,9 +17,7 @@ import {
 } from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
 import { requireOwner } from '../auth/middleware.js';
-import type { ChannelHub } from '../channels/hub.js';
-import { toChannel } from '../channels/hub.js';
-import type { WechatChannels } from '../channels/wechat.js';
+import { type ChannelHub, toChannel, type WechatChannels } from '@fatcat-ai/channels/hub';
 import { ApiError, notFound } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
 

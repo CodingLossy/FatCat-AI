@@ -1,32 +1,38 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import { type ErrorCode, PROBLEM_CONTENT_TYPE, type ProblemDetails } from '@fatcat-ai/shared';
+import {
+    type ErrorCode,
+    PROBLEM_CONTENT_TYPE,
+    type ProblemDetails,
+    ServiceError,
+    type ServiceErrorExtra,
+} from '@fatcat-ai/shared';
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { ZodError } from 'zod';
 import type { AppEnv } from './env.js';
 
-/** 业务错误;由统一错误处理转换为 problem+json(ADR 0004 第 3 节)。 */
-export class ApiError extends Error {
+/** 业务错误;由统一错误处理转换为 problem+json(ADR 0004 第 3 节)。状态码限定为 Hono 能返回正文的那些。 */
+export class ApiError extends ServiceError {
+    declare readonly status: ContentfulStatusCode;
+
     constructor(
-        readonly status: ContentfulStatusCode,
-        readonly code: ErrorCode,
-        readonly title: string,
-        readonly detail?: string,
-        readonly extra: Partial<Pick<ProblemDetails, 'issues' | 'providerCode' | 'reason'>> & {
-            headers?: Record<string, string>;
-        } = {},
+        status: ContentfulStatusCode,
+        code: ErrorCode,
+        title: string,
+        detail?: string,
+        extra: ServiceErrorExtra = {},
     ) {
-        super(detail ?? title);
+        super(status, code, title, detail, extra);
     }
 }
 
 export const unauthorized = () => new ApiError(401, 'unauthorized', 'Unauthorized', 'Authentication is required.');
 export const notFound = (what = 'Resource') => new ApiError(404, 'not_found', 'Not Found', `${what} was not found.`);
 
-export function problemResponse(c: Context<AppEnv>, error: ApiError): Response {
+export function problemResponse(c: Context<AppEnv>, error: ServiceError): Response {
     const body: ProblemDetails = {
         type: 'about:blank',
         title: error.title,
@@ -55,7 +61,8 @@ export function validationError(error: ZodError): ApiError {
 
 /** 统一错误处理:不把内部错误信息或堆栈返回给客户端,只写本地日志。 */
 export function handleError(err: Error, c: Context<AppEnv>): Response {
-    if (err instanceof ApiError) return problemResponse(c, err);
+    // 包里抛的 ServiceError(渠道中枢、插件服务)与服务器自己的 ApiError 一样处理
+    if (err instanceof ServiceError) return problemResponse(c, err);
     if (err instanceof ZodError) return problemResponse(c, validationError(err));
     if (err instanceof HTTPException) {
         const status = err.status as ContentfulStatusCode;

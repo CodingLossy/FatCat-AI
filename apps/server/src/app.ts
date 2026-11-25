@@ -63,8 +63,8 @@ import { timingSafeEqual } from 'node:crypto';
 import type { TaskComplete } from './scheduler/nl-parse.js';
 import { startScheduler, type Scheduler } from './scheduler-setup.js';
 import { startMaintenance } from './maintenance-setup.js';
-import { ChannelHub } from './channels/hub.js';
-import { WechatChannels } from './channels/wechat.js';
+import { ChannelHub, WechatChannels } from '@fatcat-ai/channels/hub';
+import { channelHubServerDeps } from './channel-setup.js';
 import { TRANSCRIPTION_OVERHEAD_BYTES, type VoiceRouteDeps, voiceRoutes } from './routes/voice.js';
 import { ClientCalls } from './client-calls.js';
 import { clientCallRoutes } from './routes/client-calls.js';
@@ -188,7 +188,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
             runs: deps.runs,
             bus: deps.bus,
             secrets: deps.secrets,
-            files,
+            ...channelHubServerDeps({ repos, runs: deps.runs, secrets: deps.secrets, files }),
             logger,
             sourceUrl: config.sourceUrl,
             now,

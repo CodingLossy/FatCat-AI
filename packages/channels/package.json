@@ -2,7 +2,7 @@
   "name": "@fatcat-ai/channels",
   "version": "0.0.0",
   "private": true,
-  "description": "Channel framework and adapters (1.0: WeChat)",
+  "description": "Channel framework, adapters (1.0: WeChat) and the channel hub",
   "license": "AGPL-3.0-only",
   "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
   "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/channels",
@@ -23,6 +23,10 @@
     "./testing": {
       "types": "./dist/testing.d.ts",
       "default": "./dist/testing.js"
+    },
+    "./hub": {
+      "types": "./dist/hub/index.d.ts",
+      "default": "./dist/hub/index.js"
     }
   },
   "files": [
@@ -35,6 +39,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fatcat-ai/shared": "workspace:*"
+    "@fatcat-ai/agent": "workspace:*",
+    "@fatcat-ai/providers": "workspace:*",
+    "@fatcat-ai/shared": "workspace:*",
+    "@fatcat-ai/storage": "workspace:*",
+    "@fatcat-ai/tools": "workspace:*"
   }
 }

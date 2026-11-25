@@ -29,7 +29,7 @@ import {
     parseMapReply,
     SlidingWindow,
     splitMessage,
-} from '@fatcat-ai/channels';
+} from '../index.js';
 import { composeUntrustedBlocks } from '@fatcat-ai/tools';
 import type { SecretStore } from '@fatcat-ai/providers';
 import type {
@@ -42,11 +42,13 @@ import type {
     EventEnvelope,
     Item,
 } from '@fatcat-ai/shared';
-import type { ChannelRecord, Repositories } from '@fatcat-ai/storage';
-import type { AttachmentFiles } from '../attachment-files.js';
-import type { Logger } from '../log.js';
-import { resolveProfile } from '../routes/sessions.js';
-import { removeOwnerSessions } from '../session-delete.js';
+import type { ChannelRecord, ModelProfileRecord, Repositories } from '@fatcat-ai/storage';
+
+/** 中枢写日志只用这两个方法;服务器传 pino 的 logger(ADR 0050 第 2 节)。 */
+export interface ChannelLogger {
+    info(fields: Record<string, unknown>, msg: string): void;
+    warn(fields: Record<string, unknown>, msg: string): void;
+}
 
 /** 按渠道类型创建适配器;没有注册的类型启用后显示 error(adapter_unavailable)。 */
 export type AdapterFactory = (channel: ChannelRecord) => ChannelAdapter;
@@ -56,9 +58,11 @@ export interface ChannelHubOptions {
     runs: RunManager;
     bus: EventBus;
     secrets: SecretStore;
-    /** 清空渠道会话时删除附件文件,与 DELETE /sessions 相同。 */
-    files: AttachmentFiles;
-    logger: Logger;
+    /** 这一轮用的模型配置档(会话选的,否则默认的);没有可用的配置档或缺密钥时抛错。由服务器的会话路由提供。 */
+    resolveProfile: (ownerId: string, sessionProfileId: string | null) => ModelProfileRecord;
+    /** 删除会话:停掉运行、删行、删附件,与 DELETE /sessions 相同。由服务器提供。 */
+    removeSessions: (ownerId: string, sessionIds: readonly string[], warn: (err: unknown) => void) => Promise<number>;
+    logger: ChannelLogger;
     sourceUrl: string;
     adapters?: Partial<Record<ChannelKind, AdapterFactory>>;
     now?: () => Date;
@@ -312,7 +316,7 @@ export class ChannelHub {
         return rt;
     }
 
-    private get log(): Logger {
+    private get log(): ChannelLogger {
         return this.options.logger;
     }
 
@@ -810,15 +814,8 @@ export class ChannelHub {
     private async clearChannel(rt: Runtime, target: ChannelTarget): Promise<void> {
         const channel = this.options.repos.channels.byId(rt.channelId);
         if (channel?.sessionId) {
-            await removeOwnerSessions(
-                {
-                    repos: this.options.repos,
-                    runs: this.options.runs,
-                    files: this.options.files,
-                    warn: (err) => this.log.warn({ err, channelId: channel.id }, 'attachment cleanup failed'),
-                },
-                channel.ownerId,
-                [channel.sessionId],
+            await this.options.removeSessions(channel.ownerId, [channel.sessionId], (err) =>
+                this.log.warn({ err, channelId: channel.id }, 'attachment cleanup failed'),
             );
         }
         rt.suppressOutbound = false;
@@ -854,12 +851,7 @@ export class ChannelHub {
         let profile;
         try {
             const session = repos.sessions.get(channel.ownerId, sessionId);
-            profile = resolveProfile(
-                { repos, secrets: this.options.secrets },
-                channel.ownerId,
-                null,
-                session?.modelProfileId ?? null,
-            );
+            profile = this.options.resolveProfile(channel.ownerId, session?.modelProfileId ?? null);
         } catch {
             return this.send(rt, target, REPLIES.noModel);
         }

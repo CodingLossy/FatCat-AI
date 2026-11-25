@@ -230,9 +230,21 @@ importers:
 
   packages/channels:
     dependencies:
+      '@fatcat-ai/agent':
+        specifier: workspace:*
+        version: link:../agent
+      '@fatcat-ai/providers':
+        specifier: workspace:*
+        version: link:../providers
       '@fatcat-ai/shared':
         specifier: workspace:*
         version: link:../shared
+      '@fatcat-ai/storage':
+        specifier: workspace:*
+        version: link:../storage
+      '@fatcat-ai/tools':
+        specifier: workspace:*
+        version: link:../tools
 
   packages/client:
     dependencies:
