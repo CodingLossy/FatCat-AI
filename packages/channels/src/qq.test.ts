@@ -5,6 +5,7 @@
 import type { ChannelState } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+    heartbeatDelay,
     isAllowedQqGatewayUrl,
     PASSIVE_REPLIES_PER_MESSAGE,
     PASSIVE_REPLY_WINDOW_MS,
@@ -76,6 +77,7 @@ async function setup(
         tokenUrl: platform.tokenUrl,
         allowGatewayUrl: (url) => url.startsWith('ws://127.0.0.1:'),
         now: () => clock.ms,
+        minHeartbeatMs: 1,
         ...options.adapter,
     });
     current = { platform, adapter, ctx, received, states, protectedValues, logs, clock };
@@ -118,6 +120,14 @@ describe('isAllowedQqGatewayUrl', () => {
         expect(isAllowedQqGatewayUrl('https://api.bot.qq.com/websocket')).toBe(false);
         expect(isAllowedQqGatewayUrl('wss://user:pass@api.bot.qq.com/websocket')).toBe(false);
         expect(isAllowedQqGatewayUrl('not a url')).toBe(false);
+    });
+});
+
+describe('heartbeatDelay', () => {
+    it('非数字或低于下限时用 45 秒,超过 2 分钟按 2 分钟', () => {
+        expect(heartbeatDelay(41_250, 1_000)).toBe(41_250);
+        for (const bad of [NaN, -1, 0, 999, Infinity]) expect(heartbeatDelay(bad, 1_000)).toBe(45_000);
+        for (const big of [120_001, 1e12]) expect(heartbeatDelay(big, 1_000)).toBe(120_000);
     });
 });
 

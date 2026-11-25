@@ -144,6 +144,8 @@ export interface QqAdapterOptions {
     fetch?: typeof fetch;
     WebSocket?: typeof WebSocket;
     now?: () => number;
+    /** 心跳间隔的下限(毫秒);默认 1 秒,测试里调小。 */
+    minHeartbeatMs?: number;
 }
 
 interface Frame {
@@ -173,6 +175,10 @@ const CLOSE_MESSAGES: Record<number, ChannelErrorReport> = {
     4914: { code: 'qq_bot_unavailable', message: 'The QQ bot is delisted; only its sandbox can connect.' },
     4915: { code: 'qq_bot_unavailable', message: 'The QQ bot is banned.' },
 };
+
+/** 网关给的心跳间隔:非数字或低于下限时用 45 秒,超过 2 分钟按 2 分钟,避免异常值造成心跳风暴或长时间不检测断线。 */
+export const heartbeatDelay = (interval: number, min: number): number =>
+    Number.isFinite(interval) && interval >= min ? Math.min(interval, 120_000) : 45_000;
 
 export class QqAdapter implements ChannelAdapter {
     readonly kind = 'qq' as const;
@@ -426,7 +432,7 @@ export class QqAdapter implements ChannelAdapter {
                                 missed += 1;
                                 sendFrame({ op: 1, d: this.seq });
                             },
-                            Number.isFinite(interval) && interval > 0 ? interval : 45_000,
+                            heartbeatDelay(interval, this.options.minHeartbeatMs ?? 1_000),
                         );
                         heartbeat.unref?.();
                         void this.accessToken().then(
