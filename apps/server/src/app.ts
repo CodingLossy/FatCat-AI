@@ -43,7 +43,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mcpRoutes } from './routes/mcp.js';
 import { pluginRoutes } from './routes/plugins.js';
-import { PluginService } from './plugin-setup.js';
+import { PluginService } from '@fatcat-ai/plugins';
 import { embeddingRoutes } from './routes/embeddings.js';
 import { createEmbeddingService, type EmbeddingService } from './embeddings.js';
 import { createMcpControl, type McpControl } from './mcp-setup.js';
@@ -162,6 +162,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         deps.plugins ??
         new PluginService({
             repos,
+            coreVersion: SERVER_VERSION,
             registry: deps.runs.tools,
             dataDir: deps.config.dataDir ?? join(tmpdir(), 'fatcat-ai-plugins-unconfigured'),
             redact: deps.redact ?? ((text) => text),

@@ -22,8 +22,10 @@ import {
     type PluginProtection,
     type PluginRunInfo,
     type PluginView,
+    notFoundError,
     parsePluginManifest,
     satisfiesEngine,
+    ServiceError,
     validatePluginSettings,
 } from '@fatcat-ai/shared';
 import type { PluginRecord, Repositories } from '@fatcat-ai/storage';
@@ -45,7 +47,6 @@ import {
     PluginPackageError,
     validateStagedPackage,
 } from '@fatcat-ai/tools/market';
-import { ApiError, notFound } from './errors.js';
 import {
     BACKUP_LIMIT_BYTES,
     backupData,
@@ -55,10 +56,9 @@ import {
     removeAllBackups,
     removeBackup,
     restoreData,
-} from './plugin-files.js';
-import { MarketService, type MarketNet } from './plugin-market.js';
-import { createPluginItemProvider, pluginSource, upsertPluginItems } from './plugin-items.js';
-import { SERVER_VERSION } from './version.js';
+} from './files.js';
+import { createPluginItemProvider, pluginSource, upsertPluginItems } from './items.js';
+import { MarketService, type MarketNet } from './market.js';
 
 const RUNTIME_KEY = '__runtime';
 const UNINSTALL_KEY = '__uninstall';
@@ -77,12 +77,14 @@ const STAGING_TTL_MS = 24 * 3600_000;
  * 判断插件 engines 范围用的核心版本。开发树的版本号还是 0.0.0,此时按当前开发中的版本 1.2.0 判断
  * (插件自 1.1.0 起支持,Skills 随 1.2.0 发布,ADR 0048 第 2 节);正式版本号写进 package.json 后直接用它。
  */
-export function pluginCoreVersion(version: string = SERVER_VERSION): string {
+export function pluginCoreVersion(version: string): string {
     return version === '0.0.0' ? '1.2.0' : version;
 }
 
 export interface PluginServiceOptions {
     repos: Repositories;
+    /** 服务器的版本号(package.json);判断 engines 时经 pluginCoreVersion 换算(ADR 0050 第 3 节)。 */
+    coreVersion: string;
     registry: ToolRegistry | undefined;
     dataDir: string;
     redact: (text: string) => string;
@@ -241,6 +243,11 @@ export class PluginService {
         return this.options.now?.() ?? new Date();
     }
 
+    /** 判断 engines 用的核心版本(开发树的 0.0.0 按 1.2.0 算)。 */
+    private get coreVersion(): string {
+        return pluginCoreVersion(this.options.coreVersion);
+    }
+
     /** 探测操作系统层的网络隔离;只探测一次,并发调用共用同一个结果,不阻塞事件循环。 */
     private detectIsolation(): Promise<NetIsolation> {
         this.isolationProbe ??= import('@fatcat-ai/tools/plugins').then(async ({ detectNetIsolation }) => {
@@ -315,8 +322,8 @@ export class PluginService {
         for (const record of this.allRecords().filter((r) => r.state === 'enabled')) {
             // 核心升级后 engines 不再满足:不启动、不卸载,提示升级插件(第 6.2 节第 7 步)
             const engines = (record.manifest as PluginManifest).engines.fatcat;
-            if (!satisfiesEngine(pluginCoreVersion(), engines)) {
-                const message = `requires FatCat-AI ${engines}, this is ${pluginCoreVersion()}`;
+            if (!satisfiesEngine(this.coreVersion, engines)) {
+                const message = `requires FatCat-AI ${engines}, this is ${this.coreVersion}`;
                 repos.plugins.update(record.ownerId, record.pluginId, { state: 'incompatible', error: message });
                 repos.plugins.addEvent(record.ownerId, {
                     pluginId: record.pluginId,
@@ -461,7 +468,7 @@ export class PluginService {
 
     private require(ownerId: string, pluginId: string): PluginRecord {
         const record = this.options.repos.plugins.get(ownerId, pluginId);
-        if (!record || record.state === 'uninstalled') throw notFound('Plugin');
+        if (!record || record.state === 'uninstalled') throw notFoundError('Plugin');
         return record;
     }
 
@@ -482,7 +489,7 @@ export class PluginService {
     taskTemplate(ownerId: string, pluginId: string, index: number): { name: string; template: PluginTaskTemplate } {
         const record = this.require(ownerId, pluginId);
         const template = (record.manifest as PluginManifest).taskTemplates?.[index];
-        if (record.state !== 'enabled' || !template) throw notFound('Task template');
+        if (record.state !== 'enabled' || !template) throw notFoundError('Task template');
         return { name: (record.manifest as PluginManifest).name.en ?? record.pluginId, template };
     }
 
@@ -509,18 +516,18 @@ export class PluginService {
         try {
             prepared = prepareLocalPackage(sourcePath, {
                 stagingRoot: this.stagingRoot,
-                coreVersion: pluginCoreVersion(),
+                coreVersion: this.coreVersion,
             });
         } catch (error) {
             if (error instanceof PluginPackageError) {
-                throw new ApiError(400, error.code, 'Bad Request', error.message);
+                throw new ServiceError(400, error.code, 'Bad Request', error.message);
             }
             throw error;
         }
         // 没有操作系统层网络隔离的平台上,声明了联网的本地目录插件无法被约束,只有经过审核的市场插件才能用(第 3.4 节)
         if (prepared.manifest.permissions.net.length > 0 && isolation.kind === 'none') {
             rmSync(prepared.stagingDir, { recursive: true, force: true });
-            throw new ApiError(
+            throw new ServiceError(
                 400,
                 'plugin_network_unsupported',
                 'Bad Request',
@@ -580,7 +587,7 @@ export class PluginService {
 
     marketListing(ownerId: string): PluginMarketListing {
         return this.market.listing(ownerId, {
-            coreVersion: pluginCoreVersion(),
+            coreVersion: this.coreVersion,
             installed: (pluginId) => this.installedOf(ownerId, pluginId),
         });
     }
@@ -604,9 +611,9 @@ export class PluginService {
             source.id,
             source.version,
         );
-        const core = pluginCoreVersion();
+        const core = this.coreVersion;
         if (!satisfiesEngine(core, version.engines.fatcat)) {
-            throw new ApiError(
+            throw new ServiceError(
                 400,
                 'plugin_incompatible',
                 'Bad Request',
@@ -625,7 +632,7 @@ export class PluginService {
                 manifest.version !== version.version ||
                 !samePermissions(manifest.permissions, version.permissions)
             ) {
-                throw new ApiError(
+                throw new ServiceError(
                     422,
                     'plugin_manifest_mismatch',
                     'Unprocessable Content',
@@ -658,7 +665,7 @@ export class PluginService {
     }
 
     private marketError(ownerId: string, pluginId: string, version: string, error: unknown): unknown {
-        if (error instanceof PluginPackageError) return new ApiError(400, error.code, 'Bad Request', error.message);
+        if (error instanceof PluginPackageError) return new ServiceError(400, error.code, 'Bad Request', error.message);
         if (!(error instanceof MarketError)) return error;
         switch (error.code) {
             case 'plugin_checksum_mismatch':
@@ -668,18 +675,18 @@ export class PluginService {
                     kind: 'checksum-mismatch',
                     detail: 'sha256',
                 });
-                return new ApiError(422, 'plugin_checksum_mismatch', 'Unprocessable Content', error.message);
+                return new ServiceError(422, 'plugin_checksum_mismatch', 'Unprocessable Content', error.message);
             case 'plugin_too_large':
-                return new ApiError(413, 'plugin_too_large', 'Content Too Large', error.message);
+                return new ServiceError(413, 'plugin_too_large', 'Content Too Large', error.message);
             default:
-                return new ApiError(502, 'plugin_download_failed', 'Bad Gateway', error.message);
+                return new ServiceError(502, 'plugin_download_failed', 'Bad Gateway', error.message);
         }
     }
 
     async install(ownerId: string, stagingId: string, options: { skipDataBackup?: boolean } = {}): Promise<PluginView> {
         const staged = this.staged.get(stagingId);
         if (!staged || staged.ownerId !== ownerId || !existsSync(staged.dir)) {
-            throw new ApiError(
+            throw new ServiceError(
                 404,
                 'plugin_staging_not_found',
                 'Not Found',
@@ -807,7 +814,7 @@ export class PluginService {
 
     private async guarded<T>(pluginId: string, action: () => Promise<T>): Promise<T> {
         if (this.busy.has(pluginId)) {
-            throw new ApiError(
+            throw new ServiceError(
                 409,
                 'conflict',
                 'Conflict',
@@ -834,12 +841,12 @@ export class PluginService {
             const { manifest } = staged;
             const id = manifest.id;
             if (existing.state === 'uninstalling') {
-                throw new ApiError(409, 'conflict', 'Conflict', 'This plugin is being uninstalled.');
+                throw new ServiceError(409, 'conflict', 'Conflict', 'This plugin is being uninstalled.');
             }
             const from = parseSemver(existing.version);
             const to = parseSemver(manifest.version);
             if (!from || !to || compareSemver(to, from) <= 0) {
-                throw new ApiError(
+                throw new ServiceError(
                     409,
                     'conflict',
                     'Conflict',
@@ -850,7 +857,7 @@ export class PluginService {
             const limit = this.options.backupLimitBytes ?? BACKUP_LIMIT_BYTES;
             const tooLarge = dirSize(dataDir, limit) > limit;
             if (tooLarge && !options.skipDataBackup) {
-                throw new ApiError(
+                throw new ServiceError(
                     409,
                     'plugin_backup_too_large',
                     'Conflict',
@@ -917,7 +924,7 @@ export class PluginService {
                     detail: reason,
                 });
                 if (existing.state === 'enabled') await this.activate(existing).catch(() => undefined);
-                throw new ApiError(
+                throw new ServiceError(
                     422,
                     'plugin_upgrade_failed',
                     'Unprocessable Content',
@@ -976,14 +983,14 @@ export class PluginService {
                 record.state === 'uninstalling' ||
                 record.state === 'uninstalled'
             ) {
-                throw new ApiError(409, 'conflict', 'Conflict', 'There is no previous version to go back to.');
+                throw new ServiceError(409, 'conflict', 'Conflict', 'There is no previous version to go back to.');
             }
             let checked;
             try {
-                checked = validateStagedPackage(dir, pluginCoreVersion());
+                checked = validateStagedPackage(dir, this.coreVersion);
             } catch (error) {
                 if (error instanceof PluginPackageError) {
-                    throw new ApiError(
+                    throw new ServiceError(
                         409,
                         error.code,
                         'Conflict',
@@ -997,7 +1004,7 @@ export class PluginService {
                 checked.manifest.version !== previousVersion ||
                 checked.contentSha256 !== meta.contentSha256
             ) {
-                throw new ApiError(
+                throw new ServiceError(
                     422,
                     'plugin_checksum_mismatch',
                     'Unprocessable Content',
@@ -1049,7 +1056,7 @@ export class PluginService {
                     detail: `rollback to ${previousVersion}: ${reason}`,
                 });
                 if (record.state === 'enabled') await this.activate(record).catch(() => undefined);
-                throw new ApiError(
+                throw new ServiceError(
                     422,
                     'plugin_upgrade_failed',
                     'Unprocessable Content',
@@ -1095,7 +1102,7 @@ export class PluginService {
         const secretRefs = { ...record.secretRefs };
         for (const [name, ref] of Object.entries(patch.secretRefs ?? {})) {
             if (!declared.has(name)) {
-                throw new ApiError(
+                throw new ServiceError(
                     400,
                     'validation_failed',
                     'Bad Request',
@@ -1109,7 +1116,7 @@ export class PluginService {
         if (patch.settings) {
             const problems = validatePluginSettings(manifest.settings, patch.settings);
             if (problems.length > 0) {
-                throw new ApiError(400, 'validation_failed', 'Bad Request', 'Invalid plugin settings.', {
+                throw new ServiceError(400, 'validation_failed', 'Bad Request', 'Invalid plugin settings.', {
                     issues: problems.map((message) => ({ path: ['settings'], message })),
                 });
             }
@@ -1142,16 +1149,16 @@ export class PluginService {
         const active = record.state === 'enabled' || record.state === 'error';
         const enabled = unboundRequired && active ? false : patch.enabled;
         const wantEnabled = enabled ?? record.state === 'enabled';
-        if (enabled === true && !satisfiesEngine(pluginCoreVersion(), manifest.engines.fatcat)) {
-            throw new ApiError(
+        if (enabled === true && !satisfiesEngine(this.coreVersion, manifest.engines.fatcat)) {
+            throw new ServiceError(
                 409,
                 'plugin_incompatible',
                 'Conflict',
-                `requires FatCat-AI ${manifest.engines.fatcat}, this is ${pluginCoreVersion()}; upgrade the plugin first.`,
+                `requires FatCat-AI ${manifest.engines.fatcat}, this is ${this.coreVersion}; upgrade the plugin first.`,
             );
         }
         if (enabled === true && this.missingSecrets(record).length > 0) {
-            throw new ApiError(
+            throw new ServiceError(
                 409,
                 'plugin_secrets_missing',
                 'Conflict',

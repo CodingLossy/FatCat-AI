@@ -28,7 +28,8 @@ import { type BuiltinSkill, SkillService } from './skills.js';
 import { createLogger } from './log.js';
 import { type AdapterFactory, ChannelHub, WechatChannels } from '@fatcat-ai/channels/hub';
 import { channelHubServerDeps } from './channel-setup.js';
-import { PluginService } from './plugin-setup.js';
+import { PluginService } from '@fatcat-ai/plugins';
+import { SERVER_VERSION } from './version.js';
 import type { AgentEvent, ChannelKind } from '@fatcat-ai/shared';
 import { createDelegateTool, groupOf, isCoreGroup } from '@fatcat-ai/tools';
 import type { ChatChunk } from '@fatcat-ai/providers';
@@ -223,6 +224,7 @@ export async function createTestServer(
     const mcp = createMcpControl(runs.tools);
     const plugins = new PluginService({
         repos,
+        coreVersion: SERVER_VERSION,
         registry: runs.tools,
         dataDir: dir,
         redact: (text) => redactor.redact(text),

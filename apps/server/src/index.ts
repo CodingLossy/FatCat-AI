@@ -24,7 +24,8 @@ import {
 import { runInWorker } from '@fatcat-ai/mail';
 import { createApp } from './app.js';
 import { createMcpControl } from './mcp-setup.js';
-import { PluginService } from './plugin-setup.js';
+import { PluginService } from '@fatcat-ai/plugins';
+import { SERVER_VERSION } from './version.js';
 import { SkillService } from './skills.js';
 import { createMailService } from './mail-setup.js';
 import { promptRef } from '@fatcat-ai/i18n';
@@ -309,6 +310,7 @@ for (const server of repos.mcpServers.allEnabled()) {
 // 有已安装并启用的插件时才加载插件运行时(ADR 0040 第 8 节)
 const plugins = new PluginService({
     repos,
+    coreVersion: SERVER_VERSION,
     registry: runs.tools,
     dataDir: config.dataDir,
     redact: (text) => redactor.redact(text),

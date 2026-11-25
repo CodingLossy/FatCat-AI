@@ -19,8 +19,8 @@ import { fileURLToPath } from 'node:url';
 import { PluginDetail, PluginPrepared, PluginView, pageOf, ToolInfo } from '@fatcat-ai/shared';
 import { NO_NET_ISOLATION } from '@fatcat-ai/tools/plugins';
 import { afterEach, describe, expect, it } from 'vitest';
-import { protectionTable } from './plugin-setup.js';
-import { PLUGIN_ITEM_QUOTA, upsertPluginItems } from './plugin-items.js';
+import { protectionTable } from '@fatcat-ai/plugins';
+import { PLUGIN_ITEM_QUOTA, upsertPluginItems } from '@fatcat-ai/plugins';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 const fixtures = fileURLToPath(new URL('../../../packages/tools/src/plugins/fixtures/', import.meta.url));

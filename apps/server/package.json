@@ -36,6 +36,7 @@
     "@fatcat-ai/items": "workspace:*",
     "@fatcat-ai/mail": "workspace:*",
     "@fatcat-ai/memory": "workspace:*",
+    "@fatcat-ai/plugins": "workspace:*",
     "@fatcat-ai/providers": "workspace:*",
     "@fatcat-ai/shared": "workspace:*",
     "@fatcat-ai/storage": "workspace:*",

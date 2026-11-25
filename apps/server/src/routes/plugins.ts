@@ -16,7 +16,7 @@ import {
     pageOf,
 } from '@fatcat-ai/shared';
 import { requireOwner } from '../auth/middleware.js';
-import type { PluginService } from '../plugin-setup.js';
+import type { PluginService } from '@fatcat-ai/plugins';
 import { authErrors, json, problem, router } from './common.js';
 
 const tags = ['plugins'];
