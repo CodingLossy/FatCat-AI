@@ -14,6 +14,8 @@ export interface AgentDraft {
     maxSteps: string;
     budgetTokens: string;
     budgetSeconds: string;
+    /** 自动使用的 Skill(全局 id,ADR 0048 第 7 节)。 */
+    skills: string[];
 }
 
 export const emptyDraft = (): AgentDraft => ({
@@ -26,6 +28,7 @@ export const emptyDraft = (): AgentDraft => ({
     maxSteps: '5',
     budgetTokens: '',
     budgetSeconds: '',
+    skills: [],
 });
 
 export const draftOf = (agent: Agent): AgentDraft => ({
@@ -38,6 +41,7 @@ export const draftOf = (agent: Agent): AgentDraft => ({
     maxSteps: String(agent.maxSteps),
     budgetTokens: agent.budgetTokens === null ? '' : String(agent.budgetTokens),
     budgetSeconds: agent.budgetSeconds === null ? '' : String(agent.budgetSeconds),
+    skills: agent.skills ?? [],
 });
 
 /** 逗号、空格或换行分隔;去重并保持顺序。 */
@@ -65,5 +69,6 @@ export function inputOf(draft: AgentDraft): AgentInput {
         maxSteps: numberOr(draft.maxSteps, 5),
         budgetTokens: optionalNumber(draft.budgetTokens),
         budgetSeconds: optionalNumber(draft.budgetSeconds),
+        skills: draft.skills,
     };
 }

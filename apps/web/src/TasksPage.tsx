@@ -2,8 +2,9 @@
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
 import type { Channel, Task, TaskAllowedTool, TaskDraftResult, TaskRun } from '@fatcat-ai/shared';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorText } from './api.js';
+import { clearDraft, peekDraft } from './draft-handoff.js';
 import { useI18n } from './i18n.js';
 import { PreauthPicker } from './PreauthPicker.js';
 import { navigate } from './router.js';
@@ -29,14 +30,20 @@ export function TasksPage() {
         channelId: string;
     } | null>(null);
     const [nl, setNl] = useState('');
-    const [draft, setDraft] = useState<TaskDraftResult | null>(null);
+    const [draft, setDraft] = useState<TaskDraftResult | null>(peekDraft);
     // 确认卡上勾选的预授权;任务编辑页里正在编辑预授权的任务
     const [draftAllowed, setDraftAllowed] = useState<{ allowed: TaskAllowedTool[]; missing: string | null }>({
         allowed: [],
         missing: null,
     });
     // 确认卡上的工具集文字(空 = 不限制)
-    const [draftToolSet, setDraftToolSet] = useState('');
+    // 草稿带的工具集(例如 Skill 模板写进来的)要预填,否则确认时会被当成「改成不限工具」
+    const [draftToolSet, setDraftToolSet] = useState(() => (peekDraft()?.task.policy.toolSet ?? []).join(', '));
+    useEffect(() => clearDraft(), []);
+    const draftRef = useRef(draft);
+    useEffect(() => {
+        draftRef.current = draft;
+    }, [draft]);
     const [preauthEdit, setPreauthEdit] = useState<{
         id: string;
         allowed: TaskAllowedTool[];
@@ -57,7 +64,10 @@ export function TasksPage() {
             setTasks(page.items);
             // 从插件模板建出的草稿:跳到任务页后显示确认卡(没有确认前不会运行)
             const fromPlugin = page.items.find((task) => task.status === 'draft' && task.policy.fromPlugin);
-            if (fromPlugin) setDraft((current) => current ?? { task: fromPlugin, warnings: [], notes: [] });
+            if (fromPlugin && !draftRef.current) {
+                setDraft({ task: fromPlugin, warnings: [], notes: [] });
+                setDraftToolSet((fromPlugin.policy.toolSet ?? []).join(', '));
+            }
         } catch (e) {
             setError(errorText(e));
         }

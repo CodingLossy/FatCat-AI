@@ -3532,3 +3532,41 @@ input.code-timeout {
     background: var(--surface-2);
     outline: var(--border-width) solid var(--warn);
 }
+
+/* 技能(ADR 0048):设置页的列表、插件页的技能、代理页的选择 */
+.skill-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.skill-meta {
+    margin: 0.25rem 0 0;
+    overflow-wrap: anywhere;
+}
+
+.skill-templates {
+    margin-top: 0.5rem;
+}
+
+.switch-text .badge,
+.agent-skills .badge,
+[data-testid='agent-skills'] .badge {
+    margin-left: 0.4rem;
+}
+
+.plugin-skills ul {
+    padding-left: 1.2rem;
+}
+
+.plugin-skills code,
+.skill-meta code {
+    overflow-wrap: anywhere;
+}
+
+.agent-skills {
+    display: grid;
+    gap: 0.4rem;
+}
