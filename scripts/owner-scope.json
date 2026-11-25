@@ -290,6 +290,11 @@
     "reason": "Login looks up the account by username before checking the password."
   },
   {
+    "key": "repos.ts:owners.createFirst",
+    "category": "system",
+    "reason": "Setup creates the first (admin) account only while the owners table is empty."
+  },
+  {
     "key": "repos.ts:owners.primaryAdmin",
     "category": "system",
     "reason": "Install-wide defaults not yet split per account (server time zone, unclaimed pairing failures) use the earliest active admin."

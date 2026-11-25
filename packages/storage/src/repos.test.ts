@@ -74,6 +74,42 @@ describe('owners(ADR 0053 第 2 节)', () => {
         expect(() => disable(second)).toThrow(/at least one active admin/);
     });
 
+    it('createFirst 只在一个账户都没有时插入', () => {
+        expect(t.repos.owners.createFirst({ username: 'late', passwordHash: 'x' })).toBeNull();
+        expect(t.repos.owners.count()).toBe(1);
+    });
+
+    it('直接写 SQL 也不能留下没有未停用管理员的表(空表插入已停用的行、INSERT OR REPLACE 换掉唯一的管理员)', () => {
+        const sql = t.conn.sqlite;
+        const at = '2026-11-25T00:00:00.000Z';
+        expect(() =>
+            sql
+                .prepare(
+                    `INSERT OR REPLACE INTO owners (id, username, password_hash, created_at, updated_at, role, disabled_at)
+                     VALUES (?, 'owner', 'x', ?, ?, 'admin', ?)`,
+                )
+                .run(t.ownerId, at, at, at),
+        ).toThrow(/at least one active admin/);
+        expect(t.repos.owners.get(t.ownerId)).toMatchObject({ role: 'admin', disabledAt: null });
+
+        sql.pragma('foreign_keys = OFF');
+        sql.exec('DROP TRIGGER trg_owners_last_admin_delete');
+        sql.prepare('DELETE FROM owners').run();
+        sql.pragma('foreign_keys = ON');
+        expect(() =>
+            sql
+                .prepare(
+                    `INSERT INTO owners (id, username, password_hash, created_at, updated_at, role, disabled_at)
+                     VALUES ('d', 'd', 'x', ?, ?, 'admin', ?)`,
+                )
+                .run(at, at, at),
+        ).toThrow(/at least one active admin/);
+        expect(t.repos.owners.count()).toBe(0);
+        const first = t.repos.owners.createFirst({ username: 'first', passwordHash: 'x' });
+        expect(first?.role).toBe('admin');
+        expect(t.repos.owners.createFirst({ username: 'second', passwordHash: 'x' })).toBeNull();
+    });
+
     it('没有未停用的管理员时,插入的账户自动成为管理员', () => {
         const sql = t.conn.sqlite;
         sql.pragma('foreign_keys = OFF');

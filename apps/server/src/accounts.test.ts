@@ -50,6 +50,19 @@ describe('accounts', () => {
         expect(await me(cookie)).toMatchObject({ username: 'kid', role: 'member', displayName: '小明' });
     });
 
+    it('两个 setup 同时到达:只有一个成功,另一个 409 already_initialized,只有一个账户', async () => {
+        const [a, b] = await Promise.all(
+            ['first', 'second'].map((username) =>
+                s.app.request('/api/v1/auth/setup', jsonBody({ username, password: TEST_PASSWORD })),
+            ),
+        );
+        expect([a!.status, b!.status].sort()).toEqual([201, 409]);
+        const conflict = a!.status === 409 ? a! : b!;
+        expect(await conflict.json()).toMatchObject({ code: 'already_initialized' });
+        expect(s.repos.owners.count()).toBe(1);
+        expect(s.repos.owners.get(s.repos.owners.ids()[0]!)?.role).toBe('admin');
+    });
+
     it('requireAdmin:管理员放行,成员与停用的管理员回 403 admin_required,未登录回 401', async () => {
         const admin = s.repos.owners.create({ username: 'a', passwordHash: 'x' }).id;
         const member = s.repos.owners.create({ username: 'm', passwordHash: 'x' }).id;

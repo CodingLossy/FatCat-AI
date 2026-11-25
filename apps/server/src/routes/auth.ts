@@ -311,14 +311,10 @@ export function authRoutes(deps: AuthRouteDeps) {
                     'Setup from a non-local address requires the one-time setup code printed in the server log.',
                 );
             }
-            let owner;
-            try {
-                owner = repos.owners.create({
-                    username: body.username,
-                    passwordHash: await hashPassword(body.password),
-                });
-            } catch {
-                // 并发初始化时单行触发器会拒绝第二个请求
+            const passwordHash = await hashPassword(body.password);
+            // 并发初始化:hash 期间另一个 setup 可能已经建好账户;createFirst 只在表为空时插入,第二个请求得到 null
+            const owner = repos.owners.createFirst({ username: body.username, passwordHash });
+            if (!owner) {
                 throw new ApiError(409, 'already_initialized', 'Conflict', 'The owner account already exists.');
             }
             c.get('logger').info({ ownerId: owner.id }, 'owner account created');
