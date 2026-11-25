@@ -3689,6 +3689,9 @@ input.code-timeout {
     cursor: pointer;
     touch-action: none;
     -webkit-tap-highlight-color: transparent;
+    /* 长按球打开文字弹窗:不弹出系统的选择 / 拷贝菜单 */
+    -webkit-touch-callout: none;
+    user-select: none;
 }
 
 .voice-min-orb:focus-visible {

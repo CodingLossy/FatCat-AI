@@ -50,7 +50,7 @@ describe('schema', () => {
             autoSend: true,
             autoSpeak: false,
             inputMode: 'voice',
-            continuous: false,
+            continuous: true,
             silenceEndSeconds: 8,
         });
     });
