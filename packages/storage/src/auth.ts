@@ -30,7 +30,9 @@ export function createAuthRepositories(conn: Connection, now: () => Date) {
              VALUES (@id, @ownerId, @csrfHash, @createdAt, @expiresAt, @lastSeenAt, @secondFactorAt)`,
         ),
         valid: sqlite.prepare<[string, string], AuthSessionRow>(
-            `SELECT ${selectList('auth_sessions')} FROM auth_sessions WHERE id = ? AND expires_at > ?`,
+            // 停用的账户(ADR 0053 第 2 节)的会话一律无效
+            `SELECT ${selectList('auth_sessions')} FROM auth_sessions
+             WHERE id = ? AND expires_at > ? AND owner_id IN (SELECT id FROM owners WHERE disabled_at IS NULL)`,
         ),
         touch: sqlite.prepare('UPDATE auth_sessions SET last_seen_at = ?, expires_at = ? WHERE id = ?'),
         delete: sqlite.prepare('DELETE FROM auth_sessions WHERE id = ?'),
@@ -97,7 +99,8 @@ export function createAuthRepositories(conn: Connection, now: () => Date) {
         ),
         usable: sqlite.prepare<[string, string], AccessTokenRecord>(
             `SELECT ${tokenColumns} FROM access_tokens
-             WHERE token_hash = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)`,
+             WHERE token_hash = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)
+               AND owner_id IN (SELECT id FROM owners WHERE disabled_at IS NULL)`,
         ),
         touch: sqlite.prepare('UPDATE access_tokens SET last_used_at = ? WHERE id = ?'),
         revoke: sqlite.prepare(

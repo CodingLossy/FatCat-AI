@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openDatabase, type Connection } from './db.js';
-import { checksum, migrate, MigrationError, type Migration } from './migrate.js';
+import { backupDatabase, checksum, migrate, MigrationError, type Migration } from './migrate.js';
 import { migrations } from './migrations/index.js';
 
 let dir: string;
@@ -77,7 +77,11 @@ describe('migrate', () => {
                 "INSERT INTO owners (id, username, password_hash, created_at, updated_at) VALUES ('o1', 'me', 'h', ?, ?)",
             )
             .run(at, at);
-        const result = await migrate(c.sqlite, migrations, { backupDir: join(dir, 'backups') });
+        const result = await migrate(
+            c.sqlite,
+            migrations.filter((m) => m.id <= 22),
+            { backupDir: join(dir, 'backups') },
+        );
         expect(result.applied).toEqual([22]);
         expect(result.backupPath).not.toBeNull();
         expect(c.sqlite.prepare('SELECT * FROM owners').all()).toEqual([
@@ -172,6 +176,26 @@ describe('migrate', () => {
         }
         // 第 1 次是空库不备份,之后 3 次各备份一份,只保留 2 份
         expect(readdirSync(join(dir, 'backups'))).toHaveLength(2);
+    });
+
+    it('删除账户的备份单独计数,连删 6 个账户也不会挤掉迁移前的备份', async () => {
+        const c = open();
+        let ms = Date.parse('2026-11-03T00:00:00Z');
+        const now = () => new Date((ms += 1000));
+        const backups = join(dir, 'backups');
+        await migrate(c.sqlite, [{ id: 1, name: 'm1', sql: 'CREATE TABLE t1 (x)' }], { backupDir: backups, now });
+        await migrate(
+            c.sqlite,
+            [
+                { id: 1, name: 'm1', sql: 'CREATE TABLE t1 (x)' },
+                { id: 2, name: 'm2', sql: 'CREATE TABLE t2 (x)' },
+            ],
+            { backupDir: backups, now },
+        );
+        for (let i = 0; i < 6; i++) await backupDatabase(c.sqlite, backups, 'delete-account', now());
+        const files = readdirSync(backups);
+        expect(files.filter((f) => f.endsWith('-pre-0002.sqlite'))).toHaveLength(1);
+        expect(files.filter((f) => f.endsWith('-pre-delete-account.sqlite'))).toHaveLength(5);
     });
 
     describe('rebuild 迁移', () => {

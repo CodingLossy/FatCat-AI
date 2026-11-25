@@ -432,6 +432,11 @@ export class SecretStore {
         return value;
     }
 
+    /** secrets.yaml(或加密文件)里全部键名,不含值;删除账户时按前缀清理用(ADR 0053 第 5 节)。 */
+    keyNames(): string[] {
+        return [...this.fileValues().keys()];
+    }
+
     /** 运行时从平台换来、不写盘的凭证(例如 QQ 的 access_token,ADR 0052 第 3.1 节):只登记到脱敏器。 */
     protect(value: string): void {
         this.options.redactor.add(value);

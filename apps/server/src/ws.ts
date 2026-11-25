@@ -18,7 +18,7 @@ import type { WebSocket, WebSocketServer } from 'ws';
 import { DEVICE_ACCESS_PREFIX, PAT_PREFIX, safeEqual, sha256 } from './auth/crypto.js';
 import { SESSION_COOKIE } from './auth/middleware.js';
 import { ClientCalls } from './client-calls.js';
-import { registerDeviceSocket } from './device-sockets.js';
+import { registerAccountSocket, registerDeviceSocket } from './device-sockets.js';
 import type { Logger } from './log.js';
 import { SERVER_VERSION } from './version.js';
 import { WindowLimiter } from './voice-limit.js';
@@ -167,6 +167,7 @@ function handleConnection(
     deviceId?: string,
 ): void {
     const unregisterDevice = deviceId ? registerDeviceSocket(deviceId, ws) : null;
+    const unregisterAccount = registerAccountSocket(ownerId, ws);
     // 只有 hello 之后、声明了能力的连接才会被选中;声明前能力全关
     const clientSocket = deps.clientCalls?.register(ownerId, {
         send: (call) => send({ v: PROTOCOL_VERSION, type: 'client-call', id: nextId(), payload: call }),
@@ -293,6 +294,7 @@ function handleConnection(
 
     ws.on('close', () => {
         unregisterDevice?.();
+        unregisterAccount();
         clientSocket?.unregister();
         clearTimeout(helloTimer);
         clearInterval(pingTimer);

@@ -67,6 +67,7 @@ export function createDeviceRepository(conn: Connection, now: () => Date) {
         // 条件更新即「只能用一次」:并发的两次兑换只有一次 changes = 1
         consumeCode: sqlite.prepare<[string, string, string], { ownerId: string }>(
             `UPDATE pairing_codes SET used_at = ? WHERE code_hash = ? AND used_at IS NULL AND expires_at > ?
+               AND owner_id IN (SELECT id FROM owners WHERE disabled_at IS NULL)
              RETURNING owner_id AS "ownerId"`,
         ),
         insertDevice: sqlite.prepare(
@@ -77,6 +78,10 @@ export function createDeviceRepository(conn: Connection, now: () => Date) {
              VALUES (@tokenHash, @deviceId, @kind, @createdAt, @expiresAt)`,
         ),
         getDevice: sqlite.prepare<[string], DeviceRow>(`SELECT ${deviceCols} FROM devices WHERE id = ?`),
+        // 停用的账户(ADR 0053 第 2 节)的设备令牌一律无效
+        ownerActive: sqlite.prepare<[string], { ok: number }>(
+            'SELECT 1 AS ok FROM owners WHERE id = ? AND disabled_at IS NULL',
+        ),
         listDevices: sqlite.prepare<[string], DeviceRow>(
             `SELECT ${deviceCols} FROM devices WHERE owner_id = ? AND revoked_at IS NULL ORDER BY created_at DESC, id DESC`,
         ),
@@ -172,7 +177,7 @@ export function createDeviceRepository(conn: Connection, now: () => Date) {
                 const token = q.tokenByHash.get(refreshHash);
                 if (token?.kind !== 'refresh') return { status: 'invalid' };
                 const device = q.getDevice.get(token.deviceId);
-                if (!device || device.revokedAt) return { status: 'invalid' };
+                if (!device || device.revokedAt || !q.ownerActive.get(device.ownerId)) return { status: 'invalid' };
                 if (token.usedAt) {
                     revokeRow(device.ownerId, device.id, 'replay');
                     return { status: 'replay', ownerId: device.ownerId, deviceId: device.id };
@@ -191,7 +196,7 @@ export function createDeviceRepository(conn: Connection, now: () => Date) {
             const token = q.tokenByHash.get(accessHash);
             if (token?.kind !== 'access' || token.expiresAt <= iso()) return null;
             const device = q.getDevice.get(token.deviceId);
-            if (!device || device.revokedAt) return null;
+            if (!device || device.revokedAt || !q.ownerActive.get(device.ownerId)) return null;
             return { deviceId: device.id, ownerId: device.ownerId, lastUsedAt: device.lastUsedAt };
         },
 

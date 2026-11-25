@@ -140,7 +140,9 @@ export function createMailRepository(conn: Connection, now: () => Date) {
         delete: sqlite.prepare<[string, string]>('DELETE FROM mail_accounts WHERE owner_id = ? AND id = ?'),
         due: sqlite.prepare<[string], { ownerId: string; id: string }>(
             `SELECT owner_id AS ownerId, id FROM mail_accounts
-             WHERE enabled = 1 AND (next_sync_at IS NULL OR next_sync_at <= ?) ORDER BY next_sync_at, id`,
+             WHERE enabled = 1 AND (next_sync_at IS NULL OR next_sync_at <= ?)
+               AND owner_id IN (SELECT id FROM owners WHERE disabled_at IS NULL) -- 停用账户的邮箱不同步(ADR 0053 第 2 节)
+             ORDER BY next_sync_at, id`,
         ),
         failures: sqlite.prepare<[string], { failures: number }>('SELECT failures FROM mail_accounts WHERE id = ?'),
         record: sqlite.prepare(

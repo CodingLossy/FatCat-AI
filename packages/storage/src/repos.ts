@@ -16,6 +16,7 @@ import type {
 import { z } from 'zod';
 import { createAttachmentRepository } from './attachments.js';
 import { createAuthRepositories } from './auth.js';
+import { createAccountRepository } from './accounts.js';
 import { createDeviceRepository } from './devices.js';
 import { createSyncRepository } from './sync.js';
 import { createTotpRepository } from './totp.js';
@@ -653,6 +654,7 @@ export function createRepositories(conn: Connection, options: RepoOptions = {}) 
         ...createAuthRepositories(conn, now),
         totp: createTotpRepository(conn, now),
         devices: createDeviceRepository(conn, now),
+        accounts: createAccountRepository(conn, now),
         sync: createSyncRepository(conn),
     };
 }

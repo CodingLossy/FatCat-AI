@@ -138,7 +138,9 @@ export function createTaskRepository(conn: Connection, now: () => Date) {
     const q = {
         list: sqlite.prepare<[string], TaskRow>(`${TASK_SELECT} WHERE owner_id = ? ORDER BY created_at, id`),
         active: sqlite.prepare<[], TaskRow>(
-            `${TASK_SELECT} WHERE status = 'active' AND enabled = 1 ORDER BY created_at, id`,
+            // 停用账户的任务不排期(ADR 0053 第 2 节)
+            `${TASK_SELECT} WHERE status = 'active' AND enabled = 1
+               AND owner_id IN (SELECT id FROM owners WHERE disabled_at IS NULL) ORDER BY created_at, id`,
         ),
         get: sqlite.prepare<[string, string], TaskRow>(`${TASK_SELECT} WHERE owner_id = ? AND id = ?`),
         getById: sqlite.prepare<[string], TaskRow>(`${TASK_SELECT} WHERE id = ?`),

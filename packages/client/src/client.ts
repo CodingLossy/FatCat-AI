@@ -3,6 +3,13 @@
 
 import type {
     AccessToken,
+    AcceptInviteRequest,
+    Account,
+    AccountList,
+    CreatedAccountCode,
+    DeleteAccountRequest,
+    ResetPasswordRequest,
+    UpdateAccountRequest,
     Agent,
     AgentCopyInput,
     AgentInput,
@@ -213,6 +220,12 @@ export function createClient(options: ClientOptions) {
             /** 提交验证码或恢复码,完成需要第二因素的登录。 */
             loginTotp: (body: TotpLoginRequest) => t.json<LoginResponse>('/auth/login/totp', { method: 'POST', body }),
             logout: () => t.json<void>('/auth/logout', { method: 'POST' }),
+            /** 用管理员给的邀请码设自己的用户名和密码,成为成员并直接登录(ADR 0053 第 2 节)。 */
+            acceptInvite: (body: AcceptInviteRequest) =>
+                t.json<LoginResponse>('/auth/invite/accept', { method: 'POST', body }),
+            /** 用管理员给的重置码设新密码;这个账户的会话、令牌和设备全部失效,要重新登录。 */
+            resetPassword: (body: ResetPasswordRequest) =>
+                t.json<void>('/auth/password/reset', { method: 'POST', body }),
             me: () => t.json<Me>('/auth/me'),
             /** 仅 Node:初始化主人账户并直接换成个人访问令牌,不保留 Cookie 会话。 */
             setupForToken: async (body: SetupRequest & { tokenName: string; expiresInDays?: number }) => {
@@ -252,6 +265,20 @@ export function createClient(options: ClientOptions) {
             disable: (body: TotpConfirmRequest) => t.json<void>('/auth/totp/disable', { method: 'POST', body }),
             recoveryCodes: (body: TotpConfirmRequest) =>
                 t.json<TotpRecoveryCodes>('/auth/totp/recovery-codes', { method: 'POST', body }),
+        },
+
+        /** 账户管理(ADR 0053 第 2、6 节):只有管理员的浏览器会话能用;成员调用得到 403 admin_required。 */
+        admin: {
+            users: {
+                list: () => t.json<AccountList>('/admin/users'),
+                invite: () => t.json<CreatedAccountCode>('/admin/users/invites', { method: 'POST' }),
+                resetCode: (id: string) =>
+                    t.json<CreatedAccountCode>(`/admin/users/${enc(id)}/reset-code`, { method: 'POST' }),
+                update: (id: string, body: UpdateAccountRequest) =>
+                    t.json<Account>(`/admin/users/${enc(id)}`, { method: 'PATCH', body }),
+                remove: (id: string, body: DeleteAccountRequest) =>
+                    t.json<void>(`/admin/users/${enc(id)}`, { method: 'DELETE', body }),
+            },
         },
 
         tokens: {

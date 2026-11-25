@@ -70,20 +70,19 @@ describe('migration 0021', () => {
                 migrations.filter((m) => m.id <= 20),
                 { backupDir: join(dir, 'backups') },
             );
-            const repos = createRepositories(conn);
-            // 0022 之前的 owners 没有 role 列,按当时的列直接插入(仓储的 owners 语句用到时才 prepare)
+            // 0021 之前的库:按当时的列直接插入(仓储按最新的表结构 prepare,不能在旧库上建)
             const owner = 'o';
-            conn.sqlite
-                .prepare(
-                    "INSERT INTO owners (id, username, password_hash, created_at, updated_at) VALUES ('o','o','h','t','t')",
-                )
-                .run();
-            const session = repos.sessions.create(owner, { title: 'old' });
-            repos.messages.append(owner, session.id, {
-                role: 'user',
-                parts: [{ type: 'text', text: 'hi' }],
-                status: 'complete',
-            });
+            const sql = conn.sqlite;
+            sql.prepare(
+                "INSERT INTO owners (id, username, password_hash, created_at, updated_at) VALUES ('o','o','h','t','t')",
+            ).run();
+            sql.prepare(
+                "INSERT INTO sessions (id, owner_id, title, created_at, updated_at) VALUES ('s1','o','old','t','t')",
+            ).run();
+            sql.prepare(
+                `INSERT INTO messages (id, session_id, owner_id, seq, role, parts_json, status, created_at, updated_at)
+                 VALUES ('m1','s1','o',1,'user','[]','complete','t','t')`,
+            ).run();
             const tables = () =>
                 (conn.sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[])
                     .map((r) => r.name)
@@ -100,6 +99,8 @@ describe('migration 0021', () => {
             expect(tables().filter((n) => !before.includes(n))).toEqual(['change_log']);
             expect(conn.sqlite.pragma('foreign_key_check')).toEqual([]);
 
+            // 仓储按最新的表结构 prepare:先迁移到最新再读变更日志
+            await migrate(conn.sqlite, migrations);
             const log = createRepositories(conn).sync.changesAfter(owner, 0, 100, []);
             expect(log.map((r) => r.kind).sort()).toEqual(['message', 'session']);
         } finally {

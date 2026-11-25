@@ -8,7 +8,13 @@ import { join } from 'node:path';
 import { Writable } from 'node:stream';
 import { EventBus, RunManager } from '@fatcat-ai/agent';
 import { createProvider, type ModelProvider, Redactor, SecretStore } from '@fatcat-ai/providers';
-import { type Connection, createRepositories, openStorage, type Repositories } from '@fatcat-ai/storage';
+import {
+    backupDatabase,
+    type Connection,
+    createRepositories,
+    openStorage,
+    type Repositories,
+} from '@fatcat-ai/storage';
 import type { BrowserToolOptions, WebFetchOptions } from '@fatcat-ai/tools';
 import { createItemService, createKnowledgeBase, type KnowledgeBase } from '@fatcat-ai/items';
 import { createChannelPushTool } from './scheduler/channel-push-tool.js';
@@ -282,6 +288,7 @@ export async function createTestServer(
         ...(options.now ? { now: options.now } : {}),
     });
     const app = createApp({
+        backup: (tag) => backupDatabase(conn.sqlite, join(dir, 'backups'), tag, new Date()),
         ...(options.clientCalls ? { clientCalls: options.clientCalls } : {}),
         taskComplete: options.taskComplete ?? createMailComplete(repos, providerFor),
         channels,

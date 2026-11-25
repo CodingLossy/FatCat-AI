@@ -1,5 +1,50 @@
 [
   {
+    "key": "accounts.ts:createAccountRepository.list",
+    "category": "system",
+    "reason": "Admin-only account list (routes call requireAdmin); returns usernames and roles, never another account's data."
+  },
+  {
+    "key": "accounts.ts:createAccountRepository.get",
+    "category": "system",
+    "reason": "Admin-only lookup of one account by id (routes call requireAdmin)."
+  },
+  {
+    "key": "accounts.ts:createAccountRepository.createCode",
+    "category": "system",
+    "reason": "Admin-only: stores the hash of an invite or reset code; the issuing admin id is a parameter."
+  },
+  {
+    "key": "accounts.ts:createAccountRepository.acceptInvite",
+    "category": "credential",
+    "reason": "Looks up a one-time invite code by its hash and creates the member account."
+  },
+  {
+    "key": "accounts.ts:createAccountRepository.isCodeUsable",
+    "category": "credential",
+    "reason": "Read-only check of a one-time code by its hash before the password is hashed; returns only a boolean."
+  },
+  {
+    "key": "accounts.ts:createAccountRepository.setRole",
+    "category": "system",
+    "reason": "Admin-only role change (routes call requireAdmin); the last-admin trigger guards it."
+  },
+  {
+    "key": "accounts.ts:createAccountRepository.setDisabled",
+    "category": "system",
+    "reason": "Admin-only disable / enable (routes call requireAdmin); disabling revokes every credential of that account."
+  },
+  {
+    "key": "accounts.ts:createAccountRepository.setDisplayName",
+    "category": "system",
+    "reason": "Admin-only display name change (routes call requireAdmin)."
+  },
+  {
+    "key": "accounts.ts:createAccountRepository.remove",
+    "category": "system",
+    "reason": "Admin-only account deletion after a database backup (routes call requireAdmin); cascades the account's rows."
+  },
+  {
     "key": "attachments.ts:createAttachmentRepository.removeUnlinkedBefore",
     "category": "system",
     "reason": "Startup and daily cleanup of attachments never linked to a message, for every owner."

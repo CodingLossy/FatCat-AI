@@ -22,6 +22,9 @@ export const PUBLIC_ENDPOINTS: ReadonlySet<string> = new Set([
     'POST /api/v1/auth/login',
     'POST /api/v1/auth/login/totp',
     'POST /api/v1/auth/setup',
+    // 邀请码建账户与重置码改密码(ADR 0053 第 2 节):凭一次性码,自己有限速
+    'POST /api/v1/auth/invite/accept',
+    'POST /api/v1/auth/password/reset',
     // 设备配对:凭一次性配对码 / refresh 令牌换令牌,自己有限速与审计(ADR 0045 第 1 节)
     'POST /api/v1/devices/pair',
     'POST /api/v1/devices/token',

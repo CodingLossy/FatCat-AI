@@ -192,9 +192,12 @@ describe('初始化与登录', () => {
     it('同一来源连续失败 5 次后返回 429,其他来源不受影响', async () => {
         s = await createTestServer();
         await signedIn(s);
-        const attempt = (password: string, ip: string) =>
-            s.app.request('/api/v1/auth/login', jsonBody({ username: 'owner', password }, { 'x-test-ip': ip }));
-        for (let i = 0; i < 5; i++) expect((await attempt('wrong password!', '198.51.100.1')).status).toBe(401);
+        const attempt = (password: string, ip: string, username = 'owner') =>
+            s.app.request('/api/v1/auth/login', jsonBody({ username, password }, { 'x-test-ip': ip }));
+        // 每次换一个用户名,只累计来源地址(按用户名累计见 accounts-admin.test.ts)
+        for (let i = 0; i < 5; i++) {
+            expect((await attempt('wrong password!', '198.51.100.1', `nobody${i}`)).status).toBe(401);
+        }
         const limited = await attempt(TEST_PASSWORD, '198.51.100.1');
         expect(limited.status).toBe(429);
         expect(Number(limited.headers.get('Retry-After'))).toBeGreaterThan(0);

@@ -40,7 +40,8 @@ export function createMcpServerRepository(conn: Connection, now: () => Date) {
     const q = {
         list: sqlite.prepare<[string], Row>(`SELECT ${COLUMNS} FROM mcp_servers WHERE owner_id = ? ORDER BY name`),
         all: sqlite.prepare<[], Row & { ownerId: string }>(
-            `SELECT ${COLUMNS}, owner_id AS ownerId FROM mcp_servers WHERE enabled = 1 ORDER BY name`,
+            // 停用账户的 MCP 服务器不启动(ADR 0053 第 2 节)
+            `SELECT ${COLUMNS}, owner_id AS ownerId FROM mcp_servers WHERE enabled = 1 AND owner_id IN (SELECT id FROM owners WHERE disabled_at IS NULL) ORDER BY name`,
         ),
         get: sqlite.prepare<[string, string], Row>(`SELECT ${COLUMNS} FROM mcp_servers WHERE owner_id = ? AND id = ?`),
         insert: sqlite.prepare(
