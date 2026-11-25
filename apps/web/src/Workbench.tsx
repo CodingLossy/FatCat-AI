@@ -190,7 +190,10 @@ export function Workbench({
     const [drawerAt, setDrawerAt] = useState<string | null>(null);
     // 语音优先的极简主界面:侧栏收进左上角的小圆 logo,和手机一样当抽屉打开(ADR 0049 第 10 节)
     const minimal = !pageView && activity?.minimal === true;
-    /** 极简主界面的工作态(ADR 0049 第 10.5 节):面板打开时球缩小移到左侧,面板占右侧约 2/3;手机在 PR 5。 */
+    /**
+     * 极简主界面的工作态:面板打开时球缩小移到左侧,面板占右侧约 2/3(ADR 0049 第 10.5 节);
+     * 手机上面板是从底部升起的抽屉,球缩到顶部(第 10.6 节)。
+     */
     const drawer = (narrow || minimal) && drawerAt === routeKey;
     const menuRef = useRef<HTMLButtonElement>(null);
     const sideRef = useRef<HTMLElement>(null);
@@ -263,10 +266,11 @@ export function Workbench({
     const runId = activity?.live?.runId ?? null;
     const runActive = activity?.live != null;
     useEffect(() => {
-        // 手机上面板会盖住对话,不随工具调用自动打开,只在点标签时打开
-        if (narrow) return;
+        // 手机上面板会盖住对话,不随工具调用自动打开,只在点标签时打开;
+        // 极简主界面例外:面板是从底部升起的抽屉,球缩到顶部(ADR 0049 第 10.6 节)
+        if (narrow && !minimal) return;
         dispatch({ type: 'live', runId, toolName: latestName, callId: latestCallId, input: latestInput, projects });
-    }, [narrow, runId, latestName, latestCallId, latestInput, projects]);
+    }, [narrow, minimal, runId, latestName, latestCallId, latestInput, projects]);
 
     // 运行结束后 8 秒自动收起;固定、有待审批、或又开始新一轮时不收
     const autoClose = shouldAutoClose(panel, runActive, approvals);
@@ -585,8 +589,9 @@ export function Workbench({
             data-sidebar={collapsed && !narrow && !minimal ? 'min' : 'full'}
             data-panel={panel.open ? 'open' : 'closed'}
             data-narrow={narrow ? '' : undefined}
+            data-approving={minimal && approvals > 0 ? '' : undefined}
             data-minimal={minimal ? '' : undefined}
-            data-working={minimal && panel.open && !narrow ? '' : undefined}
+            data-working={minimal && panel.open ? '' : undefined}
         >
             <div className="wb-glow" aria-hidden="true" />
             {drawer ? <div className="wb-backdrop" aria-hidden="true" onClick={() => closeDrawer(true)} /> : null}

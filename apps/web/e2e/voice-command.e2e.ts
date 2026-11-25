@@ -314,6 +314,34 @@ test('说「打开 FatCat-AI 项目,看最近第 3 次改动,修一下 bug」:�
     await expect(page.getByTestId('wb-now')).toContainText('fs.write');
     expect(readFileSync(join(repo, 'sum.js'), 'utf8')).toBe(BUGGY);
     await shot(page, 'voice-code-write-approval');
+    // 手机(ADR 0049 第 10.6 节,趁等审批时面板不会自动收起):面板变成从底部升起的抽屉,球缩到顶部,页面不横向滚动
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.locator('.wb-shell[data-narrow][data-working]')).toBeVisible();
+    await page.waitForTimeout(500);
+    const drawer = (await page.locator('.wb-float').boundingBox())!;
+    expect(drawer.y).toBeGreaterThan(844 * 0.3);
+    expect(Math.abs(drawer.y + drawer.height - 844)).toBeLessThan(2);
+    expect(Math.abs(drawer.width - 390)).toBeLessThan(2);
+    const top = (await page.locator('.voice-min-orb').boundingBox())!;
+    expect(top.y + top.height).toBeLessThanOrEqual(drawer.y);
+    expect(top.y + top.height / 2).toBeLessThan(844 * 0.3);
+    // 等审批时抽屉降低,审批卡的「批准」在抽屉上面能点到
+    expect(drawer.height).toBeLessThan(844 * 0.45);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    for (const theme of ['tech', 'nature', 'cat']) {
+        await page.evaluate((id) => (document.documentElement.dataset.theme = id), theme);
+        await page.waitForTimeout(600);
+        await shot(page, `phone-working-${theme}`);
+    }
+    const approve = writeCard.getByRole('button', { name: '批准' });
+    await approve.scrollIntoViewIfNeeded();
+    const button = (await approve.boundingBox())!;
+    expect(button.y + button.height).toBeLessThanOrEqual(drawer.y);
+    await page.evaluate(() => (document.documentElement.dataset.theme = 'tech'));
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.locator('.wb-shell[data-narrow]')).toHaveCount(0);
+    await page.waitForTimeout(500);
+
     await writeCard.getByRole('button', { name: '批准' }).click();
 
     // 3. code.run 也每次审批;批准后面板显示退出码与输出末尾
@@ -354,4 +382,12 @@ test('说「打开 FatCat-AI 项目,看最近第 3 次改动,修一下 bug」:�
     const viewport = page.viewportSize()!;
     expect(Math.abs(big.x + big.width / 2 - viewport.width / 2)).toBeLessThan(40);
     expect(small.x + small.width / 2).toBeLessThan(viewport.width * 0.34);
+
+    // 手机待机:没有按钮,球居中
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(500);
+    const idle = (await orb.boundingBox())!;
+    expect(Math.abs(idle.x + idle.width / 2 - 195)).toBeLessThan(20);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await shot(page, 'phone-idle');
 });
