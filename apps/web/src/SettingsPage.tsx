@@ -38,6 +38,7 @@ import { DevicesSection } from './DevicesSection.js';
 import { TotpSection } from './TotpSection.js';
 import { ThemePicker } from './ThemePicker.js';
 import { CodeProjects } from './CodeProjects.js';
+import { SkillsSettings } from './SkillsSettings.js';
 import { Segmented, SettingsGroup, Switch } from './controls.js';
 import { TimeZoneSetting } from './TimeZoneSetting.js';
 
@@ -550,6 +551,8 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                 return <McpServers />;
             case 'tools/preauth':
                 return <Preauthorizations />;
+            case 'tools/skills':
+                return <SkillsSettings settings={settings} onSettings={onSettings} />;
             case 'tools/browser':
                 return (
                     <SettingsGroup title={t('settings.browser')}>

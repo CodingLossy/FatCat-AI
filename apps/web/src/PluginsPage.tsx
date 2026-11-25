@@ -9,6 +9,8 @@ import type {
     PluginProtection,
     PluginView,
     PluginPermissions,
+    PluginSkill,
+    SkillInfo,
 } from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
@@ -31,6 +33,7 @@ import {
 export function PluginsPage() {
     const { t, locale } = useI18n();
     const [plugins, setPlugins] = useState<PluginView[] | null>(null);
+    const [skills, setSkills] = useState<SkillInfo[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [path, setPath] = useState('');
     const [prepared, setPrepared] = useState<PluginPrepared | null>(null);
@@ -43,10 +46,17 @@ export function PluginsPage() {
 
     const reload = useCallback(
         () =>
-            api.plugins
-                .list()
-                .then((page) => setPlugins(page.items))
-                .catch((e: unknown) => setError(errorText(e))),
+            Promise.all([
+                api.plugins
+                    .list()
+                    .then((page) => setPlugins(page.items))
+                    .catch((e: unknown) => setError(errorText(e))),
+                // 插件带的 Skill(ADR 0048):读不到时只是不显示,不影响插件列表
+                api.skills
+                    .list()
+                    .then((page) => setSkills(page.items))
+                    .catch(() => undefined),
+            ]),
         [],
     );
 
@@ -128,6 +138,7 @@ export function PluginsPage() {
                     <li key={p.id} className="card" data-plugin={p.id}>
                         <PluginCard
                             plugin={p}
+                            skills={skills.filter((x) => x.pluginId === p.id)}
                             expanded={open === p.id}
                             busy={busy}
                             onToggle={() => setOpen(open === p.id ? null : p.id)}
@@ -271,6 +282,30 @@ function ManifestSummary({ prepared }: { prepared: PluginPrepared }) {
                 {m.id} · v{m.version} · {m.author} · {m.license}
             </p>
             {m.homepage ? <p className="small muted">{t('plugins.homepage', { url: m.homepage })}</p> : null}
+            {m.entry === undefined ? <p className="small">{t('plugins.instructionOnly')}</p> : null}
+            {m.skills && m.skills.length > 0 ? <PluginSkills skills={m.skills} /> : null}
+        </div>
+    );
+}
+
+/** 插件带的 Skill:名称、给模型看的一句话和工具集;说明原文不在这里显示。 */
+function PluginSkills({ skills }: { skills: readonly (PluginSkill | SkillInfo)[] }) {
+    const { t, locale } = useI18n();
+    return (
+        <div className="plugin-skills" data-testid="plugin-skills">
+            <h4>{t('plugins.skills')}</h4>
+            <ul className="small">
+                {skills.map((skill) => (
+                    <li key={skill.id}>
+                        <strong>{pickText(skill.name, locale) || skill.id}</strong>
+                        <span className="muted"> · {skill.description}</span>
+                        <br />
+                        <span className="muted">
+                            {t('skills.tools')}: <code>{skill.toolSet.join(', ')}</code>
+                        </span>
+                    </li>
+                ))}
+            </ul>
         </div>
     );
 }
@@ -365,12 +400,14 @@ function ProtectionTable({ rows }: { rows: PluginProtection[] }) {
 
 function PluginCard({
     plugin,
+    skills,
     expanded,
     busy,
     onToggle,
     act,
 }: {
     plugin: PluginView;
+    skills: SkillInfo[];
     expanded: boolean;
     busy: boolean;
     onToggle: () => void;
@@ -407,6 +444,7 @@ function PluginCard({
                             : ''}
                     </p>
                     {plugin.error ? <p className="small error">{plugin.error}</p> : null}
+                    {skills.length > 0 ? <PluginSkills skills={skills} /> : null}
                 </div>
                 <div className="row">
                     <button

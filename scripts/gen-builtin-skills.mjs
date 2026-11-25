@@ -6,9 +6,12 @@
 // 单文件 sidecar 都不用在运行时找文件。改了源文件后运行 `pnpm gen:skills`;packages/tools 的单测会核对两边一致。
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('..', import.meta.url).pathname;
+// fileURLToPath:Windows 上 URL 的 pathname 是 `/E:/...`,中文或空格还会被百分号编码
+const root = fileURLToPath(new URL('..', import.meta.url));
 const dir = join(root, 'packages/tools/src/skills');
 const out = join(dir, 'generated.ts');
 
@@ -32,5 +35,7 @@ const body = [
     '',
 ].join('\n');
 writeFileSync(out, body);
-execFileSync(join(root, 'node_modules/.bin/prettier'), ['--write', out], { stdio: 'ignore' });
+// 直接用 node 跑 prettier 的入口:node_modules/.bin 下的 shim 在 Windows 上是 .cmd,execFileSync 不能直接运行
+const prettier = createRequire(import.meta.url).resolve('prettier/bin/prettier.cjs');
+execFileSync(process.execPath, [prettier, '--write', out], { stdio: 'ignore' });
 console.log(`wrote ${skills.length} built-in skill(s) to ${out}`);

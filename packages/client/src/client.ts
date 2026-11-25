@@ -99,6 +99,7 @@ import type {
     TotpStatus,
     Settings,
     SettingsPatch,
+    SkillInfo,
     SecretsMigrateRequest,
     SecretsMigrateResponse,
     SecretsStatus,
@@ -537,6 +538,11 @@ export function createClient(options: ClientOptions) {
                 t.json<McpServerView>(`/mcp/servers/${enc(id)}`, { method: 'PATCH', body }),
             remove: (id: string) => t.json<void>(`/mcp/servers/${enc(id)}`, { method: 'DELETE' }),
             status: (id: string) => t.json<McpServerStatus>(`/mcp/servers/${enc(id)}/status`),
+        },
+
+        skills: {
+            /** 已安装的 Skill(ADR 0048):内置与插件提供的,含是否启用;内置 Skill 的开关走 settings.update。 */
+            list: () => t.json<Page<SkillInfo>>('/skills'),
         },
 
         agents: {

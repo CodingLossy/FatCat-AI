@@ -1,28 +1,58 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { Agent, ModelProfile } from '@fatcat-ai/shared';
+import type { Agent, ModelProfile, SkillInfo } from '@fatcat-ai/shared';
 import { useCallback, useEffect, useState } from 'react';
-import { type AgentDraft, draftOf, emptyDraft, inputOf } from './agent-form.js';
+import { type AgentDraft, draftOf, emptyDraft, inputOf, parseToolSet } from './agent-form.js';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
+import { pickText } from './plugin-ui.js';
+import { AGENT_MAX_SKILLS, agentSkillState, toggleSkill } from './skills-ui.js';
+
+/** 角色里列着、但已经不存在的 Skill:仍显示出来,方便取消勾选。 */
+const missing = (id: string): SkillInfo => ({
+    id,
+    name: {},
+    description: '',
+    source: 'builtin',
+    pluginId: null,
+    enabled: false,
+    toolSet: [],
+    taskTemplates: [],
+});
 
 /** 代理页(ADR 0042):预置角色只读、可复制;自定义代理可新建、编辑、删除。 */
 export function AgentsPage() {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [agents, setAgents] = useState<Agent[] | null>(null);
     const [profiles, setProfiles] = useState<ModelProfile[]>([]);
+    const [skills, setSkills] = useState<SkillInfo[]>([]);
     const [error, setError] = useState<string | null>(null);
     /** null = 不显示表单;'new' = 新建;否则是正在编辑的代理 id。 */
     const [editing, setEditing] = useState<string | 'new' | null>(null);
     const [draft, setDraft] = useState<AgentDraft>(emptyDraft());
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-    const load = useCallback(() => Promise.all([api.agents.list(), api.models.list()]), []);
-    const apply = ([list, models]: Awaited<ReturnType<typeof load>>) => {
+    const load = useCallback(
+        () =>
+            Promise.all([
+                api.agents.list(),
+                api.models.list(),
+                // Skill 列表读不到时只是不显示选项,不影响代理页
+                api.skills.list().catch(() => ({ items: [] as SkillInfo[] })),
+            ]),
+        [],
+    );
+    const apply = ([list, models, installed]: Awaited<ReturnType<typeof load>>) => {
         setAgents(list.items);
         setProfiles(models.items);
+        setSkills(installed.items);
     };
+    const skillName = (id: string) => {
+        const skill = skills.find((s) => s.id === id);
+        return skill ? pickText(skill.name, locale) || id : id;
+    };
+    const draftToolSet = parseToolSet(draft.toolSet);
     const reload = () => load().then(apply, (e: unknown) => setError(errorText(e)));
     useEffect(() => {
         let alive = true;
@@ -79,6 +109,23 @@ export function AgentsPage() {
                         <p className="small">
                             {t('agents.tools')}: <code>{agent.toolSet.join(', ')}</code>
                         </p>
+                        {agent.skills && agent.skills.length > 0 ? (
+                            <p className="small" data-testid="agent-skills">
+                                {t('agents.skills')}:{' '}
+                                {agent.skills.map((id, i) => {
+                                    const state = agentSkillState(id, skills, agent.toolSet);
+                                    return (
+                                        <span key={id}>
+                                            {i > 0 ? ', ' : ''}
+                                            {skillName(id)}
+                                            {state === 'ok' ? null : (
+                                                <span className="badge warn">{t(`agents.skillState.${state}`)}</span>
+                                            )}
+                                        </span>
+                                    );
+                                })}
+                            </p>
+                        ) : null}
                         <p className="small muted">
                             {t('agents.memory')}:{' '}
                             {t(`agents.memory.${agent.memoryScope === 'none' ? 'none' : 'shared'}`)}
@@ -171,6 +218,31 @@ export function AgentsPage() {
                         />
                     </label>
                     <p className="small muted">{t('agents.toolsHint')}</p>
+                    <fieldset className="agent-skills" data-testid="agent-skill-picker">
+                        <legend>{t('agents.skills')}</legend>
+                        {skills.length === 0 ? <p className="small muted">{t('agents.noSkills')}</p> : null}
+                        {[...skills, ...draft.skills.filter((id) => !skills.some((s) => s.id === id)).map(missing)].map(
+                            (skill) => {
+                                const checked = draft.skills.includes(skill.id);
+                                const state = agentSkillState(skill.id, skills, draftToolSet);
+                                return (
+                                    <label key={skill.id} className="inline" data-skill={skill.id}>
+                                        <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            disabled={!checked && draft.skills.length >= AGENT_MAX_SKILLS}
+                                            onChange={() => set('skills', toggleSkill(draft.skills, skill.id))}
+                                        />
+                                        {pickText(skill.name, locale) || skill.id}
+                                        {state === 'ok' ? null : (
+                                            <span className="badge warn">{t(`agents.skillState.${state}`)}</span>
+                                        )}
+                                    </label>
+                                );
+                            },
+                        )}
+                        <p className="small muted">{t('agents.skillsHint', { max: AGENT_MAX_SKILLS })}</p>
+                    </fieldset>
                     <label>
                         {t('agents.model')}
                         <select value={draft.modelProfileId} onChange={(e) => set('modelProfileId', e.target.value)}>

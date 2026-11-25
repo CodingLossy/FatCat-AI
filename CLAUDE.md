@@ -7,7 +7,7 @@ Claude Code 的项目说明。完整约定在 AGENTS.md 中(下面一行会把�
 ## 给 Claude Code 的补充
 
 - 开始一个里程碑前,先读开发计划对应章节,并在 `docs/adr/` 写 / 更新设计记录;里程碑结束时逐条对照验收标准自检,停下等业主确认再进入下一个。
-- 每一步先说明计划再动手;提交前运行 `pnpm lint`、`pnpm typecheck`、`pnpm check:spdx` 和受影响包的测试,完整 `pnpm test` 由 CI 跑。
+- 每一步先说明计划再动手;提交前运行 `pnpm lint`、`pnpm typecheck`、`pnpm check:spdx`、`pnpm check:licenses`、`reuse lint`(CI 的 license compliance 用的就是 REUSE;本地用 `pipx run reuse lint`。源码里的字符串字面量也不能写成完整的 SPDX 标签)和受影响包的测试,完整 `pnpm test` 由 CI 跑。
 - 新建源文件时直接带上 SPDX 头(见 AGENTS.md 第 5 条),不要事后补。
 
 ## PR 粒度与自测
