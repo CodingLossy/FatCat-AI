@@ -1,0 +1,39 @@
+{
+  "name": "@fatcat-ai/plugins",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Plugin service: install, upgrade, rollback, market, plugin items (ADR 0040, ADR 0050)",
+  "license": "AGPL-3.0-only",
+  "author": "尹绪柏 (Theodore Yin) <x19169738916@163.com>",
+  "homepage": "https://github.com/CodingLossy/FatCat-AI/tree/main/packages/plugins",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CodingLossy/FatCat-AI.git",
+    "directory": "packages/plugins"
+  },
+  "bugs": {
+    "url": "https://github.com/CodingLossy/FatCat-AI/issues"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fatcat-ai/items": "workspace:*",
+    "@fatcat-ai/shared": "workspace:*",
+    "@fatcat-ai/storage": "workspace:*",
+    "@fatcat-ai/tools": "workspace:*"
+  }
+}

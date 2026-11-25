@@ -65,6 +65,8 @@ export const notFoundError = (what = 'Resource') => new ServiceError(404, 'not_f
 - 为什么不放进 `@fatcat-ai/tools/plugins`:插件服务要用 `@fatcat-ai/items`(插件条目)和 `@fatcat-ai/storage`,而 `items` 依赖 `tools`,放进 tools 会成环。运行时(子进程、隔离、预加载)仍在 `tools/plugins`,新包只做「安装、升级、回退、市场、条目、状态」这层服务。
 - 依赖:`@fatcat-ai/shared`、`@fatcat-ai/storage`、`@fatcat-ai/tools`、`@fatcat-ai/items`;不引入第三方依赖。
 - `SERVER_VERSION` 改成构造参数 `coreVersion`(服务器传自己的版本,测试可以传别的);`ApiError` / `notFound` 改成 `ServiceError` / `notFoundError`。
+- 包内的文件改名去掉 `plugin-` 前缀:`service.ts`、`market.ts`、`items.ts`、`files.ts`,经根入口 `@fatcat-ai/plugins` 导出。服务、市场与条目由 `apps/server` 的集成测试覆盖(跑的是构建产物),包的覆盖率统计排除这三个文件,只算 `files.ts`(它的单测随包搬过来);和第 2 节的渠道中枢同样处理。
+- `docker/Dockerfile` 的运行镜像多拷一个 `packages/plugins`。
 - 经 `createTestServer` 走 HTTP 的 `plugins.test.ts`、`plugin-market.test.ts`、`skills.eval.test.ts` 留在 `apps/server`,只改 import 路径。
 
 ## 4. 不变的东西

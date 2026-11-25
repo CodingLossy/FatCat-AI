@@ -20,7 +20,7 @@ import {
 } from '@fatcat-ai/shared';
 import type { MarketConfig } from '@fatcat-ai/tools/market';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { MarketService } from './plugin-market.js';
+import { MarketService } from '@fatcat-ai/plugins';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 const fixtures = fileURLToPath(new URL('../../../packages/tools/src/plugins/fixtures/', import.meta.url));

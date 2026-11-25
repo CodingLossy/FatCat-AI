@@ -16,6 +16,7 @@ import {
     type PluginMarketStatus,
     type PluginState,
     satisfiesEngine,
+    ServiceError,
 } from '@fatcat-ai/shared';
 import type { Repositories } from '@fatcat-ai/storage';
 import {
@@ -26,7 +27,6 @@ import {
     verifyIndex,
     type VerifiedIndex,
 } from '@fatcat-ai/tools/market';
-import { ApiError } from './errors.js';
 
 /** 取索引与包时用的网络检查;生产里是默认值,测试里指向本机的假服务器。 */
 export type MarketNet = Pick<NonNullable<Parameters<typeof fetchIndexFiles>[1]>, 'resolve' | 'isBlocked'>;
@@ -81,7 +81,7 @@ export class MarketService {
 
     private requireEnabled(ownerId: string): void {
         if (!this.enabled(ownerId)) {
-            throw new ApiError(409, 'market_disabled', 'Conflict', 'The plugin market is turned off in Settings.');
+            throw new ServiceError(409, 'market_disabled', 'Conflict', 'The plugin market is turned off in Settings.');
         }
     }
 
@@ -310,10 +310,10 @@ export class MarketService {
     } {
         this.requireEnabled(ownerId);
         const market = this.markets.find((m) => m.id === marketId);
-        if (!market) throw new ApiError(404, 'not_found', 'Not Found', `Market ${marketId} was not found.`);
+        if (!market) throw new ServiceError(404, 'not_found', 'Not Found', `Market ${marketId} was not found.`);
         const cache = this.state(market).cache;
         if (!cache || this.expired(cache)) {
-            throw new ApiError(
+            throw new ServiceError(
                 503,
                 'market_unavailable',
                 'Service Unavailable',
@@ -322,9 +322,10 @@ export class MarketService {
         }
         const entry = cache.verified.index.plugins.find((p) => p.id === pluginId);
         const found = entry?.versions.find((v) => v.version === version);
-        if (!entry || !found) throw new ApiError(404, 'not_found', 'Not Found', 'That plugin version is not listed.');
+        if (!entry || !found)
+            throw new ServiceError(404, 'not_found', 'Not Found', 'That plugin version is not listed.');
         if (found.yanked) {
-            throw new ApiError(
+            throw new ServiceError(
                 409,
                 'plugin_yanked',
                 'Conflict',

@@ -99,6 +99,9 @@ importers:
       '@fatcat-ai/memory':
         specifier: workspace:*
         version: link:../../packages/memory
+      '@fatcat-ai/plugins':
+        specifier: workspace:*
+        version: link:../../packages/plugins
       '@fatcat-ai/providers':
         specifier: workspace:*
         version: link:../../packages/providers
@@ -336,6 +339,21 @@ importers:
       '@fatcat-ai/shared':
         specifier: workspace:*
         version: link:../shared
+
+  packages/plugins:
+    dependencies:
+      '@fatcat-ai/items':
+        specifier: workspace:*
+        version: link:../items
+      '@fatcat-ai/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@fatcat-ai/storage':
+        specifier: workspace:*
+        version: link:../storage
+      '@fatcat-ai/tools':
+        specifier: workspace:*
+        version: link:../tools
 
   packages/providers:
     dependencies:
