@@ -73,7 +73,7 @@ export {
     type NewAgent,
 } from './agents.js';
 export type { ChannelPairingRecord, ChannelRecord, ChannelRepository } from './channels.js';
-export type { ModelProfileRecord } from './profiles.js';
+export type { ModelProfileRecord, UsableProfileRecord } from './profiles.js';
 export type { NewApprovalRequest, NewAuditEntry } from './tools.js';
 export {
     type EmbedCounts,

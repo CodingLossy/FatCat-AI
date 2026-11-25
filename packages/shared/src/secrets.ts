@@ -49,3 +49,28 @@ export const SecretsMigrateResponse = z.object({
     }),
 });
 export type SecretsMigrateResponse = z.infer<typeof SecretsMigrateResponse>;
+
+/**
+ * 账户自己保存的一个密钥(ADR 0053 第 5 节,自 2.0 起提供):只有名字和引用,永远没有值。
+ * 成员看到的名字不带账户前缀;`ref` 就是填进模型配置档、邮箱的那个引用。
+ */
+export const SecretKey = z.object({
+    name: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,63}$/),
+    ref: z.string().min(1).max(80),
+});
+export type SecretKey = z.infer<typeof SecretKey>;
+
+/** GET /api/v1/settings/secret-keys。 */
+export const SecretKeyList = z.object({ items: z.array(SecretKey) });
+export type SecretKeyList = z.infer<typeof SecretKeyList>;
+
+/** PUT /api/v1/settings/secret-keys/{name}:新增或替换值。 */
+export const SecretKeyInput = z.object({
+    value: z
+        .string()
+        .trim()
+        .min(1)
+        .max(4096)
+        .regex(/^[^\r\n]*$/, 'must be one line'),
+});
+export type SecretKeyInput = z.infer<typeof SecretKeyInput>;

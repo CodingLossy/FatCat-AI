@@ -25,6 +25,7 @@ const profile = (over: Partial<ModelProfileRecord>): ModelProfileRecord => ({
     apiKeyRef: 'env:SECRET_KEY',
     model: 'm',
     purpose: ['chat'],
+    shared: false,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...over,

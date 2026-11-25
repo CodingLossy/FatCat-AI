@@ -123,7 +123,7 @@ describe('admin capabilities (ADR 0053 section 4)', () => {
             label: 'p',
             kind: 'openai-compatible',
             baseURL: 'https://embed.example.test/v1',
-            apiKeyRef: 'env:KEY',
+            apiKeyRef: 'file:KEY',
             model: 'text-embed',
             purpose,
         });

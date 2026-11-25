@@ -108,6 +108,8 @@ import type {
     Settings,
     SettingsPatch,
     SkillInfo,
+    SecretKey,
+    SecretKeyList,
     SecretsMigrateRequest,
     SecretsMigrateResponse,
     SecretsStatus,
@@ -346,6 +348,13 @@ export function createClient(options: ClientOptions) {
             status: () => t.json<SecretsStatus>('/settings/secrets'),
             migrate: (body: SecretsMigrateRequest) =>
                 t.json<SecretsMigrateResponse>('/settings/secrets/migrate', { method: 'POST', body }),
+            /** 这个账户自己保存的密钥(ADR 0053 第 5 节):只有名字和引用,值只写不读。 */
+            keys: {
+                list: () => t.json<SecretKeyList>('/settings/secret-keys'),
+                save: (name: string, value: string) =>
+                    t.json<SecretKey>(`/settings/secret-keys/${enc(name)}`, { method: 'PUT', body: { value } }),
+                remove: (name: string) => t.json<void>(`/settings/secret-keys/${enc(name)}`, { method: 'DELETE' }),
+            },
         },
 
         /** 图片附件(ADR 0020):先上传,再在发送消息时带上 attachmentIds。 */

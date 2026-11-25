@@ -45,9 +45,19 @@ The server runs as one system user, and the capabilities below let the assistant
 - **Plugins**: only admins install, upgrade, roll back, enable and change settings. Opening plugins to members comes in a later PR.
 - **Coding projects** (`git.*`, `code.run`): only admins configure and use them.
 - **Embedding model**: one per server (changing it means rebuilding every vector), so only admins create embed profiles and rebuild the index; members' knowledge bases use it too.
-- **Secrets file**: only admins see its status and run the encryption migration.
+- **Secrets file**: only admins see its status and run the encryption migration; each account's own secrets are covered in the next section.
 
 When an admin is changed to a member, the MCP servers, plugins and coding tools they set up stop working at once (the configuration is kept) and come back if they are made an admin again.
+
+## Secrets and shared models
+
+Every account can save its own API keys and mail app passwords under Settings → System → Secrets → **My secrets**: enter a name and the value. Once saved only the name and the reference to use (for example `file:OPENAI_API_KEY`) are shown, never the value. Put that `file:` reference in a model profile's key reference or a mail account's password.
+
+- Secrets a member saves can only be used by that member's own profiles and mail accounts; other accounts, admins included, cannot see or refer to them. A member's reference contains an account number (`file:U…_OPENAI_API_KEY`); that is expected, use it as shown. Entering `file:OPENAI_API_KEY` without the number also works and is changed to the member's own key.
+- `env:` references read the server's environment variables, so only admins can use them.
+- After a secret is deleted, profiles and mail accounts that use it show it as missing. Deleting an account deletes its secrets too.
+
+An admin can tick **Share with members** on a model profile so the whole family uses one model account. Members see it in their model list marked Shared by admin and can pick it for conversations, the default model and voice, but cannot see its address or key reference and cannot edit, delete or test it. When the admin stops sharing it, is changed to a member or is disabled, members can no longer use it.
 
 ## Sign-in limits
 

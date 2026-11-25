@@ -75,6 +75,8 @@ export interface TestServer {
     kb: KnowledgeBase;
     attachmentFiles: AttachmentFiles;
     dir: string;
+    /** 测试直接读写 secrets(模拟渠道写入的键)。 */
+    secrets: SecretStore;
     repos: Repositories;
     /** 测试中直接读写数据库(模拟其他客户端的修改)。 */
     conn: Connection;
@@ -337,6 +339,7 @@ export async function createTestServer(
         kb,
         attachmentFiles,
         dir,
+        secrets,
         repos,
         conn,
         logs,

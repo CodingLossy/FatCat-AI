@@ -220,3 +220,67 @@ test('管理员给成员分配文件夹;成员只看到分给自己的,看不到
     );
     await other.close();
 });
+
+test('成员保存自己的密钥;管理员共享的配置档成员能看到但不能改(ADR 0053 第 5 节)', async ({ page, browser }) => {
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await page.goto(base);
+    await signIn(page, 'owner');
+    await openAccounts(page);
+    const invite = await oneTimeCode(page, '生成邀请码');
+    await page.getByRole('button', { name: '关闭' }).click();
+
+    // 管理员建一个共享给成员的配置档
+    await page.getByRole('tab', { name: /模型与语音/ }).click();
+    await page.getByRole('button', { name: '概览与模型', exact: true }).click();
+    const models = page.locator('#model-profiles');
+    await models.getByRole('button', { name: '添加配置档' }).click();
+    const form = page.getByRole('form', { name: 'model-profile' });
+    await form.getByLabel('名称').fill('Family chat');
+    await form.getByLabel('接口地址').fill('https://llm.example.test/v1');
+    await form.getByLabel('模型', { exact: true }).fill('family-model');
+    await form.getByLabel('密钥引用').fill('file:FAMILY_KEY');
+    await form.getByLabel('共享给成员').check();
+    await form.getByRole('button', { name: '保存' }).click();
+    await expect(models.locator('[data-profile="Family chat"]').getByTestId('shared-badge')).toBeVisible();
+    await shot(models, 'admin-shared-profile');
+
+    const other = await browser.newContext({ viewport: { width: 1100, height: 900 } });
+    const kim = await other.newPage();
+    await kim.goto(base);
+    await kim.getByRole('button', { name: '有邀请码' }).click();
+    await kim.getByLabel('邀请码').fill(invite);
+    await kim.getByLabel('用户名').fill('kai');
+    await kim.getByLabel('密码', { exact: true }).fill(PASSWORD);
+    await kim.getByRole('button', { name: '创建账户并登录' }).click();
+    await expect(kim.getByRole('link', { name: '设置', exact: true })).toBeVisible();
+
+    // 成员:共享来的配置档只读,不显示地址和密钥引用
+    await kim.getByRole('link', { name: '设置', exact: true }).click();
+    await kim.getByRole('tab', { name: /模型与语音/ }).click();
+    await kim.getByRole('button', { name: '概览与模型', exact: true }).click();
+    const card = kim.locator('#model-profiles [data-profile="Family chat"]');
+    await expect(card.getByTestId('shared-by-admin')).toBeVisible();
+    await expect(card).not.toContainText('llm.example.test');
+    await expect(card).not.toContainText('FAMILY_KEY');
+    await expect(card.getByRole('button')).toHaveCount(0);
+    await shot(kim.locator('#model-profiles'), 'member-shared-profile');
+
+    // 成员:在「密钥」里保存自己的键,看到的是不带前缀的名字和带前缀的引用
+    await kim.getByRole('tab', { name: /系统设置/ }).click();
+    await kim.getByRole('button', { name: '密钥', exact: true }).click();
+    const keys = kim.getByRole('region', { name: '我的密钥' });
+    await keys.getByLabel('键名').fill('OPENAI_API_KEY');
+    await keys.getByLabel('值', { exact: true }).fill('sk-kai-123456');
+    await keys.getByRole('button', { name: '保存密钥' }).click();
+    const row = keys.locator('[data-key="OPENAI_API_KEY"]');
+    await expect(row).toContainText(/file:U[0-9A-Z]{26}_OPENAI_API_KEY/);
+    await expect(keys).not.toContainText('sk-kai-123456');
+    await expect(kim.getByTestId('admin-only')).toBeVisible();
+    await shot(kim, 'member-secret-keys');
+
+    // 管理员看不到成员的键
+    await page.getByRole('tab', { name: /系统设置/ }).click();
+    await page.getByRole('button', { name: '密钥', exact: true }).click();
+    await expect(page.getByRole('region', { name: '我的密钥' })).toContainText('还没有保存密钥');
+    await other.close();
+});

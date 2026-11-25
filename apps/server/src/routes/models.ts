@@ -4,7 +4,10 @@
 import { createRoute, z } from '@hono/zod-openapi';
 import { Id, ModelProfile, ModelProfileInput, ModelProfilePatch, ModelTestResult, pageOf } from '@fatcat-ai/shared';
 import { createProvider, type ProviderDeps, type SecretStore } from '@fatcat-ai/providers';
-import type { ModelProfileRecord, Repositories } from '@fatcat-ai/storage';
+import type { ModelProfileRecord, Repositories, UsableProfileRecord } from '@fatcat-ai/storage';
+import type { Context } from 'hono';
+import type { AppEnv } from '../env.js';
+import { scopeSecretRef } from '../member-secrets.js';
 import { requireAdmin, requireOwner } from '../auth/middleware.js';
 import { notFound, validationError } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
@@ -92,17 +95,58 @@ const testRoute = createRoute({
 
 export function modelRoutes(deps: ModelRouteDeps) {
     const { repos, secrets } = deps;
-    const withStatus = (p: ModelProfileRecord): ModelProfile => ({ ...p, keyStatus: secrets.status(p.apiKeyRef) });
+    const withStatus = (p: ModelProfileRecord): ModelProfile => {
+        const { shared, ...rest } = p;
+        return { ...rest, ...(shared ? { shared: true } : {}), keyStatus: secrets.status(p.apiKeyRef) };
+    };
+    /**
+     * 管理员共享来的配置档给别的账户看的样子(ADR 0053 第 5.1 节):名称、类型、模型名、用途照常,
+     * 地址和密钥引用不给;keyStatus 仍按真实引用计算,成员能看出能不能用。
+     */
+    const sharedView = (p: UsableProfileRecord): ModelProfile => {
+        return {
+            id: p.id,
+            label: p.label,
+            kind: p.kind,
+            model: p.model,
+            purpose: p.purpose,
+            ...(p.contextWindow === undefined ? {} : { contextWindow: p.contextWindow }),
+            ...(p.vision === undefined ? {} : { vision: p.vision }),
+            apiKeyRef: null,
+            shared: true,
+            readOnly: true,
+            keyStatus: secrets.status(p.apiKeyRef),
+            createdAt: p.createdAt,
+            updatedAt: p.updatedAt,
+        };
+    };
+    const view = (ownerId: string) => (p: UsableProfileRecord) =>
+        p.ownerId === ownerId ? withStatus(p) : sharedView(p);
+    /**
+     * 共享给成员只有管理员能设;密钥引用按账户检查和换算(第 5 节)。修改时没变的字段不再检查,
+     * 这样降为成员的账户还能改自己配置档的名称(但不能再新设 env: 引用或打开共享)。
+     */
+    const checkInput = (
+        c: Context<AppEnv>,
+        ownerId: string,
+        input: ModelProfileInput,
+        existing?: ModelProfileRecord,
+    ): ModelProfileInput => {
+        if (input.shared === true && !existing?.shared) requireAdmin(c, repos);
+        if (existing && input.apiKeyRef === existing.apiKeyRef) return input;
+        return { ...input, apiKeyRef: scopeSecretRef(repos, ownerId, input.apiKeyRef, 'apiKeyRef') };
+    };
     /** 嵌入模型整个安装共用(换模型要重建全部向量),只有管理员能设(ADR 0053 第 8 节)。 */
     const requireEmbedAdmin = (c: Parameters<typeof requireOwner>[0]) => requireAdmin(c, repos);
 
     return router()
-        .openapi(listRoute, (c) =>
-            c.json({ items: repos.modelProfiles.list(requireOwner(c)).map(withStatus), nextCursor: null }, 200),
-        )
-        .openapi(createProfileRoute, (c) => {
-            const input = c.req.valid('json');
+        .openapi(listRoute, (c) => {
             const ownerId = requireOwner(c);
+            return c.json({ items: repos.modelProfiles.listUsable(ownerId).map(view(ownerId)), nextCursor: null }, 200);
+        })
+        .openapi(createProfileRoute, (c) => {
+            const ownerId = requireOwner(c);
+            const input = checkInput(c, ownerId, c.req.valid('json'));
             if (input.purpose.includes('embed')) requireEmbedAdmin(c);
             const created = repos.modelProfiles.create(ownerId, input);
             c.get('logger').info({ profileId: created.id, kind: created.kind }, 'model profile created');
@@ -110,9 +154,10 @@ export function modelRoutes(deps: ModelRouteDeps) {
             return c.json(withStatus(created), 201);
         })
         .openapi(getRoute, (c) => {
-            const p = repos.modelProfiles.get(requireOwner(c), c.req.valid('param').id);
+            const ownerId = requireOwner(c);
+            const p = repos.modelProfiles.getUsable(ownerId, c.req.valid('param').id);
             if (!p) throw notFound('Model profile');
-            return c.json(withStatus(p), 200);
+            return c.json(view(ownerId)(p), 200);
         })
         .openapi(patchRoute, (c) => {
             const ownerId = requireOwner(c);
@@ -129,6 +174,7 @@ export function modelRoutes(deps: ModelRouteDeps) {
                 contextWindow: existing.contextWindow,
                 params: existing.params,
                 vision: existing.vision,
+                shared: existing.shared || undefined,
             };
             // 合并后按完整输入重新校验(例如改为 openai-compatible 时必须有 baseURL)
             const merged = ModelProfileInput.safeParse(
@@ -137,8 +183,9 @@ export function modelRoutes(deps: ModelRouteDeps) {
                 ),
             );
             if (!merged.success) throw validationError(merged.error);
+            const checked = checkInput(c, ownerId, merged.data, existing);
             if (merged.data.purpose.includes('embed') && !existing.purpose.includes('embed')) requireEmbedAdmin(c);
-            const replaced = repos.modelProfiles.replace(ownerId, id, merged.data)!;
+            const replaced = repos.modelProfiles.replace(ownerId, id, checked)!;
             deps.onChanged?.();
             return c.json(withStatus(replaced), 200);
         })

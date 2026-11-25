@@ -60,7 +60,7 @@ export function resolveProfile(
     requested: string | null | undefined,
     sessionProfileId: string | null,
 ): ModelProfileRecord {
-    const profiles = deps.repos.modelProfiles.list(ownerId);
+    const profiles = deps.repos.modelProfiles.listUsable(ownerId);
     const wanted = requested ?? sessionProfileId;
     const defaults = { chat: deps.repos.settings.get(ownerId).defaultChatProfileId };
     const profile = wanted
@@ -229,7 +229,7 @@ export function sessionRoutes(deps: SessionRouteDeps) {
         return session;
     };
     const checkProfile = (ownerId: string, id: string | null | undefined) => {
-        if (id && !repos.modelProfiles.get(ownerId, id)) {
+        if (id && !repos.modelProfiles.getUsable(ownerId, id)) {
             throw new ApiError(400, 'validation_failed', 'Bad Request', 'The model profile does not exist.', {
                 issues: [{ path: ['modelProfileId'], message: 'unknown model profile' }],
             });

@@ -31,6 +31,7 @@ export const TABLE_COLUMNS = {
         'created_at',
         'updated_at',
         'vision',
+        'shared',
     ],
     settings: ['owner_id', 'key', 'value_json', 'updated_at'],
     approval_requests: [
