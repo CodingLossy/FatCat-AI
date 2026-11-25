@@ -399,6 +399,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
                 tools: deps.runs.tools,
                 complete: deps.taskComplete,
                 pluginTemplate: (ownerId, pluginId, index) => plugins.taskTemplate(ownerId, pluginId, index),
+                skillTemplate: (ownerId, skillId, index) => skills.taskTemplate(ownerId, skillId, index),
             }),
         )
         .route('/', memoryRoutes({ repos, memory: deps.memory, detectCredential }))

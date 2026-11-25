@@ -3,11 +3,21 @@
 
 // Skills 运行时评测(ADR 0048 第 3、4、7 节):目录、skill.use 开启覆盖的组、只缩小不扩大、
 // 插件说明按不可信内容处理(会话被标记、条件预授权失效、审批照常)、代理角色的 Skill 自动使用、越权用例。
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    realpathSync,
+    rmSync,
+    symlinkSync,
+    unlinkSync,
+    writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
-import { Agent, EventEnvelope, PluginPrepared, pageOf, Session, SkillInfo } from '@fatcat-ai/shared';
+import { Agent, EventEnvelope, PluginPrepared, pageOf, Session, SkillInfo, TaskDraftResult } from '@fatcat-ai/shared';
+import { BUILTIN_SKILLS } from '@fatcat-ai/tools';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { BuiltinSkill } from './skills.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
@@ -51,6 +61,15 @@ const BUILTIN: BuiltinSkill = {
     description: 'Use when the user asks about their notes.',
     toolSet: ['fs.'],
     instructions: '# Local notes\nList the folder first, then read.',
+};
+
+/** 第二个内置 Skill:只用 kb.search,说明里有可辨认的标题。 */
+const KB_SKILL: BuiltinSkill = {
+    id: 'kb-notes',
+    name: { en: 'KB notes' },
+    description: 'Use when the user asks about the knowledge base.',
+    toolSet: ['kb.search'],
+    instructions: '# KB notes\nSearch the knowledge base first.',
 };
 
 async function setup(options: { builtin?: BuiltinSkill[]; conditional?: boolean } = {}) {
@@ -303,6 +322,122 @@ describe('Skills 运行时', () => {
         const events = await t.run(session.id, '看看笔记');
         expect(t.results(events)[0]).toMatchObject({ error: 'unknown skill: plugin.notes.notes' });
         expect(JSON.stringify(events)).not.toContain('Approve automatically');
+    });
+});
+
+describe('X #127 遗留项', () => {
+    it('委派:子运行只自动使用子代理自己角色里的 Skill,不继承父运行用过的 Skill', async () => {
+        const t = await setup({ builtin: [BUILTIN, KB_SKILL] });
+        await t.createAgent({ name: '调研员', toolSet: ['fs.', 'kb.search'], skills: ['kb-notes'], maxDepth: 0 });
+        const lead = await t.createAgent({
+            name: '主编',
+            toolSet: ['delegate', 'fs.', 'kb.search'],
+            skills: ['local-notes'],
+            maxDepth: 1,
+        });
+        const session = await t.newSession();
+        t.steps.push(
+            call('m1', 'delegate', { agent: '调研员', task: '查一下知识库' }),
+            answer('child done'),
+            answer('好'),
+        );
+        await t.run(session.id, '让调研员查一下', { agentId: lead.id });
+        const toolText = (i: number) =>
+            t.requests[i]!.messages.filter((m) => m.role === 'tool')
+                .map((m) => String(m.content))
+                .join('\n');
+        // 父运行:自己角色里的 local-notes
+        expect(toolText(0)).toContain('# Local notes');
+        // 子运行:只有 kb-notes,父运行用过的 local-notes 不在它的上下文里
+        expect(toolText(1)).toContain('# KB notes');
+        expect(toolText(1)).not.toContain('# Local notes');
+        expect(String(t.requests[1]!.messages[0]!.content)).toContain('kb-notes');
+    });
+
+    it.skipIf(process.platform === 'win32')(
+        '说明文件换成指向包外的符号链接时,skill.use 返回 unknown skill,包外内容不会交给模型',
+        async () => {
+            const t = await setup();
+            await t.installNotes('# Notes\nfine');
+            const outside = path.join(base, 'outside.md');
+            writeFileSync(outside, 'OUTSIDE SECRET');
+            const installed = path.join(s.dir, 'plugins', 'notes', '1.0.0', 'skills', 'notes.md');
+            unlinkSync(installed);
+            symlinkSync(outside, installed);
+            const session = await t.newSession();
+            t.steps.push(call('m1', 'skill.use', { id: 'plugin.notes.notes' }), answer('好'));
+            const events = await t.run(session.id, '看看笔记');
+            expect(t.results(events)[0]).toMatchObject({ error: 'unknown skill: plugin.notes.notes' });
+            expect(JSON.stringify(events)).not.toContain('OUTSIDE SECRET');
+            expect(JSON.stringify(t.requests)).not.toContain('OUTSIDE SECRET');
+        },
+    );
+});
+
+describe('内置 Skill(ADR 0048 第 5 节)', () => {
+    it('三个内置 Skill 出现在目录里;假模型先 skill.use local-files,再调组内的 fs.read', async () => {
+        const t = await setup({ builtin: [...BUILTIN_SKILLS] });
+        const session = await t.newSession();
+        t.steps.push(
+            call('m1', 'skill.use', { id: 'local-files' }),
+            call('m2', 'fs.read', { path: path.join(base, 'notes.md') }),
+            answer('第一行是买猫粮'),
+        );
+        const events = await t.run(session.id, '我的笔记第一行写了什么');
+        const system = String(t.requests[0]!.messages[0]!.content);
+        expect(system).toContain('local-files: Use when the user asks about files');
+        expect(system).toContain('mail-assistant: Use when the user asks about their e-mail');
+        expect(system).toContain('web-research: Use when the user asks you to look something up');
+        expect(names(t.requests[0]!).some((n) => n.startsWith('fs.'))).toBe(false);
+        const [used, read] = t.results(events);
+        expect(used).toMatchObject({
+            output: {
+                id: 'local-files',
+                instructions: { untrusted: true, source: { kind: 'skill', ref: 'local-files' } },
+            },
+        });
+        expect(JSON.stringify(used)).toContain('# Local files');
+        expect(names(t.requests[1]!)).toEqual(expect.arrayContaining(['fs.read', 'fs.list', 'kb.search']));
+        expect(JSON.stringify(read)).toContain('买猫粮');
+    });
+
+    it('每日邮件摘要模板建的是草稿:工具集只有读取与总结,确认前不会运行;Skill 关掉后不能再建', async () => {
+        const t = await setup({ builtin: [...BUILTIN_SKILLS] });
+        const skills = pageOf(SkillInfo).parse(await (await t.req('/api/v1/skills')).json()).items;
+        expect(skills.map((x) => [x.id, x.source, x.enabled])).toEqual([
+            ['local-files', 'builtin', true],
+            ['mail-assistant', 'builtin', true],
+            ['web-research', 'builtin', true],
+        ]);
+        expect(skills.find((x) => x.id === 'mail-assistant')?.taskTemplates).toHaveLength(1);
+        const res = await t.post('/api/v1/tasks/from-skill-template', { skillId: 'mail-assistant', index: 0 });
+        expect(res.status).toBe(201);
+        const draft = TaskDraftResult.parse(await res.json());
+        expect(draft.task).toMatchObject({
+            status: 'draft',
+            trigger: { kind: 'cron', expression: '0 8 * * *' },
+            action: { kind: 'agent_prompt' },
+        });
+        expect(draft.task.policy.toolSet).toEqual(['mail.list', 'mail.read', 'mail.search', 'mail.summarize']);
+        expect(draft.task.policy.allowedTools ?? []).toEqual([]);
+        expect(draft.task.policy.fromPlugin).toBeUndefined();
+        expect(draft.warnings.join(' ')).toContain('Nothing runs until you confirm it');
+        // 草稿不能运行,要先在确认卡上确认
+        expect((await t.post(`/api/v1/tasks/${draft.task.id}/run`)).status).toBe(409);
+        // 越界的模板序号、没有模板的 Skill、不存在的 Skill 都是 404
+        for (const body of [
+            { skillId: 'mail-assistant', index: 1 },
+            { skillId: 'web-research', index: 0 },
+            { skillId: 'nope', index: 0 },
+        ]) {
+            expect((await t.post('/api/v1/tasks/from-skill-template', body)).status).toBe(404);
+        }
+        expect(
+            (await t.send('PUT', '/api/v1/settings', { skills: { builtin: { 'mail-assistant': false } } })).status,
+        ).toBe(200);
+        expect(
+            (await t.post('/api/v1/tasks/from-skill-template', { skillId: 'mail-assistant', index: 0 })).status,
+        ).toBe(404);
     });
 });
 

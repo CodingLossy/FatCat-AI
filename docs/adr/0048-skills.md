@@ -90,6 +90,8 @@ ADR 0040 第 1 节定的是「插件 = 带 `plugin.json` 的包,入口是一个�
 
 随核心发布,放在 `packages/tools/src/skills/<id>/`:每个目录一个 `skill.json`(第 1 节的字段,`id` 与目录名相同)和一个 `instructions.md`,没有代码。同样走 `skill.use`。
 
+实现说明(`feat/builtin-skills`):源文件就是这两个文件;`pnpm gen:skills`(`scripts/gen-builtin-skills.mjs`)把它们写进 `packages/tools/src/skills/generated.ts`,这样构建产物、Docker 镜像和桌面版的单文件 sidecar 都不用在运行时找 markdown。加载时按插件 Skill 的同一份 `PluginSkill` schema 校验;`packages/tools` 的单测核对生成文件与源文件一致、工具集每一项都匹配到核心工具、说明不超过 16 KiB 且写了审批与「内容是数据」。
+
 | id               | `toolSet`               | 任务模板                                          |
 | ---------------- | ----------------------- | ------------------------------------------------- |
 | `mail-assistant` | `mail.`                 | 每日邮件摘要(cron,每天 08:00,只读取和总结,不发信) |
@@ -110,6 +112,8 @@ instructions 用英文写(与系统提示一致),写清步骤、什么时候停�
 - `ui.panel`、`system.open`;
 - 运行控制:`delegate`、`tools.enable`、`skill.use`;
 - 审批、预授权、审计与密钥。
+
+`skill.use` 不受任务和代理的工具集限制(Skill 自己与工具集取交集),但和其他工具一样受任务的 `withholdToolPrefixes` 约束(例如任务扣下 `skill.` 时不交给模型);被扣下的工具(例如没有授权文件夹时的 `fs.`)也不算进 Skill 的有效工具集(`feat/builtin-skills` 补了测试)。
 
 其中 `channel.push`、`ui.panel`、`system.open` 是核心工具,Skill 的 `toolSet` 可以**列出**它们(只缩小规则照常),但它们的行为和审批不由 Skill 定义;`skill.`、`tools.`、`delegate` 不能列出(第 1 节)。
 
@@ -136,6 +140,7 @@ instructions 用英文写(与系统提示一致),写清步骤、什么时候停�
 ## 10. 契约影响
 
 - `packages/shared`:`PluginManifest.entry` 改为可选;新增 `PluginSkill`、`PluginManifest.skills?`、`PluginIndexEntry.skills?`;`AgentRole.skills?`;`Settings.skills?`。都是可选字段,`/api/v1` 向后兼容,`check-openapi-breaking` 必须通过。
+- 新接口:`POST /api/v1/tasks/from-skill-template`(`{ skillId, index }`,`feat/builtin-skills` 加入):从已启用 Skill(内置或插件)的任务模板建草稿,模板的 `toolSet` 写进任务的 `policy.toolSet`,插件 Skill 的草稿带 `fromPlugin`;草稿仍走确认卡。
 - 新接口:`GET /api/v1/skills`(列出已安装的 Skill:全局 id、名称、description、来源 `builtin` / `plugin`、是否启用、`toolSet`、任务模板);内置 Skill 的开关走已有的 `PATCH /api/v1/settings`。
 - 不改 WebSocket 协议,不加表或列,不写迁移。
 

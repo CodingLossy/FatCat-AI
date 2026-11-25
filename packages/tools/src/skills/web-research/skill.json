@@ -1,0 +1,7 @@
+{
+  "id": "web-research",
+  "name": { "en": "Web research", "zh-CN": "网页调研" },
+  "description": "Use when the user asks you to look something up on the web, compare sources, or read a page they link to",
+  "instructions": "instructions.md",
+  "toolSet": ["web.fetch", "browser."]
+}

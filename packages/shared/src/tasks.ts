@@ -224,6 +224,18 @@ export const TaskFromPluginTemplate = z
     .strict();
 export type TaskFromPluginTemplate = z.infer<typeof TaskFromPluginTemplate>;
 
+/**
+ * `POST /tasks/from-skill-template`:从已启用 Skill(内置或插件)的任务模板建一份草稿(ADR 0048 第 1、5 节)。
+ * 模板的 `toolSet` 写进草稿的 `policy.toolSet`;草稿同样要在确认卡上确认。`skillId` 是全局 id。
+ */
+export const TaskFromSkillTemplate = z
+    .object({
+        skillId: z.string().regex(/^(?:plugin\.[a-z][a-z0-9-]{1,31}\.)?[a-z][a-z0-9-]{1,31}$/),
+        index: z.number().int().min(0).max(9),
+    })
+    .strict();
+export type TaskFromSkillTemplate = z.infer<typeof TaskFromSkillTemplate>;
+
 export const TaskPropose = z.object({ text: z.string().trim().min(1).max(500) }).strict();
 export type TaskPropose = z.infer<typeof TaskPropose>;
 

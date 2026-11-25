@@ -39,6 +39,7 @@
     "perf:channel": "node scripts/perf/channel-rss.mjs",
     "perf:plugin": "node scripts/perf/plugin.mjs",
     "check:i18n": "node scripts/check-i18n.mjs",
+    "gen:skills": "node scripts/gen-builtin-skills.mjs",
     "icons": "node scripts/make-icons.mjs",
     "check:icons": "node scripts/make-icons.mjs --check"
   },

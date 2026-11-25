@@ -34,7 +34,7 @@ import { scheduleDaily, startMaintenance } from './maintenance-setup.js';
 import { startScheduler } from './scheduler-setup.js';
 import { createChannelPushTool } from './scheduler/channel-push-tool.js';
 import { resolveDelegateAgent } from './routes/agents.js';
-import { createDelegateTool } from '@fatcat-ai/tools';
+import { BUILTIN_SKILLS, createDelegateTool } from '@fatcat-ai/tools';
 import { createAttachmentFiles, createImageLoader, sweepAttachments } from './attachment-files.js';
 import { itemProviders } from './memory-provider.js';
 import { createEmbeddingService } from './embeddings.js';
@@ -199,8 +199,8 @@ const bus = new EventBus();
 // 客户端执行的调用:桌面壳通过 WebSocket 声明能力,浏览器截图交给它(ADR 0046 第 14 节)
 const clientCalls = new ClientCalls();
 const attachmentFiles = createAttachmentFiles(config.dataDir);
-// 已安装的 Skill(ADR 0048):插件包在 <dataDir>/plugins 下;内置 Skill 由 feat/builtin-skills 加入
-const skills = new SkillService({ repos, codeRoot: join(config.dataDir, 'plugins') });
+// 已安装的 Skill(ADR 0048):插件包在 <dataDir>/plugins 下;内置的三个 Skill 随核心发布(第 5 节)
+const skills = new SkillService({ repos, codeRoot: join(config.dataDir, 'plugins'), builtin: BUILTIN_SKILLS });
 const runs = new RunManager({
     repos,
     bus,

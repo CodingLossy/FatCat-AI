@@ -46,6 +46,8 @@ export {
 } from './builtin/browser.js';
 export { createDelegateTool } from './builtin/delegate.js';
 export { createToolsEnableTool } from './builtin/tools-enable.js';
+export { createSkillUseTool } from './builtin/skill-use.js';
+export { BUILTIN_SKILLS, type BuiltinSkill } from './skills/index.js';
 export {
     ALLOWED_EXTENSIONS,
     blockedExtension,
