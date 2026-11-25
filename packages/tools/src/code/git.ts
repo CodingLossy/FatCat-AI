@@ -3,7 +3,7 @@
 
 // 加固过的只读 git(ADR 0049 第 3.3 节)。仓库自己的配置可能执行命令(core.fsmonitor、diff.external、textconv、
 // clean / smudge 过滤器、core.pager 等):每次调用都用 -c 关掉它们,环境只留最少的变量,不经 shell。
-import { mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { mkdtempSync, opendirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ProcessError, runProcess } from './process.js';
@@ -180,14 +180,19 @@ export function runGit(cwd: string, args: readonly string[]): Promise<string> {
  */
 export async function repositoryDirs(cwd: string): Promise<string[]> {
     const out = await runRaw(cwd, ['rev-parse', '--absolute-git-dir', '--git-common-dir'], false);
-    const [gitDirRaw, common] = out.split('\n').map((l) => l.trim());
-    if (!gitDirRaw || !common) throw new GitError('git did not report the repository directory', 'git_failed');
+    // 不 trim:git 读 gitdir / commondir 时保留首尾空格和 Tab,规整化后检查的会是另一个目录
+    const lines = exactLines(out);
+    if (lines.length !== 2) throw new GitError('the repository directory cannot be checked', 'unsafe_repository');
+    const [gitDirRaw, common] = lines as [string, string];
     const gitDir = realDir(gitDirRaw);
     const commonDir = realDir(path.resolve(cwd, common));
     const dirs = [gitDir, commonDir];
     // 仓库配置的 core.worktree(相对 git 目录);调用时已用 --work-tree 固定,这里只是拒绝指到外面的仓库
     const worktree = await runRaw(cwd, ['config', '--get', 'core.worktree'], false).catch(() => '');
-    if (worktree.trim() !== '') dirs.push(path.resolve(gitDir, worktree.trim()));
+    if (worktree !== '') {
+        const [value] = exactLines(worktree, 1);
+        dirs.push(path.resolve(gitDir, value!));
+    }
     const objects = realDir(path.join(commonDir, 'objects'));
     const chain = [objects, ...alternateChain(objects)];
     dirs.push(...chain);
@@ -197,6 +202,22 @@ export async function repositoryDirs(cwd: string): Promise<string[]> {
         if (!scanned.has(dir)) rejectLinks(dir, budget, scanned);
     }
     return dirs;
+}
+
+/**
+ * 按 git 输出的原样分行:只去掉最后一个 \n;空行、\r、首尾空白、行数不符一律拒绝(看不准就不放行)。
+ * 读 git 的输出或指针文件时都走这里,不要 trim。
+ */
+export function exactLines(out: string, expected?: number): string[] {
+    const body = out.endsWith('\n') ? out.slice(0, -1) : out;
+    const lines = body.split('\n');
+    if (
+        (expected !== undefined && lines.length !== expected) ||
+        lines.some((l) => l === '' || l !== l.trim() || l.includes('\r'))
+    ) {
+        throw new GitError('the repository directory cannot be checked', 'unsafe_repository');
+    }
+    return lines;
 }
 
 function realDir(dir: string): string {
@@ -217,24 +238,33 @@ function rejectLinks(root: string, budget: { left: number }, scanned: Set<string
         const dir = stack.pop()!;
         if (scanned.has(dir)) continue;
         scanned.add(dir);
-        let entries;
+        let handle;
         try {
-            entries = readdirSync(dir, { withFileTypes: true });
+            handle = opendirSync(dir);
         } catch {
             throw new GitError('a repository directory cannot be read', 'unsafe_repository');
         }
-        for (const entry of entries) {
-            if (--budget.left < 0) {
-                throw new GitError(
-                    `the repository has more than ${MAX_SCANNED_ENTRIES} files under .git; run git gc first`,
-                    'unsafe_repository',
-                );
+        try {
+            // 边读边计数,超大目录不先全部读进内存
+            for (let entry = handle.readSync(); entry !== null; entry = handle.readSync()) {
+                if (--budget.left < 0) {
+                    throw new GitError(
+                        `the repository has more than ${MAX_SCANNED_ENTRIES} files under .git; run git gc first`,
+                        'unsafe_repository',
+                    );
+                }
+                const full = path.join(dir, entry.name);
+                if (entry.isSymbolicLink()) {
+                    throw new GitError(
+                        `the repository contains a link (${full}); FatCat-AI does not read repositories whose .git ` +
+                            'contains links, for example ones managed by the repo tool',
+                        'unsafe_repository',
+                    );
+                }
+                if (entry.isDirectory()) stack.push(full);
             }
-            const full = path.join(dir, entry.name);
-            if (entry.isSymbolicLink()) {
-                throw new GitError(`the repository contains a link: ${full}`, 'unsafe_repository');
-            }
-            if (entry.isDirectory()) stack.push(full);
+        } finally {
+            handle.closeSync();
         }
     }
 }

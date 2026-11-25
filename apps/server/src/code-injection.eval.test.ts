@@ -5,7 +5,7 @@
 // 已被它完全操纵。评测检查 core 的防线:没登记的命令、拼接参数、按路径指定项目都在审批之前被拒绝;登记的命令也一定要审批,
 // 「记住」被拒绝;读过提交信息后会话被标为读过外部内容;设置关闭时工具不存在。另有设置接口对项目登记的检查。
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
 import { type AgentEvent, EventEnvelope, Session, Settings } from '@fatcat-ai/shared';
@@ -250,6 +250,17 @@ describe('PUT /api/v1/settings 的 code(ADR 0049 第 3.1 节)', { timeout: TIMEO
             process.platform === 'win32' ? 'junction' : 'dir',
         );
         expect(await bad({ path: linked })).toBe(400);
+        if (process.platform !== 'win32') {
+            // .git 文件的 gitdir 结尾有空格:git 原样读带空格的目录
+            const spaced = join(t.root, 'spaced-gitdir ');
+            mkdirSync(spaced);
+            git(spaced, 'init', '-q');
+            const w = join(t.root, 'w-spaced');
+            mkdirSync(w);
+            writeFileSync(join(w, '.git'), `gitdir: ${join(spaced, '.git')} \n`);
+            cpSync(join(spaced, '.git'), join(spaced, '.git '), { recursive: true });
+            expect(await bad({ path: w })).toBe(400);
+        }
         expect(await bad({ path: t.repo, commands: [{ name: 'Test', argv: ['node'] }] })).toBe(400);
         expect(await bad({ path: t.repo, commands: [{ name: 'run', argv: ['node', 'a b'] }] })).toBe(400);
         expect(await bad({ path: t.repo, commands: [{ name: 'run', argv: ['node'], timeoutMinutes: 61 }] })).toBe(400);

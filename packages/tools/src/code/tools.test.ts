@@ -4,6 +4,7 @@
 import { execFileSync } from 'node:child_process';
 import {
     chmodSync,
+    cpSync,
     existsSync,
     mkdirSync,
     renameSync,
@@ -18,7 +19,7 @@ import { join } from 'node:path';
 import type { CodeProject } from '@fatcat-ai/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type ToolContext, type ToolDefinition, ToolDeniedError } from '../types.js';
-import { boundDiff, filterOverridesFrom, MAX_DIFF_LINES } from './git.js';
+import { boundDiff, exactLines, filterOverridesFrom, MAX_DIFF_LINES } from './git.js';
 import { launchPlan, resolveCommand, scrubbedEnv, systemCmd } from './process.js';
 import { checkProject, checkRef, checkRepoPath, checkRunArgs, createCodeTools } from './tools.js';
 
@@ -399,6 +400,51 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
             mkdirSync(sub, { recursive: true });
             symlinkSync(target, join(sub, 'cdef'));
             await expect(checkProject(dir, [root])).rejects.toThrow(denied);
+        });
+
+        // 诱饵:名字去掉结尾空白后的目录是干净的仓库;git 实际读的带空白的目录经 alternates 指到外面
+        const decoyPair = (base: string, tail: string) => {
+            const clean = fresh();
+            cpSync(join(clean, '.git'), base, { recursive: true });
+            const real = base + tail;
+            cpSync(join(secret, '.git'), real, { recursive: true });
+            rmSync(join(real, 'objects'), { recursive: true, force: true });
+            mkdirSync(join(real, 'objects', 'info'), { recursive: true });
+            writeFileSync(join(real, 'objects', 'info', 'alternates'), `${join(secret, '.git', 'objects')}\n`);
+            return real;
+        };
+
+        it.skipIf(win)('.git 文件的 gitdir 结尾有空格或 Tab(git 原样保留):四个工具都拒绝', async () => {
+            for (const tail of [' ', '\t']) {
+                const decoy = join(root, `decoy-${++n}`);
+                decoyPair(decoy, tail);
+                const w = join(root, `w-${n}`);
+                mkdirSync(w);
+                writeFileSync(join(w, '.git'), `gitdir: ${decoy}${tail}\n`);
+                await allDenied(w);
+            }
+        });
+
+        it.skipIf(win)('worktree 的 commondir 结尾有空格:拒绝', async () => {
+            const common = join(root, `common-${++n}`);
+            decoyPair(common, ' ');
+            const wtGit = join(root, `wtgit-${n}`);
+            mkdirSync(wtGit);
+            writeFileSync(join(wtGit, 'HEAD'), `${secretSha}\n`);
+            writeFileSync(join(wtGit, 'commondir'), `${common} \n`);
+            const w = join(root, `w-${n}`);
+            mkdirSync(w);
+            writeFileSync(join(w, '.git'), `gitdir: ${wtGit}\n`);
+            writeFileSync(join(wtGit, 'gitdir'), `${join(w, '.git')}\n`);
+            await allDenied(w);
+        });
+
+        it('exactLines 只去掉最后一个换行,空行、\\r、首尾空白、行数不符都拒绝', () => {
+            expect(exactLines('/a\n/b\n', 2)).toEqual(['/a', '/b']);
+            for (const bad of ['/a \n/b\n', '/a\r\n/b\n', '/a\n\n', ' /a\n/b\n', '/a\t\n/b\n']) {
+                expect(() => exactLines(bad, 2), JSON.stringify(bad)).toThrow(/cannot be checked/);
+            }
+            expect(() => exactLines('/a\n/b\n/c\n', 2)).toThrow();
         });
 
         it('普通仓库照常通过', async () => {

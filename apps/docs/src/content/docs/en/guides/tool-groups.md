@@ -37,6 +37,7 @@ This group exists only after you turn it on and register projects under Settings
 
 - `git.log`, `git.show` and `git.diff` are read only: recent commits, "the 3rd most recent change" (`nth: 3`) and uncommitted changes in the working tree, with no approval. Git runs hardened, so the repository's own configuration (hooks, filters, external diff and so on) never runs a command.
 - `code.run` only runs the commands you registered for the project (for example `test` → `pnpm test`), with at most 8 simple extra values (a test file, a filter). **You approve every run; it cannot be pre-authorized.** No shell is used, variables that look like secrets are removed from the environment, and cancelling or a timeout ends the whole process tree.
+- A project is refused if its `.git` folder contains symbolic links or junctions (for example repositories managed by the `repo` tool), or if its repository data (git folder, alternates, `core.worktree`) points outside your authorized folders. Clone such a project normally (`git clone` without `--shared`) into an authorized folder to use it.
 - Code changes still go through `fs.write`, approved each time. There are no tools that commit, push or switch branches.
 - Commit messages, diffs and command output are treated as outside content: after reading them, conditional pre-authorizations stop applying.
 
