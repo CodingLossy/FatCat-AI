@@ -260,6 +260,49 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
         expect(existsSync(marker)).toBe(false);
     });
 
+    it('越权:alternates 链(项目 → 授权内的仓库 → 授权外的仓库)整条检查;链全在里面时照常', async () => {
+        const outsideBase = realpathSync.native(mkdtempSync(join(tmpdir(), 'fatcat-alt-')));
+        try {
+            const secret = join(outsideBase, 'secret');
+            mkdirSync(secret);
+            git(secret, 'init', '-q', '-b', 'main');
+            commit(secret, 's.txt', 'CHAIN_SECRET_PAYLOAD\n', 'secret commit');
+            const secretSha = git(secret, 'rev-parse', 'HEAD').trim();
+            const mid = join(root, 'alt-mid');
+            const a = join(root, 'alt-a');
+            for (const dir of [mid, a]) {
+                mkdirSync(dir);
+                git(dir, 'init', '-q', '-b', 'main');
+                commit(dir, 'x.txt', 'a\n', 'init');
+            }
+            writeFileSync(join(a, '.git', 'objects', 'info', 'alternates'), `${join(mid, '.git', 'objects')}\n`);
+            // 链全在授权文件夹里:照常
+            await expect(checkProject(a, [root])).resolves.toBe(a);
+            writeFileSync(join(mid, '.git', 'objects', 'info', 'alternates'), `${join(secret, '.git', 'objects')}\n`);
+            git(a, 'update-ref', 'refs/heads/leak', secretSha);
+            const t = tools({ projects: [project({ path: a })] });
+            const denied = /repository data is outside the authorized folders/;
+            for (const [name, input] of [
+                ['git.show', { project: 'p1', sha: secretSha }],
+                ['git.log', { project: 'p1' }],
+                ['git.diff', { project: 'p1' }],
+                ['code.run', { project: 'p1', command: 'env' }],
+            ] as const) {
+                const result = exec(t(name), input);
+                await expect(result, name).rejects.toThrow(denied);
+            }
+            await expect(checkProject(a, [root])).rejects.toThrow(denied);
+            // 带引号的条目(git 会反转义)直接拒绝
+            writeFileSync(join(mid, '.git', 'objects', 'info', 'alternates'), '"/elsewhere/objects"\n');
+            await expect(checkProject(a, [root])).rejects.toThrow(denied);
+            // 有环时不会死循环
+            writeFileSync(join(mid, '.git', 'objects', 'info', 'alternates'), `${join(a, '.git', 'objects')}\n`);
+            await expect(checkProject(a, [root])).resolves.toBe(a);
+        } finally {
+            rmSync(outsideBase, { recursive: true, force: true });
+        }
+    });
+
     it('越权:core.worktree、.git 文件的 gitdir 指到授权文件夹之外时拒绝', async () => {
         const outsideBase = realpathSync.native(mkdtempSync(join(tmpdir(), 'fatcat-outside-')));
         try {

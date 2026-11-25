@@ -3,7 +3,7 @@
 
 // 加固过的只读 git(ADR 0049 第 3.3 节)。仓库自己的配置可能执行命令(core.fsmonitor、diff.external、textconv、
 // clean / smudge 过滤器、core.pager 等):每次调用都用 -c 关掉它们,环境只留最少的变量,不经 shell。
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ProcessError, runProcess } from './process.js';
@@ -19,7 +19,7 @@ export class GitError extends Error {
     override readonly name = 'GitError';
     constructor(
         message: string,
-        readonly code: 'git_unavailable' | 'git_failed' | 'timeout',
+        readonly code: 'git_unavailable' | 'git_failed' | 'timeout' | 'unsafe_repository',
     ) {
         super(message);
     }
@@ -28,7 +28,12 @@ export class GitError extends Error {
 let emptyHooks: string | null = null;
 /** 一个空目录,作为 core.hooksPath:仓库里的钩子一个也不运行。 */
 function emptyHooksDir(): string {
-    emptyHooks ??= mkdtempSync(path.join(tmpdir(), 'fatcat-git-hooks-'));
+    if (emptyHooks === null) {
+        const dir = mkdtempSync(path.join(tmpdir(), 'fatcat-git-hooks-'));
+        emptyHooks = dir;
+        // 进程退出时删掉,不在临时目录里留下空目录
+        process.once('exit', () => rmSync(dir, { recursive: true, force: true }));
+    }
     return emptyHooks;
 }
 
@@ -178,16 +183,51 @@ export async function repositoryDirs(cwd: string): Promise<string[]> {
     // 仓库配置的 core.worktree(相对 git 目录);调用时已用 --work-tree 固定,这里只是拒绝指到外面的仓库
     const worktree = await runRaw(cwd, ['config', '--get', 'core.worktree'], false).catch(() => '');
     if (worktree.trim() !== '') dirs.push(path.resolve(gitDir, worktree.trim()));
-    const objects = path.join(commonDir, 'objects');
-    try {
-        for (const line of readFileSync(path.join(objects, 'info', 'alternates'), 'utf8').split(/\r?\n/)) {
-            const entry = line.trim();
-            if (entry !== '' && !entry.startsWith('#')) dirs.push(path.resolve(objects, entry));
-        }
-    } catch {
-        // 没有 alternates
-    }
+    dirs.push(...alternateChain(path.join(commonDir, 'objects')));
     return dirs;
+}
+
+/** git 自己最多跟 5 层;这里放宽到 16 层,超过就拒绝。 */
+const MAX_ALTERNATE_DEPTH = 16;
+
+/**
+ * 顺着 objects/info/alternates 链找出所有对象目录(git 查对象时会跟随整条链)。
+ * 每个条目取真实路径再往下读;有环时停止;带引号的条目(git 会做 C 风格反转义)和过深的链直接拒绝。
+ */
+export function alternateChain(objects: string): string[] {
+    const seen = new Set<string>();
+    const found: string[] = [];
+    const walk = (dir: string, depth: number) => {
+        let text: string;
+        try {
+            text = readFileSync(path.join(dir, 'info', 'alternates'), 'utf8');
+        } catch {
+            return;
+        }
+        for (const line of text.split(/\r?\n/)) {
+            const entry = line.trim();
+            if (entry === '' || entry.startsWith('#')) continue;
+            if (entry.startsWith('"'))
+                throw new GitError('the repository uses a quoted alternates entry', 'unsafe_repository');
+            if (depth >= MAX_ALTERNATE_DEPTH)
+                throw new GitError('the alternates chain is too deep', 'unsafe_repository');
+            const resolved = path.resolve(dir, entry);
+            let real: string;
+            try {
+                real = realpathSync.native(resolved);
+            } catch {
+                // 不存在的目录 git 也会跳过;仍交给调用方检查位置
+                found.push(resolved);
+                continue;
+            }
+            found.push(real);
+            if (seen.has(real)) continue;
+            seen.add(real);
+            walk(real, depth + 1);
+        }
+    };
+    walk(objects, 0);
+    return found;
 }
 
 export interface BoundedDiff {

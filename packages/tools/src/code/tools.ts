@@ -58,6 +58,9 @@ export async function checkProject(raw: string, roots: readonly string[], platfo
         if (error instanceof GitError && error.code === 'git_failed') {
             throw new ToolDeniedError('the project folder is not a git repository');
         }
+        if (error instanceof GitError && error.code === 'unsafe_repository') {
+            throw new ToolDeniedError(`the repository data is outside the authorized folders (${error.message})`);
+        }
         throw error;
     }
     for (const dir of dirs) {
@@ -198,6 +201,7 @@ export function createCodeTools(options: CodeToolOptions): ToolDefinition[] {
                 '--no-textconv',
                 `-n${input.limit ?? 20}`,
                 '--format=%h%x1f%an%x1f%aI%x1f%s',
+                '--end-of-options',
                 ...spec,
             ]);
             const lines = out

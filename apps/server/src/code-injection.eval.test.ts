@@ -228,6 +228,17 @@ describe('PUT /api/v1/settings 的 code(ADR 0049 第 3.1 节)', { timeout: TIMEO
         mkdirSync(gitFile);
         writeFileSync(join(gitFile, '.git'), `gitdir: ${join(t.outside, '.git')}\n`);
         expect(await bad({ path: gitFile })).toBe(400);
+        // alternates 链经授权内的仓库指到外面
+        const mid = join(t.root, 'alt-mid');
+        const chained = join(t.root, 'alt-a');
+        git(t.outside, 'commit', '-q', '--allow-empty', '-m', 'outside');
+        for (const dir of [mid, chained]) {
+            mkdirSync(dir);
+            git(dir, 'init', '-q');
+        }
+        writeFileSync(join(chained, '.git', 'objects', 'info', 'alternates'), `${join(mid, '.git', 'objects')}\n`);
+        writeFileSync(join(mid, '.git', 'objects', 'info', 'alternates'), `${join(t.outside, '.git', 'objects')}\n`);
+        expect(await bad({ path: chained })).toBe(400);
         expect(await bad({ path: t.repo, commands: [{ name: 'Test', argv: ['node'] }] })).toBe(400);
         expect(await bad({ path: t.repo, commands: [{ name: 'run', argv: ['node', 'a b'] }] })).toBe(400);
         expect(await bad({ path: t.repo, commands: [{ name: 'run', argv: ['node'], timeoutMinutes: 61 }] })).toBe(400);
