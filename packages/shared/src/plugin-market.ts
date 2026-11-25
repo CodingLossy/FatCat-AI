@@ -47,6 +47,8 @@ export const PluginMarketVersionView = z.object({
     permissions: PluginPermissions,
     /** 当前核心版本是否满足 engines。 */
     compatible: z.boolean(),
+    /** 纯指令插件的版本(不起进程);旧服务器不返回,按 false 处理。 */
+    instructionOnly: z.boolean().optional(),
 });
 export type PluginMarketVersionView = z.infer<typeof PluginMarketVersionView>;
 
@@ -61,6 +63,8 @@ export const PluginMarketPluginView = z.object({
     /** 没有被下架的版本,新的在前;全部被下架的插件不出现。 */
     versions: z.array(PluginMarketVersionView),
     installed: z.object({ version: z.string(), state: PluginState }).nullable(),
+    /** 最新版本带的 Skill(id 与给模型看的一句话);旧服务器不返回。 */
+    skills: z.array(z.object({ id: z.string(), description: z.string() })).optional(),
 });
 export type PluginMarketPluginView = z.infer<typeof PluginMarketPluginView>;
 

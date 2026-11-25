@@ -70491,6 +70491,9 @@
                                 },
                                 "compatible": {
                                   "type": "boolean"
+                                },
+                                "instructionOnly": {
+                                  "type": "boolean"
                                 }
                               },
                               "required": [
@@ -70529,6 +70532,24 @@
                               "version",
                               "state"
                             ]
+                          },
+                          "skills": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "description": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "description"
+                              ]
+                            }
                           }
                         },
                         "required": [
@@ -71190,6 +71211,9 @@
                                 },
                                 "compatible": {
                                   "type": "boolean"
+                                },
+                                "instructionOnly": {
+                                  "type": "boolean"
                                 }
                               },
                               "required": [
@@ -71228,6 +71252,24 @@
                               "version",
                               "state"
                             ]
+                          },
+                          "skills": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "description": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "description"
+                              ]
+                            }
                           }
                         },
                         "required": [
@@ -71719,6 +71761,9 @@
                             "type": "string"
                           },
                           "unreviewed": {
+                            "type": "boolean"
+                          },
+                          "instructionOnly": {
                             "type": "boolean"
                           },
                           "signedKeyId": {
@@ -72702,6 +72747,9 @@
                       "type": "string"
                     },
                     "unreviewed": {
+                      "type": "boolean"
+                    },
+                    "instructionOnly": {
                       "type": "boolean"
                     },
                     "signedKeyId": {
@@ -73910,6 +73958,9 @@
                       "type": "string"
                     },
                     "unreviewed": {
+                      "type": "boolean"
+                    },
+                    "instructionOnly": {
                       "type": "boolean"
                     },
                     "signedKeyId": {
@@ -77826,6 +77877,9 @@
                     "unreviewed": {
                       "type": "boolean"
                     },
+                    "instructionOnly": {
+                      "type": "boolean"
+                    },
                     "signedKeyId": {
                       "type": [
                         "string",
@@ -79154,6 +79208,9 @@
                       "type": "string"
                     },
                     "unreviewed": {
+                      "type": "boolean"
+                    },
+                    "instructionOnly": {
                       "type": "boolean"
                     },
                     "signedKeyId": {

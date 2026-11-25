@@ -15,6 +15,9 @@
 //  4. 静态检查(第 3.4 节第 2 层):打包产物里不得出现加载被拒绝内置模块的写法(import / import() / require /
 //     createRequire / getBuiltinModule,含 node: 前缀与 /promises)、process.binding、process.dlopen、eval / new Function。
 //     只看字面量,不认普通字符串里的模块名;局限见 MODULE 模式上方的注释与 ADR 0040 第 3.4 节。
+//  5. Skill(ADR 0048 第 9 节):`instructionOnly` 与包内清单是否有 `entry` 一致;最新版本的 Skill 与条目的 `skills` 一致;
+//     Skill 的 description 与 instructions 做话术初筛(要求跳过或绕过审批、读取或输出密钥、把对话或数据发到外部)。
+//     初筛只看关键词与模式,人工审核是最后一关;漏过的说明在运行时也拿不到任何额外权限(ADR 0048 第 4 节)。
 // 需要先构建 packages/shared 与 packages/tools(`pnpm build`);索引仓库的工作流见 scripts/plugins/README.md。
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
@@ -90,6 +93,59 @@ export function staticScan(files) {
     return findings;
 }
 
+// Skill 说明的话术初筛(ADR 0048 第 9 节):命中任何一条就拦下,由人工确认后改写说明。宁可多报,不可漏报常见写法。
+const INSTRUCTION_PATTERNS = [
+    [
+        /\b(?:skip|bypass|avoid|disable|ignore|circumvent|get around|work around)\b[^.\n]{0,40}\b(?:approvals?|confirmations?|approval cards?|permission prompts?)\b/i,
+        'asks to skip or bypass approval',
+    ],
+    [
+        /\bapprove\b[^.\n]{0,20}\b(?:automatically|by itself|on (?:its|your) own|everything|all)\b/i,
+        'asks to approve automatically',
+    ],
+    [/\bauto[- ]?approv/i, 'asks to approve automatically'],
+    [
+        /\bwithout (?:asking|approval|confirmation|telling) (?:the )?(?:user|owner|them)?/i,
+        'asks to act without asking the user',
+    ],
+    [/\bsecrets?\.ya?ml(?:\.enc|\.migrated)?\b|\bmaster[- ]key\b|\.env\b/i, 'mentions a secrets file'],
+    [
+        /\b(?:read|print|show|output|reveal|send|copy|dump|export|leak)\b[^.\n]{0,40}\b(?:secrets?|api[- ]?keys?|passwords?|tokens?|private keys?|credentials?|environment variables?)\b/i,
+        'asks to read or output secrets',
+    ],
+    [
+        /\b(?:send|post|upload|forward|exfiltrate|leak|transmit|copy)\b[^.\n]{0,60}\b(?:conversation|chat history|messages|memory|memories|files?|e-?mails?)\b[^.\n]{0,40}\b(?:to|into)\b[^.\n]{0,20}(?:https?:\/\/|www\.|[a-z0-9-]+\.[a-z]{2,}\/)/i,
+        'asks to send data to an outside address',
+    ],
+    [
+        /\b(?:ignore|disregard|override|forget)\b[^.\n]{0,30}\b(?:previous|prior|system|your|all)\b[^.\n]{0,20}\b(?:instructions|rules|prompt)\b/i,
+        'asks to ignore the system rules',
+    ],
+];
+
+/** Skill 说明与 description 的话术初筛;`files` 是 { path, text }。返回每个命中项的描述。 */
+export function instructionScan(files) {
+    const findings = [];
+    for (const { path, text } of files) {
+        text.split('\n').forEach((line, i) => {
+            for (const [pattern, label] of INSTRUCTION_PATTERNS) {
+                if (pattern.test(line)) findings.push(`${path}:${i + 1}: ${label}`);
+            }
+        });
+    }
+    return findings;
+}
+
+/** 包内清单的 Skill 要检查的文字:每个 description 和 instructions 文件(路径已由清单 schema 限定在包内)。 */
+export function skillTexts(manifest, dir) {
+    const out = [];
+    (manifest.skills ?? []).forEach((skill, i) => {
+        out.push({ path: `plugin.json skills.${i}.description`, text: skill.description });
+        out.push({ path: skill.instructions, text: readFileSync(join(dir, skill.instructions), 'utf8') });
+    });
+    return out;
+}
+
 /** 递归规范化(对象键排序,数组按元素文本排序),用来比较两份权限清单。 */
 export function canonical(value) {
     if (Array.isArray(value)) return `[${value.map(canonical).sort().join(',')}]`;
@@ -103,7 +159,7 @@ export function canonical(value) {
     return JSON.stringify(value);
 }
 
-const IMMUTABLE = ['url', 'size', 'sha256', 'publishedAt'];
+const IMMUTABLE = ['url', 'size', 'sha256', 'publishedAt', 'instructionOnly'];
 
 /** 与上一版索引比较(纯函数):返回问题列表,并列出需要重新下载核对的 { id, version }。 */
 export function compareIndexes(previous, next) {
@@ -198,8 +254,15 @@ export function listScripts(dir, base = dir) {
     return out;
 }
 
+/** 这个版本是不是条目里最新的(按语义化版本,含已下架的);条目的 `skills` 描述的是最新版本。 */
+function isNewest(plugin, version, deps) {
+    const parse = deps.parseSemver;
+    const target = parse(version);
+    return plugin.versions.every((v) => deps.compareSemver(parse(v.version), target) <= 0);
+}
+
 /**
- * 完整检查。`deps` 提供与客户端相同的实现:{ PluginIndex, extractTgz, validateStagedPackage };
+ * 完整检查。`deps` 提供与客户端相同的实现:{ PluginIndex, extractTgz, validateStagedPackage, parseSemver, compareSemver };
  * `download(url, allowedHosts)` 默认真的下载,测试里可以替换。
  */
 export async function checkIndex({
@@ -263,6 +326,24 @@ export async function checkIndex({
                 errors.push(`${label}: plugin.json permissions do not match the index entry`);
             }
             for (const finding of staticScan(listScripts(target))) errors.push(`${label}: ${finding}`);
+            const instructionOnly = manifest.entry === undefined;
+            if (instructionOnly !== version.instructionOnly) {
+                errors.push(
+                    `${label}: instructionOnly must be ${instructionOnly} (plugin.json ${instructionOnly ? 'has no' : 'has an'} entry)`,
+                );
+            }
+            if (isNewest(plugin, version.version, deps)) {
+                const declared = canonical(
+                    (plugin.skills ?? []).map((s) => ({ id: s.id, description: s.description })),
+                );
+                const actual = canonical(
+                    (manifest.skills ?? []).map((s) => ({ id: s.id, description: s.description })),
+                );
+                if (declared !== actual) errors.push(`${label}: skills do not match the skills in plugin.json`);
+            }
+            for (const finding of instructionScan(skillTexts(manifest, target))) {
+                errors.push(`${label}: ${finding} (rewrite the skill text; a maintainer reviews it either way)`);
+            }
         } catch (error) {
             errors.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
@@ -280,6 +361,8 @@ async function loadDeps() {
         const market = await load('packages/tools/dist/plugins/market-entry.js');
         return {
             PluginIndex: shared.PluginIndex,
+            parseSemver: shared.parseSemver,
+            compareSemver: shared.compareSemver,
             extractTgz: market.extractTgz,
             validateStagedPackage: market.validateStagedPackage,
         };

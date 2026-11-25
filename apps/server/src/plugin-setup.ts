@@ -430,6 +430,7 @@ export class PluginService {
             sourceKind: record.sourceKind,
             sourceRef: record.sourceRef,
             unreviewed: record.sourceKind === 'local',
+            instructionOnly: manifest.entry === undefined,
             signedKeyId: record.signedKeyId,
             yanked: this.yanked(record),
             permissions: record.granted as PluginPermissions,

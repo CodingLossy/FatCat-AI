@@ -1115,6 +1115,8 @@ export const zh = {
     'skills.templateHint': '在任务页建一份草稿,在那里确认后才会运行。',
     'plugins.skills': '插件带的技能',
     'plugins.instructionOnly': '纯指令插件:不运行任何代码,只提供说明。',
+    'plugins.instructionOnlyBadge': '纯指令',
+    'plugins.instructionOnlyRun': '没有要运行的代码:纯指令插件没有进程,也没有内存设置。',
     'agents.skills': '技能',
     'agents.skillsHint': '这个代理每次开始运行时自动使用(最多 {max} 个);技能只会开出上面工具集里也有的工具。',
     'agents.noSkills': '还没有安装技能。',

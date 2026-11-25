@@ -1185,6 +1185,8 @@ export const en: Record<Key, string> = {
     'skills.templateHint': 'Creates a draft on the Tasks page. It only runs after you confirm it there.',
     'plugins.skills': 'Skills in this plugin',
     'plugins.instructionOnly': 'Instruction-only plugin: it runs no code and only provides instructions.',
+    'plugins.instructionOnlyBadge': 'Instruction-only',
+    'plugins.instructionOnlyRun': 'Nothing to run: this plugin has no code, so it has no process or memory settings.',
     'agents.skills': 'Skills',
     'agents.skillsHint':
         'Used automatically when this agent starts a run (up to {max}). A skill only adds tools that are also in the tool set above.',

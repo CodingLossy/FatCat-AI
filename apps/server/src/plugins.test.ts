@@ -651,7 +651,7 @@ describe('升级与回退', () => {
         const { res } = await install(dir);
         expect(res.status).toBe(201);
         const view = await runState('idle');
-        expect(view).toMatchObject({ id: 'notes', state: 'enabled' });
+        expect(view).toMatchObject({ id: 'notes', state: 'enabled', instructionOnly: true });
         expect(view?.run).toMatchObject({ state: 'idle', tools: [], rssBytes: null });
         const tools = ToolInfo.array().parse(
             ((await (await send('GET', '/api/v1/tools')).json()) as { items: unknown[] }).items,

@@ -191,6 +191,11 @@ function MarketEntry({
                 {installed ? (
                     <span className="badge">{t('plugins.market.installed', { version: installed.version })}</span>
                 ) : null}
+                {version?.instructionOnly ? (
+                    <span className="badge" data-testid="market-instruction-only">
+                        {t('plugins.instructionOnlyBadge')}
+                    </span>
+                ) : null}
                 <p className="small muted">{pickText(plugin.description, locale)}</p>
                 <p className="small muted">
                     {plugin.author} · {plugin.license}
@@ -202,6 +207,19 @@ function MarketEntry({
                             .map((row) => t(`plugins.market.perm.${row.key}`, { n: row.count }))
                             .join(' · ') || t('plugins.permNone')}
                     </p>
+                ) : null}
+                {plugin.skills && plugin.skills.length > 0 ? (
+                    <div className="plugin-skills" data-testid="market-skills">
+                        <h4>{t('plugins.skills')}</h4>
+                        <ul className="small">
+                            {plugin.skills.map((skill) => (
+                                <li key={skill.id}>
+                                    <code>{skill.id}</code>
+                                    <span className="muted"> · {skill.description}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 ) : null}
                 {version && !version.compatible ? (
                     <p className="small warn">{t('plugins.market.incompatible', { range: version.engines })}</p>
