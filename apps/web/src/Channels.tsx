@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-import type { Channel, ChannelPairing, ChannelStatus, WechatLoginState } from '@fatcat-ai/shared';
+import type { Channel, ChannelKind, ChannelPairing, ChannelStatus, WechatLoginState } from '@fatcat-ai/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, errorText } from './api.js';
 import { useI18n } from './i18n.js';
@@ -11,12 +11,15 @@ type Row = Channel & { status: ChannelStatus | null };
 
 /**
  * 设置页「渠道」(ADR 0022):列出渠道、启用 / 停用、生成配对码、显示绑定的账号与最近错误、降级提醒开关。
- * 1.0 只有微信:扫码登录(ADR 0024)在本页渲染二维码并每 2 秒轮询状态。配对码只在生成时显示一次。
+ * 微信:扫码登录(ADR 0024)在本页渲染二维码并每 2 秒轮询状态。QQ 官方机器人(ADR 0052):填写 AppID 与 AppSecret,
+ * AppSecret 提交后清空、不回显。配对码只在生成时显示一次。
  */
 export function Channels() {
     const { t, locale } = useI18n();
     const [items, setItems] = useState<Row[] | null>(null);
     const [label, setLabel] = useState('');
+    const [kind, setKind] = useState<ChannelKind>('wechat');
+    const [qqForm, setQqForm] = useState<{ channelId: string; appId: string; appSecret: string } | null>(null);
     const [pairing, setPairing] = useState<(ChannelPairing & { channelId: string; minutes: number }) | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [login, setLogin] = useState<{ channelId: string; qrContent: string; state: WechatLoginState } | null>(null);
@@ -86,12 +89,32 @@ export function Channels() {
     const add = (e: FormEvent) => {
         e.preventDefault();
         void run(async () => {
-            await api.channels.add({ kind: 'wechat', label: label.trim() || t('channels.kind.wechat') });
+            await api.channels.add({ kind, label: label.trim() || kindName(kind) });
             setLabel('');
         });
     };
 
-    const kindName = (kind: string) => (kind === 'wechat' ? t('channels.kind.wechat') : t('channels.kindUnknown'));
+    const kindName = (k: string) =>
+        k === 'wechat' ? t('channels.kind.wechat') : k === 'qq' ? t('channels.kind.qq') : t('channels.kindUnknown');
+    // QQ 没有扫码:needs-login 的意思是还没填或凭据被拒
+    const stateName = (c: Row) =>
+        c.kind === 'qq' && c.status?.state === 'needs-login'
+            ? t('channels.state.needs-credentials')
+            : t(`channels.state.${c.status!.state}`);
+    const errorMessage = (error: NonNullable<ChannelStatus['lastError']>) => {
+        const known = ['qq_credentials_invalid', 'qq_intent_not_permitted', 'qq_bot_unavailable'] as const;
+        const code = known.find((k) => k === error.code);
+        return code ? t(`channels.error.${code}`) : error.message;
+    };
+    const saveQq = (e: FormEvent) => {
+        e.preventDefault();
+        if (!qqForm) return;
+        const { channelId, appId, appSecret } = qqForm;
+        void run(async () => {
+            await api.channels.qqCredentials(channelId, { appId: appId.trim(), appSecret });
+            setQqForm(null);
+        });
+    };
 
     return (
         <section>
@@ -107,7 +130,7 @@ export function Channels() {
                                 <span className="small muted">
                                     {' · '}
                                     {kindName(c.kind)}
-                                    {c.status ? ` · ${t(`channels.state.${c.status.state}`)}` : ''}
+                                    {c.status ? ` · ${stateName(c)}` : ''}
                                 </span>
                                 <div className="small muted">
                                     {c.binding
@@ -125,7 +148,7 @@ export function Channels() {
                                 </div>
                                 {c.status?.lastError ? (
                                     <div className="small error">
-                                        {t('channels.lastError', { message: c.status.lastError.message })}
+                                        {t('channels.lastError', { message: errorMessage(c.status.lastError) })}
                                     </div>
                                 ) : null}
                             </div>
@@ -145,6 +168,21 @@ export function Channels() {
                                         }
                                     >
                                         {t('channels.wechatLogin')}
+                                    </button>
+                                ) : null}
+                                {c.kind === 'qq' ? (
+                                    <button
+                                        type="button"
+                                        aria-expanded={qqForm?.channelId === c.id}
+                                        onClick={() =>
+                                            setQqForm((prev) =>
+                                                prev?.channelId === c.id
+                                                    ? null
+                                                    : { channelId: c.id, appId: c.qq?.appId ?? '', appSecret: '' },
+                                            )
+                                        }
+                                    >
+                                        {t('channels.qq.title')}
                                     </button>
                                 ) : null}
                                 {c.binding ? (
@@ -208,6 +246,44 @@ export function Channels() {
                                 </p>
                             </div>
                         ) : null}
+                        {c.kind === 'qq' ? (
+                            <p className="small muted" data-qq-app-id>
+                                {c.qq?.appId
+                                    ? t('channels.qq.saved', { appId: c.qq.appId })
+                                    : t('channels.qq.notSaved')}
+                            </p>
+                        ) : null}
+                        {qqForm?.channelId === c.id ? (
+                            <form className="form qq-credentials" onSubmit={saveQq}>
+                                <p className="small muted">{t('channels.qq.hint')}</p>
+                                <label>
+                                    {t('channels.qq.appId')}
+                                    <input
+                                        inputMode="numeric"
+                                        autoComplete="off"
+                                        required
+                                        pattern="\d{1,32}"
+                                        maxLength={32}
+                                        value={qqForm.appId}
+                                        onChange={(e) => setQqForm({ ...qqForm, appId: e.target.value })}
+                                    />
+                                </label>
+                                <label>
+                                    {t('channels.qq.appSecret')}
+                                    <input
+                                        type="password"
+                                        autoComplete="new-password"
+                                        required
+                                        maxLength={128}
+                                        value={qqForm.appSecret}
+                                        onChange={(e) => setQqForm({ ...qqForm, appSecret: e.target.value })}
+                                    />
+                                </label>
+                                <button type="submit" className="primary">
+                                    {t('channels.qq.save')}
+                                </button>
+                            </form>
+                        ) : null}
                         {pairing?.channelId === c.id && !c.binding ? (
                             <p className="small" role="status">
                                 <code>{pairing.code}</code>{' '}
@@ -231,9 +307,17 @@ export function Channels() {
                 ))}
             </ul>
             <form className="card form" onSubmit={add}>
+                <select
+                    aria-label={t('channels.kindPick')}
+                    value={kind}
+                    onChange={(e) => setKind(e.target.value as ChannelKind)}
+                >
+                    <option value="wechat">{t('channels.kind.wechat')}</option>
+                    <option value="qq">{t('channels.kind.qq')}</option>
+                </select>
                 <input
                     aria-label={t('channels.label')}
-                    placeholder={`${t('channels.label')} (${t('channels.kind.wechat')})`}
+                    placeholder={`${t('channels.label')} (${kindName(kind)})`}
                     value={label}
                     onChange={(e) => setLabel(e.target.value)}
                     maxLength={40}

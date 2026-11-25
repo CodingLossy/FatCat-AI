@@ -114,7 +114,10 @@ export type WechatLoginState = z.infer<typeof WechatLoginState>;
  */
 export const QqCredentials = z
     .object({
-        appId: z.string().trim().regex(/^\d{1,32}$/),
+        appId: z
+            .string()
+            .trim()
+            .regex(/^\d{1,32}$/),
         appSecret: z.string().trim().min(1).max(128),
     })
     .strict();
