@@ -34,7 +34,7 @@ describe('migration 0016 与任务仓储', () => {
                 )
                 .run();
             const result = await migrate(conn.sqlite, migrations, { backupDir: join(dir, 'backups') });
-            expect(result.applied).toEqual([16, 17, 18, 19, 20, 21]);
+            expect(result.applied).toEqual(migrations.filter((m) => m.id >= 16).map((m) => m.id));
             expect(conn.sqlite.pragma('foreign_key_check')).toEqual([]);
             expect(conn.sqlite.pragma('integrity_check', { simple: true })).toBe('ok');
 

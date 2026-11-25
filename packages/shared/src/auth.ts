@@ -36,7 +36,18 @@ export const LoginResponse = z.object({
 });
 export type LoginResponse = z.infer<typeof LoginResponse>;
 
-export const Me = z.object({ id: Id, username: Username, createdAt: IsoDateTime });
+/** 账户角色(ADR 0053 第 2 节)。 */
+export const AccountRole = z.enum(['admin', 'member']);
+export type AccountRole = z.infer<typeof AccountRole>;
+
+/** `role` 与 `displayName` 自 2.0 起提供;旧核心不返回,客户端缺省按管理员处理(1.0 只有一个主人)。 */
+export const Me = z.object({
+    id: Id,
+    username: Username,
+    createdAt: IsoDateTime,
+    role: AccountRole.optional(),
+    displayName: z.string().nullable().optional(),
+});
 export type Me = z.infer<typeof Me>;
 
 export const CreateTokenRequest = z.object({

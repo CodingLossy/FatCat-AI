@@ -4,6 +4,12 @@ All notable user-visible changes are listed here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### 2.0 · Multi-user (in progress)
+
+#### Changed
+
+- Accounts groundwork (ADR 0053, PR 1 of 6): database migration 0022 gives every account a role (`admin` or `member`), an optional display name and a disabled time. The existing owner becomes an admin and no other data changes; the database is backed up first, and older versions refuse to open the migrated database (restore `backups/db-…-pre-0022.sqlite` to go back). The 1.0 rule "only one owner" is replaced by "the first account is always an admin, and the last active admin cannot be demoted, disabled or deleted". `GET /api/v1/auth/me` now also returns `role` and `displayName` (optional fields), and a new error code `admin_required` is reserved for admin-only actions. Nothing else changes yet: there is still no way to add a second account (invites come in the next PR). Chinese summary: 多用户第 1 步:迁移 0022 给账户加角色、显示名和停用时间，原主人成为管理员，其他数据不变(迁移前自动备份，旧版本打不开迁移后的库);「只能有一个主人」改成「第一个账户总是管理员，最后一个管理员不能降级、停用或删除」;`/auth/me` 增加 `role` 与 `displayName`;新增错误码 `admin_required`。暂时还不能添加第二个账户(邀请码在下一个 PR)。
+
 ### M13 · Agent loop deepening (in progress)
 
 #### Added

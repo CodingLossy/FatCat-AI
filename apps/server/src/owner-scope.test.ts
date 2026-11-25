@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// ownerId 覆盖审计(ADR 0051 第 4 节):另一个主人(someone-else)名下的每种资源,主人用它们的 id 调遍 OpenAPI 里
-// 每一条带路径参数的路由,回答和「不存在的 id」完全一样(多数是 404),数据库里那个主人的数据一行不变。新加的带参数路由必须在 ROUTE_IDS 里登记。
+// ownerId 覆盖审计(ADR 0051 第 4 节、ADR 0053 第 3 节):另一个账户(成员 someone-else)名下的每种资源,
+// 管理员用它们的 id 调遍 OpenAPI 里每一条带路径参数的路由,回答和「不存在的 id」完全一样(多数是 404),
+// 数据库里那个账户的数据一行不变。新加的带参数路由必须在 ROUTE_IDS 里登记。
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -139,17 +140,13 @@ async function setup() {
 }
 
 /**
- * 另一个主人名下的一整套资源,全部直接写进数据库。1.0 只允许一个主人账户(触发器拦着),所以和 channels.test.ts
- * 一样关掉外键,用一个不存在的 ownerId 模拟别人。
+ * 另一个账户名下的一整套资源,全部直接写进数据库。2.0 起可以有多个账户(ADR 0053):用一个真的成员账户,
+ * 外键照常开着,所以夹具里的每个引用都必须指向真的行。
  */
 function seedOther(): Fixtures {
-    const { conn } = s;
-    conn.sqlite.pragma('foreign_keys = OFF');
-    try {
-        return seedRows('someone-else');
-    } finally {
-        conn.sqlite.pragma('foreign_keys = ON');
-    }
+    const other = s.repos.owners.create({ username: 'someone-else', passwordHash: 'x' });
+    expect(other.role).toBe('member');
+    return seedRows(other.id);
 }
 
 function seedRows(other: string): Fixtures {

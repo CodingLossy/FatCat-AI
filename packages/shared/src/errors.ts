@@ -42,6 +42,8 @@ export const ErrorCode = z.enum([
     'plugin_upgrade_failed',
     'plugin_backup_too_large',
     'plugin_network_unsupported',
+    /** 以下自 2.0 起提供(多用户,ADR 0053 第 6 节):只有管理员能做的操作。 */
+    'admin_required',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 

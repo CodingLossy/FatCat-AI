@@ -486,6 +486,15 @@ export function authRoutes(deps: AuthRouteDeps) {
         .openapi(meRoute, (c) => {
             const owner = repos.owners.get(requireOwner(c));
             if (!owner) throw unauthorized();
-            return c.json({ id: owner.id, username: owner.username, createdAt: owner.createdAt }, 200);
+            return c.json(
+                {
+                    id: owner.id,
+                    username: owner.username,
+                    createdAt: owner.createdAt,
+                    role: owner.role,
+                    displayName: owner.displayName,
+                },
+                200,
+            );
         });
 }

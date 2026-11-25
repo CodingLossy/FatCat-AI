@@ -54,7 +54,7 @@ describe('migration 0018 与插件仓储', () => {
                 .run();
 
             const result = await migrate(conn.sqlite, migrations, { backupDir: join(dir, 'backups') });
-            expect(result.applied).toEqual([18, 19, 20, 21]);
+            expect(result.applied).toEqual(migrations.filter((m) => m.id >= 18).map((m) => m.id));
             expect(result.backupPath && existsSync(result.backupPath)).toBe(true);
             expect(conn.sqlite.pragma('foreign_key_check')).toEqual([]);
             expect(conn.sqlite.pragma('integrity_check', { simple: true })).toBe('ok');

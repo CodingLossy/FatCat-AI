@@ -238,9 +238,9 @@ const runs = new RunManager({
     ),
     onError: (err, { runId }) => logger.error({ err, runId }, 'run failed unexpectedly'),
 });
-// 1.0 单用户:定时任务按主人的生效时区排期(ADR 0023);还没有主人时跟随服务器
+// 定时任务按最早的管理员的生效时区排期(ADR 0023;按账户分开排期见 ADR 0053 第 8 节);还没有账户时跟随服务器
 const ownerTimeZone = () => {
-    const ownerId = repos.owners.ids()[0];
+    const ownerId = repos.owners.primaryAdmin();
     return effectiveTimeZone(ownerId ? repos.settings.get(ownerId).timeZone : null);
 };
 // 记忆维护任务:每天 03:30(用户时区)运行 decay / tier / expire,有对话进行中时推迟(ADR 0007 第 5.7 节)

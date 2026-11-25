@@ -102,3 +102,17 @@ export function requireOwner(c: Context<AppEnv>): string {
     if (!auth) throw unauthorized();
     return auth.ownerId;
 }
+
+/**
+ * 只有管理员能做的操作(ADR 0053 第 4、6 节):不是管理员或账户已停用时回 403 `admin_required`。
+ * 每次从库里读角色,不信客户端,也不缓存在会话里(降级立即生效)。
+ */
+export function requireAdmin(c: Context<AppEnv>, repos: Pick<Repositories, 'owners'>): string {
+    const ownerId = requireOwner(c);
+    const owner = repos.owners.get(ownerId);
+    if (!owner) throw unauthorized();
+    if (owner.role !== 'admin' || owner.disabledAt !== null) {
+        throw new ApiError(403, 'admin_required', 'Forbidden', 'This needs an admin account.');
+    }
+    return ownerId;
+}

@@ -277,7 +277,7 @@
   {
     "key": "repos.ts:owners.create",
     "category": "system",
-    "reason": "Creates the owner account at setup."
+    "reason": "Creates an account (the first one at setup, members later); the first account is always an admin."
   },
   {
     "key": "repos.ts:owners.get",
@@ -288,6 +288,11 @@
     "key": "repos.ts:owners.getByUsername",
     "category": "credential",
     "reason": "Login looks up the account by username before checking the password."
+  },
+  {
+    "key": "repos.ts:owners.primaryAdmin",
+    "category": "system",
+    "reason": "Install-wide defaults not yet split per account (server time zone, unclaimed pairing failures) use the earliest active admin."
   },
   {
     "key": "repos.ts:sessions.untrustedAt",

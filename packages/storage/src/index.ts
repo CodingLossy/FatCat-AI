@@ -90,7 +90,7 @@ export type { MailAccountCreate, MailAccountRecord, MailFolderSync, MailKnownFol
 export type { MailDraftCreate, MailItemRow, MailListQuery, MailMessageRecord } from './mail-cache.js';
 export { migrations } from './migrations/index.js';
 export { createRepositories, type AppendMessageInput, type PageRequest, type Repositories } from './repos.js';
-export { TABLE_COLUMNS, type TableName } from './schema.js';
+export { TABLE_COLUMNS, type OwnerRole, type TableName } from './schema.js';
 
 export interface OpenStorageOptions {
     /** 数据目录;数据库为 <dataDir>/db.sqlite,迁移前备份在 <dataDir>/backups/。 */

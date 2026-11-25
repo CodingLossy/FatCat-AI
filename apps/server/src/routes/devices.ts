@@ -204,8 +204,8 @@ export function deviceRoutes(deps: DeviceRouteDeps) {
             c.header('Cache-Control', 'no-store');
             if (!paired) {
                 limiter.recordFailure(ip);
-                // 码对应哪个账户不知道,失败事件记到主人名下(1.0 只有一个主人)
-                const ownerId = repos.owners.ids()[0];
+                // 码对应哪个账户不知道,失败事件记到最早的管理员名下(ADR 0053)
+                const ownerId = repos.owners.primaryAdmin();
                 if (ownerId) {
                     repos.devices.events.append(ownerId, {
                         deviceId: null,

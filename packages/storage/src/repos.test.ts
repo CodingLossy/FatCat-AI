@@ -43,10 +43,47 @@ function insertItem(id: string, title: string, summary: string | null = null) {
         .run(id, t.ownerId, title, summary, at, at);
 }
 
-describe('owners', () => {
-    it('1.0 只允许一个主人账户', () => {
+describe('owners(ADR 0053 第 2 节)', () => {
+    it('第一个账户是管理员,之后默认建成员;primaryAdmin 是最早的未停用管理员', () => {
         expect(t.repos.owners.count()).toBe(1);
-        expect(() => t.repos.owners.create({ username: 'second', passwordHash: 'x' })).toThrow(/only one owner/);
+        expect(t.repos.owners.get(t.ownerId)).toMatchObject({ role: 'admin', displayName: null, disabledAt: null });
+        const member = t.repos.owners.create({ username: 'second', passwordHash: 'x', displayName: '小明' });
+        expect(member.role).toBe('member');
+        expect(t.repos.owners.get(member.id)).toMatchObject({ role: 'member', displayName: '小明' });
+        expect(t.repos.owners.primaryAdmin()).toBe(t.ownerId);
+        expect(t.repos.owners.ids()).toEqual([t.ownerId, member.id]);
+    });
+
+    it('不能降级、停用或删除最后一个未停用的管理员;另有管理员时可以', () => {
+        const sql = t.conn.sqlite;
+        const demote = (id: string) => sql.prepare(`UPDATE owners SET role = 'member' WHERE id = ?`).run(id);
+        const disable = (id: string) =>
+            sql.prepare(`UPDATE owners SET disabled_at = '2026-11-25T00:00:00.000Z' WHERE id = ?`).run(id);
+        const remove = (id: string) => sql.prepare('DELETE FROM owners WHERE id = ?').run(id);
+        expect(() => demote(t.ownerId)).toThrow(/at least one active admin/);
+        expect(() => disable(t.ownerId)).toThrow(/at least one active admin/);
+        expect(() => remove(t.ownerId)).toThrow(/at least one active admin/);
+        // 成员随便改
+        const member = t.repos.owners.create({ username: 'member', passwordHash: 'x' }).id;
+        disable(member);
+        remove(member);
+        // 有第二个管理员之后,第一个可以降级;剩下的那个又成了最后一个
+        const second = t.repos.owners.create({ username: 'admin2', passwordHash: 'x', role: 'admin' }).id;
+        demote(t.ownerId);
+        expect(t.repos.owners.primaryAdmin()).toBe(second);
+        expect(() => disable(second)).toThrow(/at least one active admin/);
+    });
+
+    it('没有未停用的管理员时,插入的账户自动成为管理员', () => {
+        const sql = t.conn.sqlite;
+        sql.pragma('foreign_keys = OFF');
+        sql.exec('DROP TRIGGER trg_owners_last_admin_delete');
+        sql.prepare('DELETE FROM owners').run();
+        sql.pragma('foreign_keys = ON');
+        const first = t.repos.owners.create({ username: 'x', passwordHash: 'x', role: 'member' });
+        expect(first.role).toBe('admin');
+        expect(t.repos.owners.get(first.id)?.role).toBe('admin');
+        expect(t.repos.owners.create({ username: 'y', passwordHash: 'x' }).role).toBe('member');
     });
 });
 
