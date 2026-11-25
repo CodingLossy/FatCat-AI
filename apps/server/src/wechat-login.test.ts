@@ -8,7 +8,7 @@ import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { Channel, ChannelStatus, WechatLoginStart, WechatLoginState } from '@fatcat-ai/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { isAllowedIlinkUrl } from './channels/wechat.js';
+import { isAllowedIlinkUrl } from '@fatcat-ai/channels/hub';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 const TOKEN = 'ilink-token-abcdef-123456';

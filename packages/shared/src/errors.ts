@@ -82,3 +82,27 @@ export const ProblemDetails = z.object({
 export type ProblemDetails = z.infer<typeof ProblemDetails>;
 
 export const PROBLEM_CONTENT_TYPE = 'application/problem+json';
+
+/** `ServiceError` 的附加字段:与 problem details 的可选字段对应,另可带响应头(例如 Retry-After)。 */
+export type ServiceErrorExtra = Partial<Pick<ProblemDetails, 'issues' | 'providerCode' | 'reason'>> & {
+    headers?: Record<string, string>;
+};
+
+/**
+ * 带 HTTP 状态码与稳定错误码的业务错误(ADR 0050 第 1 节)。服务器的统一错误处理把它转成 problem+json;
+ * 服务器以外的包(渠道中枢、插件服务)只用它,不依赖 HTTP 框架。
+ */
+export class ServiceError extends Error {
+    constructor(
+        readonly status: number,
+        readonly code: ErrorCode,
+        readonly title: string,
+        readonly detail?: string,
+        readonly extra: ServiceErrorExtra = {},
+    ) {
+        super(detail ?? title);
+    }
+}
+
+export const notFoundError = (what = 'Resource') =>
+    new ServiceError(404, 'not_found', 'Not Found', `${what} was not found.`);

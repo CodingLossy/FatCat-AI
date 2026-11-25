@@ -26,8 +26,8 @@ import { FailureLimiter } from './auth/rate-limit.js';
 import { dataDirMasterKey } from './data-dir.js';
 import { type BuiltinSkill, SkillService } from './skills.js';
 import { createLogger } from './log.js';
-import { type AdapterFactory, ChannelHub } from './channels/hub.js';
-import { WechatChannels } from './channels/wechat.js';
+import { type AdapterFactory, ChannelHub, WechatChannels } from '@fatcat-ai/channels/hub';
+import { channelHubServerDeps } from './channel-setup.js';
 import { PluginService } from './plugin-setup.js';
 import type { AgentEvent, ChannelKind } from '@fatcat-ai/shared';
 import { createDelegateTool, groupOf, isCoreGroup } from '@fatcat-ai/tools';
@@ -251,7 +251,7 @@ export async function createTestServer(
         runs,
         bus,
         secrets,
-        files: attachmentFiles,
+        ...channelHubServerDeps({ repos, runs, secrets, files: attachmentFiles }),
         logger,
         sourceUrl: overrides.sourceUrl ?? 'https://github.com/CodingLossy/FatCat-AI',
         ...(adapters ? { adapters } : {}),

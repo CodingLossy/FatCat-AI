@@ -46,8 +46,8 @@ import { runSecretsCommand } from './secrets-cli.js';
 import { createLogger } from './log.js';
 import { acquireServerLock, installLockRelease, installShutdownHandlers, runningServerPid } from './server-lock.js';
 import { attachWebSocket } from './ws.js';
-import { ChannelHub } from './channels/hub.js';
-import { WechatChannels } from './channels/wechat.js';
+import { ChannelHub, WechatChannels } from '@fatcat-ai/channels/hub';
+import { channelHubServerDeps } from './channel-setup.js';
 
 // 离线子命令:`node dist/index.js secrets migrate|rekey|cleanup`(ADR 0026);不启动服务器
 if (process.argv[2] === 'secrets') {
@@ -283,7 +283,7 @@ const channels: ChannelHub = new ChannelHub({
     runs,
     bus,
     secrets,
-    files: attachmentFiles,
+    ...channelHubServerDeps({ repos, runs, secrets, files: attachmentFiles }),
     logger,
     sourceUrl: config.sourceUrl,
     adapters: { wechat: wechat.factory },

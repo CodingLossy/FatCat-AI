@@ -6,7 +6,13 @@ import { FakeChannelAdapter, type FakeAdapterOptions } from '@fatcat-ai/channels
 import type { ChatChunk, ChatRequest, ModelProvider } from '@fatcat-ai/providers';
 import { Channel, ChannelPairing, ChannelStatus, MetaResponseSchema, pageOf } from '@fatcat-ai/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { approvalReminder, composeUserText, IGNORED_MESSAGES_PER_MINUTE, MAX_QUEUE, REPLIES } from './channels/hub.js';
+import {
+    approvalReminder,
+    composeUserText,
+    IGNORED_MESSAGES_PER_MINUTE,
+    MAX_QUEUE,
+    REPLIES,
+} from '@fatcat-ai/channels/hub';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 let s: TestServer;

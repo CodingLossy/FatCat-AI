@@ -3,13 +3,12 @@
 
 // 微信 iLink 的服务器部分(ADR 0024):适配器工厂(保存长轮询游标)与扫码授权。
 // 扫码确认后令牌按 ADR 0022 第 9 节写进 secrets.yaml 的 ILINK_TOKEN_<channelId>,渠道配置只记 file: 引用。
-import { abortablePause, IlinkClient, IlinkError, WechatAdapter } from '@fatcat-ai/channels';
 import type { SecretStore } from '@fatcat-ai/providers';
-import type { WechatLoginStart, WechatLoginState } from '@fatcat-ai/shared';
+import { ServiceError, type WechatLoginStart, type WechatLoginState } from '@fatcat-ai/shared';
 import type { ChannelRecord, Repositories } from '@fatcat-ai/storage';
-import { ApiError } from '../errors.js';
-import type { Logger } from '../log.js';
-import type { AdapterFactory, ChannelHub } from './hub.js';
+import { IlinkClient, IlinkError } from '../ilink.js';
+import { abortablePause, WechatAdapter } from '../wechat.js';
+import type { AdapterFactory, ChannelHub, ChannelLogger } from './hub.js';
 
 /** 扫码授权的有效期:超过后需要在 Web 重新开始。 */
 export const WECHAT_LOGIN_TTL_MS = 5 * 60 * 1000;
@@ -26,7 +25,7 @@ export function isAllowedIlinkUrl(url: URL): boolean {
 export interface WechatOptions {
     repos: Repositories;
     secrets: SecretStore;
-    logger: Logger;
+    logger: ChannelLogger;
     /** 测试时指向假的 iLink 服务器。 */
     baseUrl?: string;
     allowUrl?: (url: URL) => boolean;
@@ -84,9 +83,15 @@ export class WechatChannels {
         } catch (error) {
             const code = error instanceof IlinkError ? error.code : 'network';
             this.options.logger.warn({ channelId: channel.id, code }, 'wechat qr code request failed');
-            throw new ApiError(502, 'provider_error', 'Bad Gateway', 'The WeChat service did not return a QR code.', {
-                providerCode: code === 'network' ? 'network_error' : 'upstream_error',
-            });
+            throw new ServiceError(
+                502,
+                'provider_error',
+                'Bad Gateway',
+                'The WeChat service did not return a QR code.',
+                {
+                    providerCode: code === 'network' ? 'network_error' : 'upstream_error',
+                },
+            );
         }
         const session: LoginSession = {
             loginId: crypto.randomUUID(),
