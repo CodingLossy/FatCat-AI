@@ -10,9 +10,10 @@ export default defineConfig({
             enabled: true,
             provider: 'v8',
             include: ['src/**/*.ts'],
-            // 渠道中枢(src/hub)由 apps/server 经 HTTP 的集成测试覆盖(channels.test.ts、wechat-login.test.ts、
-            // channel-injection.eval.test.ts),那边跑的是构建产物,算不进这里的覆盖率(ADR 0050 第 2 节)
-            exclude: ['src/**/*.test.ts', 'src/testing.ts', 'src/hub/**'],
+            // src/hub/test-harness.ts 是中枢单测的共用替身(ADR 0052 第 6 节),和 testing.ts 一样不计入;
+            // 微信扫码授权(src/hub/wechat-channels.ts)由 apps/server 的 wechat-login.test.ts 经 HTTP 覆盖,
+            // 那边跑的是构建产物,算不进这里(ADR 0050 第 2 节)
+            exclude: ['src/**/*.test.ts', 'src/testing.ts', 'src/hub/test-harness.ts', 'src/hub/wechat-channels.ts'],
             reporter: ['text-summary'],
             thresholds: { lines: 80, statements: 80 },
         },

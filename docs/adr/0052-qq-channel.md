@@ -93,7 +93,7 @@
 
 ## 6. 测试
 
-- **包级中枢单测**(ADR 0050 第 2 节承诺的):`packages/channels/src/hub/hub.test.ts`,用假的仓储、运行管理与假渠道,覆盖绑定、过滤、指令、审批短码、排队、限流、切段;微信与 QQ 两种适配器共用同一套测试替身。之后 `packages/channels/vitest.config.ts` 不再整体排除 `src/hub/**`。
+- **包级中枢单测**(ADR 0050 第 2 节承诺的):`packages/channels/src/hub/hub.test.ts`,覆盖绑定、过滤、去重、指令、`/map`、审批短码(含在 Web 处理后的「已处理」)、排队、限流、切段、降级提醒、任务推送与退避。共用替身在 `src/hub/test-harness.ts`:临时目录里的真实 SQLite、真实的 `RunManager` 与事件总线,模型换成按脚本输出的假 provider,渠道换成假适配器(比手写假的仓储和运行管理更贴近生产,也不用维护两套行为)。用例按 kind 参数化,`feat/channel-qq` 把 `qq` 加进去。`packages/channels/vitest.config.ts` 不再整体排除 `src/hub/**`,只排除替身和由 `apps/server` 的 `wechat-login.test.ts` 覆盖的 `wechat-channels.ts`(实现记录:`test/channel-hub-unit`)。
 - **QQ 适配器**:`packages/channels/src/qq.test.ts`,本机假的令牌接口与假网关(Node 自带的 HTTP 服务加最小的 WebSocket 握手,只在测试里):Identify 的 intents、心跳与回执超时、op 7 / 断线后 Resume、op 9 重新 Identify、令牌到期前刷新、100016 → `needs-login`、网关地址不是 `*.qq.com` → `backoff`、`stop()` 立即关闭;入站映射(单聊、群 @、引用、附件);发送带 `msg_id` 与递增的 `msg_seq`。
 - **服务器**:`apps/server/src/qq-credentials.test.ts`:凭据写入 `secrets.yaml` 且备份等于原文件、API 和日志里没有 AppSecret、删除渠道后文件恢复原样、解析失败时不写、对微信渠道 409、未登录 401;`channel-injection.eval.test.ts` 已有的用例用假渠道跑,不依赖 kind,不需要复制一份。
 - **e2e**:建 QQ 渠道、填凭据、看到 AppID 与状态(网关用假的);手机与桌面截图。
