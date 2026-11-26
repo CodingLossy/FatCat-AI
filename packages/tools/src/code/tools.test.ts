@@ -10,6 +10,7 @@ import {
     renameSync,
     symlinkSync,
     mkdtempSync,
+    readdirSync,
     realpathSync,
     rmSync,
     writeFileSync,
@@ -388,7 +389,11 @@ describe('git.* (ADR 0049 第 3.2、3.3 节)', { timeout: TIMEOUT }, () => {
             await allDenied(packed);
 
             const loose = fresh();
-            linkDir(join(secret, '.git', 'objects', 'info'), join(loose, '.git', 'objects', secretSha.slice(0, 2)));
+            // 两位十六进制目录名要避开这个仓库自己已有的对象目录(提交哈希随时间变,撞上就是 EEXIST)
+            const looseObjects = join(loose, '.git', 'objects');
+            const taken = new Set(readdirSync(looseObjects));
+            const hex = [...Array(256).keys()].map((i) => i.toString(16).padStart(2, '0')).find((h) => !taken.has(h))!;
+            linkDir(join(secret, '.git', 'objects', 'info'), join(looseObjects, hex));
             await expect(checkProject(loose, [root])).rejects.toThrow(denied);
         });
 
