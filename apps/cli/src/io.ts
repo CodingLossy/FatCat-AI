@@ -35,11 +35,19 @@ export function status(ctx: Ctx, message: string): void {
     ctx.stderr.write(`${message}\n`);
 }
 
-/** 读完 stdin(用于 --stdin / --password-stdin)。 */
+/**
+ * Windows PowerShell 5.1 把字符串送进原生程序时,字节是 UTF-8 BOM(U+FEFF)加正文再加 CRLF。
+ * BOM 不是用户输入的内容。
+ */
+function withoutLeadingBom(text: string): string {
+    return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
+/** 读完 stdin(用于 --stdin / --password-stdin)。开头的 BOM 丢掉,行尾由调用方去掉。 */
 export async function readAll(ctx: Ctx): Promise<string> {
     const chunks: Buffer[] = [];
     for await (const chunk of ctx.stdin) chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
-    return Buffer.concat(chunks).toString('utf8');
+    return withoutLeadingBom(Buffer.concat(chunks).toString('utf8'));
 }
 
 export function lineReader(ctx: Ctx): Interface {
@@ -74,7 +82,7 @@ export function readHidden(ctx: Ctx, prompt: string): Promise<string> {
             stdin.off('data', onData);
             ctx.stderr.write('\n');
             if (error) reject(error);
-            else resolve(value);
+            else resolve(withoutLeadingBom(value));
         };
         const onData = (chunk: Buffer | string) => {
             for (const ch of String(chunk)) {
