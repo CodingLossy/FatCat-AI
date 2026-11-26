@@ -247,9 +247,16 @@ describe('cat hero model', () => {
         expect(Math.max(...speakTails)).toBeGreaterThan(0.08);
         expect(Math.max(...speakTails)).toBeLessThan(0.25);
         expect(catMouth(0)).toEqual([]);
+        expect(catMouth(0.05)).toEqual([]);
         const open = catMouth(1);
-        const ys = open.map((p) => p[1]);
-        expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(0.08);
+        expect(open).toHaveLength(1);
+        const ys = open[0]!.map((p) => p[1]);
+        const span = Math.max(...ys) - Math.min(...ys);
+        // 下唇是一条窄缝:比合上的弧低一点,但远不是一个圆洞
+        expect(span).toBeGreaterThan(0.02);
+        expect(span).toBeLessThan(0.07);
+        const quietOpen = catMouth(0.2)[0]!;
+        expect(Math.max(...open[0]!.map((p) => p[1]))).toBeGreaterThan(Math.max(...quietOpen.map((p) => p[1])));
         expect(flowGlow(0.5, 0, 1)).toBe(0);
         expect(flowGlow(0.25, 0.25, 1)).toBe(1);
     });

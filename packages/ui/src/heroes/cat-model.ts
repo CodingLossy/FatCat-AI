@@ -190,20 +190,16 @@ export function catPose(state: OrbState, level: number, tSec: number, knowledge:
     };
 }
 
-/** 张开的嘴(猫空间)。合上时为空,沿用线稿上原来的嘴。 */
-export function catMouth(open: number): Pt[] {
+/**
+ * 说话时多出来的下唇(猫空间),一笔细线,不闭合、不填色。
+ * 音量很低时为空,沿用线稿上原来的小弧。张开时下唇从两个嘴角垂下一条窄缝,
+ * 最开也不过一条猫嘴,不是圆洞。
+ */
+export function catMouth(open: number): Pt[][] {
     const o = Math.min(1, Math.max(0, open));
-    if (o < 0.05) return [];
-    const rx = 0.04 + 0.025 * o;
-    const ry = 0.008 + 0.05 * o;
-    const cy = -0.285;
-    const n = 18;
-    const pts: Pt[] = [];
-    for (let k = 0; k <= n; k++) {
-        const a = (k / n) * Math.PI * 2;
-        pts.push([rx * Math.cos(a), cy + ry * Math.sin(a)]);
-    }
-    return pts;
+    if (o < 0.12) return [];
+    const drop = 0.008 + 0.028 * o;
+    return [cubic([-0.06, -0.29], [-0.028, -0.272 + drop], [0.028, -0.272 + drop], [0.06, -0.29])];
 }
 
 /** 说话时偶尔冒出的小字。 */

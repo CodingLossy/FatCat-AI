@@ -189,21 +189,20 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
         }
         g.stroke();
 
-        // 说话时嘴随音量张开。合上时不画,线稿上原来的嘴还在。
-        const mouth = catMouth(mouthEase);
-        if (mouth.length > 0) {
-            g.beginPath();
-            mouth.forEach((p, i) => {
-                const q = S('face', p);
-                if (i) g.lineTo(q[0], q[1]);
-                else g.moveTo(q[0], q[1]);
-            });
-            g.fillStyle = palette.whisker;
-            g.globalAlpha = 0.9 * dim;
-            g.fill();
+        // 说话时下唇随音量分开一条窄缝。和脸是同一支笔,不填色;合上时不画,线稿上的小弧还在。
+        const lips = catMouth(mouthEase);
+        if (lips.length > 0) {
             g.strokeStyle = line;
-            g.lineWidth = Math.max(1.1, 2 * scale);
-            g.globalAlpha = 0.95 * dim;
+            g.lineWidth = Math.max(1.2, 2.4 * scale);
+            g.globalAlpha = (0.55 + 0.45 * pose.brightness) * dim;
+            g.beginPath();
+            for (const lip of lips) {
+                lip.forEach((p, i) => {
+                    const q = S('face', p);
+                    if (i) g.lineTo(q[0], q[1]);
+                    else g.moveTo(q[0], q[1]);
+                });
+            }
             g.stroke();
         }
 
