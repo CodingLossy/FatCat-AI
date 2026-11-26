@@ -22,6 +22,7 @@ import {
 } from './orb-model.js';
 
 export {
+    compactDisplay,
     fibonacciSphere,
     generateParticles,
     initialQuality,

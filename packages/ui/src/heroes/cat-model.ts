@@ -116,9 +116,11 @@ export interface CatPose {
     readonly flowSpeed: number;
     /** 光点整体亮度(0–1)。 */
     readonly brightness: number;
+    /** 嘴张开的程度(0 合上,1 全开)。只有说话时跟着音量。 */
+    readonly mouth: number;
 }
 
-/** 聆听时耳朵动、思考时尾巴摆、说话时光顺着轮廓流动(随音量变亮变快);知识模式静下来并压暗。 */
+/** 聆听时耳朵动、思考时尾巴摆、说话时光顺着轮廓流动(随音量变亮变快),嘴也随音量开合;知识模式静下来并压暗。 */
 export function catPose(state: OrbState, level: number, tSec: number, knowledge: boolean): CatPose {
     const lv = Math.min(1, Math.max(0, level));
     const breathe = 0.012 * Math.sin(tSec * 1.4);
@@ -131,6 +133,7 @@ export function catPose(state: OrbState, level: number, tSec: number, knowledge:
             flow: 0,
             flowSpeed: 0,
             brightness: 0.55,
+            mouth: 0,
         };
     if (state === 'listening') {
         // 两只耳朵轮流抖一下
@@ -146,23 +149,122 @@ export function catPose(state: OrbState, level: number, tSec: number, knowledge:
             flow: 0,
             flowSpeed: 0,
             brightness: 0.95,
+            mouth: 0,
         };
     }
     if (state === 'thinking' || state === 'executing') {
-        return { earL: 0, earR: 0, tail: 0.32 * Math.sin(tSec * 2.4), breathe, flow: 0, flowSpeed: 0, brightness: 0.9 };
-    }
-    if (state === 'speaking') {
         return {
             earL: 0,
             earR: 0,
-            tail: 0.08 * Math.sin(tSec * 1.2),
-            breathe: breathe + 0.015 * lv,
+            tail: 0.32 * Math.sin(tSec * 2.4),
+            breathe,
+            flow: 0,
+            flowSpeed: 0,
+            brightness: 0.9,
+            mouth: 0,
+        };
+    }
+    if (state === 'speaking') {
+        // 耳朵和尾巴只动一点,幅度跟着音量;嘴张开的程度就是音量
+        const ear = 0.07 * (0.35 + 0.65 * lv);
+        return {
+            earL: ear * Math.sin(tSec * 2.6),
+            earR: ear * Math.sin(tSec * 2.6 + 0.9),
+            tail: (0.05 + 0.1 * lv) * Math.sin(tSec * 1.7),
+            breathe: breathe + 0.012 * lv,
             flow: 0.45 + 0.55 * lv,
             flowSpeed: 0.18 + 0.3 * lv,
             brightness: 1,
+            mouth: lv,
         };
     }
-    return { earL: 0, earR: 0, tail: 0.08 * Math.sin(tSec * 0.9), breathe, flow: 0, flowSpeed: 0, brightness: 0.8 };
+    return {
+        earL: 0,
+        earR: 0,
+        tail: 0.08 * Math.sin(tSec * 0.9),
+        breathe,
+        flow: 0,
+        flowSpeed: 0,
+        brightness: 0.8,
+        mouth: 0,
+    };
+}
+
+/** 张开的嘴(猫空间)。合上时为空,沿用线稿上原来的嘴。 */
+export function catMouth(open: number): Pt[] {
+    const o = Math.min(1, Math.max(0, open));
+    if (o < 0.05) return [];
+    const rx = 0.04 + 0.025 * o;
+    const ry = 0.008 + 0.05 * o;
+    const cy = -0.285;
+    const n = 18;
+    const pts: Pt[] = [];
+    for (let k = 0; k <= n; k++) {
+        const a = (k / n) * Math.PI * 2;
+        pts.push([rx * Math.cos(a), cy + ry * Math.sin(a)]);
+    }
+    return pts;
+}
+
+/** 说话时偶尔冒出的小字。 */
+export const MEOW_TEXT = '喵~';
+export const BUBBLE_GAP_S = 4.5;
+export const BUBBLE_LIFE_S = 1.6;
+
+export interface MeowBubble {
+    age: number;
+    life: number;
+    x: number;
+    y: number;
+}
+
+export interface BubbleField {
+    bubbles: MeowBubble[];
+    /** 离下一次可以出现还要等的秒数。 */
+    wait: number;
+    side: 1 | -1;
+}
+
+export function createBubbles(): BubbleField {
+    return { bubbles: [], wait: 1.2, side: 1 };
+}
+
+/** 气泡很快淡入,中间保持不透明(字要看得清),最后再淡出。 */
+export function bubbleOpacity(age: number, life: number): number {
+    if (life <= 0 || age < 0 || age >= life) return 0;
+    const u = age / life;
+    if (u < 0.12) return u / 0.12;
+    if (u > 0.72) return (1 - u) / 0.28;
+    return 1;
+}
+
+/**
+ * 说话而且音量够高时,每隔几秒在头旁边放一个「喵~」,同时最多一个。
+ * 减少动态时不放(那是额外的运动)。说话停下后已有的淡完,不马上再放一个。
+ */
+export function stepBubbles(
+    field: BubbleField,
+    dtMs: number,
+    speaking: boolean,
+    level: number,
+    reduced: boolean,
+): BubbleField {
+    if (reduced) return { bubbles: [], wait: field.wait, side: field.side };
+    const dt = Math.max(0, dtMs) / 1000;
+    const bubbles = field.bubbles.map((b) => ({ ...b, age: b.age + dt })).filter((b) => b.age < b.life);
+    const lv = Math.min(1, Math.max(0, level));
+    if (!speaking || lv < 0.28) {
+        const wait = !speaking && field.wait < 1.2 ? 1.2 : field.wait;
+        return { bubbles, wait, side: field.side };
+    }
+    let wait = field.wait - dt;
+    let side = field.side;
+    if (wait <= 0 && bubbles.length < 1) {
+        bubbles.push({ age: 0, life: BUBBLE_LIFE_S, x: side * 0.62, y: -0.82 });
+        side = side === 1 ? -1 : 1;
+        wait = BUBBLE_GAP_S;
+    }
+    return { bubbles, wait, side };
 }
 
 function rotate(p: Pt, pivot: Pt, angle: number): Pt {

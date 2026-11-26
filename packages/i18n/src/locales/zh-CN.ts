@@ -844,6 +844,8 @@ export const zh = {
     'settings.voiceContinuousHint':
         '主界面打开时麦克风就开始听,点球暂停 / 继续;断句在本机完成,只把说话的片段发去转写。',
     'settings.voiceSilenceEnd': '多久没说话自动暂停(秒)',
+    'settings.voiceMeow': '猫咪说话时轻轻喵一声',
+    'settings.voiceMeowHint': '默认关闭,以免盖住朗读。',
     'models.voice': '朗读音色',
     'models.voiceHint': '只对 tts 用途有效;留空时用 alloy(OpenAI 的默认音色,其他服务的音色名可能不同)。',
     'egress.title': '外连目标',

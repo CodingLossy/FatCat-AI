@@ -5,16 +5,20 @@
 // 说话时整树随音量轻摇,思考时光沿树干往上爬。颜色来自 tokens.css 的 --nature-* 变量;帧循环与科技共用。
 
 import { expandedId, type KnowledgeScene, pickNode, type ScreenNode } from '../knowledge-model.js';
-import type { OrbState } from '../orb-model.js';
+import { compactDisplay, type OrbState } from '../orb-model.js';
 import type { Hero, HeroMode, HeroOptions } from '../theme.js';
 import { addTick, currentQuality, fitCanvas, prefersReducedMotion } from '../voice-orb.js';
 import { type AnchoredKnowledgePalette, drawAnchoredKnowledge } from './anchored-knowledge.js';
 import {
     branchChain,
     climbGlow,
+    createLeafField,
+    leafAlpha,
+    leafCap,
     natureFireflies,
     natureLook,
     natureTree,
+    stepLeaves,
     swayOffset,
     tipsFor,
     TREE_BASE,
@@ -104,21 +108,17 @@ export function createNatureHero(canvas: HTMLCanvasElement, options: HeroOptions
     let lastLayoutMs = 0;
     // 平滑后的电平,摇动不跳
     let smooth = 0;
+    let leaves = createLeafField();
 
     const draw = (nowMs: number) => {
         if (!reduced && ++frames % 120 === 0) palette = readPalette(canvas);
         const t = reduced ? 2.4 : (nowMs - start) / 1000;
+        const frameDt = lastMs ? Math.min(100, nowMs - lastMs) : 0;
         smooth += ((level ?? 0) - smooth) * 0.2;
         const knowledge = mode === 'knowledge';
         const look = natureLook(state, reduced ? 0 : smooth, knowledge);
         // 状态色染在树冠光点和萤火上(枝干保持金色);知识模式不染色
-        tint = stepTint(
-            tint,
-            knowledge ? 'idle' : heroState,
-            palette.states,
-            lastMs ? Math.min(100, nowMs - lastMs) : 0,
-            reduced || !lastMs,
-        );
+        tint = stepTint(tint, knowledge ? 'idle' : heroState, palette.states, frameDt, reduced || !lastMs);
         lastMs = nowMs;
         const tinted = (base: string) => {
             const rgb = parseColor(base);
@@ -132,6 +132,17 @@ export function createNatureHero(canvas: HTMLCanvasElement, options: HeroOptions
         const cx = w / 2;
         const cy = h / 2;
         const scale = Math.min(1, R / 220);
+        const display = globalThis.screen;
+        const screenShort = display ? Math.min(display.width, display.height) : undefined;
+        const compact = compactDisplay(Math.min(w, h), screenShort) || scale < 0.55;
+        leaves = stepLeaves(
+            leaves,
+            frameDt,
+            state === 'speaking' && !knowledge,
+            reduced ? 0 : smooth,
+            reduced ? 0 : leafCap(compact),
+            reduced,
+        );
         const sway = reduced ? 0 : look.sway;
         const X = (x: number, y: number) => cx + (x + swayOffset(y, sway, t)) * R;
         const Y = (y: number) => cy + y * R;
@@ -271,6 +282,27 @@ export function createNatureHero(canvas: HTMLCanvasElement, options: HeroOptions
                 g.beginPath();
                 g.arc(px, py, 1.4 * Math.max(0.6, scale), 0, Math.PI * 2);
                 g.fill();
+            }
+        }
+        g.globalAlpha = 1;
+
+        // 说话时的落叶:一片一片往下,靠近地面淡出。减少动态时 stepLeaves 已经清空。
+        if (!knowledge) {
+            for (const leaf of leaves.leaves) {
+                if (!leaf.active) continue;
+                const alpha = leafAlpha(leaf.y);
+                if (alpha <= 0) continue;
+                g.save();
+                g.translate(cx + leaf.x * R, cy + leaf.y * R);
+                g.rotate(leaf.phase + leaf.age * 1.4);
+                g.fillStyle = tinted(palette.canopy);
+                g.globalAlpha = alpha * 0.9 * look.brightness;
+                g.beginPath();
+                const rx = (2.2 + leaf.size * 2.4) * Math.max(0.6, scale);
+                const ry = (1.1 + leaf.size * 1.1) * Math.max(0.6, scale);
+                g.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+                g.fill();
+                g.restore();
             }
         }
         g.globalAlpha = 1;

@@ -67,6 +67,15 @@ export function initialQuality(hardwareConcurrency?: number, deviceMemory?: numb
     return low ? 0.6 : 1;
 }
 
+/**
+ * 手机(屏幕短边 < 600,与 initialQuality 同一条线)或很小的画布。
+ * 说话时的落叶用它把数量压低;星点本身仍走画质预算。
+ */
+export function compactDisplay(canvasMin: number, screenShort?: number): boolean {
+    if (screenShort !== undefined && screenShort > 0 && screenShort < 600) return true;
+    return canvasMin > 0 && canvasMin < 360;
+}
+
 export interface QualityState {
     quality: number;
     /** 慢帧计数:慢帧 +1,正常帧 −1(不小于 0)。 */

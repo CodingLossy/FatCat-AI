@@ -909,6 +909,8 @@ export const en: Record<Key, string> = {
     'settings.voiceContinuousHint':
         'The microphone starts listening when the main screen opens; tap the sphere to pause or resume. Pauses are detected on this device and only the spoken parts are sent for transcription.',
     'settings.voiceSilenceEnd': 'Pause after this many seconds without speech',
+    'settings.voiceMeow': 'Quiet meow while the cat speaks',
+    'settings.voiceMeowHint': 'Off by default, so it does not cover the reply.',
     'models.voice': 'Voice (read aloud)',
     'models.voiceHint':
         'Only used for the tts purpose. Leave empty for alloy (the OpenAI default; other services use different voice names).',

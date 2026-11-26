@@ -561,6 +561,13 @@ export function SettingsPage({ settings, onSettings }: { settings: Settings; onS
                             onChange={(autoSpeak) => void update({ voice: { autoSpeak } })}
                         />
                         <Switch
+                            name="voiceMeow"
+                            label={t('settings.voiceMeow')}
+                            hint={t('settings.voiceMeowHint')}
+                            checked={settings.voice.meow === true}
+                            onChange={(meow) => void update({ voice: { meow } })}
+                        />
+                        <Switch
                             name="voiceContinuous"
                             label={t('settings.voiceContinuous')}
                             hint={t('settings.voiceContinuousHint')}

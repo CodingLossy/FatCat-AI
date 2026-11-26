@@ -9,7 +9,20 @@ import type { OrbState } from '../orb-model.js';
 import type { Hero, HeroMode, HeroOptions } from '../theme.js';
 import { addTick, currentQuality, fitCanvas, prefersReducedMotion } from '../voice-orb.js';
 import { type AnchoredKnowledgePalette, drawAnchoredKnowledge } from './anchored-knowledge.js';
-import { CAT_FACE, catPose, catStrokes, catWhiskers, flowGlow, outlineAnchors, posePoint } from './cat-model.js';
+import {
+    bubbleOpacity,
+    CAT_FACE,
+    catMouth,
+    catPose,
+    catStrokes,
+    catWhiskers,
+    createBubbles,
+    flowGlow,
+    MEOW_TEXT,
+    outlineAnchors,
+    posePoint,
+    stepBubbles,
+} from './cat-model.js';
 import {
     type HeroState,
     mixRgb,
@@ -27,6 +40,7 @@ interface Palette {
     spark: string;
     core: string;
     whisker: string;
+    fg: string;
     states: StateColors;
     knowledge: AnchoredKnowledgePalette;
 }
@@ -40,6 +54,7 @@ function readPalette(el: HTMLElement): Palette {
         spark: get('--cat-spark', '#ffb061'),
         core: get('--cat-spark-core', '#ffffff'),
         whisker: get('--cat-whisker', '#3b2a20'),
+        fg: get('--fg', '#3b2a20'),
         states: readStateColors((name) => cs.getPropertyValue(name), 'cat', CAT_STATES),
         knowledge: {
             branch: line,
@@ -103,22 +118,25 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
     let layoutT = 0;
     let lastLayoutMs = 0;
     let smooth = 0;
+    /** 嘴张开的程度,跟着音量缓动,说话结束再合上。 */
+    let mouthEase = 0;
+    let bubbles = createBubbles();
 
     const draw = (nowMs: number) => {
         if (!reduced && ++frames % 120 === 0) palette = readPalette(canvas);
         const t = reduced ? 0 : (nowMs - start) / 1000;
+        const frameDt = lastMs ? Math.min(100, nowMs - lastMs) : 0;
         smooth += ((level ?? 0) - smooth) * 0.2;
         const knowledge = mode === 'knowledge';
         const pose = catPose(state, reduced ? 0 : smooth, t, knowledge);
         // 状态色染在轮廓线和光点的光晕上(亮芯与胡须不变);知识模式不染色
-        tint = stepTint(
-            tint,
-            knowledge ? 'idle' : heroState,
-            palette.states,
-            lastMs ? Math.min(100, nowMs - lastMs) : 0,
-            reduced || !lastMs,
-        );
+        tint = stepTint(tint, knowledge ? 'idle' : heroState, palette.states, frameDt, reduced || !lastMs);
         lastMs = nowMs;
+        const mouthTarget = reduced || knowledge ? 0 : pose.mouth;
+        const mouthK = frameDt <= 0 ? 1 : 1 - Math.exp(-frameDt / 140);
+        mouthEase += (mouthTarget - mouthEase) * mouthK;
+        if (mouthEase < 0.001 && mouthTarget === 0) mouthEase = 0;
+        bubbles = stepBubbles(bubbles, frameDt, state === 'speaking' && !knowledge, reduced ? 0 : smooth, reduced);
         const tinted = (base: string) => {
             const rgb = parseColor(base);
             // 互补色按比例混合会发灰:按最高比例归一,聆听时也基本是状态色
@@ -171,6 +189,24 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
         }
         g.stroke();
 
+        // 说话时嘴随音量张开。合上时不画,线稿上原来的嘴还在。
+        const mouth = catMouth(mouthEase);
+        if (mouth.length > 0) {
+            g.beginPath();
+            mouth.forEach((p, i) => {
+                const q = S('face', p);
+                if (i) g.lineTo(q[0], q[1]);
+                else g.moveTo(q[0], q[1]);
+            });
+            g.fillStyle = palette.whisker;
+            g.globalAlpha = 0.9 * dim;
+            g.fill();
+            g.strokeStyle = line;
+            g.lineWidth = Math.max(1.1, 2 * scale);
+            g.globalAlpha = 0.95 * dim;
+            g.stroke();
+        }
+
         // 说话:一段光顺着轮廓流动
         if (!reduced && pose.flow > 0) {
             g.strokeStyle = spark;
@@ -217,6 +253,43 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
                 g.fill();
             }
         });
+        g.globalAlpha = 1;
+
+        // 偶尔在头旁边冒出「喵~」。可可棕字写在白底上,对比度沿用正文。减少动态时没有气泡。
+        if (!reduced && bubbles.bubbles.length > 0) {
+            const fontPx = Math.round(18 * Math.max(0.9, scale));
+            g.font = `600 ${fontPx}px ${palette.knowledge.font}`;
+            g.textAlign = 'center';
+            g.textBaseline = 'middle';
+            for (const b of bubbles.bubbles) {
+                const alpha = bubbleOpacity(b.age, b.life);
+                if (alpha <= 0) continue;
+                const px = cx + b.x * R;
+                const py = cy + (b.y - b.age * 0.06) * R;
+                const tw = g.measureText(MEOW_TEXT).width;
+                const padX = 10;
+                const bh = fontPx + 10;
+                const bw = tw + padX * 2;
+                const x0 = px - bw / 2;
+                const y0 = py - bh / 2;
+                const r = bh / 2;
+                g.beginPath();
+                g.moveTo(x0 + r, y0);
+                g.arcTo(x0 + bw, y0, x0 + bw, y0 + bh, r);
+                g.arcTo(x0 + bw, y0 + bh, x0, y0 + bh, r);
+                g.arcTo(x0, y0 + bh, x0, y0, r);
+                g.arcTo(x0, y0, x0 + bw, y0, r);
+                g.closePath();
+                g.fillStyle = '#ffffff';
+                g.strokeStyle = palette.fg;
+                g.lineWidth = 1;
+                g.globalAlpha = alpha;
+                g.fill();
+                g.stroke();
+                g.fillStyle = palette.fg;
+                g.fillText(MEOW_TEXT, px, py + 0.5);
+            }
+        }
         g.globalAlpha = 1;
 
         // 知识模式:轮廓上的光点是第一层,点开后像胡须一样拉出细线连到子项
