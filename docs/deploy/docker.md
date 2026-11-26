@@ -148,7 +148,7 @@ docker compose -f docker-compose.prod.yml start fatcat-ai
 ```bash
 docker compose -f docker-compose.prod.yml stop fatcat-ai
 docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai node dist/index.js secrets migrate
-docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai node dist/index.js auth reset-totp
+docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai node dist/index.js auth reset-totp 用户名
 docker compose -f docker-compose.prod.yml start fatcat-ai
 ```
 
@@ -164,6 +164,8 @@ cd docker
 # 先按第 8 节备份,再:
 docker compose -f docker-compose.prod.yml up -d --build
 ```
+
+从 1.x 升级到 2.0(多用户)前,先读 [家庭成员账户](/FatCat-AI/guides/accounts/) 里「升级到 2.0 与回退」:第一次启动会把附件搬进按账户分的子目录,回退要用升级前的整个备份。
 
 使用已发布的镜像时,在 `.env` 里设置 `FATCAT_AI_IMAGE=ghcr.io/codinglossy/fatcat-ai:标签`,升级时执行 `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`。数据库迁移会在启动时自动运行,运行前自动备份。回滚:换回旧标签并恢复升级前的备份(迁移不可逆,不要只换镜像)。
 

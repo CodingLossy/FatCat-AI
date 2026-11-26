@@ -40,6 +40,7 @@ import type { AgentEvent, ChannelKind } from '@fatcat-ai/shared';
 import { createDelegateTool, groupOf, isCoreGroup } from '@fatcat-ai/tools';
 import type { ChatChunk } from '@fatcat-ai/providers';
 import { resolveDelegateAgent } from './routes/agents.js';
+import { ownerSecrets } from './member-secrets.js';
 
 /**
  * 按需工具组(ADR 0047 第 1 节):脚本里调用的工具不在核心组时,在同一步里先调 tools.enable 开启它的组
@@ -166,7 +167,12 @@ export async function createTestServer(
         ...(options.fetch ? { fetch: options.fetch } : {}),
     };
     const providerFor = (profile: Parameters<typeof createProvider>[0]) =>
-        options.provider ?? createProvider(profile, providerDeps);
+        options.provider ??
+        createProvider(profile, {
+            ...providerDeps,
+            // 按配置档所属账户检查密钥引用(管理员降为成员后,env: 等引用当作缺失;ADR 0053 第 5 节)
+            secrets: ownerSecrets(repos, secrets, repos.modelProfiles.ownerOf(profile.id)),
+        });
     const embeddings = createEmbeddingService({ repos, providerFor, redact: (text) => redactor.redact(text) });
     // 测试中邮件任务默认不允许真的连网
     const mailRunner: MailJobRunner =
@@ -210,7 +216,7 @@ export async function createTestServer(
             },
             {
                 runner: mailRunner,
-                secret: (ref) => secrets.resolve(ref),
+                secret: (ownerId, ref) => ownerSecrets(repos, secrets, ownerId).resolve(ref),
                 complete: createMailComplete(repos, providerFor),
             },
             [

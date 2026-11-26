@@ -24,6 +24,7 @@ import { requireOwner } from '../auth/middleware.js';
 import { removeOwnerSessions } from '../session-delete.js';
 import type { AppEnv } from '../env.js';
 import { ApiError, notFound } from '../errors.js';
+import { ownerSecrets } from '../member-secrets.js';
 import { streamRunEvents, type RunStreamDeps } from '../sse.js';
 import { loadRunAgent } from './agents.js';
 import { authErrors, json, problem, router } from './common.js';
@@ -74,7 +75,9 @@ export function resolveProfile(
             wanted ? 'The selected model profile does not exist.' : 'Create a model profile first.',
         );
     }
-    if (deps.secrets.status(profile.apiKeyRef) === 'missing') {
+    // 按配置档所属账户检查引用(共享的配置档属于管理员;ADR 0053 第 5 节)
+    const owner = deps.repos.modelProfiles.ownerOf(profile.id);
+    if (ownerSecrets(deps.repos, deps.secrets, owner).status(profile.apiKeyRef) === 'missing') {
         throw new ApiError(
             409,
             'model_key_missing',

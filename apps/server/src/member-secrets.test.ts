@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { LoginResponse, SecretKeyList } from '@fatcat-ai/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { findUnusableRefs } from './member-secrets.js';
 import { createTestServer, jsonBody, sessionFrom, TEST_PASSWORD, type TestServer } from './test-helpers.js';
 
 let s: TestServer;
@@ -235,5 +236,171 @@ describe('member secrets (ADR 0053 section 5)', () => {
         s.secrets.invalidate();
         expect(s.secrets.keyNames()).toEqual(['KEEP']);
         expect(s.secrets.resolve('file:KEEP')).toBe('keep-me-1');
+    });
+
+    it('管理员降为成员后,他以前保存的不带前缀的引用显示为缺失、也解析不出来;再升回管理员就恢复(库里的引用不改)', async () => {
+        s.secrets.write('OPENAI_KEY', 'sk-admin-1234');
+        s.secrets.write('MAIL_PW', 'mail-pw-1234');
+        const created = await json<{ id: string; keyStatus: string }>(
+            await as(admin, 'POST', '/api/v1/models', profile()),
+            201,
+        );
+        expect(created.keyStatus).toBe('present');
+        const mail = await json<{ id: string; passwordStatus: string }>(
+            await as(admin, 'POST', '/api/v1/mail/accounts', {
+                label: 'Mail',
+                address: 'me@example.test',
+                username: 'me@example.test',
+                imap: { host: 'imap.example.test', port: 993, security: 'tls' },
+                smtp: { host: 'smtp.example.test', port: 465, security: 'tls' },
+                passwordRef: 'file:MAIL_PW',
+            }),
+            201,
+        );
+        expect(mail.passwordStatus).toBe('present');
+
+        const kid = await member();
+        await json(await as(admin, 'PATCH', `/api/v1/admin/users/${kid.id}`, { role: 'admin' }), 200);
+        const ownerId = s.repos.owners.getByUsername('owner')!.id;
+        await json(await as(kid.session, 'PATCH', `/api/v1/admin/users/${ownerId}`, { role: 'member' }), 200);
+
+        const status = async () => ({
+            key: (await json<{ keyStatus: string }>(await as(admin, 'GET', `/api/v1/models/${created.id}`), 200))
+                .keyStatus,
+            mail: (
+                await json<{ passwordStatus: string }>(await as(admin, 'GET', `/api/v1/mail/accounts/${mail.id}`), 200)
+            ).passwordStatus,
+        });
+        expect(await status()).toEqual({ key: 'missing', mail: 'missing' });
+        // 对话也拿不到这个键:开会话发消息回 409 model_key_missing
+        const session = await json<{ id: string }>(await as(admin, 'POST', '/api/v1/sessions', {}), 201);
+        const sent = await as(admin, 'POST', `/api/v1/sessions/${session.id}/messages?stream=false`, { text: 'hi' });
+        expect(sent.status).toBe(409);
+        expect(((await sent.json()) as { code: string }).code).toBe('model_key_missing');
+        expect(s.repos.modelProfiles.get(ownerId, created.id)?.apiKeyRef).toBe('file:OPENAI_KEY');
+
+        // 启动时的提示只列 id
+        expect(findUnusableRefs(s.repos)).toEqual([{ ownerId, profiles: [created.id], mailAccounts: [mail.id] }]);
+
+        await json(await as(kid.session, 'PATCH', `/api/v1/admin/users/${ownerId}`, { role: 'admin' }), 200);
+        expect(await status()).toEqual({ key: 'present', mail: 'present' });
+        expect(findUnusableRefs(s.repos)).toEqual([]);
+    });
+});
+
+describe('降级后的管理员拿不到旧密钥(ADR 0053 第 5 节)', () => {
+    it('测试连接回 409 且不发请求(改了地址也一样);发信和附件入知识库都拿不到旧密码;升回管理员后恢复', async () => {
+        await s.cleanup();
+        const requests: { url: string; auth: string | null }[] = [];
+        const fetch: typeof globalThis.fetch = (input, init) => {
+            requests.push({ url: String(input), auth: new Headers(init?.headers).get('authorization') });
+            return Promise.resolve(Response.json({ data: [{ id: 'm1' }] }));
+        };
+        const jobs: string[] = [];
+        const mailRunner = ((job: unknown) => {
+            jobs.push(JSON.stringify(job));
+            return Promise.resolve(new TextEncoder().encode('季度报告') as never);
+        }) as never;
+        s = await createTestServer({}, { fetch, mailRunner });
+        admin = sessionFrom(
+            await s.app.request('/api/v1/auth/setup', jsonBody({ username: 'owner', password: TEST_PASSWORD })),
+        );
+        const ownerId = s.repos.owners.getByUsername('owner')!.id;
+        s.secrets.write('OPENAI_KEY', 'sk-admin-1234');
+        s.secrets.write('MAIL_PW', 'mail-pw-1234');
+        const created = await json<{ id: string }>(await as(admin, 'POST', '/api/v1/models', profile()), 201);
+        const account = await json<{ id: string }>(
+            await as(admin, 'POST', '/api/v1/mail/accounts', {
+                label: 'Mail',
+                address: 'me@example.test',
+                username: 'me@example.test',
+                imap: { host: 'imap.example.test', port: 993, security: 'tls' },
+                smtp: { host: 'smtp.example.test', port: 465, security: 'tls' },
+                passwordRef: 'file:MAIL_PW',
+            }),
+            201,
+        );
+        s.repos.mail.applySync(account.id, [
+            {
+                path: 'INBOX',
+                name: 'INBOX',
+                role: 'inbox',
+                uidValidity: 1,
+                highestModseq: null,
+                reset: false,
+                lastUid: 1,
+                flags: [],
+                deleted: [],
+                messages: [
+                    {
+                        uid: 1,
+                        messageId: 'm1@example.test',
+                        inReplyTo: null,
+                        references: [],
+                        threadKey: 's:1',
+                        from: { name: null, address: 'boss@example.test' },
+                        replyTo: [],
+                        to: [{ name: null, address: 'me@example.test' }],
+                        cc: [],
+                        subject: '报告',
+                        date: '2026-11-01T00:00:00.000Z',
+                        unread: true,
+                        text: '见附件',
+                        attachments: [{ part: '2', filename: '报告.txt', contentType: 'text/plain', size: 12 }],
+                    },
+                ],
+            },
+        ]);
+        const { id: attachmentId } = s.conn.sqlite.prepare('SELECT id FROM mail_attachments').get() as { id: string };
+        const draft = s.repos.mailCache.createDraft(ownerId, {
+            accountId: account.id,
+            to: ['a@example.test'],
+            cc: [],
+            subject: 's',
+            text: 't',
+            replyToMessageId: null,
+            attachments: [],
+        });
+        const testConnection = () => as(admin, 'POST', `/api/v1/models/${created.id}/test`);
+        expect((await testConnection()).status).toBe(200);
+        expect(requests.at(-1)?.auth).toBe('Bearer sk-admin-1234');
+
+        const kid = await member();
+        await json(await as(admin, 'PATCH', `/api/v1/admin/users/${kid.id}`, { role: 'admin' }), 200);
+        await json(await as(kid.session, 'PATCH', `/api/v1/admin/users/${ownerId}`, { role: 'member' }), 200);
+        requests.length = 0;
+        jobs.length = 0;
+
+        // 把地址改成自己的服务器再点「测试」:回 409,一个请求都不发
+        expect(
+            (await as(admin, 'PATCH', `/api/v1/models/${created.id}`, { baseURL: 'https://attacker.example.test/v1' }))
+                .status,
+        ).toBe(200);
+        const denied = await testConnection();
+        expect(denied.status).toBe(409);
+        expect(((await denied.json()) as { code: string }).code).toBe('model_key_missing');
+        expect(requests).toEqual([]);
+
+        // 改 SMTP 主机再让助手发信:拿不到旧密码,不发
+        await as(admin, 'PATCH', `/api/v1/mail/accounts/${account.id}`, {
+            smtp: { host: 'attacker.example.test', port: 465, security: 'tls' },
+        });
+        const send = s.runs.tools!.get('mail.send')!;
+        await expect(
+            send.execute({ draftId: draft.id }, { ownerId, approvalRequestedAt: null } as never),
+        ).rejects.toThrow(/not set/);
+        // 附件入知识库:400,不下载
+        const kb = await as(admin, 'POST', `/api/v1/mail/attachments/${attachmentId}/knowledge-base`);
+        expect(kb.status).toBe(400);
+        expect(await kb.text()).toContain('password');
+        expect(jobs.join('\n')).not.toContain('mail-pw-1234');
+        expect(requests).toEqual([]);
+
+        await json(await as(kid.session, 'PATCH', `/api/v1/admin/users/${ownerId}`, { role: 'admin' }), 200);
+        expect((await testConnection()).status).toBe(200);
+        expect(requests.at(-1)).toEqual({
+            url: 'https://attacker.example.test/v1/models',
+            auth: 'Bearer sk-admin-1234',
+        });
     });
 });

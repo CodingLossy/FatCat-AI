@@ -188,12 +188,15 @@ export function rekeyTotpSecrets<T>(
 export function resetTotpOffline(
     conn: Connection,
     now: () => Date = () => new Date(),
+    /** 只重置这个账户(ADR 0053:多个账户时必须给出);省略时重置所有设置了 TOTP 的账户。 */
+    ownerId?: string,
 ): { credentials: number; sessions: number } {
     if (!hasTotpTables(conn)) return { credentials: 0, sessions: 0 };
     return conn.sqlite.transaction(() => {
         const owners = conn.sqlite
             .prepare<[], { ownerId: string }>('SELECT owner_id AS "ownerId" FROM totp_credentials')
-            .all();
+            .all()
+            .filter((o) => ownerId === undefined || o.ownerId === ownerId);
         if (owners.length === 0) return { credentials: 0, sessions: 0 };
         const at = now().toISOString();
         let sessions = 0;

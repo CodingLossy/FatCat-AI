@@ -20,7 +20,7 @@ import type { MailAccountRecord, Repositories } from '@fatcat-ai/storage';
 import type { ItemService, KnowledgeBase } from '@fatcat-ai/items';
 import { requireOwner } from '../auth/middleware.js';
 import { notFound } from '../errors.js';
-import { scopeSecretRef } from '../member-secrets.js';
+import { ownerSecrets, scopeSecretRef } from '../member-secrets.js';
 import type { MailService } from '../mail-setup.js';
 import { authErrors, json, problem, router } from './common.js';
 
@@ -118,18 +118,22 @@ const syncRoute = createRoute({
 
 export function mailRoutes(deps: {
     repos: Repositories;
-    secrets: Pick<SecretStore, 'status'>;
+    secrets: Pick<SecretStore, 'resolve' | 'status'>;
     mail: MailService;
     /** 删除账户后清理条目与知识库(ADR 0016,M3 PR 4)。 */
     items?: Pick<ItemService, 'sync'>;
     kb?: Pick<KnowledgeBase, 'index'>;
 }) {
     const { repos, secrets, mail } = deps;
-    const view = (a: MailAccountRecord): MailAccount => ({
-        ...a,
-        appendToSent: appendsToSent(a),
-        passwordStatus: secrets.status(a.passwordRef) === 'present' ? 'present' : 'missing',
-    });
+    // 密码状态按账户检查引用:管理员降为成员后,env: 等引用显示为缺失(ADR 0053 第 5 节)
+    const view =
+        (ownerId: string) =>
+        (a: MailAccountRecord): MailAccount => ({
+            ...a,
+            appendToSent: appendsToSent(a),
+            passwordStatus:
+                ownerSecrets(repos, secrets, ownerId).status(a.passwordRef) === 'present' ? 'present' : 'missing',
+        });
     const load = (ownerId: string, id: string) => {
         const account = repos.mail.get(ownerId, id);
         if (!account) throw notFound('Mail account');
@@ -137,7 +141,10 @@ export function mailRoutes(deps: {
     };
     return router()
         .openapi(presetsRoute, (c) => c.json({ items: [...MAIL_PRESETS] }, 200))
-        .openapi(listRoute, (c) => c.json({ items: repos.mail.list(requireOwner(c)).map(view), nextCursor: null }, 200))
+        .openapi(listRoute, (c) => {
+            const ownerId = requireOwner(c);
+            return c.json({ items: repos.mail.list(ownerId).map(view(ownerId)), nextCursor: null }, 200);
+        })
         .openapi(createAccountRoute, (c) => {
             const ownerId = requireOwner(c);
             const input = MailAccountInput.parse(c.req.valid('json'));
@@ -145,9 +152,12 @@ export function mailRoutes(deps: {
             const body = { ...input, passwordRef: scopeSecretRef(repos, ownerId, input.passwordRef, 'passwordRef') };
             const account = repos.mail.create(ownerId, body);
             c.get('logger').info({ mailAccount: account.id }, 'mail account added');
-            return c.json(view(account), 201);
+            return c.json(view(ownerId)(account), 201);
         })
-        .openapi(getRoute, (c) => c.json(view(load(requireOwner(c), c.req.valid('param').id)), 200))
+        .openapi(getRoute, (c) => {
+            const ownerId = requireOwner(c);
+            return c.json(view(ownerId)(load(ownerId, c.req.valid('param').id)), 200);
+        })
         .openapi(patchRoute, (c) => {
             const ownerId = requireOwner(c);
             const { id } = c.req.valid('param');
@@ -157,7 +167,7 @@ export function mailRoutes(deps: {
                 patch.passwordRef && patch.passwordRef !== existing.passwordRef
                     ? { ...patch, passwordRef: scopeSecretRef(repos, ownerId, patch.passwordRef, 'passwordRef') }
                     : patch;
-            return c.json(view(repos.mail.update(ownerId, id, scoped)!), 200);
+            return c.json(view(ownerId)(repos.mail.update(ownerId, id, scoped)!), 200);
         })
         .openapi(deleteRoute, async (c) => {
             const ownerId = requireOwner(c);

@@ -7,8 +7,6 @@ description: Admins add members with invite codes, reset passwords, and disable 
 
 From FatCat-AI 2.0, one server can have several accounts. The first account is an **admin**; later accounts are invited by an admin and are **members** by default. Each account has its own sessions, memories, mail, tasks, channels and devices, which nobody else can see. Admins manage the accounts themselves and cannot see a member's data either.
 
-> Multi-user support is still being built (ADR 0053, 6 PRs). Queueing and fairness when several people use the server at once come in a later PR.
-
 ## Add a member
 
 1. As an admin, open **Settings → System → Account & devices** and choose **Create invite code** in the Accounts section.
@@ -66,6 +64,20 @@ The machine and the model quota are shared by the whole family, so each account 
 Scheduled tasks, mail sync, memory extraction and knowledge-base embedding take turns between accounts in the background, so one account's large mailbox or batch of tasks does not keep everyone else waiting. The daily embedding limit counts separately for each account.
 
 In the Accounts list each account shows its disk use, attachments and the knowledge-base index separately. 2.0 only shows it and sets no quota. Attachments are kept per account under `attachments/<account id>/` in the data directory; when upgrading from an older version the server moves the existing attachments there the first time it starts (it copies first and deletes the old files only once everything is copied; if it is interrupted it carries on at the next start).
+
+## Family and small-team setup
+
+- **One machine, one admin**: the admin looks after model accounts, the secrets file, plugins and backups; everyone else uses a member account. The admin can chat from their own account too, but a separate member account for everyday use avoids changing installation settings by mistake.
+- **At least two admins**: make another trusted person an admin so that each can create a reset code for the other after a forgotten password or a lost authenticator. When only one admin is left, they cannot be demoted, disabled or deleted.
+- **Access from outside**: when people use it from outside the home, put it behind HTTPS as in the [Docker deployment guide](/FatCat-AI/en/guides/docker/) and have everyone turn on two-step verification.
+- **Model quota**: an admin can share one model profile with members so everyone uses it. Each account can run at most 2 conversations at once and the installation at most 6 (previous section); lower `FATCAT_AI_MAX_RUNS` when the quota is tight.
+- **Backups**: back up the whole data directory (or Docker volume), including `attachments/`, and keep the master key separately. Admins cannot see members' data, but the backup holds everyone's data, so keep it as carefully as the master key.
+
+## Upgrading to 2.0 and going back
+
+- **Before upgrading, stop the server and back up the whole data directory** (for Docker see section 8 of the deployment guide). The first start after upgrading runs database migrations 0022–0025 (backed up first to `backups/db-…-pre-0022.sqlite` and so on) and moves attachments into `attachments/<account id>/` (it copies first, deletes the old files only once everything is copied, and carries on at the next start if interrupted). The existing account becomes an admin and its data is unchanged.
+- **Going back to 1.x**: older versions cannot open the migrated database, and attachments have moved, so swapping the program back is not enough. Stop the server, restore the data directory from the whole backup taken before the upgrade, then start the old version. Anything created after the upgrade (new conversations, member accounts) is lost.
+- **Lost authenticator and recovery codes**: on the server machine run `auth reset-totp <username>` to reset only that account (the username can be left out when there is only one account). When an admin forgets their password and there is no other admin, run `auth reset-password <username>`. Stop the server first for both; see the [FAQ](/FatCat-AI/en/faq/).
 
 ## Sign-in limits
 

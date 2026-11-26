@@ -7,9 +7,9 @@ import { createProvider, type ProviderDeps, type SecretStore } from '@fatcat-ai/
 import type { ModelProfileRecord, Repositories, UsableProfileRecord } from '@fatcat-ai/storage';
 import type { Context } from 'hono';
 import type { AppEnv } from '../env.js';
-import { scopeSecretRef } from '../member-secrets.js';
+import { ownerSecrets, refAllowed, scopeSecretRef } from '../member-secrets.js';
 import { requireAdmin, requireOwner } from '../auth/middleware.js';
-import { notFound, validationError } from '../errors.js';
+import { ApiError, notFound, validationError } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
 
 export interface ModelRouteDeps {
@@ -89,15 +89,18 @@ const testRoute = createRoute({
     responses: {
         200: json(ModelTestResult, 'Result (also for failed connections)'),
         404: problem('Not found'),
+        409: problem('The key reference is not available to this account'),
         ...authErrors,
     },
 });
 
 export function modelRoutes(deps: ModelRouteDeps) {
     const { repos, secrets } = deps;
-    const withStatus = (p: ModelProfileRecord): ModelProfile => {
+    /** keyStatus 按配置档所属账户检查引用:管理员降为成员后,env: 等引用显示为缺失(ADR 0053 第 5 节)。 */
+    const keyStatus = (ownerId: string, ref: string | null) => ownerSecrets(repos, secrets, ownerId).status(ref);
+    const withStatus = (p: ModelProfileRecord, ownerId: string): ModelProfile => {
         const { shared, ...rest } = p;
-        return { ...rest, ...(shared ? { shared: true } : {}), keyStatus: secrets.status(p.apiKeyRef) };
+        return { ...rest, ...(shared ? { shared: true } : {}), keyStatus: keyStatus(ownerId, p.apiKeyRef) };
     };
     /**
      * 管理员共享来的配置档给别的账户看的样子(ADR 0053 第 5.1 节):名称、类型、模型名、用途照常,
@@ -115,13 +118,13 @@ export function modelRoutes(deps: ModelRouteDeps) {
             apiKeyRef: null,
             shared: true,
             readOnly: true,
-            keyStatus: secrets.status(p.apiKeyRef),
+            keyStatus: keyStatus(p.ownerId, p.apiKeyRef),
             createdAt: p.createdAt,
             updatedAt: p.updatedAt,
         };
     };
     const view = (ownerId: string) => (p: UsableProfileRecord) =>
-        p.ownerId === ownerId ? withStatus(p) : sharedView(p);
+        p.ownerId === ownerId ? withStatus(p, ownerId) : sharedView(p);
     /**
      * 共享给成员只有管理员能设;密钥引用按账户检查和换算(第 5 节)。修改时没变的字段不再检查,
      * 这样降为成员的账户还能改自己配置档的名称(但不能再新设 env: 引用或打开共享)。
@@ -151,7 +154,7 @@ export function modelRoutes(deps: ModelRouteDeps) {
             const created = repos.modelProfiles.create(ownerId, input);
             c.get('logger').info({ profileId: created.id, kind: created.kind }, 'model profile created');
             deps.onChanged?.();
-            return c.json(withStatus(created), 201);
+            return c.json(withStatus(created, ownerId), 201);
         })
         .openapi(getRoute, (c) => {
             const ownerId = requireOwner(c);
@@ -187,7 +190,7 @@ export function modelRoutes(deps: ModelRouteDeps) {
             if (merged.data.purpose.includes('embed') && !existing.purpose.includes('embed')) requireEmbedAdmin(c);
             const replaced = repos.modelProfiles.replace(ownerId, id, checked)!;
             deps.onChanged?.();
-            return c.json(withStatus(replaced), 200);
+            return c.json(withStatus(replaced, ownerId), 200);
         })
         .openapi(deleteRoute, (c) => {
             if (!repos.modelProfiles.delete(requireOwner(c), c.req.valid('param').id)) throw notFound('Model profile');
@@ -195,9 +198,23 @@ export function modelRoutes(deps: ModelRouteDeps) {
             return c.body(null, 204);
         })
         .openapi(testRoute, async (c) => {
-            const p = repos.modelProfiles.get(requireOwner(c), c.req.valid('param').id);
+            const ownerId = requireOwner(c);
+            const p = repos.modelProfiles.get(ownerId, c.req.valid('param').id);
             if (!p) throw notFound('Model profile');
-            const result = await createProvider({ ...p, id: p.id }, deps.providerDeps).test(c.req.raw.signal);
+            // 这个账户用不了的引用(管理员降为成员后的 env: 等):不发请求,和发消息一样回 409(ADR 0053 第 5 节)
+            if (!refAllowed(repos, ownerId, p.apiKeyRef)) {
+                throw new ApiError(
+                    409,
+                    'model_key_missing',
+                    'Conflict',
+                    `The key referenced by ${p.apiKeyRef ?? ''} is not available to this account.`,
+                );
+            }
+            const providerDeps = {
+                ...deps.providerDeps,
+                secrets: ownerSecrets(repos, deps.providerDeps.secrets, ownerId),
+            };
+            const result = await createProvider({ ...p, id: p.id }, providerDeps).test(c.req.raw.signal);
             c.get('logger').info(
                 { profileId: p.id, ok: result.ok, ...(result.ok ? {} : { error: result.error }) },
                 'model test',

@@ -508,5 +508,10 @@
     "key": "totp.ts:createTotpRepository.markSecondFactor",
     "category": "credential",
     "reason": "Marks the login session found by its secret hash as having passed the second factor."
+  },
+  {
+    "key": "profiles.ts:createProfileRepository.ownerOf",
+    "category": "system",
+    "reason": "Looks up which account a model profile belongs to so its key reference is checked against that account (ADR 0053 section 5); returns an account id only."
   }
 ]

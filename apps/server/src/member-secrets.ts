@@ -5,7 +5,9 @@
 // 管理员的不带前缀(和 1.0 一样)。成员保存密钥引用(模型配置档的 apiKeyRef、邮箱的 passwordRef)时:
 // `env:` 只有管理员能用(环境变量是服务器的);`file:NAME` 自动换成 `file:U<ownerId>_NAME`;
 // 指向别的账户前缀的引用一律拒绝。管理员也不能引用成员前缀的键(管理员看不到成员的数据)。
-// 引用在保存时检查,存进库里的就是检查过的;解析时不用再带账户。
+// 引用在保存时检查;解析时再按账户检查一次(ownerSecrets):管理员被改成成员后,他以前保存的 `env:` 和
+// 不带前缀的 `file:` 引用不再能用,显示为缺失,重新升为管理员后恢复(不改库里的引用)。
+import type { KeyStatusValue, SecretStore } from '@fatcat-ai/providers';
 import type { Repositories } from '@fatcat-ai/storage';
 import { isActiveAdmin as isAdmin } from './auth/middleware.js';
 import { ApiError } from './errors.js';
@@ -74,4 +76,68 @@ export function scopeSecretRef<T extends string | null | undefined>(
     if (MEMBER_KEY.test(name)) throw invalid(field, "cannot refer to another account's key");
     if (CHANNEL_KEY.test(name)) throw invalid(field, 'channel keys cannot be referenced');
     return `file:${storedKeyName(repos, ownerId, name, field)}` as T;
+}
+
+/** 这个账户现在能不能用这个引用:管理员都能用;成员只能用带自己前缀的 `file:`。 */
+export function refAllowed(repos: Pick<Repositories, 'owners'>, ownerId: string, ref: string | null): boolean {
+    if (ref === null || isAdmin(repos, ownerId)) return true;
+    const [scheme, name = ''] = ref.split(':', 2) as [string, string | undefined];
+    return scheme === 'file' && name.startsWith(memberSecretPrefix(ownerId));
+}
+
+export interface OwnerSecrets {
+    resolve(ref: string | null): string | null;
+    status(ref: string | null): KeyStatusValue;
+}
+
+/**
+ * 按账户解析密钥引用:这个账户不能用的引用当作缺失。ownerId 为 null(找不到所属账户)时一律当作缺失。
+ */
+export function ownerSecrets(
+    repos: Pick<Repositories, 'owners'>,
+    secrets: Pick<SecretStore, 'resolve'>,
+    ownerId: string | null,
+): OwnerSecrets {
+    const allowed = (ref: string | null) => ref === null || (ownerId !== null && refAllowed(repos, ownerId, ref));
+    const resolve = (ref: string | null) => (allowed(ref) ? secrets.resolve(ref) : null);
+    return {
+        resolve,
+        // 和 SecretStore.status 一样:解析出错(例如主密钥不可用)也算缺失
+        status(ref) {
+            if (ref === null) return 'not_required';
+            try {
+                return resolve(ref) ? 'present' : 'missing';
+            } catch {
+                return 'missing';
+            }
+        },
+    };
+}
+
+export interface UnusableRefs {
+    ownerId: string;
+    profiles: string[];
+    mailAccounts: string[];
+}
+
+/**
+ * 启动时检查(ADR 0053 第 5 节):不是管理员的账户里,哪些模型配置档和邮箱的密钥引用它现在用不了
+ * (管理员降级前保存的 `env:` 或不带前缀的 `file:`)。只返回 id,不含引用的值。
+ */
+export function findUnusableRefs(repos: Pick<Repositories, 'owners' | 'accounts' | 'modelProfiles' | 'mail'>) {
+    const found: UnusableRefs[] = [];
+    for (const account of repos.accounts.list()) {
+        if (isAdmin(repos, account.id)) continue;
+        const bad = (ref: string | null) => !refAllowed(repos, account.id, ref);
+        const profiles = repos.modelProfiles
+            .list(account.id)
+            .filter((p) => bad(p.apiKeyRef))
+            .map((p) => p.id);
+        const mailAccounts = repos.mail
+            .list(account.id)
+            .filter((m) => bad(m.passwordRef))
+            .map((m) => m.id);
+        if (profiles.length > 0 || mailAccounts.length > 0) found.push({ ownerId: account.id, profiles, mailAccounts });
+    }
+    return found;
 }

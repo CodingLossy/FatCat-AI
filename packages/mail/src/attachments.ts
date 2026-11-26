@@ -25,7 +25,8 @@ export interface AttachmentKbDeps {
     items: Pick<ItemService, 'sync'>;
     kb: Pick<KnowledgeBase, 'indexContent'>;
     runner: MailJobRunner;
-    secret: (ref: string) => string | null;
+    /** 按账户解析密钥引用(ADR 0053 第 5 节:这个账户用不了的引用返回 null)。 */
+    secret: (ownerId: string, ref: string) => string | null;
     /** 测试中替换文档解析(默认在 worker 中解析 PDF / DOCX / XLSX)。 */
     parse?: (kind: 'pdf' | 'docx' | 'xlsx', data: Buffer) => Promise<{ text: string }>;
 }
@@ -49,7 +50,7 @@ export async function addAttachmentToKb(
     const message = repos.mailCache.get(ownerId, att.messageId)!;
     const account = repos.mail.get(ownerId, message.accountId);
     if (!account) throw new AttachmentError(404, 'Mail account not found.');
-    const password = deps.secret(account.passwordRef);
+    const password = deps.secret(ownerId, account.passwordRef);
     if (!password) throw new AttachmentError(400, `The password referenced by ${account.passwordRef} is not set.`);
 
     const data = Buffer.from(

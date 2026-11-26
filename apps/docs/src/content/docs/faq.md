@@ -21,10 +21,10 @@ description: 安装、登录、密钥和部署中最常遇到的问题。
 
 ## 丢了验证器和恢复码怎么办?
 
-先停止服务,再运行下面的命令,密码不受影响。
+先停止服务,再运行下面的命令,只重置这一个账户的两步验证,密码不受影响。把「用户名」换成自己的用户名;服务器上只有一个账户时可以省略。
 
-- 从源码运行:在仓库的 `apps/server` 目录(先 `pnpm build`)执行 `node dist/index.js auth reset-totp`。
-- Docker:`docker compose -f docker-compose.prod.yml stop fatcat-ai`,然后 `docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai node dist/index.js auth reset-totp`,最后 `docker compose -f docker-compose.prod.yml start fatcat-ai`(在仓库的 `docker/` 目录里执行)。
+- 从源码运行:在仓库的 `apps/server` 目录(先 `pnpm build`)执行 `node dist/index.js auth reset-totp 用户名`。
+- Docker:`docker compose -f docker-compose.prod.yml stop fatcat-ai`,然后 `docker compose -f docker-compose.prod.yml run --rm --no-deps -T fatcat-ai node dist/index.js auth reset-totp 用户名`,最后 `docker compose -f docker-compose.prod.yml start fatcat-ai`(在仓库的 `docker/` 目录里执行)。
 
 ## 丢了主密钥会怎样?
 

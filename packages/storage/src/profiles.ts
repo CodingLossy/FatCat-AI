@@ -104,6 +104,9 @@ export function createProfileRepository(conn: Connection, now: () => Date) {
         get: sqlite.prepare<[string, string], Row>(`${select} WHERE owner_id = ? AND id = ?`),
         list: sqlite.prepare<[string], Row>(`${select} WHERE owner_id = ? ORDER BY created_at, id`),
         delete: sqlite.prepare('DELETE FROM model_profiles WHERE owner_id = ? AND id = ?'),
+        ownerOf: sqlite.prepare<[string], { ownerId: string }>(
+            'SELECT owner_id AS ownerId FROM model_profiles WHERE id = ?',
+        ),
         // 自己的,加上未停用的管理员共享出来的(ADR 0053 第 5.1 节);自己的排在前面
         usable: sqlite.prepare<[string, string], Row>(
             `${select} WHERE owner_id = ?
@@ -145,6 +148,10 @@ export function createProfileRepository(conn: Connection, now: () => Date) {
         },
         getUsable(ownerId: string, id: string): UsableProfileRecord | null {
             return this.listUsable(ownerId).find((p) => p.id === id) ?? null;
+        },
+        /** 配置档属于哪个账户(按账户检查密钥引用时用,ADR 0053 第 5 节);不存在时为 null。 */
+        ownerOf(id: string): string | null {
+            return q.ownerOf.get(id)?.ownerId ?? null;
         },
         /** 删除配置档;引用它的会话 model_profile_id 由外键置空。 */
         delete(ownerId: string, id: string): boolean {
