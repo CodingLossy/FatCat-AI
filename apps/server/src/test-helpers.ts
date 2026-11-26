@@ -216,7 +216,7 @@ export async function createTestServer(
             },
             {
                 runner: mailRunner,
-                secret: (ref) => secrets.resolve(ref),
+                secret: (ownerId, ref) => ownerSecrets(repos, secrets, ownerId).resolve(ref),
                 complete: createMailComplete(repos, providerFor),
             },
             [

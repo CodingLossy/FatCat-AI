@@ -7,9 +7,9 @@ import { createProvider, type ProviderDeps, type SecretStore } from '@fatcat-ai/
 import type { ModelProfileRecord, Repositories, UsableProfileRecord } from '@fatcat-ai/storage';
 import type { Context } from 'hono';
 import type { AppEnv } from '../env.js';
-import { ownerSecrets, scopeSecretRef } from '../member-secrets.js';
+import { ownerSecrets, refAllowed, scopeSecretRef } from '../member-secrets.js';
 import { requireAdmin, requireOwner } from '../auth/middleware.js';
-import { notFound, validationError } from '../errors.js';
+import { ApiError, notFound, validationError } from '../errors.js';
 import { authErrors, json, problem, router } from './common.js';
 
 export interface ModelRouteDeps {
@@ -89,6 +89,7 @@ const testRoute = createRoute({
     responses: {
         200: json(ModelTestResult, 'Result (also for failed connections)'),
         404: problem('Not found'),
+        409: problem('The key reference is not available to this account'),
         ...authErrors,
     },
 });
@@ -197,9 +198,23 @@ export function modelRoutes(deps: ModelRouteDeps) {
             return c.body(null, 204);
         })
         .openapi(testRoute, async (c) => {
-            const p = repos.modelProfiles.get(requireOwner(c), c.req.valid('param').id);
+            const ownerId = requireOwner(c);
+            const p = repos.modelProfiles.get(ownerId, c.req.valid('param').id);
             if (!p) throw notFound('Model profile');
-            const result = await createProvider({ ...p, id: p.id }, deps.providerDeps).test(c.req.raw.signal);
+            // 这个账户用不了的引用(管理员降为成员后的 env: 等):不发请求,和发消息一样回 409(ADR 0053 第 5 节)
+            if (!refAllowed(repos, ownerId, p.apiKeyRef)) {
+                throw new ApiError(
+                    409,
+                    'model_key_missing',
+                    'Conflict',
+                    `The key referenced by ${p.apiKeyRef ?? ''} is not available to this account.`,
+                );
+            }
+            const providerDeps = {
+                ...deps.providerDeps,
+                secrets: ownerSecrets(repos, deps.providerDeps.secrets, ownerId),
+            };
+            const result = await createProvider({ ...p, id: p.id }, providerDeps).test(c.req.raw.signal);
             c.get('logger').info(
                 { profileId: p.id, ok: result.ok, ...(result.ok ? {} : { error: result.error }) },
                 'model test',

@@ -91,14 +91,14 @@ export interface OwnerSecrets {
 }
 
 /**
- * 按账户解析密钥引用:这个账户不能用的引用当作缺失。ownerId 为 null(找不到所属账户)时不加限制。
+ * 按账户解析密钥引用:这个账户不能用的引用当作缺失。ownerId 为 null(找不到所属账户)时一律当作缺失。
  */
 export function ownerSecrets(
     repos: Pick<Repositories, 'owners'>,
     secrets: Pick<SecretStore, 'resolve'>,
     ownerId: string | null,
 ): OwnerSecrets {
-    const allowed = (ref: string | null) => ownerId === null || refAllowed(repos, ownerId, ref);
+    const allowed = (ref: string | null) => ref === null || (ownerId !== null && refAllowed(repos, ownerId, ref));
     const resolve = (ref: string | null) => (allowed(ref) ? secrets.resolve(ref) : null);
     return {
         resolve,

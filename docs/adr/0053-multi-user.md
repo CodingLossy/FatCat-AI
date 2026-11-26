@@ -213,6 +213,7 @@
 ### PR 6 `docs/self-check`
 
 - **管理员降级后的旧引用**(X 在 #153 的跟进):选了解析时检查,不改库里的引用。新的 `ownerSecrets(repos, secrets, ownerId)` 按账户解析:管理员都能用;不是管理员的账户只能用带自己前缀的 `file:`,其余当作缺失。用在模型 provider(`providerFor` 按 `modelProfiles.ownerOf(id)` 找所属账户)、配置档和邮箱的 `keyStatus` / `passwordStatus`、发消息前的检查、语音和邮件同步。所以降级后这些配置档和邮箱显示「缺失」、也解析不出值,改回管理员后立即恢复。`ProviderDeps.secrets` 只需要 `resolve`。
+- **X 审查 @4f73fe5 的阻断**:第一版漏了几处直接解析引用的地方,降级后的管理员把配置档地址改成自己的服务器再点「测试」,旧密钥照样发出去。现在模型「测试连接」先检查引用,这个账户用不了时回 409 `model_key_missing`、不发请求;`mail.send` 和邮件附件入知识库的 `secret` 改成 `(ownerId, ref)`,按账户解析;`createApp` 默认的嵌入 `providerFor` 也按 `ownerOf` 包一层。`ownerSecrets` 找不到所属账户时一律当作缺失(fail-closed)。全仓直接调用 `secrets.resolve` 的只剩 `ownerSecrets` 内部、渠道自己的键(微信、QQ,本来就只属于渠道)和离线命令。
 - **启动时提示**:`findUnusableRefs` 列出不是管理员的账户里用不了的配置档和邮箱 id(不含引用和值),每个账户一行 warn 日志。
 - **`auth reset-totp [<username>]`**:以前重置所有设置了 TOTP 的账户;现在有多个账户时必须给出用户名,只重置那一个(`resetTotpOffline` 新参数 `ownerId`),只有一个账户时可以省略。
 - **WebSocket 隔离测试**(第 3 节第 2 条):两个账户各开一个连接,补发和实时推送都只有自己的事件。

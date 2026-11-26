@@ -32,7 +32,8 @@ export interface MailToolOptions {
     /** 执行邮件任务(发送);服务器用子进程,测试中注入。 */
     runner: MailJobRunner;
     /** 解析密码引用。 */
-    secret: (ref: string) => string | null;
+    /** 按账户解析密钥引用(ADR 0053 第 5 节:这个账户用不了的引用返回 null)。 */
+    secret: (ownerId: string, ref: string) => string | null;
     /** 授权目录(每次调用重新读取)。 */
     roots: (ownerId: string) => string[];
     /** 用 cheap 配置档做一次补全(mail.summarize)。 */
@@ -433,7 +434,7 @@ export function createMailTools(options: MailToolOptions): ToolDefinition[] {
             }
             const acct = repos.mail.get(ctx.ownerId, d.accountId);
             if (!acct || !acct.enabled) throw new Error('the mail account is missing or disabled');
-            const password = options.secret(acct.passwordRef);
+            const password = options.secret(ctx.ownerId, acct.passwordRef);
             if (!password) throw new Error(`the password referenced by ${acct.passwordRef} is not set`);
             const original = d.replyToMessageId ? repos.mailCache.get(ctx.ownerId, d.replyToMessageId) : null;
             const mailAttachments = [];

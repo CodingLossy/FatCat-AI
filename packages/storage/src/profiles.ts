@@ -149,11 +149,11 @@ export function createProfileRepository(conn: Connection, now: () => Date) {
         getUsable(ownerId: string, id: string): UsableProfileRecord | null {
             return this.listUsable(ownerId).find((p) => p.id === id) ?? null;
         },
-        /** 删除配置档;引用它的会话 model_profile_id 由外键置空。 */
         /** 配置档属于哪个账户(按账户检查密钥引用时用,ADR 0053 第 5 节);不存在时为 null。 */
         ownerOf(id: string): string | null {
             return q.ownerOf.get(id)?.ownerId ?? null;
         },
+        /** 删除配置档;引用它的会话 model_profile_id 由外键置空。 */
         delete(ownerId: string, id: string): boolean {
             return q.delete.run(ownerId, id).changes > 0;
         },

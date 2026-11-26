@@ -73,6 +73,7 @@ import { ClientCalls } from './client-calls.js';
 import { clientCallRoutes } from './routes/client-calls.js';
 import { WindowLimiter } from './voice-limit.js';
 import { SERVER_VERSION } from './version.js';
+import { ownerSecrets } from './member-secrets.js';
 
 export interface AppDeps {
     /** 嵌入队列与向量索引(ADR 0014);不给时按需创建(不会自动开始处理队列)。 */
@@ -180,7 +181,11 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
         deps.embeddings ??
         createEmbeddingService({
             repos,
-            providerFor: (profile) => createProvider(profile, deps.providerDeps),
+            providerFor: (profile) =>
+                createProvider(profile, {
+                    ...deps.providerDeps,
+                    secrets: ownerSecrets(repos, deps.providerDeps.secrets, repos.modelProfiles.ownerOf(profile.id)),
+                }),
             ...(deps.redact ? { redact: deps.redact } : {}),
         });
 
@@ -484,7 +489,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
                         },
                     },
                     runner: mail.runner,
-                    secret: (ref) => deps.secrets.resolve(ref),
+                    secret: (ownerId, ref) => ownerSecrets(repos, deps.secrets, ownerId).resolve(ref),
                 },
             }),
         );

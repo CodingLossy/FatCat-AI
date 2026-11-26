@@ -247,7 +247,7 @@ const runs = new RunManager({
         },
         {
             runner: runInWorker,
-            secret: (ref) => secrets.resolve(ref),
+            secret: (ownerId, ref) => ownerSecrets(repos, secrets, ownerId).resolve(ref),
             complete: createMailComplete(repos, providerFor),
         },
         [
