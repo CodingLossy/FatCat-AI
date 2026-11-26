@@ -20,7 +20,15 @@ import {
     type Tint,
 } from './state-tint.js';
 import { drawTechKnowledge, type KnowledgePalette } from './tech-knowledge.js';
-import { starLift, TECH_STAR_COUNT, techConstellations, techLook, techStars } from './tech-model.js';
+import {
+    speakBrightness,
+    starLift,
+    stepSpeakGlow,
+    TECH_STAR_COUNT,
+    techConstellations,
+    techLook,
+    techStars,
+} from './tech-model.js';
 
 interface Palette {
     stars: [string, string, string];
@@ -78,6 +86,8 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
     let wobble = 0;
     let mode: HeroMode = 'assistant';
     let level: number | null = null;
+    /** 说话时的亮度驱动,平滑跟音量,结束后缓回。 */
+    let glow = 0;
     let palette = readPalette(canvas);
     let destroyed = false;
     let angle = 0;
@@ -100,6 +110,9 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
         const dt = lastMs ? Math.min(100, nowMs - lastMs) : 0;
         // 状态色平滑过渡;减少动态时直接换色(每次变化只画一帧)
         tint = stepTint(tint, heroState, palette.states, dt, reduced || !lastMs);
+        // 呼吸灯:亮度平滑跟着朗读音量,不跟着星点那一档快脉动;说话结束缓回正常亮度
+        glow = stepSpeakGlow(glow, level, state === 'speaking' && mode !== 'knowledge', dt, reduced);
+        const bright = speakBrightness(look.brightness, glow);
         // 转速与摆动也平滑过渡,换状态时不会突然反转
         const ease = 1 - Math.exp(-dt / 260);
         spin += (look.spin - spin) * ease;
@@ -125,7 +138,7 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
         const fogRgb = parseColor(palette.fog);
         fog.addColorStop(0, fogRgb ? rgbString(mixRgb(fogRgb, tint.color, tint.amount)) : palette.fog);
         fog.addColorStop(1, 'transparent');
-        g.globalAlpha = (0.1 + 0.08 * tint.amount) * look.brightness;
+        g.globalAlpha = (0.1 + 0.08 * tint.amount) * bright;
         g.fillStyle = fog;
         g.beginPath();
         g.arc(proj.cx, proj.cy, proj.radius, 0, Math.PI * 2);
@@ -149,7 +162,7 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
             const q = projectPoint(s.x * k, s.y * k, s.z * k, proj);
             const depth = (q[2] + 1) / 2;
             const color = s.rank < tint.amount ? 3 : s.color;
-            const alpha = (0.25 + 0.75 * depth) * (0.5 + 0.5 * s.size) * look.brightness;
+            const alpha = (0.25 + 0.75 * depth) * (0.5 + 0.5 * s.size) * bright;
             const bucket = Math.min(BUCKETS - 1, Math.floor(alpha * BUCKETS));
             const size = (0.45 + s.size * 1.4) * (0.55 + 0.8 * depth) * Math.max(0.5, scale);
             const path = paths[color * BUCKETS + bucket];
@@ -169,11 +182,11 @@ export function createTechHero(canvas: HTMLCanvasElement, options: HeroOptions):
         for (const c of CONSTELLATIONS) {
             const pts = c.points.map((p) => projectPoint(p[0], p[1], p[2], proj));
             if (pts.every((p) => p[2] < -0.2)) continue;
-            g.globalAlpha = 0.45 * look.lines;
+            g.globalAlpha = 0.45 * look.lines * (1 + 0.28 * glow);
             g.beginPath();
             pts.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])));
             g.stroke();
-            g.globalAlpha = 0.9 * look.lines;
+            g.globalAlpha = 0.9 * look.lines * (1 + 0.28 * glow);
             for (const p of pts) {
                 g.beginPath();
                 g.arc(p[0], p[1], 1.6, 0, Math.PI * 2);

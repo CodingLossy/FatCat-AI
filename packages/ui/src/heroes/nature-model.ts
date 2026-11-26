@@ -237,3 +237,141 @@ export function climbGlow(h: number, climb: number, tSec: number): number {
     const d = front - h;
     return d < 0 || d > 0.18 ? 0 : 1 - d / 0.18;
 }
+
+/** 桌面同时在落的叶子上限。手机用更小的一池,免得把帧率拖下去。 */
+export const LEAF_CAP = 22;
+export const LEAF_CAP_PHONE = 8;
+/** 说话结束后再过这么久,还在落的叶子也停掉。 */
+export const LEAF_LINGER_MS = 3200;
+
+export function leafCap(compact: boolean): number {
+    return compact ? LEAF_CAP_PHONE : LEAF_CAP;
+}
+
+export interface Leaf {
+    active: boolean;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    phase: number;
+    size: number;
+    /** 出生后的秒数。 */
+    age: number;
+}
+
+export interface LeafField {
+    leaves: Leaf[];
+    /** 说话停止后累计的毫秒;说话中为 0。 */
+    quietMs: number;
+    /** 还没凑够一片叶子的余量,保证一片一片出现。 */
+    credit: number;
+    seed: number;
+}
+
+export function createLeafField(seed = 11): LeafField {
+    return { leaves: [], quietMs: 0, credit: 0, seed: seed >>> 0 };
+}
+
+/** 叶子越靠近地面越淡,到底就看不见。树冠里是满的。 */
+export function leafAlpha(y: number): number {
+    if (y < 0.42) return 1;
+    if (y > 0.96) return 0;
+    return 1 - (y - 0.42) / (0.96 - 0.42);
+}
+
+function rngStep(seed: number): { value: number; seed: number } {
+    let a = seed >>> 0;
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return { value: ((t ^ (t >>> 14)) >>> 0) / 4294967296, seed: a };
+}
+
+function birth(seed: number): { leaf: Leaf; seed: number } {
+    let s = seed;
+    const r = () => {
+        const n = rngStep(s);
+        s = n.seed;
+        return n.value;
+    };
+    return {
+        seed: s,
+        leaf: {
+            active: true,
+            x: (r() - 0.5) * 1.05,
+            y: -0.72 + r() * 0.5,
+            vx: (r() - 0.5) * 0.08,
+            vy: 0.38 + r() * 0.22,
+            phase: r() * Math.PI * 2,
+            size: 0.45 + r() * 0.7,
+            age: 0,
+        },
+    };
+}
+
+/**
+ * 说话时按音量一片一片放叶子:音量越高,同一时间在落的越多。
+ * 落到地面附近淡出,空位回收,不会在地上堆起来。
+ * 说话停止后不再放新的;过了 LEAF_LINGER_MS,还在落的也停。
+ * 单步最多前进 100ms、最多放一片,卡顿恢复时不会一下子倒下来。
+ * 减少动态或 cap 为 0 时全部清掉。
+ */
+export function stepLeaves(
+    field: LeafField,
+    dtMs: number,
+    speaking: boolean,
+    level: number,
+    cap: number,
+    reduced: boolean,
+): LeafField {
+    if (reduced || cap <= 0) {
+        return {
+            leaves: field.leaves.map((leaf) => ({ ...leaf, active: false })),
+            quietMs: speaking ? 0 : field.quietMs,
+            credit: 0,
+            seed: field.seed,
+        };
+    }
+    const dt = Math.max(0, Math.min(dtMs, 100)) / 1000;
+    const lv = Math.min(1, Math.max(0, level));
+    let { seed, credit } = field;
+    const quietMs = speaking ? 0 : field.quietMs + Math.max(0, dtMs);
+    const leaves = field.leaves.map((leaf) => ({ ...leaf }));
+    if (!speaking && quietMs >= LEAF_LINGER_MS) {
+        return {
+            leaves: leaves.map((leaf) => ({ ...leaf, active: false })),
+            quietMs,
+            credit: 0,
+            seed,
+        };
+    }
+    for (const leaf of leaves) {
+        if (!leaf.active) continue;
+        leaf.age += dt;
+        leaf.x += leaf.vx * dt + Math.sin(leaf.phase + leaf.age * 2.2) * 0.15 * dt;
+        leaf.y += leaf.vy * dt;
+        if (leaf.y > 1.05 || leafAlpha(leaf.y) <= 0) leaf.active = false;
+    }
+    if (speaking && lv > 0.04) {
+        const perSec = lv * (cap <= LEAF_CAP_PHONE ? 2.4 : 6);
+        credit += perSec * dt;
+        if (credit >= 1) {
+            const born = birth(seed);
+            seed = born.seed;
+            const slot = leaves.find((leaf) => !leaf.active);
+            if (slot) {
+                Object.assign(slot, born.leaf);
+                credit -= 1;
+            } else if (leaves.length < cap) {
+                leaves.push(born.leaf);
+                credit -= 1;
+            }
+            if (credit > 1) credit = 1;
+        }
+    } else if (!speaking) {
+        credit = 0;
+    }
+    return { leaves, quietMs, credit, seed };
+}

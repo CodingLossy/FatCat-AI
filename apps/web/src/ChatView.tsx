@@ -15,6 +15,7 @@ import {
     type ModelProfile,
     type Settings,
 } from '@fatcat-ai/shared';
+import { resolveTheme } from '@fatcat-ai/ui/theme-ids';
 import {
     type ClipboardEvent,
     type DragEvent,
@@ -35,7 +36,8 @@ import { Markdown } from './Markdown.js';
 import { navigate, routePath } from './router.js';
 import { ToolCard } from './ToolCard.js';
 import { UsedMemories } from './UsedMemories.js';
-import { canRecord, type Playback, playSegments, type Recording, startRecording } from './audio.js';
+import { audioContext, canRecord, type Playback, playSegments, type Recording, startRecording } from './audio.js';
+import { meowDue, playMeow } from './meow.js';
 import {
     attachConversation,
     canAutoListen,
@@ -288,6 +290,8 @@ export function ChatView({
         conversationState().active ? 'listening' : null,
     );
     const level = useRef<number | null>(null);
+    /** 上一声「喵」的时间。开始朗读时记下现在,第一声不会压在开头。 */
+    const lastMeow = useRef(0);
     const [voiceMode, setVoiceModeState] = useState<VoiceMode>('idle');
     const mode = useRef<VoiceMode>('idle');
     const setVoiceMode = (next: VoiceMode) => {
@@ -565,8 +569,22 @@ export function ChatView({
             {
                 onLevel: (l) => {
                     level.current = l;
+                    const enabled =
+                        voiceConfigRef.current?.settings.meow === true &&
+                        resolveTheme(document.documentElement.dataset.theme) === 'cat';
+                    const now = performance.now();
+                    if (!meowDue(lastMeow.current, now, l, enabled, true)) return;
+                    const ctx = audioContext();
+                    if (!ctx) return;
+                    lastMeow.current = now;
+                    try {
+                        playMeow(ctx);
+                    } catch {
+                        // 没有音频输出时跳过,朗读照常
+                    }
                 },
                 onStart: () => {
+                    lastMeow.current = performance.now();
                     setLocalVoice('speaking');
                     report({ state: 'speaking', sessionId });
                 },

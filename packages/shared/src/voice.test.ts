@@ -52,6 +52,7 @@ describe('schema', () => {
             inputMode: 'voice',
             continuous: true,
             silenceEndSeconds: 8,
+            meow: false,
         });
     });
 
@@ -94,5 +95,10 @@ describe('schema', () => {
         for (const bad of [2, 61, 8.5, '8']) {
             expect(SettingsPatch.safeParse({ voice: { silenceEndSeconds: bad } }).success).toBe(false);
         }
+        // 猫咪的一声(ADR 0049 第 10.7 节):默认关闭;旧服务器不带这个字段也能解析
+        expect(DEFAULT_VOICE_SETTINGS.meow).toBe(false);
+        delete legacy.meow;
+        expect(VoiceSettings.safeParse(legacy).success).toBe(true);
+        expect(SettingsPatch.safeParse({ voice: { meow: true } }).success).toBe(true);
     });
 });
