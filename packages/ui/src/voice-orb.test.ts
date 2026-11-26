@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+    compactDisplay,
     createVoiceOrb,
     fibonacciSphere,
     generateParticles,
@@ -46,6 +47,10 @@ describe('core orb model', () => {
         expect(initialQuality(8, 8, 390)).toBe(0.6);
         expect(initialQuality(8, 8, 1080)).toBe(1);
         expect(initialQuality(8, 8, 0)).toBe(1);
+        expect(compactDisplay(800, 390)).toBe(true);
+        expect(compactDisplay(800, 1080)).toBe(false);
+        expect(compactDisplay(200, 1080)).toBe(true);
+        expect(compactDisplay(800, 0)).toBe(false);
     });
 
     it('粒子生成是确定的、在单位球面上,投影近大远小', () => {

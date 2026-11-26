@@ -119,3 +119,36 @@ export function starLift(state: OrbState, level: number, phase: number, tSec: nu
     if (state !== 'speaking') return 0;
     return 0.1 * Math.min(1, Math.max(0, level)) * (0.55 + 0.45 * Math.sin(phase * 3 + tSec * 6));
 }
+
+/** 说话亮度的时间常数(毫秒):跟音量起伏,但不跟着每一帧硬跳。 */
+export const SPEAK_GLOW_MS = 260;
+/** 平滑音量为 1 时,在状态亮度之外再亮这么多(倍数里的增量)。 */
+export const SPEAK_GLOW_GAIN = 0.62;
+
+function clamp01(n: number): number {
+    return Math.min(1, Math.max(0, n));
+}
+
+/**
+ * 说话时的亮度驱动(0–1)。指数缓动靠近当前音量;说话结束(或没有电平)时缓回 0。
+ * 减少动态时保持 0:只留状态色,不做呼吸灯。单步不会跳到目标,避免闪烁。
+ */
+export function stepSpeakGlow(
+    prev: number,
+    level: number | null,
+    speaking: boolean,
+    dtMs: number,
+    reduced: boolean,
+): number {
+    if (reduced) return 0;
+    const target = speaking ? clamp01(level ?? 0) : 0;
+    if (!(dtMs > 0)) return prev;
+    const k = 1 - Math.exp(-Math.min(dtMs, 100) / SPEAK_GLOW_MS);
+    const next = prev + (target - prev) * k;
+    return target === 0 && next < 0.001 ? 0 : next;
+}
+
+/** 把亮度驱动乘到状态亮度上。驱动为 0 时就是原来的亮度。 */
+export function speakBrightness(base: number, glow: number): number {
+    return base * (1 + SPEAK_GLOW_GAIN * clamp01(glow));
+}

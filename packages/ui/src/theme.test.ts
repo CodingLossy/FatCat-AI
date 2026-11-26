@@ -3,8 +3,10 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+    speakBrightness,
     STARS_PER_CONSTELLATION,
     starLift,
+    stepSpeakGlow,
     TECH_CONSTELLATIONS,
     techConstellations,
     techLook,
@@ -13,21 +15,32 @@ import {
 import {
     branchChain,
     climbGlow,
+    createLeafField,
+    LEAF_CAP,
+    LEAF_CAP_PHONE,
+    LEAF_LINGER_MS,
+    leafAlpha,
+    leafCap,
     natureLook,
     natureTree,
+    stepLeaves,
     swayOffset,
     tipsFor,
     TREE_BASE,
 } from './heroes/nature-model.js';
 import { clusterCenter } from './heroes/anchored-knowledge.js';
 import {
+    bubbleOpacity,
     CAT_FACE,
+    catMouth,
     catPose,
     catStrokes,
+    createBubbles,
     EAR_L_PIVOT,
     flowGlow,
     outlineAnchors,
     posePoint,
+    stepBubbles,
     TAIL_PIVOT,
 } from './heroes/cat-model.js';
 import { DEFAULT_THEME, resolveTheme } from './theme-ids.js';
@@ -72,6 +85,18 @@ describe('tech hero model', () => {
         // 说话时只向外脉动
         for (let t = 0; t < 3; t += 0.1) expect(starLift('speaking', 1, 0.5, t)).toBeGreaterThan(0);
         expect(starLift('listening', 1, 0.5, 0.3)).toBe(0);
+    });
+
+    it('说话时亮度平滑跟着音量,一步不会跳满,结束后缓回;减少动态不亮', () => {
+        const step = stepSpeakGlow(0, 1, true, 16, false);
+        expect(step).toBeGreaterThan(0);
+        expect(step).toBeLessThan(0.15);
+        let glow = 1;
+        for (let i = 0; i < 40; i++) glow = stepSpeakGlow(glow, null, false, 50, false);
+        expect(glow).toBeLessThan(0.05);
+        expect(stepSpeakGlow(0.8, 1, true, 16, true)).toBe(0);
+        expect(speakBrightness(1, 1)).toBeGreaterThan(speakBrightness(1, 0));
+        expect(speakBrightness(0.75, 0)).toBeCloseTo(0.75);
     });
 });
 
@@ -122,6 +147,66 @@ describe('nature hero model', () => {
         expect(climbGlow(0.2, 0.45, 0.25 / 0.45)).toBeGreaterThan(0.5);
     });
 
+    it('落叶按音量一片一片出现,到底淡出并回收,手机更少,说话停几秒后不再落', () => {
+        expect(leafAlpha(0.2)).toBe(1);
+        expect(leafAlpha(0.7)).toBeGreaterThan(0);
+        expect(leafAlpha(0.7)).toBeLessThan(1);
+        expect(leafAlpha(0.97)).toBe(0);
+        expect(leafCap(true)).toBe(LEAF_CAP_PHONE);
+        expect(leafCap(false)).toBe(LEAF_CAP);
+
+        const run = (level: number, cap: number, ms: number, speaking = true) => {
+            let field = createLeafField(11);
+            const steps = Math.ceil(ms / 50);
+            for (let i = 0; i < steps; i++) field = stepLeaves(field, 50, speaking, level, cap, false);
+            return field;
+        };
+        const loud = run(1, LEAF_CAP, 2000);
+        const quiet = run(0.12, LEAF_CAP, 2000);
+        const phone = run(1, LEAF_CAP_PHONE, 6000);
+        const active = (field: typeof loud) => field.leaves.filter((leaf) => leaf.active).length;
+        expect(active(loud)).toBeGreaterThan(active(quiet));
+        expect(loud.leaves.length).toBeLessThanOrEqual(LEAF_CAP);
+        expect(phone.leaves.length).toBeLessThanOrEqual(LEAF_CAP_PHONE);
+        expect(active(phone)).toBeLessThanOrEqual(LEAF_CAP_PHONE);
+        // 同一颗种子、同样的步数,结果一样
+        expect(run(0.8, LEAF_CAP, 2000).leaves).toEqual(run(0.8, LEAF_CAP, 2000).leaves);
+        // 说话停下的头一段,旧叶子还在落,但没有新出生的
+        let falling = run(1, LEAF_CAP, 1000);
+        falling = stepLeaves(falling, 50, false, 0, LEAF_CAP, false);
+        for (let i = 0; i < 3; i++) falling = stepLeaves(falling, 50, false, 1, LEAF_CAP, false);
+        expect(falling.leaves.some((leaf) => leaf.active)).toBe(true);
+        expect(falling.leaves.filter((leaf) => leaf.active && leaf.age < 0.15)).toEqual([]);
+        // 几秒之后落叶停干净
+        for (let i = 0; i < Math.ceil(LEAF_LINGER_MS / 50) + 2; i++) {
+            falling = stepLeaves(falling, 50, false, 1, LEAF_CAP, false);
+        }
+        expect(falling.leaves.every((leaf) => !leaf.active)).toBe(true);
+        // 淡出后回收,池子不继续变长
+        let faded = createLeafField(1);
+        faded = {
+            ...faded,
+            leaves: [
+                {
+                    active: true,
+                    x: 0,
+                    y: 0.97,
+                    vx: 0,
+                    vy: 0.2,
+                    phase: 0,
+                    size: 1,
+                    age: 0.2,
+                },
+            ],
+        };
+        faded = stepLeaves(faded, 50, false, 0, LEAF_CAP, false);
+        expect(faded.leaves[0]?.active).toBe(false);
+        expect(faded.leaves).toHaveLength(1);
+        // 减少动态:正在落的也清掉
+        const cleared = stepLeaves(loud, 16, true, 1, LEAF_CAP, true);
+        expect(cleared.leaves.every((leaf) => !leaf.active)).toBe(true);
+    });
+
     it('叶簇中心留在画布里', () => {
         const c = clusterCenter({ x: 5, y: 5 }, { x: 200, y: 400 }, 200, 400, 400);
         expect(c.x).toBeGreaterThan(0);
@@ -152,12 +237,32 @@ describe('cat hero model', () => {
         expect(catPose('speaking', 1, 0, false).flowSpeed).toBeGreaterThan(catPose('speaking', 0, 0, false).flowSpeed);
         expect(catPose('idle', 0, 0, false).flow).toBe(0);
         expect(catPose('speaking', 1, 0, true).flow).toBe(0);
+        expect(catPose('speaking', 1, 0.2, false).mouth).toBeGreaterThan(catPose('speaking', 0, 0.2, false).mouth);
+        expect(catPose('idle', 0, 0.3, false).mouth).toBe(0);
+        expect(catPose('speaking', 1, 0.4, true).mouth).toBe(0);
+        const speakEars = Array.from({ length: 40 }, (_, k) => Math.abs(catPose('speaking', 1, k * 0.05, false).earL));
+        expect(Math.max(...speakEars)).toBeGreaterThan(0.02);
+        expect(Math.max(...speakEars)).toBeLessThan(0.2);
+        const speakTails = Array.from({ length: 40 }, (_, k) => Math.abs(catPose('speaking', 1, k * 0.05, false).tail));
+        expect(Math.max(...speakTails)).toBeGreaterThan(0.08);
+        expect(Math.max(...speakTails)).toBeLessThan(0.25);
+        expect(catMouth(0)).toEqual([]);
+        expect(catMouth(0.05)).toEqual([]);
+        const open = catMouth(1);
+        expect(open).toHaveLength(1);
+        const ys = open[0]!.map((p) => p[1]);
+        const span = Math.max(...ys) - Math.min(...ys);
+        // 下唇是一条窄缝:比合上的弧低一点,但远不是一个圆洞
+        expect(span).toBeGreaterThan(0.02);
+        expect(span).toBeLessThan(0.07);
+        const quietOpen = catMouth(0.2)[0]!;
+        expect(Math.max(...open[0]!.map((p) => p[1]))).toBeGreaterThan(Math.max(...quietOpen.map((p) => p[1])));
         expect(flowGlow(0.5, 0, 1)).toBe(0);
         expect(flowGlow(0.25, 0.25, 1)).toBe(1);
     });
 
     it('耳朵绕耳根、尾巴绕尾根转,支点自己不动', () => {
-        const pose = { earL: 0.3, earR: 0, tail: 0.4, breathe: 0, flow: 0, flowSpeed: 0, brightness: 1 };
+        const pose = { earL: 0.3, earR: 0, tail: 0.4, breathe: 0, flow: 0, flowSpeed: 0, brightness: 1, mouth: 0 };
         const pivot = posePoint('earL', EAR_L_PIVOT, pose);
         expect(pivot[0]).toBeCloseTo(EAR_L_PIVOT[0], 9);
         expect(pivot[1]).toBeCloseTo(EAR_L_PIVOT[1], 9);
@@ -178,5 +283,20 @@ describe('cat hero model', () => {
             expect(Math.hypot(p[0] - CAT_FACE.cx, p[1] - CAT_FACE.cy)).toBeGreaterThanOrEqual(CAT_FACE.r);
         }
         expect(outlineAnchors(strokes, 0)).toEqual([]);
+    });
+
+    it('说话时偶尔出现「喵~」,音量低或减少动态时不出现,同时不超过一个', () => {
+        expect(bubbleOpacity(0, 1.6)).toBe(0);
+        expect(bubbleOpacity(0.8, 1.6)).toBeGreaterThan(0.9);
+        let quiet = createBubbles();
+        for (let i = 0; i < 80; i++) quiet = stepBubbles(quiet, 50, true, 0.1, false);
+        expect(quiet.bubbles).toHaveLength(0);
+        let field = createBubbles();
+        for (let i = 0; i < 50; i++) field = stepBubbles(field, 50, true, 0.9, false);
+        expect(field.bubbles).toHaveLength(1);
+        expect(field.bubbles[0]?.x).not.toBe(0);
+        for (let i = 0; i < 200; i++) field = stepBubbles(field, 50, true, 0.9, false);
+        expect(field.bubbles.length).toBeLessThanOrEqual(1);
+        expect(stepBubbles(field, 16, true, 0.9, true).bubbles).toHaveLength(0);
     });
 });

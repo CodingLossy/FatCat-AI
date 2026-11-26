@@ -15727,6 +15727,9 @@
                           "type": "integer",
                           "minimum": 3,
                           "maximum": 60
+                        },
+                        "meow": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -16251,6 +16254,9 @@
                         "type": "integer",
                         "minimum": 3,
                         "maximum": 60
+                      },
+                      "meow": {
+                        "type": "boolean"
                       }
                     }
                   },
@@ -16502,6 +16508,9 @@
                           "type": "integer",
                           "minimum": 3,
                           "maximum": 60
+                        },
+                        "meow": {
+                          "type": "boolean"
                         }
                       },
                       "required": [

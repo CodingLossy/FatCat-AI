@@ -74,6 +74,11 @@ export const VoiceSettings = z.object({
     continuous: z.boolean().optional(),
     /** 连续对话里这么多秒没听到说话就自动暂停聆听(朗读时间不算);整数 3–60,默认 8。 */
     silenceEndSeconds: z.number().int().min(MIN_SILENCE_END_SECONDS).max(MAX_SILENCE_END_SECONDS).optional(),
+    /**
+     * 猫咪主题说话时偶尔播放很轻的一声(ADR 0049 第 10.7 节)。默认关闭,避免盖住朗读。
+     * 旧服务器不返回这个字段时按关闭处理。
+     */
+    meow: z.boolean().optional(),
 });
 export type VoiceSettings = z.infer<typeof VoiceSettings>;
 
@@ -85,6 +90,7 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
     inputMode: 'voice',
     continuous: true,
     silenceEndSeconds: DEFAULT_SILENCE_END_SECONDS,
+    meow: false,
 };
 
 /** WebSocket 客户端帧 voice-state 的 payload;不带电平(ADR 0021 第 6 节)。 */
