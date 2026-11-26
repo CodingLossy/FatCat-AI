@@ -165,9 +165,9 @@ cd docker
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-从 1.x 升级到 2.0(多用户)前,先读 [家庭成员账户](/FatCat-AI/guides/accounts/) 里「升级到 2.0 与回退」:第一次启动会把附件搬进按账户分的子目录,回退要用升级前的整个备份。
+从 1.x 升级到 2.0(多用户)前,先读 [家庭成员账户](/FatCat-AI/guides/accounts/) 里「升级到 2.0 与回退」:第一次启动会把附件搬进按账户分的子目录。回退必须恢复升级前的整个数据目录(或整个数据卷),不能只换镜像,也不能只把 `backups/` 里的数据库文件拷回去:那样 1.x 能启动,但图片仍在子目录里,旧版本显示不出来。
 
-使用已发布的镜像时,在 `.env` 里设置 `FATCAT_AI_IMAGE=ghcr.io/codinglossy/fatcat-ai:标签`,升级时执行 `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`。数据库迁移会在启动时自动运行,运行前自动备份。回滚:换回旧标签并恢复升级前的备份(迁移不可逆,不要只换镜像)。
+使用已发布的镜像时,在 `.env` 里设置 `FATCAT_AI_IMAGE=ghcr.io/codinglossy/fatcat-ai:标签`,升级时执行 `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`。数据库迁移会在启动时自动运行,运行前自动备份(只备份数据库文件)。回滚到 1.x:换回旧标签,并用升级前按第 8 节做的整卷备份恢复;迁移不可逆。
 
 **从开发用的 compose 迁移**(`docker/docker-compose.yml`,数据卷叫 `ai-personal-data`):生产 compose 使用新卷名 `fatcat-ai_fatcat-ai-data`。先 `docker compose -f docker-compose.yml down`,再创建新卷并拷贝:
 

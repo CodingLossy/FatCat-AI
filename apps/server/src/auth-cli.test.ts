@@ -4,11 +4,13 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
 import { decryptSecrets, encryptSecrets, parseMasterKey } from '@fatcat-ai/providers';
 import { createRepositories, openStorage } from '@fatcat-ai/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runAuthCommand } from './auth-cli.js';
+import { readNewPassword, runAuthCommand } from './auth-cli.js';
 import { runSecretsCommand } from './secrets-cli.js';
+import { createTestServer, jsonBody } from './test-helpers.js';
 
 const OLD_KEY = 'ab'.repeat(32);
 const NEW_KEY = 'cd'.repeat(32);
@@ -180,5 +182,39 @@ describe('auth reset-password', () => {
         expect(hash()).toBe(start);
         expect(err.join('\n')).toContain('no account named "nobody"');
         conn.close();
+    });
+
+    it('a PowerShell pipe (UTF-8 BOM + CRLF) is saved without the BOM and can sign in', async () => {
+        const s = await createTestServer();
+        try {
+            s.repos.owners.create({ username: 'member1', passwordHash: 'not-a-real-hash' });
+            const password = 'correct horse battery staple';
+            // PowerShell 5.1: EF BB BF, then the text, then CR LF.
+            const stdin = Readable.from([
+                Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(`${password}\r\n`, 'utf8')]),
+            ]);
+            let read: string | null = 'unset';
+            const code = await runAuthCommand(['reset-password', 'member1'], {
+                dataDir: s.dir,
+                out: (l) => out.push(l),
+                err: (l) => err.push(l),
+                readPassword: async () => {
+                    read = await readNewPassword(stdin);
+                    return read;
+                },
+            });
+            expect(code).toBe(0);
+            expect(read).toBe(password);
+            const ok = await s.app.request('/api/v1/auth/login', jsonBody({ username: 'member1', password }));
+            expect(ok.status).toBe(200);
+            const withBom = await s.app.request(
+                '/api/v1/auth/login',
+                jsonBody({ username: 'member1', password: `\uFEFF${password}` }),
+            );
+            expect(withBom.status).toBe(401);
+            expect(out.join('\n')).not.toContain(password);
+        } finally {
+            await s.cleanup();
+        }
     });
 });

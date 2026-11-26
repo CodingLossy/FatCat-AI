@@ -120,7 +120,7 @@
 
 - 一个迁移:加 `owners` 的三列、删 `trg_owners_single`、加「最后一个管理员」触发器、`plugins` 加 `shared_with_members`、`model_profiles` 加 `shared`。已有主人设为 `admin`。不改写任何数据行。
 - 迁移前自动备份(ADR 0005 已有)。
-- 回退:旧核心遇到不认识的迁移会拒绝启动(`migrate.ts`:「database has migration N unknown to this version」),不会在多账户数据上以单用户方式运行。要回到 1.x 只能恢复迁移前的备份,升级说明里写清楚。
+- 回退:旧核心遇到不认识的迁移会拒绝启动(`migrate.ts`:「database has migration N unknown to this version」),不会在多账户数据上以单用户方式运行。要回到 1.x 必须恢复升级前的整个数据目录,不能只把 `backups/` 里自动生成的数据库文件拷回去:那份备份只有库,附件已经被搬进按账户分的子目录,1.x 只认 `attachments/` 根目录下的文件,只恢复库时能启动但图片都不显示。升级说明里写清楚。
 - 附件目录按账户分子目录的搬迁在同一个版本里做:启动时检查,按数据库行搬,搬完再记标记;中途失败下次启动继续,不删旧文件直到全部搬完。
 
 ## 11. 为什么不分库
@@ -217,4 +217,4 @@
 - **启动时提示**:`findUnusableRefs` 列出不是管理员的账户里用不了的配置档和邮箱 id(不含引用和值),每个账户一行 warn 日志。
 - **`auth reset-totp [<username>]`**:以前重置所有设置了 TOTP 的账户;现在有多个账户时必须给出用户名,只重置那一个(`resetTotpOffline` 新参数 `ownerId`),只有一个账户时可以省略。
 - **WebSocket 隔离测试**(第 3 节第 2 条):两个账户各开一个连接,补发和实时推送都只有自己的事件。
-- **文档**:「家庭成员账户」新增「家庭 / 小团队部署建议」「升级到 2.0 与回退」两节;Docker 部署指南的「升级」指向它;常见问题和 README 的 `auth reset-totp` 带用户名。自检清单在 `docs/milestones/2.0-self-check.md`。
+- **文档**:「家庭成员账户」新增「家庭 / 小团队部署建议」「升级到 2.0 与回退」两节;Docker 部署指南的「升级」指向它;常见问题和 README 的 `auth reset-totp` 带用户名。自检清单在 `docs/milestones/2.0-self-check.md`。回退写明要恢复整个数据目录,不能只恢复 `backups/` 里的数据库文件。

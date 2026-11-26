@@ -8,6 +8,7 @@
 // 新密码从标准输入读(终端里不回显),不出现在命令行参数和 shell 历史里。
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
 import { Password } from '@fatcat-ai/shared';
 import { createAccountRepository, openDatabase, resetTotpOffline } from '@fatcat-ai/storage';
 import { hashPassword } from './auth/crypto.js';
@@ -135,31 +136,40 @@ async function resetPassword(username: string, io: AuthCommandIo): Promise<numbe
     }
 }
 
-/** 读一行;终端里不回显(每个字符都不显示),Ctrl+C 退出。 */
-function readLine(prompt: string, hidden: boolean): Promise<string | null> {
-    const stdin = process.stdin;
+/**
+ * Windows PowerShell 5.1 把字符串送进原生程序时,字节是 UTF-8 BOM(U+FEFF)加正文再加 CRLF。
+ * BOM 不是用户输入的内容;留在密码里的话命令会成功,但用输入的密码登不上。
+ */
+function withoutLeadingBom(text: string): string {
+    return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
+type PasswordInput = Readable & { isTTY?: boolean; setRawMode?(mode: boolean): void };
+
+/** 读一行;终端里不回显(每个字符都不显示),Ctrl+C 退出。行尾的 CR / LF 不计入,开头的 BOM 丢掉。 */
+function readLine(stdin: PasswordInput, prompt: string, hidden: boolean): Promise<string | null> {
     return new Promise((resolve) => {
         let text = '';
         const tty = hidden && stdin.isTTY;
         if (tty) {
             process.stderr.write(prompt);
-            stdin.setRawMode(true);
+            stdin.setRawMode!(true);
         }
         stdin.setEncoding('utf8');
         const done = (value: string | null) => {
             stdin.off('data', onData);
             stdin.off('end', onEnd);
             if (tty) {
-                stdin.setRawMode(false);
+                stdin.setRawMode!(false);
                 process.stderr.write('\n');
             }
             stdin.pause();
-            resolve(value);
+            resolve(value === null ? null : withoutLeadingBom(value));
         };
         const onData = (chunk: string) => {
             for (const ch of chunk) {
                 if (ch === '\u0003') {
-                    if (tty) stdin.setRawMode(false);
+                    if (tty) stdin.setRawMode!(false);
                     process.exit(130);
                 }
                 if (ch === '\r' || ch === '\n') return done(text);
@@ -174,11 +184,14 @@ function readLine(prompt: string, hidden: boolean): Promise<string | null> {
     });
 }
 
-/** auth reset-password 的密码输入:终端里输入两次(不回显),管道输入读第一行。 */
-export async function readNewPassword(): Promise<string | null> {
-    if (!process.stdin.isTTY) return readLine('', false);
-    const first = await readLine('New password: ', true);
+/**
+ * auth reset-password 的密码输入:终端里输入两次(不回显),管道输入读第一行。
+ * `auth reset-totp` 不读标准输入(用户名是参数),所以没有同样的问题。
+ */
+export async function readNewPassword(stdin: PasswordInput = process.stdin): Promise<string | null> {
+    if (!stdin.isTTY) return readLine(stdin, '', false);
+    const first = await readLine(stdin, 'New password: ', true);
     if (first === null) return null;
-    const second = await readLine('Repeat the new password: ', true);
+    const second = await readLine(stdin, 'Repeat the new password: ', true);
     return first === second ? first : null;
 }

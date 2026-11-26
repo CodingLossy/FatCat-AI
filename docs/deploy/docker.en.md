@@ -166,9 +166,9 @@ cd docker
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Before upgrading from 1.x to 2.0 (multi-user), read Upgrading to 2.0 and going back in [Family accounts](/FatCat-AI/en/guides/accounts/): the first start moves attachments into per-account folders, and going back needs the whole backup taken before the upgrade.
+Before upgrading from 1.x to 2.0 (multi-user), read Upgrading to 2.0 and going back in [Family accounts](/FatCat-AI/en/guides/accounts/): the first start moves attachments into per-account folders. Going back means restoring the whole data directory (or the whole volume) from before the upgrade. Switching the image is not enough, and neither is copying only the database file from `backups/`: 1.x will start, but the pictures stay in those subfolders and the old version does not show them.
 
-With a published image, set `FATCAT_AI_IMAGE=ghcr.io/codinglossy/fatcat-ai:TAG` in `.env` and upgrade with `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`. Database migrations run on startup, with an automatic backup first. To roll back, switch back to the old tag and restore the pre-upgrade backup (migrations are not reversible, so changing only the image is not enough).
+With a published image, set `FATCAT_AI_IMAGE=ghcr.io/codinglossy/fatcat-ai:TAG` in `.env` and upgrade with `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`. Database migrations run on startup and back up the database file first. To go back to 1.x, switch to the old tag and restore the full volume backup from section 8; migrations are not reversible.
 
 **Moving from the development compose file** (`docker/docker-compose.yml`, volume `ai-personal-data`): the production compose uses the new volume `fatcat-ai_fatcat-ai-data`. Run `docker compose -f docker-compose.yml down`, then copy:
 
