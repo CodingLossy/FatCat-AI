@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// 猫咪主视觉的数值部分(纯函数,无 DOM):一只单线条线稿的坐猫(头、两只耳朵、身子、前腿、尾巴、脸),
-// 线上缀着的小光点,以及各状态的耳朵、尾巴、呼吸和沿轮廓流动的光。坐标:x 向右、y 向下,猫大致在 [-1, 1] 里。
+// 猫咪主视觉的数值部分(纯函数,无 DOM):一只圆乎乎的简笔涂鸦猫(大头、小耳、ω 嘴、并拢的小爪、短尾巴),
+// 以及各状态的耳朵、尾巴、呼吸。坐标:x 向右、y 向下,猫大致在 [-1, 1] 里。线上不挂节点。
 
 import type { OrbState } from '../orb-model.js';
 
@@ -14,24 +14,12 @@ export interface CatStroke {
     readonly points: readonly Pt[];
 }
 
-/** 耳朵转动的支点(耳根中点)和尾巴的支点(尾根)。 */
-export const EAR_L_PIVOT: Pt = [-0.2, -0.66];
-export const EAR_R_PIVOT: Pt = [0.2, -0.66];
-export const TAIL_PIVOT: Pt = [0.42, 0.78];
+/** 耳朵转动的支点(耳根)和尾巴的支点(尾根)。 */
+export const EAR_L_PIVOT: Pt = [-0.16, -0.48];
+export const EAR_R_PIVOT: Pt = [0.16, -0.48];
+export const TAIL_PIVOT: Pt = [0.3, 0.32];
 
-const HEAD = { cx: 0, cy: -0.42, rx: 0.33, ry: 0.28 };
 const STEP = 0.012;
-
-function headAt(deg: number): Pt {
-    const a = (deg * Math.PI) / 180;
-    return [HEAD.cx + HEAD.rx * Math.cos(a), HEAD.cy + HEAD.ry * Math.sin(a)];
-}
-
-/** 一段圆弧(角度单位为度,y 向下时 90° 在最下面),按步长取点。 */
-function arc(from: number, to: number): Pt[] {
-    const n = Math.max(2, Math.ceil(((Math.abs(to - from) / 180) * Math.PI * HEAD.rx) / STEP));
-    return Array.from({ length: n + 1 }, (_, k) => headAt(from + ((to - from) * k) / n));
-}
 
 function cubic(p0: Pt, p1: Pt, p2: Pt, p3: Pt): Pt[] {
     const len =
@@ -57,35 +45,139 @@ function line(a: Pt, b: Pt): Pt[] {
     );
 }
 
-/** 整只猫的线条。顺序固定:头(含耳朵)、身子、前腿、尾巴、脸。 */
+/** 过点列的圆滑折线(Catmull-Rom)。闭合时首尾相接。 */
+function smoothThrough(pts: readonly Pt[], closed: boolean): Pt[] {
+    const n = pts.length;
+    if (n < 2) return [...pts];
+    const at = (i: number) => pts[((i % n) + n) % n]!;
+    const out: Pt[] = [];
+    const segCount = closed ? n : n - 1;
+    for (let i = 0; i < segCount; i++) {
+        const p0 = closed ? at(i - 1) : pts[Math.max(0, i - 1)]!;
+        const p1 = closed ? at(i) : pts[i]!;
+        const p2 = closed ? at(i + 1) : pts[i + 1]!;
+        const p3 = closed ? at(i + 2) : pts[Math.min(n - 1, i + 2)]!;
+        const c1: Pt = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+        const c2: Pt = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+        const seg = cubic(p1, c1, c2, p2);
+        if (out.length) seg.shift();
+        out.push(...seg);
+    }
+    return out;
+}
+
+/** 整只猫:圆头连着短身子、小圆耳、ω 嘴、脸颊绒毛、并拢的小爪、短波浪尾巴。 */
 export function catStrokes(): CatStroke[] {
-    const earL = [...line(headAt(200), [-0.34, -0.9]), ...line([-0.34, -0.9], headAt(247)).slice(1)];
-    const earR = [...line(headAt(293), [0.34, -0.9]), ...line([0.34, -0.9], headAt(340)).slice(1)];
+    const body = smoothThrough(
+        [
+            [0, -0.62],
+            [0.24, -0.52],
+            [0.42, -0.28],
+            [0.44, 0.02],
+            [0.36, 0.28],
+            [0.22, 0.5],
+            [0.12, 0.64],
+            [0.02, 0.52],
+            [-0.02, 0.52],
+            [-0.12, 0.64],
+            [-0.22, 0.5],
+            [-0.36, 0.28],
+            [-0.44, 0.02],
+            [-0.42, -0.28],
+            [-0.24, -0.52],
+        ],
+        true,
+    );
+    const earL = smoothThrough(
+        [
+            [-0.26, -0.46],
+            [-0.32, -0.62],
+            [-0.2, -0.76],
+            [-0.08, -0.56],
+        ],
+        false,
+    );
+    const earR = smoothThrough(
+        [
+            [0.26, -0.46],
+            [0.32, -0.62],
+            [0.2, -0.76],
+            [0.08, -0.56],
+        ],
+        false,
+    );
+    const tail = smoothThrough([TAIL_PIVOT, [0.48, 0.4], [0.64, 0.26], [0.56, 0.1], [0.42, 0.06]], false);
+    const cheek = (side: number): Pt[][] =>
+        [-1, 0, 1].map((k) =>
+            smoothThrough(
+                [
+                    [side * 0.34, -0.08 + k * 0.045],
+                    [side * 0.5, -0.05 + k * 0.05],
+                    [side * 0.4, 0.02 + k * 0.04],
+                ],
+                false,
+            ),
+        );
     return [
-        { part: 'head', points: arc(200, -20) },
-        { part: 'earR', points: earR },
-        { part: 'head', points: arc(293, 247) },
-        { part: 'earL', points: earL },
+        { part: 'body', points: body },
         {
-            part: 'body',
-            points: [
-                ...cubic([-0.2, -0.17], [-0.5, 0.0], [-0.62, 0.55], [-0.42, 0.8]),
-                ...line([-0.42, 0.8], [0.42, 0.8]).slice(1),
-                ...cubic([0.42, 0.8], [0.62, 0.55], [0.5, 0.0], [0.2, -0.17]).slice(1),
-            ],
+            part: 'head',
+            points: smoothThrough(
+                [
+                    [-0.16, -0.34],
+                    [0, -0.42],
+                    [0.16, -0.34],
+                ],
+                false,
+            ),
         },
-        { part: 'legs', points: [...line([-0.13, 0.12], [-0.13, 0.8])] },
-        { part: 'legs', points: [...line([0.13, 0.12], [0.13, 0.8])] },
-        { part: 'tail', points: cubic(TAIL_PIVOT, [0.95, 0.82], [0.98, 0.25], [0.72, 0.12]) },
-        // 脸:两只眯起的眼睛、鼻子和嘴
-        { part: 'face', points: cubic([-0.17, -0.44], [-0.14, -0.4], [-0.08, -0.4], [-0.05, -0.44]) },
-        { part: 'face', points: cubic([0.05, -0.44], [0.08, -0.4], [0.14, -0.4], [0.17, -0.44]) },
+        { part: 'earL', points: earL },
+        { part: 'earR', points: earR },
+        { part: 'tail', points: tail },
+        { part: 'face', points: line([-0.12, -0.22], [-0.11, -0.08]) },
+        { part: 'face', points: line([0.12, -0.22], [0.11, -0.08]) },
+        { part: 'face', points: cubic([-0.1, -0.02], [-0.07, 0.07], [-0.03, 0.07], [0, 0]) },
+        { part: 'face', points: cubic([0, 0], [0.03, 0.07], [0.07, 0.07], [0.1, -0.02]) },
+        ...cheek(-1).map((points) => ({ part: 'face' as const, points })),
+        ...cheek(1).map((points) => ({ part: 'face' as const, points })),
+        {
+            part: 'legs',
+            points: cubic([-0.11, 0.16], [-0.14, 0.32], [-0.02, 0.34], [0, 0.2]),
+        },
+        {
+            part: 'legs',
+            points: cubic([0.11, 0.16], [0.14, 0.32], [0.02, 0.34], [0, 0.2]),
+        },
+        // 很少的装饰:一朵小花、两颗小心、几点星
         {
             part: 'face',
-            points: [...line([-0.025, -0.34], [0.025, -0.34]), ...line([0.025, -0.34], [0, -0.31]).slice(1)],
+            points: smoothThrough(
+                [
+                    [-0.72, -0.42],
+                    [-0.64, -0.56],
+                    [-0.56, -0.42],
+                    [-0.64, -0.34],
+                    [-0.72, -0.42],
+                ],
+                false,
+            ),
         },
-        { part: 'face', points: cubic([0, -0.31], [0, -0.27], [-0.05, -0.27], [-0.06, -0.29]) },
-        { part: 'face', points: cubic([0, -0.31], [0, -0.27], [0.05, -0.27], [0.06, -0.29]) },
+        { part: 'face', points: line([-0.64, -0.5], [-0.64, -0.36]) },
+        {
+            part: 'face',
+            points: smoothThrough(
+                [
+                    [0.62, -0.62],
+                    [0.68, -0.52],
+                    [0.62, -0.46],
+                    [0.56, -0.52],
+                    [0.62, -0.62],
+                ],
+                false,
+            ),
+        },
+        { part: 'face', points: line([0.78, -0.36], [0.78, -0.28]) },
+        { part: 'face', points: line([0.74, -0.32], [0.82, -0.32]) },
     ];
 }
 
@@ -166,12 +258,12 @@ export function catPose(state: OrbState, level: number, tSec: number, knowledge:
     }
     if (state === 'speaking') {
         // 耳朵和尾巴只动一点,幅度跟着音量;嘴张开的程度就是音量
-        const ear = 0.07 * (0.35 + 0.65 * lv);
+        const ear = 0.08 * (0.35 + 0.65 * lv);
         return {
             earL: ear * Math.sin(tSec * 2.6),
-            earR: ear * Math.sin(tSec * 2.6 + 0.9),
-            tail: (0.05 + 0.1 * lv) * Math.sin(tSec * 1.7),
-            breathe: breathe + 0.012 * lv,
+            earR: ear * Math.sin(tSec * 2.6 + 0.8),
+            tail: (0.08 + 0.12 * lv) * Math.sin(tSec * 1.6),
+            breathe: 0.02 * Math.sin(tSec * 2.5) * (0.35 + 0.65 * lv),
             flow: 0.45 + 0.55 * lv,
             flowSpeed: 0.18 + 0.3 * lv,
             brightness: 1,
@@ -198,8 +290,9 @@ export function catPose(state: OrbState, level: number, tSec: number, knowledge:
 export function catMouth(open: number): Pt[][] {
     const o = Math.min(1, Math.max(0, open));
     if (o < 0.12) return [];
-    const drop = 0.008 + 0.028 * o;
-    return [cubic([-0.06, -0.29], [-0.028, -0.272 + drop], [0.028, -0.272 + drop], [0.06, -0.29])];
+    // 下唇贴在 ω 下面,只拉开一条窄缝
+    const drop = 0.012 + 0.026 * o;
+    return [cubic([-0.1, 0.02], [-0.035, 0.02 + drop], [0.035, 0.02 + drop], [0.1, 0.02])];
 }
 
 /** 说话时偶尔冒出的小字。 */
@@ -280,8 +373,8 @@ export function posePoint(part: CatPart, p: Pt, pose: CatPose): Pt {
     return [q[0], 0.8 - (0.8 - q[1]) * (1 + pose.breathe)];
 }
 
-/** 脸(眼睛、鼻子、嘴和胡须)所在的圆:知识模式的节点和标签都让开这里。 */
-export const CAT_FACE = { cx: 0, cy: -0.38, r: 0.56 } as const;
+/** 脸(眼睛和 ω 嘴)所在的圆:知识模式的节点和标签都让开这里。 */
+export const CAT_FACE = { cx: 0, cy: -0.16, r: 0.5 } as const;
 
 function inFace(p: Pt): boolean {
     return Math.hypot(p[0] - CAT_FACE.cx, p[1] - CAT_FACE.cy) < CAT_FACE.r;

@@ -1,23 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 尹绪柏 (Theodore Yin)
 
-// 猫咪主视觉:奶油底上一只橘色单线条线稿坐猫,线上缀着小光点。聆听时耳朵动、思考时尾巴摆、说话时光顺着轮廓流动。
-// 颜色来自 tokens.css 的 --cat-* 变量;帧循环与科技共用(后台降帧、隐藏暂停、减少动态时静态一帧)。
+// 猫咪主视觉:奶油底上一只近黑毛笔的圆润简笔猫。聆听时耳朵动、思考时尾巴摆、说话时 ω 嘴微微张开。
+// 颜色来自 tokens.css;帧循环与科技共用(后台降帧、隐藏暂停、减少动态时静态一帧)。轮廓上不画节点。
 
 import { expandedId, type KnowledgeScene, pickNode, type ScreenNode } from '../knowledge-model.js';
 import type { OrbState } from '../orb-model.js';
 import type { Hero, HeroMode, HeroOptions } from '../theme.js';
-import { addTick, currentQuality, fitCanvas, prefersReducedMotion } from '../voice-orb.js';
+import { addTick, fitCanvas, prefersReducedMotion } from '../voice-orb.js';
 import { type AnchoredKnowledgePalette, drawAnchoredKnowledge } from './anchored-knowledge.js';
 import {
     bubbleOpacity,
     CAT_FACE,
+    type CatPart,
     catMouth,
     catPose,
     catStrokes,
-    catWhiskers,
     createBubbles,
-    flowGlow,
     MEOW_TEXT,
     outlineAnchors,
     posePoint,
@@ -25,9 +24,7 @@ import {
 } from './cat-model.js';
 import {
     type HeroState,
-    mixRgb,
     motionState,
-    parseColor,
     readStateColors,
     rgbString,
     type StateColors,
@@ -77,21 +74,14 @@ const CAT_STATES: StateColors = {
 };
 
 const STROKES = catStrokes();
-const WHISKERS = catWhiskers();
-/** 每个轮廓点在整条轮廓(不含脸)上的位置 0–1,给流动光用;脸上的点为 -1。 */
-const OUTLINE_U: number[][] = (() => {
-    let total = 0;
-    const raw = STROKES.map((st) => {
-        if (st.part === 'face') return st.points.map(() => -1);
-        return st.points.map((p, i) => {
-            const prev = st.points[i - 1];
-            if (prev) total += Math.hypot(p[0] - prev[0], p[1] - prev[1]);
-            return total;
-        });
-    });
-    return raw.map((list) => list.map((s) => (s < 0 ? -1 : s / (total || 1))));
-})();
-const SPARK_EVERY = 4;
+/** 毛笔墨色,奶油底上远高于 4.5:1。状态色只做外圈淡晕,不把猫涂成蓝线。 */
+const INK = '#241c16';
+const PAPER = '#fffdf8';
+
+function inkWidth(part: CatPart, scale: number): number {
+    if (part === 'face' || part === 'legs') return Math.max(2.2, 4.4 * scale);
+    return Math.max(4.2, 8.2 * scale);
+}
 
 export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): Hero | null {
     let probe: CanvasRenderingContext2D | null;
@@ -137,13 +127,6 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
         mouthEase += (mouthTarget - mouthEase) * mouthK;
         if (mouthEase < 0.001 && mouthTarget === 0) mouthEase = 0;
         bubbles = stepBubbles(bubbles, frameDt, state === 'speaking' && !knowledge, reduced ? 0 : smooth, reduced);
-        const tinted = (base: string) => {
-            const rgb = parseColor(base);
-            // 互补色按比例混合会发灰:按最高比例归一,聆听时也基本是状态色
-            return rgb && tint.amount > 0.01 ? rgbString(mixRgb(rgb, tint.color, tint.amount / 0.75)) : base;
-        };
-        const line = tinted(palette.line);
-        const spark = tinted(palette.spark);
         const fit = fitCanvas(canvas);
         if (!fit) return;
         const { ctx: g, w, h } = fit;
@@ -162,96 +145,57 @@ export function createCatHero(canvas: HTMLCanvasElement, options: HeroOptions): 
         g.lineCap = 'round';
         g.lineJoin = 'round';
 
-        // 胡须
-        g.strokeStyle = palette.whisker;
-        g.lineWidth = Math.max(0.6, 1 * scale);
-        g.globalAlpha = 0.35 * dim;
-        g.beginPath();
-        for (const [a, b] of WHISKERS) {
-            const p = S('head', a);
-            const q = S('head', b);
-            g.moveTo(p[0], p[1]);
-            g.lineTo(q[0], q[1]);
-        }
-        g.stroke();
-
-        // 单线条轮廓
-        g.strokeStyle = line;
-        g.lineWidth = Math.max(1.2, 2.4 * scale);
-        g.globalAlpha = (0.55 + 0.45 * pose.brightness) * dim;
-        g.beginPath();
-        for (const st of STROKES) {
-            st.points.forEach((p, i) => {
-                const q = S(st.part, p);
+        const trace = (part: CatPart, points: readonly (readonly [number, number])[]) => {
+            points.forEach((p, i) => {
+                const q = S(part, p);
                 if (i) g.lineTo(q[0], q[1]);
                 else g.moveTo(q[0], q[1]);
             });
-        }
-        g.stroke();
+        };
 
-        // 说话时下唇随音量分开一条窄缝。和脸是同一支笔,不填色;合上时不画,线稿上的小弧还在。
-        const lips = catMouth(mouthEase);
-        if (lips.length > 0) {
-            g.strokeStyle = line;
-            g.lineWidth = Math.max(1.2, 2.4 * scale);
-            g.globalAlpha = (0.55 + 0.45 * pose.brightness) * dim;
+        // 身子填一层很浅的纸色,笔触仍是空心的简笔
+        const body = STROKES.find((st) => st.part === 'body');
+        if (body) {
             g.beginPath();
-            for (const lip of lips) {
-                lip.forEach((p, i) => {
-                    const q = S('face', p);
-                    if (i) g.lineTo(q[0], q[1]);
-                    else g.moveTo(q[0], q[1]);
-                });
+            trace('body', body.points);
+            g.closePath();
+            g.fillStyle = PAPER;
+            g.globalAlpha = 0.94 * dim;
+            g.fill();
+        }
+
+        // 状态色只留一圈淡晕
+        if (tint.amount > 0.04) {
+            g.strokeStyle = rgbString(tint.color);
+            g.globalAlpha = 0.28 * tint.amount * dim;
+            for (const st of STROKES) {
+                if (st.part === 'face' || st.part === 'legs') continue;
+                g.lineWidth = inkWidth(st.part, scale) * 1.7;
+                g.beginPath();
+                trace(st.part, st.points);
+                g.stroke();
             }
+        }
+
+        g.strokeStyle = INK;
+        g.globalAlpha = (0.92 + 0.08 * pose.brightness) * dim;
+        for (const st of STROKES) {
+            g.lineWidth = inkWidth(st.part, scale);
+            g.beginPath();
+            trace(st.part, st.points);
             g.stroke();
         }
 
-        // 说话:一段光顺着轮廓流动
-        if (!reduced && pose.flow > 0) {
-            g.strokeStyle = spark;
-            g.lineWidth = Math.max(2, 3.6 * scale);
-            STROKES.forEach((st, si) => {
-                const us = OUTLINE_U[si] ?? [];
-                for (let i = 1; i < st.points.length; i++) {
-                    const u = us[i] ?? -1;
-                    if (u < 0) continue;
-                    const glow = flowGlow(u, pose.flowSpeed, t);
-                    if (glow <= 0) continue;
-                    const a = S(st.part, st.points[i - 1]!);
-                    const b = S(st.part, st.points[i]!);
-                    g.globalAlpha = glow * pose.flow;
-                    g.beginPath();
-                    g.moveTo(a[0], a[1]);
-                    g.lineTo(b[0], b[1]);
-                    g.stroke();
-                }
-            });
+        // 说话时 ω 下面多一笔下唇,仍是墨线,不填实心
+        const lips = catMouth(mouthEase);
+        if (lips.length > 0) {
+            g.strokeStyle = INK;
+            g.lineWidth = inkWidth('face', scale);
+            g.globalAlpha = 0.95 * dim;
+            g.beginPath();
+            for (const lip of lips) trace('face', lip);
+            g.stroke();
         }
-
-        // 线上缀的小光点(低画质时隔得更开)
-        const every = Math.round(SPARK_EVERY / Math.max(0.35, currentQuality().quality * Math.max(0.5, scale)));
-        STROKES.forEach((st, si) => {
-            if (st.part === 'face') return;
-            const us = OUTLINE_U[si] ?? [];
-            for (let i = 0; i < st.points.length; i += every) {
-                const q = S(st.part, st.points[i]!);
-                const twinkle = reduced ? 0.7 : 0.5 + 0.5 * Math.sin(i * 1.7 + si + t * 2.1);
-                const flow = reduced ? 0 : flowGlow(us[i] ?? -1, pose.flowSpeed, t) * pose.flow;
-                const r = (1.2 + 0.6 * twinkle + 1.4 * flow) * Math.max(0.6, scale);
-                const a = (0.35 + 0.5 * twinkle * pose.brightness + 0.3 * flow) * dim;
-                // 一圈暖色光晕 + 亮芯,在奶油底上也看得出是「光点」
-                g.fillStyle = spark;
-                g.globalAlpha = 0.45 * a;
-                g.beginPath();
-                g.arc(q[0], q[1], r * 2.6, 0, Math.PI * 2);
-                g.fill();
-                g.fillStyle = palette.core;
-                g.globalAlpha = Math.min(1, a + 0.2);
-                g.beginPath();
-                g.arc(q[0], q[1], r, 0, Math.PI * 2);
-                g.fill();
-            }
-        });
         g.globalAlpha = 1;
 
         // 偶尔在头旁边冒出「喵~」。可可棕字写在白底上,对比度沿用正文。减少动态时没有气泡。
