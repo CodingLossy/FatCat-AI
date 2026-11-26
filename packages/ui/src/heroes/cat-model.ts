@@ -37,6 +37,14 @@ function cubic(p0: Pt, p1: Pt, p2: Pt, p3: Pt): Pt[] {
     });
 }
 
+function oval(cx: number, cy: number, rx: number, ry: number): Pt[] {
+    const n = 18;
+    return Array.from({ length: n + 1 }, (_, k) => {
+        const a = (k / n) * Math.PI * 2;
+        return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)] as Pt;
+    });
+}
+
 function line(a: Pt, b: Pt): Pt[] {
     const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / STEP));
     return Array.from(
@@ -75,12 +83,12 @@ export function catStrokes(): CatStroke[] {
             [0.42, -0.28],
             [0.44, 0.02],
             [0.36, 0.28],
-            [0.22, 0.5],
-            [0.12, 0.64],
-            [0.02, 0.52],
-            [-0.02, 0.52],
-            [-0.12, 0.64],
-            [-0.22, 0.5],
+            [0.22, 0.48],
+            [0.16, 0.58],
+            [0.06, 0.54],
+            [-0.06, 0.54],
+            [-0.16, 0.58],
+            [-0.22, 0.48],
             [-0.36, 0.28],
             [-0.44, 0.02],
             [-0.42, -0.28],
@@ -124,9 +132,9 @@ export function catStrokes(): CatStroke[] {
             part: 'head',
             points: smoothThrough(
                 [
-                    [-0.16, -0.34],
-                    [0, -0.42],
-                    [0.16, -0.34],
+                    [-0.2, -0.5],
+                    [-0.16, -0.58],
+                    [-0.1, -0.5],
                 ],
                 false,
             ),
@@ -142,42 +150,47 @@ export function catStrokes(): CatStroke[] {
         ...cheek(1).map((points) => ({ part: 'face' as const, points })),
         {
             part: 'legs',
-            points: cubic([-0.11, 0.16], [-0.14, 0.32], [-0.02, 0.34], [0, 0.2]),
+            points: smoothThrough(
+                [
+                    [-0.09, 0.14],
+                    [-0.1, 0.24],
+                    [-0.02, 0.26],
+                    [0, 0.16],
+                ],
+                false,
+            ),
         },
         {
             part: 'legs',
-            points: cubic([0.11, 0.16], [0.14, 0.32], [0.02, 0.34], [0, 0.2]),
-        },
-        // 很少的装饰:一朵小花、两颗小心、几点星
-        {
-            part: 'face',
             points: smoothThrough(
                 [
-                    [-0.72, -0.42],
-                    [-0.64, -0.56],
-                    [-0.56, -0.42],
-                    [-0.64, -0.34],
-                    [-0.72, -0.42],
+                    [0.09, 0.14],
+                    [0.1, 0.24],
+                    [0.02, 0.26],
+                    [0, 0.16],
                 ],
                 false,
             ),
         },
-        { part: 'face', points: line([-0.64, -0.5], [-0.64, -0.36]) },
+        // 很少的装饰:一朵小花、一颗小心、一个十字星
+        { part: 'face', points: oval(-0.66, -0.5, 0.055, 0.055) },
+        { part: 'face', points: oval(-0.66, -0.5, 0.015, 0.015) },
         {
             part: 'face',
             points: smoothThrough(
                 [
-                    [0.62, -0.62],
-                    [0.68, -0.52],
-                    [0.62, -0.46],
-                    [0.56, -0.52],
-                    [0.62, -0.62],
+                    [0.64, -0.5],
+                    [0.7, -0.6],
+                    [0.64, -0.66],
+                    [0.58, -0.6],
+                    [0.6, -0.52],
+                    [0.64, -0.5],
                 ],
                 false,
             ),
         },
-        { part: 'face', points: line([0.78, -0.36], [0.78, -0.28]) },
-        { part: 'face', points: line([0.74, -0.32], [0.82, -0.32]) },
+        { part: 'face', points: line([0.78, -0.34], [0.78, -0.24]) },
+        { part: 'face', points: line([0.73, -0.29], [0.83, -0.29]) },
     ];
 }
 
